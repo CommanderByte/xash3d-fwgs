@@ -476,7 +476,7 @@ These areas should be documented and tested before modernization changes them:
 - Case-insensitive directory cache refresh.
 - `FS_FindLibrary` short path casing and full path resolution.
 - `FS_LoadFile` versus `FS_LoadFileMalloc` allocator ownership.
-- No-init behavior tested by `filesystem/tests/no-init.c`.
+- No-init behavior tested by `tests/filesystem/no-init.c`.
 
 ## Modernization Reading Notes
 

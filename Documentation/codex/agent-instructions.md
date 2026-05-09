@@ -58,10 +58,11 @@ For filesystem test changes:
 - Build with tests enabled.
 - Run the affected filesystem tests.
 - Run the no-init/interface tests when touching exported interfaces.
-- Keep compiled filesystem tests under `filesystem/tests` until a root Waf
-  test subproject is intentionally added.
-- Use `tests/` for behavior inventories, fixture strategy, and future shared
-  test harness notes.
+- Keep compiled filesystem tests under `tests/filesystem`, built by
+  `filesystem/wscript`, until a shared root Waf test subproject is
+  intentionally added.
+- Use `tests/` for behavior inventories, fixture strategy, generated fixtures,
+  and future shared test harness notes.
 
 For filesystem implementation changes:
 

@@ -350,7 +350,7 @@ Known local test path:
 Test targets include:
 
 - Public utility tests in `public/tests/`.
-- Filesystem tests in `filesystem/tests/`.
+- Filesystem tests in `tests/filesystem/`, built by `filesystem/wscript`.
 - Engine test binaries `xash_tests` and `xash_tests_dedicated`.
 
 CI uses `.github/workflows/c-cpp.yml` and platform scripts in `scripts/gha/`.

@@ -31,9 +31,15 @@ Build target: `filesystem_stdio`, a shared library built from all
 
 Existing tests:
 
-- `filesystem/tests/interface.cpp`
-- `filesystem/tests/caseinsensitive.c`
-- `filesystem/tests/no-init.c`
+- `tests/filesystem/interface.cpp`
+- `tests/filesystem/caseinsensitive.c`
+- `tests/filesystem/no-init.c`
+- `tests/filesystem/directpath.c`
+- `tests/filesystem/archive-order.c`
+- `tests/filesystem/hierarchy.c`
+- `tests/filesystem/rodir.c`
+- `tests/filesystem/zip-archive.c`
+- `tests/filesystem/wad-archive.c`
 
 ## Current Responsibilities
 
@@ -197,28 +203,33 @@ backend pointer and callbacks, and lets `filesystem.c` link it into
 This suggests an incremental C++ model where backend implementation details can
 be wrapped first while the `searchpath_t` callback ABI stays intact.
 
-## Existing Tests And Gaps
+## Existing Tests And Remaining Gaps
 
-Current tests cover a useful but small slice:
+Phase 2 expanded the filesystem tests into a behavior baseline for the
+directory backend pilot.
 
-- API loading and `CreateInterface` lookup.
-- Some no-init behavior.
-- Case-insensitive directory lookup for simple create/open/delete flows.
+Current tests cover:
 
-Missing coverage before a serious pilot:
-
-- Search path precedence across plain files, PAK, PK3, WAD, and `pk3dir`.
-- `FS_GAMEDIRONLY_SEARCH_FLAGS` filtering.
-- `rodir` plus writable root behavior.
-- `FS_AddGameHierarchy` order for basedir, falldir, gamefolder, custom,
-  downloaded, HD, LV, addon, and localization folders.
-- Archive mounting idempotency.
-- WADs mounted from archives.
+- API loading and expanded `CreateInterface` behavior.
+- No-init behavior.
+- Case-insensitive lookup, nested case repair, cache refresh, write-path
+  directory creation, and path rejection.
 - Direct path allow/deny behavior.
+- Loose file versus archive precedence.
+- PAK, ZIP/PK3 stored, ZIP/PK3 deflated, WAD, and WAD-from-PAK fixtures.
+- Gamefolder versus basedir precedence.
+- `gamedironly` filtering.
+- `rodir` plus writable root precedence.
+
+Remaining useful edge cases:
+
 - `FS_FindLibrary` behavior for game/client DLL paths.
 - `FS_Search` duplicate elimination and directory pseudo-results.
-- Case fixing after external filesystem changes.
 - `FS_LoadFileMalloc` versus `FS_LoadFile` allocator ownership.
+- Archive mounting idempotency and unsupported archive failure cases.
+- `pk3dir` behavior.
+- `FS_AddGameHierarchy` order for falldir, custom, downloaded, HD, LV, addon,
+  and localization folders.
 
 ## Proposed Internal Shape
 
@@ -412,32 +423,32 @@ Mitigation: keep `Mem_*`, `FS_LoadFile`, `FS_LoadFileMalloc`, and `search_t`
 ownership contracts unchanged until explicitly documented and tested.
 
 Risk: breaking no-init behavior.
-Mitigation: keep `filesystem/tests/no-init.c` passing and expand it when new
+Mitigation: keep `tests/filesystem/no-init.c` passing and expand it when new
 wrappers are introduced.
 
 Risk: over-abstracting too early.
 Mitigation: first pilot wraps one backend only. Larger state objects wait until
 tests prove the current behavior.
 
-## Open Questions
+## Resolved And Open Questions
 
-- Should backend implementation files use `.cpp` while preserving C entry
-  points, or should we create adjacent `*_cpp.cpp` files and leave existing
-  `.c` adapter files in place?
-- Do we want C++ exceptions disabled for all filesystem C++ files? Waf already
-  adds `-fno-exceptions` for non-MSVC C++ in this target.
-- Should `searchpath_t` remain the long-term internal backend object, or become
-  a C adapter around private C++ backend objects?
-- How should tests generate PAK/WAD/ZIP fixtures portably?
+- Resolved: use a C adapter plus adjacent private C++ implementation for the
+  first backend pilot.
+- Resolved: do not require exceptions or RTTI yet; use explicit status/result
+  semantics.
+- Resolved: keep `searchpath_t` as the adapter node while backend objects move
+  behind it.
+- Resolved: tests generate PAK/WAD/ZIP fixtures in source code rather than
+  committing binary fixtures.
+- Open: should `searchpath_t` remain the long-term internal backend object, or
+  become only a temporary C adapter around private C++ backend objects?
 - Should `FS_SetCurrentDirectory` remain fatal on failure, or should that be
   addressed separately before deeper refactors?
 
 ## Near-Term Backlog
 
-- Add `boundary-filesystem.md`.
-- Add filesystem fixture helpers for tests.
-- Add search path ordering tests for loose files versus archives.
-- Add `rodir` smoke-test documentation using the current Steam asset setup.
-- Add a baseline `fs_path` capture from the working Windows runtime.
+- Add `FS_FindLibrary` behavior tests.
+- Add `FS_Search` duplicate/directory-result edge case tests.
+- Add debug snapshot builders for `fs_path_verbose`.
 - Prototype a tiny private C++ helper in the directory backend without changing
   public behavior.

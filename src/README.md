@@ -1,0 +1,25 @@
+# Source Modernization Area
+
+This folder is reserved for new reusable C++ internals introduced by the
+modularization work.
+
+It is intentionally not wired into the build yet. Production code should not be
+moved here until the filesystem pilot proves that the adapter approach can keep
+legacy behavior stable.
+
+Initial policy:
+
+- keep public ABI headers in their current public/common/module homes
+- keep compatibility modules buildable in place
+- use this tree for new reusable implementation units once build integration is
+  deliberate
+- avoid dumping subsystem code here without a matching design note
+
+Planned subfolders:
+
+- `include/`: private reusable C++ headers for new internals
+- `filesystem/`: future filesystem implementation units after the pilot
+
+See also:
+
+- `Documentation/codex/modularization-plan/cross-cutting-utilities.md`

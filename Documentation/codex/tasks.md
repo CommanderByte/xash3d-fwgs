@@ -141,35 +141,51 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 3: Filesystem Design Decisions
 
-- [ ] `FS-DESIGN-001` Decide whether first backend conversion uses `dir.cpp`
+- [x] `FS-DESIGN-001` Decide whether first backend conversion uses `dir.cpp`
   or a C adapter plus adjacent C++ implementation file.
-  Decision:
-- [ ] `FS-DESIGN-002` Decide C++ exception and RTTI policy for filesystem C++
+  Decision: Use a C adapter plus adjacent private C++ implementation for the
+  first directory backend pilot.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-modern-design.md`.
+- [x] `FS-DESIGN-002` Decide C++ exception and RTTI policy for filesystem C++
   internals.
-  Decision:
-- [ ] `FS-DESIGN-003` Define the internal backend interface shape.
-  Decision:
-- [ ] `FS-DESIGN-004` Define how legacy `searchpath_t` callbacks adapt to the
+  Decision: Do not require exceptions or RTTI yet; use explicit status/result
+  semantics and keep exceptions from crossing legacy boundaries if enabled
+  later.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-modern-design.md`.
+- [x] `FS-DESIGN-003` Define the internal backend interface shape.
+  Decision: Use a narrow internal `ISearchPathBackend` interface shaped like
+  current `searchpath_t` callbacks.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-modern-design.md`.
+- [x] `FS-DESIGN-004` Define how legacy `searchpath_t` callbacks adapt to the
   new backend objects.
-  Decision:
-- [ ] `FS-DESIGN-005` Define archive registry responsibilities.
-  Decision:
-- [ ] `FS-DESIGN-006` Define debugging utility names and output formats.
-  Decision:
+  Decision: Keep `searchpath_t` as the linked-list adapter node while C
+  callback shims forward into private backend objects.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-modern-design.md`.
+- [x] `FS-DESIGN-005` Define archive registry responsibilities.
+  Decision: Build a generic registry primitive, instantiate an archive
+  registry from it, and keep mount-order policy outside registry ownership.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-modern-design.md`.
+- [x] `FS-DESIGN-006` Define debugging utility names and output formats.
+  Decision: Provide human-readable commands plus JSON output generated from
+  debug snapshot records.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-modern-design.md`,
+  `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
 
 ## Phase 4: Debugging Utilities
 
-- [ ] `FS-DEBUG-001` Add `fs_path_verbose` design note.
-  Evidence:
-- [ ] `FS-DEBUG-002` Add `fs_why <path>` design note.
-  Evidence:
-- [ ] `FS-DEBUG-003` Add `fs_find_all <path>` design note.
-  Evidence:
-- [ ] `FS-DEBUG-004` Add `fs_registry` design note.
-  Evidence:
-- [ ] `FS-DEBUG-005` Decide whether machine-readable debug output should be
+- [x] `FS-DEBUG-001` Add `fs_path_verbose` design note.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
+- [x] `FS-DEBUG-002` Add `fs_why <path>` design note.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
+- [x] `FS-DEBUG-003` Add `fs_find_all <path>` design note.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
+- [x] `FS-DEBUG-004` Add `fs_registry` design note.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
+- [x] `FS-DEBUG-005` Decide whether machine-readable debug output should be
   JSON, key/value text, or both.
-  Decision:
+  Decision: JSON first for machine-readable output; human-readable output
+  remains separate and is generated from the same debug snapshots.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
 
 ## Phase 5: Directory Backend Pilot
 
@@ -205,3 +221,8 @@ commit, test command, document link, or manual verification note that proves it.
 | --- | --- | --- | --- |
 | 2026-05-09 | DEC-001 | Modernize inward while preserving legacy outward interfaces. | `modularization-plan/filesystem-pilot.md` |
 | 2026-05-09 | DEC-002 | Use filesystem directory backend as the first serious pilot candidate. | `modularization-plan/filesystem-pilot.md` |
+| 2026-05-09 | DEC-003 | Reserve `src/` for future reusable C++ internals, but do not wire it into the build until the adapter pilot proves out. | `src/README.md`, `modularization-plan/filesystem-modern-design.md` |
+| 2026-05-09 | DEC-004 | Use explicit filesystem status/result semantics before requiring C++ exceptions or RTTI. | `modularization-plan/filesystem-modern-design.md` |
+| 2026-05-09 | DEC-005 | Use debug snapshots with human formatters and JSON serializers for filesystem diagnostics. | `modularization-plan/filesystem-debug-utilities.md` |
+| 2026-05-09 | DEC-006 | Keep reusable modernization utilities behind private facades, and do not expose third-party utility types through public ABI boundaries. | `modularization-plan/cross-cutting-utilities.md`, `src/include/README.md` |
+| 2026-05-09 | DEC-007 | Prepare for threading with explicit ownership, immutable snapshots, short lock windows, and bounded async queues before broad multithreaded behavior changes. | `modularization-plan/cross-cutting-utilities.md` |

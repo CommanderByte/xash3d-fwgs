@@ -16,6 +16,14 @@ subsystem-level notes.
   and proposed pilot plan.
 - [boundary-filesystem.md](boundary-filesystem.md) records the filesystem
   compatibility boundaries that refactors must preserve.
+- [filesystem-modern-design.md](filesystem-modern-design.md) records the Phase
+  3 filesystem design decisions for backend adapters, errors, registries, and
+  source layout.
+- [filesystem-debug-utilities.md](filesystem-debug-utilities.md) records the
+  Phase 4 debug command and machine-readable output design.
+- [cross-cutting-utilities.md](cross-cutting-utilities.md) records reusable
+  modernization utilities for errors, logging, serialization, registries, and
+  thread-readiness.
 - [subsystem-template.md](subsystem-template.md) is the template for future
   subsystem plans.
 

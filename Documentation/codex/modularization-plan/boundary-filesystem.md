@@ -92,7 +92,7 @@ Compatibility rules:
 
 - Keep null callback fallback behavior.
 - Keep default stubs usable by standalone tests.
-- Do not require engine callbacks for `filesystem/tests/no-init.c`.
+- Do not require engine callbacks for `tests/filesystem/no-init.c`.
 - Do not let C++ exceptions cross through callback calls.
 
 ## `fs_globals_t` Boundary
