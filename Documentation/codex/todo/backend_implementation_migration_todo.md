@@ -18,7 +18,7 @@ objects.
 - [x] Migrate PAK implementation body into `src/filesystem/pak_backend.cpp`.
 - [x] Migrate ZIP/PK3 implementation body into
   `src/filesystem/zip_backend.cpp`.
-- [ ] Migrate directory cache/search/case-fix behavior into
+- [x] Migrate directory cache/search/case-fix behavior into
   `src/filesystem/directory_backend.cpp`.
 - [ ] Migrate Android asset implementation into
   `src/filesystem/android_assets_backend.cpp` while preserving desktop

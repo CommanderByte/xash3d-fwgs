@@ -8,7 +8,8 @@ Current headers:
   typedef over the shared ordered registry utility
 - `debug_snapshot.hpp`: immutable filesystem mount snapshot records and writer
   declarations for human and JSON diagnostic output
-- `directory_backend.hpp`: first private C++ directory backend skeleton
+- `directory_backend.hpp`: private C++ directory backend helpers and runtime
+  callback boundaries
 - `registry_snapshot.hpp`: immutable archive registry snapshot records and
   writer declarations for future `fs_registry` output
 - `search_path_backend.hpp`: internal search path metadata and backend

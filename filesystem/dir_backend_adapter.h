@@ -21,6 +21,43 @@ typedef struct fs_directory_backend_hooks_s
 		int caseInsensitive);
 } fs_directory_backend_hooks_t;
 
+typedef struct fs_directory_case_runtime_s
+{
+	void *context;
+	void *(*alloc)(void *context, size_t size, int clear);
+	void (*free)(void *context, void *memory);
+	int (*folderExists)(void *context, const char *path);
+	int (*fileExists)(void *context, const char *path);
+	int (*fileOrFolderExists)(void *context, const char *path);
+	int (*isDirectoryCaseSensitive)(void *context, const char *path);
+	stringlist_t *(*listCreate)(void *context);
+	void (*listDirectory)(void *context, stringlist_t *list, const char *path,
+		int dirsOnly);
+	void (*listDestroy)(void *context, stringlist_t *list);
+	int (*stringCount)(void *context, stringlist_t *list);
+	const char *(*stringAt)(void *context, stringlist_t *list, int index);
+	void (*overflow)(void *context, const char *path, const char *operation);
+} fs_directory_case_runtime_t;
+
+typedef struct fs_directory_search_runtime_s
+{
+	void *context;
+	fs_directory_case_runtime_t caseRuntime;
+	int (*matchPattern)(void *context, const char *text, const char *pattern,
+		int caseInsensitive);
+	int (*stringCount)(void *context, stringlist_t *list);
+	const char *(*stringAt)(void *context, stringlist_t *list, int index);
+	void (*append)(void *context, stringlist_t *list, const char *text);
+} fs_directory_search_runtime_t;
+
+typedef struct fs_directory_open_runtime_s
+{
+	void *context;
+	fs_directory_case_runtime_t caseRuntime;
+	file_t *(*openSystem)(void *context, const char *path, const char *mode);
+	void (*setSearchPath)(void *context, file_t *file, void *searchPath);
+} fs_directory_open_runtime_t;
+
 void *FS_CreateDirectoryBackendBridge(searchpath_t *search,
 	const fs_directory_backend_hooks_t *hooks);
 void FS_DestroyDirectoryBackendBridge(void *backend);
@@ -33,6 +70,23 @@ int FS_DirectoryBackendBridge_FindFile(void *backend, const char *path,
 	char *fixedName, size_t len);
 void FS_DirectoryBackendBridge_Search(void *backend, stringlist_t *list,
 	const char *pattern, int caseInsensitive);
+void FS_DirectoryBackend_FreeEntries(dir_t *dir,
+	const fs_directory_case_runtime_t *runtime);
+void FS_DirectoryBackend_PopulateEntries(dir_t *dir, const char *path,
+	const fs_directory_case_runtime_t *runtime);
+int FS_DirectoryBackend_FindEntry(dir_t *dir, const char *name);
+int FS_DirectoryBackend_FixFileCase(dir_t *dir,
+	const fs_directory_case_runtime_t *runtime, const char *path, char *dst,
+	size_t len, int createPath);
+int FS_DirectoryBackend_FindFileInDirectory(dir_t *dir,
+	const fs_directory_case_runtime_t *runtime, const char *searchPath,
+	const char *path, char *fixedName, size_t fixedNameSize);
+void FS_DirectoryBackend_SearchDirectory(dir_t *dir,
+	const fs_directory_search_runtime_t *runtime, stringlist_t *list,
+	const char *pattern, int caseInsensitive);
+file_t *FS_DirectoryBackend_OpenFile(dir_t *dir,
+	const fs_directory_open_runtime_t *runtime, void *searchPath,
+	const char *rootPath, const char *filename, const char *mode);
 
 #ifdef __cplusplus
 }

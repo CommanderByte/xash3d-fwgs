@@ -788,18 +788,28 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 23: Directory Implementation Body Migration
 
-- [ ] `FS-DIR-IMPL-001` Audit `filesystem/dir.c` cache, search, and
+- [x] `FS-DIR-IMPL-001` Audit `filesystem/dir.c` cache, search, and
   case-insensitive path repair responsibilities.
-  Evidence:
-- [ ] `FS-DIR-IMPL-002` Expand directory tests for uncovered cache refresh,
+  Evidence: `Documentation/codex/modern/filesystem/directory-implementation-audit.md`.
+- [x] `FS-DIR-IMPL-002` Expand directory tests for uncovered cache refresh,
   case repair, and platform path quirks.
-  Evidence:
-- [ ] `FS-DIR-IMPL-003` Move directory cache/search behavior into
+  Evidence: `tests/filesystem/directory_backend.cpp`;
+  `.\waf.bat build --targets=test_filesystem_directory_backend,test_caseinsensitive,test_pk3dir`
+  passed on 2026-05-09.
+- [x] `FS-DIR-IMPL-003` Move directory cache/search behavior into
   `src/filesystem/directory_backend.cpp`.
-  Evidence:
-- [ ] `FS-DIR-IMPL-004` Shrink `filesystem/dir.c` to adapter-only or document
+  Evidence: `src/filesystem/directory_backend.cpp`,
+  `filesystem/dir_backend_adapter.cpp`, `filesystem/dir.c`;
+  `.\waf.bat build --targets=test_filesystem_directory_backend,test_caseinsensitive,test_pk3dir`
+  passed on 2026-05-09.
+- [x] `FS-DIR-IMPL-004` Shrink `filesystem/dir.c` to adapter-only or document
   remaining blockers.
-  Evidence:
+  Evidence: `filesystem/dir.c` now delegates cache population, cache refresh,
+  case repair, loose-file lookup/open, and directory search through
+  `filesystem/dir_backend_adapter.cpp`; remaining platform probing,
+  `dir_t` allocation, and searchpath callback registration blockers are
+  documented in
+  `Documentation/codex/modern/filesystem/directory-implementation-audit.md`.
 
 ## Phase 24: Android Assets Implementation Body Migration
 

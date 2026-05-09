@@ -66,7 +66,7 @@ structure.
 | `XashFileSystem004` copied table behavior | `tests/filesystem/interface.cpp` | existing | Confirms returned table refreshes after caller mutation. |
 | Mount snapshot records and writers | `tests/filesystem/debug_snapshot.cpp` | existing | Built by `src/wscript`; covers modern internal debug snapshot output. |
 | Archive registry descriptors | `tests/filesystem/archive_registry.cpp` | existing | Built by `src/wscript`; covers default descriptor metadata and order. |
-| Directory backend skeleton | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
+| Directory backend helpers | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, cache population, nested case repair, cache refresh, loose-file lookup, and search helpers. |
 | File handle cursor helpers | `tests/filesystem/file_handle_ops.cpp` | existing | Built by `src/wscript`; covers target-neutral tell/eof/seek math before routing legacy `file_t` calls. |
 | Game hierarchy builder | `tests/filesystem/game_hierarchy_builder.cpp` | existing | Built by `src/wscript`; freezes generated mount request order before legacy integration. |
 | Library locator normalization | `tests/filesystem/library_locator.cpp` | existing | Built by `src/wscript`; covers target-neutral short-path lowercasing, slash fixing, default extension, and relative game prefix stripping. |
