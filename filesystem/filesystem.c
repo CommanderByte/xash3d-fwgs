@@ -46,6 +46,7 @@ GNU General Public License for more details.
 #include "filesystem_internal.h"
 #include "archive_registry_adapter.h"
 #include "filesystem_state_adapter.h"
+#include "game_hierarchy_adapter.h"
 #include "path_policy_adapter.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
@@ -1341,8 +1342,6 @@ FS_AddGameHierarchy
 void FS_AddGameHierarchy( const char *dir, uint flags )
 {
 	int i;
-	qboolean isGameDir = flags & FS_GAMEDIR_PATH;
-	char buf[MAX_VA_STRING];
 
 	if( COM_StringEmptyOrNULL( dir ))
 		return;
@@ -1378,56 +1377,8 @@ void FS_AddGameHierarchy( const char *dir, uint flags )
 		}
 	}
 
-	if( !COM_StringEmpty( fs_rodir ))
-	{
-		// append new flags to rodir, except FS_GAMEDIR_PATH and FS_CUSTOM_PATH
-		uint new_flags = FS_NOWRITE_PATH | (flags & (~FS_GAMEDIR_PATH|FS_CUSTOM_PATH));
-		if( isGameDir )
-			SetBits( new_flags, FS_GAMERODIR_PATH );
-
-		FS_AllowDirectPaths( true );
-		Q_snprintf( buf, sizeof( buf ), "%s/%s/", fs_rodir, dir );
-		FS_AddGameDirectory( buf, new_flags );
-		FS_AllowDirectPaths( false );
-	}
-
-	if( isGameDir )
-	{
-		Q_snprintf( buf, sizeof( buf ), "%s" DEFAULT_DOWNLOADED_DIRECTORY_SUFFIX "/", dir );
-		FS_AddGameDirectory( buf, FS_NOWRITE_PATH|FS_CUSTOM_PATH );
-	}
-	Q_snprintf( buf, sizeof( buf ), "%s/", dir );
-	FS_AddGameDirectory( buf, flags );
-
-	if( FBitSet( flags, FS_MOUNT_HD ))
-	{
-		Q_snprintf( buf, sizeof( buf ), "%s_hd/", dir );
-		FS_AddGameDirectory( buf, flags|FS_NOWRITE_PATH|FS_CUSTOM_PATH );
-	}
-
-	if( FBitSet( flags, FS_MOUNT_ADDON ))
-	{
-		Q_snprintf( buf, sizeof( buf ), "%s_addon/", dir );
-		FS_AddGameDirectory( buf, flags|FS_NOWRITE_PATH|FS_CUSTOM_PATH );
-	}
-
-	if( FBitSet( flags, FS_MOUNT_LV ))
-	{
-		Q_snprintf( buf, sizeof( buf ), "%s_lv/", dir );
-		FS_AddGameDirectory( buf, flags|FS_NOWRITE_PATH|FS_CUSTOM_PATH );
-	}
-
-	if( FBitSet( flags, FS_MOUNT_L10N ) && !COM_StringEmpty( fs_language ) && Q_isalpha( fs_language ))
-	{
-		Q_snprintf( buf, sizeof( buf ), "%s_%s/", dir, fs_language );
-		FS_AddGameDirectory( buf, flags|FS_NOWRITE_PATH|FS_CUSTOM_PATH );
-	}
-
-	if( isGameDir )
-	{
-		Q_snprintf( buf, sizeof( buf ), "%s/" DEFAULT_CUSTOM_DIRECTORY, dir );
-		FS_AddGameDirectory( buf, FS_NOWRITE_PATH|FS_CUSTOM_PATH );
-	}
+	if( !FS_AddGameHierarchyRequests( dir, flags, fs_rodir, fs_language ))
+		Con_Reportf( "%s: failed to build mount requests for %s\n", __func__, dir );
 }
 
 /*

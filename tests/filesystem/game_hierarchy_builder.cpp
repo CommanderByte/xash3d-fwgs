@@ -33,7 +33,8 @@ static bool TestFullGameDirectoryOrder()
 	config.language = "fr";
 	config.baseFlags = 0x100;
 	config.readOnlyFlags = 0x200;
-	config.customFlags = 0x400;
+	config.optionalContentFlags = 0x400;
+	config.gameCustomFlags = 0x800;
 	config.isGameDirectory = true;
 	config.mountHighDefinition = true;
 	config.mountAddon = true;
@@ -46,7 +47,7 @@ static bool TestFullGameDirectoryOrder()
 	return ExpectRequest(builder, 0, GameHierarchyMountKind::ReadOnlyRoot,
 			"C:/Half-Life/mod/", 0x200, true) &&
 		ExpectRequest(builder, 1, GameHierarchyMountKind::Downloads,
-			"mod_downloads/", 0x400, false) &&
+			"mod_downloads/", 0x800, false) &&
 		ExpectRequest(builder, 2, GameHierarchyMountKind::GameDirectory,
 			"mod/", 0x100, false) &&
 		ExpectRequest(builder, 3, GameHierarchyMountKind::HighDefinition,
@@ -58,7 +59,7 @@ static bool TestFullGameDirectoryOrder()
 		ExpectRequest(builder, 6, GameHierarchyMountKind::Localization,
 			"mod_fr/", 0x400, false) &&
 		ExpectRequest(builder, 7, GameHierarchyMountKind::Custom,
-			"mod/custom/", 0x400, false);
+			"mod/custom/", 0x800, false);
 }
 
 static bool TestBaseDirectorySkipsGamedirOnlyMounts()
@@ -69,7 +70,7 @@ static bool TestBaseDirectorySkipsGamedirOnlyMounts()
 	config.gameDirectory = "valve";
 	config.language = "fr";
 	config.baseFlags = 0x10;
-	config.customFlags = 0x20;
+	config.optionalContentFlags = 0x20;
 	config.isGameDirectory = false;
 	config.mountHighDefinition = true;
 	config.mountLocalization = true;
@@ -93,7 +94,7 @@ static bool TestLocalizationRequiresAlphabeticLanguage()
 	config.gameDirectory = "mod";
 	config.language = "1fr";
 	config.baseFlags = 0x10;
-	config.customFlags = 0x20;
+	config.optionalContentFlags = 0x20;
 	config.mountLocalization = true;
 
 	if (!builder.build(config) || builder.count() != 1)

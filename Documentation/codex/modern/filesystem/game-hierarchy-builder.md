@@ -44,13 +44,25 @@ Each `GameHierarchyMountRequest` records:
 - `enableDirectPaths`: whether the legacy adapter must temporarily allow direct
   paths while applying the request.
 
-The builder deliberately accepts already-derived flag values. That keeps it
-independent of `filesystem.h` legacy bit constants and makes it reusable in
-tests, tools, and future module code.
+The builder deliberately accepts already-derived flag values. It separates
+read-only root flags, optional content flags, and game-custom flags because the
+legacy code treats those buckets differently:
 
-## Next Integration Step
+- `rodir/game/` gets read-only root flags and may gain `FS_GAMERODIR_PATH`.
+- `game_hd/`, `game_addon/`, `game_lv/`, and `game_language/` keep the caller's
+  mount flags plus nowrite/custom markers.
+- `game_downloads/` and `game/custom/` use only the nowrite/custom markers.
 
-The next phase should add a C adapter in `filesystem/` that computes legacy
-flag values, asks `GameHierarchyBuilder` for requests, and applies each request
-through `FS_AddGameDirectory`. The existing recursive `gameinfo.txt` handling
-should stay in `filesystem.c` until gameinfo parsing itself is extracted.
+Keeping that derivation outside the builder leaves it independent of
+`filesystem.h` legacy bit constants and makes it reusable in tests, tools, and
+future module code.
+
+## Legacy Adapter
+
+`filesystem/game_hierarchy_adapter.cpp` computes the legacy flag buckets, asks
+`GameHierarchyBuilder` for requests, and applies each request through
+`FS_AddGameDirectory`. The existing recursive `gameinfo.txt` handling stays in
+`filesystem.c` until gameinfo parsing itself is extracted.
+
+This means Phase 14 changes mount construction without changing the public
+filesystem API or the legacy application point.

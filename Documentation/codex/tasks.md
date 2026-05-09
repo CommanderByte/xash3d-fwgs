@@ -608,9 +608,11 @@ commit, test command, document link, or manual verification note that proves it.
   legacy search paths.
   Evidence: `src/filesystem/game_hierarchy_builder.cpp`,
   `Documentation/codex/modern/filesystem/game-hierarchy-builder.md`.
-- [ ] `FS-HIER-005` Route `FS_LoadGameInfo` mount construction through the
+- [x] `FS-HIER-005` Route `FS_LoadGameInfo` mount construction through the
   hierarchy builder.
-  Evidence:
+  Evidence: `filesystem/game_hierarchy_adapter.cpp`, `filesystem/filesystem.c`;
+  commands `.\waf.bat build --targets=test_filesystem_game_hierarchy_builder,test_hierarchy,test_rodir,test_directpath`,
+  `.\waf.bat build`, and Windows runtime smoke with `+fs_path +quit`.
 
 ## Phase 15: File Handle Operations
 

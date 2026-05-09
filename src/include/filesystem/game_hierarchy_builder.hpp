@@ -30,7 +30,8 @@ struct GameHierarchyBuildConfig
 	const char *language;
 	uint32_t baseFlags;
 	uint32_t readOnlyFlags;
-	uint32_t customFlags;
+	uint32_t optionalContentFlags;
+	uint32_t gameCustomFlags;
 	bool isGameDirectory;
 	bool mountHighDefinition;
 	bool mountAddon;

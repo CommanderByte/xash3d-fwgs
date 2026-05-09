@@ -67,7 +67,7 @@ bool GameHierarchyBuilder::build(const GameHierarchyBuildConfig &config)
 
 	if (config.isGameDirectory &&
 		!addFormatted(GameHierarchyMountKind::Downloads,
-			config.customFlags,
+			config.gameCustomFlags,
 			false,
 			"%s_downloads/",
 			config.gameDirectory))
@@ -86,7 +86,7 @@ bool GameHierarchyBuilder::build(const GameHierarchyBuildConfig &config)
 
 	if (config.mountHighDefinition &&
 		!addFormatted(GameHierarchyMountKind::HighDefinition,
-			config.customFlags,
+			config.optionalContentFlags,
 			false,
 			"%s_hd/",
 			config.gameDirectory))
@@ -96,7 +96,7 @@ bool GameHierarchyBuilder::build(const GameHierarchyBuildConfig &config)
 
 	if (config.mountAddon &&
 		!addFormatted(GameHierarchyMountKind::Addon,
-			config.customFlags,
+			config.optionalContentFlags,
 			false,
 			"%s_addon/",
 			config.gameDirectory))
@@ -106,7 +106,7 @@ bool GameHierarchyBuilder::build(const GameHierarchyBuildConfig &config)
 
 	if (config.mountLowViolence &&
 		!addFormatted(GameHierarchyMountKind::LowViolence,
-			config.customFlags,
+			config.optionalContentFlags,
 			false,
 			"%s_lv/",
 			config.gameDirectory))
@@ -117,7 +117,7 @@ bool GameHierarchyBuilder::build(const GameHierarchyBuildConfig &config)
 	if (config.mountLocalization &&
 		StartsWithAsciiAlpha(config.language) &&
 		!addFormatted(GameHierarchyMountKind::Localization,
-			config.customFlags,
+			config.optionalContentFlags,
 			false,
 			"%s_%s/",
 			config.gameDirectory,
@@ -128,7 +128,7 @@ bool GameHierarchyBuilder::build(const GameHierarchyBuildConfig &config)
 
 	if (config.isGameDirectory &&
 		!addFormatted(GameHierarchyMountKind::Custom,
-			config.customFlags,
+			config.gameCustomFlags,
 			false,
 			"%s/custom/",
 			config.gameDirectory))
