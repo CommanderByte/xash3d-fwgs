@@ -8,6 +8,8 @@ Current headers:
   behavior without exposing engine state
 - `hash.hpp`: legacy-compatible hash-key helpers shared by modern internals and
   C compatibility exports
+- `path.hpp`: legacy-compatible path component and extension helpers shared by
+  public C compatibility exports
 - `registry.hpp`: fixed-capacity ordered registry helper with explicit
   duplicate handling and stable enumeration
 

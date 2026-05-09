@@ -145,7 +145,10 @@ def build(bld):
 		defines = ['XASH_BUILD_COMMIT=\"%s\"' % bld.env.GIT_VERSION, 'XASH_BUILD_BRANCH=\"%s\"' % bld.env.GIT_BRANCH, 'XASH_BUILD_COMMIT_DATE=\"%s\"' % bld.env.GIT_COMMIT_DATE])
 
 	public_sources = bld.path.ant_glob('*.c', excl='build_vcs.c')
-	public_sources += ['../src/utilities/compat/crclib_hash.cpp']
+	public_sources += [
+		'../src/utilities/compat/crclib_hash.cpp',
+		'../src/utilities/compat/crtlib_path.cpp',
+	]
 
 	bld.stlib(source = public_sources,
 		target = 'public',
@@ -158,6 +161,7 @@ def build(bld):
 			'build': 'tests/test_build.c',
 			'filebase': 'tests/test_filebase.c',
 			'fileext': 'tests/test_fileext.c',
+			'path': 'tests/test_path.c',
 			'efp': 'tests/test_efp.c',
 			'atoi': 'tests/test_atoi.c',
 			'crclib': 'tests/test_crclib.c',

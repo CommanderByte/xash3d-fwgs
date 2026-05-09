@@ -1386,15 +1386,24 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 40: String And Path Utilities
 
-- [ ] `ENG-STRPATH-001` Audit shared string/path helpers and rank them by
+- [x] `ENG-STRPATH-001` Audit shared string/path helpers and rank them by
   caller breadth, compatibility risk, and testability.
-  Evidence: `Documentation/codex/todo/engine_string_path_todo.md`.
-- [ ] `ENG-STRPATH-002` Add focused tests for path extension, basename,
+  Evidence: `Documentation/codex/legacy/engine/string-path-baseline.md` and
+  `Documentation/codex/todo/engine_string_path_todo.md`.
+- [x] `ENG-STRPATH-002` Add focused tests for path extension, basename,
   slash-normalization, case comparison, and bounded copy/concat behavior.
-  Evidence:
-- [ ] `ENG-STRPATH-003` Migrate one narrow helper group after deciding whether
+  Evidence: new `public/tests/test_path.c` and `tests/utilities/path.cpp`; older
+  public tests `test_filebase`, `test_fileext`, `test_efp`, and `test_strings`
+  still cover existing behavior.
+- [x] `ENG-STRPATH-003` Migrate one narrow helper group after deciding whether
   it belongs in `src/engine`, `src/utilities`, or public C utility space.
-  Evidence:
+  Evidence: path helpers belong in `src/utilities`; public C exports route
+  through `src/utilities/compat/crtlib_path.cpp` to `src/utilities/path.cpp`.
+  Focused tests passed: `.\waf.bat build --targets=test_path`,
+  `.\waf.bat build --targets=test_utilities_path`, and
+  `.\waf.bat build --targets=test_filebase,test_fileext,test_efp,test_strings`.
+  `.\waf.bat build --alltests` passed 51/51. Runtime smoke reached
+  `Time to first frame: 0.576 seconds` and stopped with reason `command`.
 
 ## Phase 41: Command Buffer Primitive
 
@@ -1499,3 +1508,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-038 | Use six ordered low-level engine candidates for the next rewrite-style migrations: info strings, hash/checksum helpers, string/path utilities, command buffer, memory pools, and network buffers. | `todo/engine_infostring_todo.md`, `todo/engine_hash_todo.md`, `todo/engine_string_path_todo.md`, `todo/engine_command_buffer_todo.md`, `todo/engine_memory_todo.md`, `todo/engine_netbuffer_todo.md` |
 | 2026-05-09 | DEC-039 | Implement info strings as a direct low-level C++ replacement under `src/engine` while exporting the unchanged legacy `Info_*` C surface from `engine/common/infostring.cpp`. | `legacy/engine/info-string-baseline.md`, `modern/engine/info-string-migration-guide.md`, `src/engine/info_string.cpp`, `engine/common/infostring.cpp` |
 | 2026-05-09 | DEC-040 | Treat `public/crclib.h` as the legacy C ABI and `src/utilities` as the implementation home; route `COM_HashKey` through a compatibility export while leaving CRC32/MD5 C symbols in `public/crclib.c` until a dedicated performance pass. | `legacy/engine/hash-checksum-baseline.md`, `modern/engine/hash-checksum-migration-guide.md`, `src/utilities/compat/crclib_hash.cpp`, `src/utilities/hash.cpp`, `public/tests/test_crclib.c` |
+| 2026-05-09 | DEC-041 | Treat `public/crtlib.h` path helpers as public C ABI and route the non-inline path helper implementations through `src/utilities/path.*`, while deferring parser, formatting, and inline copy/compare helpers to narrower later passes. | `legacy/engine/string-path-baseline.md`, `modern/engine/string-path-migration-guide.md`, `src/utilities/compat/crtlib_path.cpp`, `src/utilities/path.cpp`, `public/tests/test_path.c` |

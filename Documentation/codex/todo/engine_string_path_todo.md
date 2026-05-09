@@ -25,23 +25,38 @@ Candidate areas:
 
 ## Phase 40 Tasks: String And Path Utilities
 
-- [ ] `ENG-STRPATH-001` Audit shared string/path helpers and rank them by
+- [x] `ENG-STRPATH-001` Audit shared string/path helpers and rank them by
   caller breadth, compatibility risk, and testability.
-  Evidence:
+  Evidence: `Documentation/codex/legacy/engine/string-path-baseline.md`
+  documents `public/crtlib.*`, path helper callers, legacy quirks, and the
+  deferred parser/formatting/string-copy surfaces.
 
-- [ ] `ENG-STRPATH-002` Add focused tests for path extension, basename,
+- [x] `ENG-STRPATH-002` Add focused tests for path extension, basename,
   slash-normalization, case comparison, and bounded copy/concat behavior.
-  Evidence:
+  Evidence: existing public tests `test_filebase`, `test_fileext`, `test_efp`,
+  and `test_strings` were retained; new `public/tests/test_path.c` covers the
+  routed C path API; `tests/utilities/path.cpp` covers the modern helper API.
 
-- [ ] `ENG-STRPATH-003` Decide which helpers belong in `src/engine`, which
+- [x] `ENG-STRPATH-003` Decide which helpers belong in `src/engine`, which
   belong in `src/utilities`, and which must remain public C utilities.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/string-path-migration-guide.md`
+  records `src/utilities` as the implementation home, `public/crtlib.h` as the
+  C ABI, and parser/formatting/string-copy helpers as deferred narrower passes.
 
-- [ ] `ENG-STRPATH-004` Add modern helper implementations only after tests pin
+- [x] `ENG-STRPATH-004` Add modern helper implementations only after tests pin
   legacy edge cases.
-  Evidence:
+  Evidence: `src/include/utilities/path.hpp` and `src/utilities/path.cpp`.
 
-- [ ] `ENG-STRPATH-005` Replace one narrow helper group and verify with focused
+- [x] `ENG-STRPATH-005` Replace one narrow helper group and verify with focused
   tests, full tests, and a runtime smoke if filesystem or config parsing is
   touched.
-  Evidence:
+  Evidence: `src/utilities/compat/crtlib_path.cpp` now exports the public C path
+  symbols and delegates to `src/utilities/path.cpp`; the old non-inline path
+  implementations were removed from `public/crtlib.c`. Focused tests passed:
+  `.\waf.bat build --targets=test_path`,
+  `.\waf.bat build --targets=test_utilities_path`, and
+  `.\waf.bat build --targets=test_filebase,test_fileext,test_efp,test_strings`.
+  `.\waf.bat build --alltests` passed 51/51. Runtime smoke copied rebuilt
+  `xash3d.exe`, `xash.dll`, `filesystem_stdio.dll`, and `ref_gl.dll` to
+  `run-win32`, reached `Time to first frame: 0.576 seconds`, and stopped with
+  reason `command`.

@@ -13,3 +13,5 @@ It focuses on real ownership, coupling, global state, and migration risk.
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated
   `Info_*` compatibility rules, quirks, and test coverage.
+- [string-path-baseline.md](string-path-baseline.md) documents shared
+  `crtlib` string/path helpers, path quirks, and the Phase 40 migration scope.

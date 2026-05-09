@@ -13,3 +13,5 @@ Current implementation notes:
   engine-owned.
 - `info-string-migration-guide.md`: how the legacy `Info_*` API now routes
   through `src/engine/info_string.*` while keeping C callers stable.
+- `string-path-migration-guide.md`: how public `crtlib` path helpers route
+  through `src/utilities/path.*` while keeping C callers stable.
