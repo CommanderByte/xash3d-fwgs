@@ -119,6 +119,28 @@ static qboolean TestPakAndLoosePrecedence( void )
 	return true;
 }
 
+static qboolean TestDirectPakMount( void )
+{
+	if( !WritePakFixture( "direct.PAK" ))
+	{
+		printf( "failed to write direct pak fixture\n" );
+		return false;
+	}
+
+	if( !g_fs.MountArchive_Fullpath( "direct.PAK", FS_GAMEDIR_PATH ))
+	{
+		printf( "failed to mount direct pak fixture\n" );
+		return false;
+	}
+
+	if( !CheckLoadedText( "onlypak.txt", "packed only" ))
+		return false;
+
+	g_fs.ClearSearchPath();
+	FS_TestRemoveFile( "direct.PAK" );
+	return true;
+}
+
 static void CleanupFixture( const char *root )
 {
 	char path[256];
@@ -129,6 +151,8 @@ static void CleanupFixture( const char *root )
 	snprintf( path, sizeof( path ), "%s/same.txt", root );
 	FS_TestRemoveFile( path );
 	snprintf( path, sizeof( path ), "%s/pak0.pak", root );
+	FS_TestRemoveFile( path );
+	snprintf( path, sizeof( path ), "%s/direct.PAK", root );
 	FS_TestRemoveFile( path );
 	FS_TestRemoveDirectory( root );
 }
@@ -153,7 +177,7 @@ int main( void )
 		return EXIT_FAILURE;
 	}
 
-	if( TestPakAndLoosePrecedence() )
+	if( TestDirectPakMount() && TestPakAndLoosePrecedence() )
 		result = EXIT_SUCCESS;
 
 	CleanupFixture( testdir );

@@ -17,14 +17,23 @@ def build(bld):
 		source = bld.path.ant_glob('debugging/*.cpp'),
 		use = 'modern_debugging_includes werror')
 
+	bld.stlib(target = 'modern_filesystem_debug',
+		source = bld.path.ant_glob('filesystem/*.cpp'),
+		use = 'modern_debugging modern_debugging_includes sdk_includes werror')
+
 	if bld.env.TESTS:
 		tests = {
 			'debugging': '../tests/debugging/debugging.cpp',
+			'filesystem_archive_registry': '../tests/filesystem/archive_registry.cpp',
+			'filesystem_debug_snapshot': '../tests/filesystem/debug_snapshot.cpp',
+			'filesystem_directory_backend': '../tests/filesystem/directory_backend.cpp',
+			'filesystem_registry_snapshot': '../tests/filesystem/registry_snapshot.cpp',
+			'utilities_registry': '../tests/utilities/registry.cpp',
 		}
 
 		for i in tests:
 			bld.program(features = 'test',
 				source = tests[i],
 				target = 'test_%s' % i,
-				use = 'modern_debugging modern_debugging_includes werror PTHREAD',
+				use = 'modern_filesystem_debug modern_debugging modern_debugging_includes sdk_includes werror PTHREAD',
 				install_path = None)

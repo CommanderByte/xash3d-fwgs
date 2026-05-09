@@ -337,7 +337,40 @@ commit, test command, document link, or manual verification note that proves it.
   Exit code was `0`; `engine.log` printed the Steam `valve` directory and WAD
   search paths and stopped with reason `"command"`.
 
-## Phase 6: Commit And Review Hygiene
+## Phase 6: Archive Registry Integration
+
+- [x] `FS-REG-004` Add a C-compatible archive registry adapter for legacy
+  filesystem code.
+  Evidence: `filesystem/archive_registry_adapter.h`,
+  `filesystem/archive_registry_adapter.cpp`; command `.\waf.bat build`.
+- [x] `FS-REG-005` Route archive extension support checks through the modern
+  archive registry.
+  Evidence: `filesystem/filesystem.c`, `tests/filesystem/no-init.c`; command
+  `.\waf.bat build`.
+- [x] `FS-REG-006` Route archive mount extension detection through the modern
+  archive registry while keeping legacy mount factories.
+  Evidence: `FS_AddArchive_Fullpath` in `filesystem/filesystem.c`; command
+  `.\build\filesystem\test_archive-order.exe`, including a direct
+  `MountArchive_Fullpath("direct.PAK", FS_GAMEDIR_PATH)` assertion.
+- [x] `FS-REG-007` Route game-directory archive scan ordering through the
+  modern archive registry while preserving PAK -> PK3 -> PK3DIR -> WAD order.
+  Evidence: `FS_AddGameDirectory` in `filesystem/filesystem.c`; commands
+  `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_wad-archive.exe`, and
+  `.\build\filesystem\test_zip-archive.exe`.
+- [x] `FS-REG-008` Run filesystem unit tests after registry integration.
+  Evidence: command `.\waf.bat build` passed; explicit follow-up commands
+  `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_wad-archive.exe`,
+  `.\build\filesystem\test_zip-archive.exe`, and
+  `.\build\filesystem\test_no-init.exe` passed.
+- [x] `FS-REG-009` Run Windows runtime smoke test after registry integration.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` showed WAD and
+  PK3 mounts, printed search paths, and stopped with reason `"command"`.
+
+## Phase 7: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push documentation commits to remote branch.
   Evidence:
@@ -369,3 +402,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-014 | Defer RapidJSON and use a small streaming JSON writer behind `IDebugSink` until larger snapshot serializers need a third-party JSON backend. | `src/include/debugging/json_writer.hpp`, `modern/debugging/api-inventory.md` |
 | 2026-05-09 | DEC-015 | Use a fixed-capacity ordered registry template for first shared registry work, keeping mount-order and filesystem policy outside the generic utility. | `src/include/utilities/registry.hpp`, `todo/utilities_todo.md` |
 | 2026-05-09 | DEC-016 | Store the first live directory backend bridge pointer inside the private `dir_t` root object instead of changing `searchpath_t` layout. | `filesystem/dir.c`, `todo/directory_backend_todo.md` |
+| 2026-05-09 | DEC-017 | Keep legacy archive factory function pointers in `filesystem.c` during first registry integration, and expose modern archive descriptor metadata through a small C adapter. | `filesystem/archive_registry_adapter.h`, `filesystem/filesystem.c`, `todo/archive_registry_todo.md` |

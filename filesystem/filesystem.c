@@ -44,6 +44,7 @@ GNU General Public License for more details.
 #include "crclib.h"
 #include "filesystem.h"
 #include "filesystem_internal.h"
+#include "archive_registry_adapter.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
 #include "common/protocol.h"
@@ -130,6 +131,19 @@ static const fs_archive_t g_android_archive =
 	.pfnAddArchive_Fullpath = FS_AddAndroidAssets_Fullpath
 };
 #endif
+
+static const fs_archive_t *FS_LegacyArchiveForSearchPathType( int type )
+{
+	size_t i;
+
+	for( i = 0; i < sizeof( g_archives ) / sizeof( g_archives[0] ); i++ )
+	{
+		if( g_archives[i].type == type )
+			return &g_archives[i];
+	}
+
+	return NULL;
+}
 
 #ifdef XASH_REDUCE_FD
 static file_t *fs_last_readfile;
@@ -386,17 +400,11 @@ static searchpath_t *FS_AddArchive_Fullpath( const fs_archive_t *archive, const 
 
 	if( !archive )
 	{
-		int i;
 		const char *ext = COM_FileExtension( file );
+		fs_archive_registry_entry_t registry_entry;
 
-		for( i = 0; i < sizeof( g_archives ) / sizeof( g_archives[0] ); i++ )
-		{
-			if( !Q_stricmp( g_archives[i].ext, ext ))
-			{
-				archive = &g_archives[i];
-				break;
-			}
-		}
+		if( FS_ArchiveRegistry_Find( ext, false, &registry_entry ))
+			archive = FS_LegacyArchiveForSearchPathType( registry_entry.searchpath_type );
 
 		if( !archive )
 		{
@@ -470,24 +478,33 @@ void FS_AddGameDirectory( const char *dir, uint flags )
 {
 	stringlist_t list;
 	searchpath_t *search;
-	int i, j;
+	size_t j;
 
 	stringlistinit( &list );
 	listdirectory( &list, dir, false );
 	stringlistsort( &list );
 
-	for( j = 0; j < sizeof( g_archives ) / sizeof( g_archives[0] ); j++ )
+	for( j = 0; j < FS_ArchiveRegistry_Count(); j++ )
 	{
+		fs_archive_registry_entry_t registry_entry;
+		const fs_archive_t *archive;
 		char fullpath[MAX_SYSPATH];
 		int i;
 
+		if( !FS_ArchiveRegistry_EntryAt( j, &registry_entry ))
+			continue;
+
+		archive = FS_LegacyArchiveForSearchPathType( registry_entry.searchpath_type );
+		if( !archive )
+			continue;
+
 		for( i = 0; i < list.numstrings; i++ )
 		{
-			if( Q_stricmp( COM_FileExtension( list.strings[i] ), g_archives[j].ext ))
+			if( Q_stricmp( COM_FileExtension( list.strings[i] ), registry_entry.extension ))
 				continue;
 
 			Q_snprintf( fullpath, sizeof( fullpath ), "%s%s", dir, list.strings[i] );
-			FS_AddArchive_Fullpath( &g_archives[j], fullpath, flags );
+			FS_AddArchive_Fullpath( archive, fullpath, flags );
 		}
 	}
 
@@ -3368,21 +3385,8 @@ search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 
 static qboolean FS_IsArchiveExtensionSupported( const char *ext, uint flags )
 {
-	int i;
-
-	if( ext == NULL )
-		return false;
-
-	for( i = 0; i < sizeof( g_archives ) / sizeof( g_archives[0] ); i++ )
-	{
-		if( FBitSet( flags, IAES_ONLY_REAL_ARCHIVES ) && !g_archives[i].real_archive )
-			continue;
-
-		if( !Q_stricmp( ext, g_archives[i].ext ))
-			return true;
-	}
-
-	return false;
+	return FS_ArchiveRegistry_Find( ext, FBitSet( flags, IAES_ONLY_REAL_ARCHIVES ), NULL )
+		? true : false;
 }
 
 static searchpath_t *FS_GetArchiveByName( const char *name, searchpath_t *prev )

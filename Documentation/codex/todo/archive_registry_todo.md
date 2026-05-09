@@ -42,11 +42,29 @@ The archive registry is a consumer of the generic ordered registry utility in
 
 ## Pending Implementation
 
-- [ ] Decide where mount factory adapters live so the generic descriptor does
+- [x] Decide where mount factory adapters live so the generic descriptor does
   not expose legacy function-pointer details unnecessarily.
-- [ ] Compare default registry output against legacy `g_archives` behavior.
-- [ ] Wire `FS_MountArchive_Fullpath` through the registry after descriptor
+  Decision: Keep factory pointers in the legacy C `fs_archive_t` table for the
+  first integration pass. Add a small C-compatible adapter that exposes modern
+  descriptor metadata to `filesystem.c`, then map descriptors back to the
+  existing legacy factory table by search path type.
+  Evidence: `filesystem/archive_registry_adapter.h`,
+  `filesystem/archive_registry_adapter.cpp`.
+- [x] Compare default registry output against legacy `g_archives` behavior.
+  Evidence: `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_wad-archive.exe`, and
+  `.\build\filesystem\test_zip-archive.exe` passed after scan ordering was
+  routed through the registry adapter.
+- [x] Wire `FS_MountArchive_Fullpath` through the registry after descriptor
   parity is proven by tests.
+  Evidence: `FS_AddArchive_Fullpath` now uses `FS_ArchiveRegistry_Find` when
+  no explicit legacy archive descriptor is supplied; `tests/filesystem/archive-order.c`
+  covers direct `MountArchive_Fullpath("direct.PAK", FS_GAMEDIR_PATH)`.
+- [x] Route `FS_IsArchiveExtensionSupported` through the registry adapter.
+  Evidence: `filesystem/filesystem.c`, `tests/filesystem/no-init.c`.
+- [x] Route game-directory archive scan ordering through the registry adapter.
+  Evidence: `FS_AddGameDirectory` uses registry enumeration order and maps each
+  descriptor to the existing legacy factory table.
 
 ## Boundaries
 
