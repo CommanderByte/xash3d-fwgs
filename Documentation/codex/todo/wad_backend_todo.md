@@ -15,11 +15,26 @@ because WAD lump lookup has more compatibility-specific behavior.
 
 ## Migration Order
 
-- [ ] Expand WAD fixture tests before implementation movement.
-- [ ] Add a `WadBackend` skeleton after PAK proves the bridge pattern.
-- [ ] Preserve packed-WAD paths such as `pak0.pak/inside.wad`.
-- [ ] Forward callbacks one at a time through a C adapter.
-- [ ] Keep `FS_AddWad_Fullpath` callable from C.
+- [x] Expand WAD fixture tests before implementation movement.
+  Evidence: `tests/filesystem/wad-archive.c` covers raw WAD and packed WAD
+  loading from PAK.
+- [x] Add a `WadBackend` skeleton after PAK proves the bridge pattern.
+  Evidence: `src/include/filesystem/wad_backend.hpp`,
+  `src/filesystem/wad_backend.cpp`, `tests/filesystem/wad_backend.cpp`.
+- [x] Preserve packed-WAD paths such as `pak0.pak/inside.wad`.
+  Evidence: `tests/filesystem/wad-archive.c`; command
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`.
+- [x] Forward callbacks one at a time through a C adapter.
+  Evidence: `filesystem/wad.c`, `filesystem/wad_backend_adapter.h`,
+  `filesystem/wad_backend_adapter.cpp`.
+- [x] Keep `FS_AddWad_Fullpath` callable from C.
+  Evidence: `tests/filesystem/wad-archive.c`.
+- [x] Run archive, no-init, and Windows smoke tests after callback forwarding.
+  Evidence: `.\waf.bat build`,
+  `.\build\src\test_filesystem_wad_backend.exe`,
+  `.\build\filesystem\test_wad-archive.exe`,
+  `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_no-init.exe`, and Windows `+fs_path +quit` smoke.
 
 ## Boundaries
 

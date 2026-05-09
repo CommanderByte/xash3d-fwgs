@@ -441,7 +441,35 @@ commit, test command, document link, or manual verification note that proves it.
   install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` printed search
   paths and stopped with reason `"command"`.
 
-## Phase 9: Commit And Review Hygiene
+## Phase 9: WAD Backend Pilot
+
+- [x] `FS-WAD-001` Add private `WadBackend` skeleton mirroring
+  `ISearchPathBackend`, including the WAD load-file callback.
+  Evidence: `src/include/filesystem/wad_backend.hpp`,
+  `src/filesystem/wad_backend.cpp`,
+  `tests/filesystem/wad_backend.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`.
+- [x] `FS-WAD-002` Add C adapter bridge for legacy WAD callbacks.
+  Evidence: `filesystem/wad_backend_adapter.h`,
+  `filesystem/wad_backend_adapter.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`.
+- [x] `FS-WAD-003` Forward WAD print, close, open, file time, find, search,
+  and lump load callbacks through the bridge.
+  Evidence: `filesystem/wad.c`; command
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`.
+- [x] `FS-WAD-004` Run filesystem unit tests after WAD bridge.
+  Evidence: command `.\waf.bat build` passed 17/17 selected tests; explicit
+  follow-up commands `.\build\src\test_filesystem_wad_backend.exe`,
+  `.\build\filesystem\test_wad-archive.exe`,
+  `.\build\filesystem\test_archive-order.exe`, and
+  `.\build\filesystem\test_no-init.exe` passed.
+- [x] `FS-WAD-005` Run Windows runtime smoke test after WAD bridge.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` showed WAD
+  mounts, printed search paths, and stopped with reason `"command"`.
+
+## Phase 10: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push documentation commits to remote branch.
   Evidence:
@@ -475,3 +503,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-016 | Store the first live directory backend bridge pointer inside the private `dir_t` root object instead of changing `searchpath_t` layout. | `filesystem/dir.c`, `todo/directory_backend_todo.md` |
 | 2026-05-09 | DEC-017 | Keep legacy archive factory function pointers in `filesystem.c` during first registry integration, and expose modern archive descriptor metadata through a small C adapter. | `filesystem/archive_registry_adapter.h`, `filesystem/filesystem.c`, `todo/archive_registry_todo.md` |
 | 2026-05-09 | DEC-018 | Use the same behavior-neutral bridge pattern for the first PAK backend pilot: private C++ backend object, C adapter, legacy callback implementation retained behind hooks. | `src/include/filesystem/pak_backend.hpp`, `filesystem/pak_backend_adapter.h`, `filesystem/pak.c` |
+| 2026-05-09 | DEC-019 | Use the PAK bridge pattern for WAD while explicitly forwarding `pfnLoadFile`, because WAD lump loading is the primary read path. | `src/include/filesystem/wad_backend.hpp`, `filesystem/wad_backend_adapter.h`, `filesystem/wad.c` |

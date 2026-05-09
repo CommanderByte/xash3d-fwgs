@@ -29,6 +29,7 @@ def build(bld):
 			'filesystem_directory_backend': '../tests/filesystem/directory_backend.cpp',
 			'filesystem_pak_backend': '../tests/filesystem/pak_backend.cpp',
 			'filesystem_registry_snapshot': '../tests/filesystem/registry_snapshot.cpp',
+			'filesystem_wad_backend': '../tests/filesystem/wad_backend.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',
 		}
 

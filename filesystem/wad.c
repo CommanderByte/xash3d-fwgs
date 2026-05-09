@@ -26,6 +26,7 @@ GNU General Public License for more details.
 #include <stddef.h>
 #include "port.h"
 #include "filesystem_internal.h"
+#include "wad_backend_adapter.h"
 #include "crtlib.h"
 #include "common/com_strings.h"
 #include "wadfile.h"
@@ -57,6 +58,7 @@ struct wfile_s
 	file_t		*handle;
 	dlumpinfo_t	*lumps;
 	time_t		filetime;
+	void		*backend;
 };
 
 // WAD errors
@@ -243,7 +245,7 @@ static void FS_CloseWAD( wfile_t *wad )
 FS_Close_WAD
 ===========
 */
-static void FS_Close_WAD( searchpath_t *search )
+static void FS_Close_WAD_Legacy( searchpath_t *search )
 {
 	FS_CloseWAD( search->wad );
 }
@@ -253,8 +255,13 @@ static void FS_Close_WAD( searchpath_t *search )
 FS_OpenFile_WAD
 ===========
 */
-static file_t *FS_OpenFile_WAD( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+static file_t *FS_OpenFile_WAD_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
+	(void)search;
+	(void)filename;
+	(void)mode;
+	(void)pack_ind;
+
 	return NULL;
 }
 
@@ -399,8 +406,10 @@ FS_FileTime_WAD
 
 ===========
 */
-static int FS_FileTime_WAD( searchpath_t *search, const char *filename )
+static int FS_FileTime_WAD_Legacy( searchpath_t *search, const char *filename )
 {
+	(void)filename;
+
 	return search->wad->filetime;
 }
 
@@ -410,7 +419,7 @@ FS_PrintInfo_WAD
 
 ===========
 */
-static void FS_PrintInfo_WAD( searchpath_t *search, char *dst, size_t size )
+static void FS_PrintInfo_WAD_Legacy( searchpath_t *search, char *dst, size_t size )
 {
 	if( search->wad->handle->searchpath )
 		Q_snprintf( dst, size, "%s (%i files)" S_CYAN " from %s" S_DEFAULT, search->filename, search->wad->numlumps, search->wad->handle->searchpath->filename );
@@ -423,7 +432,7 @@ FS_FindFile_WAD
 
 ===========
 */
-static int FS_FindFile_WAD( searchpath_t *search, const char *path, char *fixedname, size_t len )
+static int FS_FindFile_WAD_Legacy( searchpath_t *search, const char *path, char *fixedname, size_t len )
 {
 	dlumpinfo_t	*lump;
 	signed char		type = W_TypeFromExt( path );
@@ -476,7 +485,7 @@ FS_Search_WAD
 
 ===========
 */
-static void FS_Search_WAD( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+static void FS_Search_WAD_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
 	string	wadpattern, wadname, temp2;
 	signed char	type = W_TypeFromExt( pattern );
@@ -567,7 +576,7 @@ W_ReadLump
 reading lump into temp buffer
 ===========
 */
-static byte *W_ReadLump( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *lumpsizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+static byte *W_ReadLump_Legacy( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *lumpsizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
 {
 	const wfile_t *wad = search->wad;
 	const dlumpinfo_t *lump = &wad->lumps[pack_ind];
@@ -612,6 +621,109 @@ static byte *W_ReadLump( searchpath_t *search, const char *path, int pack_ind, f
 	return buf;
 }
 
+static void FS_Close_WAD_Hook( void *context )
+{
+	FS_Close_WAD_Legacy( (searchpath_t *)context );
+}
+
+static void FS_PrintInfo_WAD_Hook( void *context, char *dst, size_t size )
+{
+	FS_PrintInfo_WAD_Legacy( (searchpath_t *)context, dst, size );
+}
+
+static file_t *FS_OpenFile_WAD_Hook( void *context, const char *filename, const char *mode, int pack_ind )
+{
+	return FS_OpenFile_WAD_Legacy( (searchpath_t *)context, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_WAD_Hook( void *context, const char *filename )
+{
+	return FS_FileTime_WAD_Legacy( (searchpath_t *)context, filename );
+}
+
+static int FS_FindFile_WAD_Hook( void *context, const char *path, char *fixedname, size_t len )
+{
+	return FS_FindFile_WAD_Legacy( (searchpath_t *)context, path, fixedname, len );
+}
+
+static void FS_Search_WAD_Hook( void *context, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	FS_Search_WAD_Legacy( (searchpath_t *)context, list, pattern, caseinsensitive );
+}
+
+static byte *W_ReadLump_Hook( void *context, const char *path, int pack_ind, fs_offset_t *lumpsizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+{
+	return W_ReadLump_Legacy( (searchpath_t *)context, path, pack_ind, lumpsizeptr, pfnAlloc, pfnFree );
+}
+
+static void FS_Close_WAD( searchpath_t *search )
+{
+	if( search->wad && search->wad->backend )
+	{
+		void *backend = search->wad->backend;
+		search->wad->backend = NULL;
+		FS_WadBackendBridge_Close( backend );
+		FS_DestroyWadBackendBridge( backend );
+		return;
+	}
+
+	FS_Close_WAD_Legacy( search );
+}
+
+static void FS_PrintInfo_WAD( searchpath_t *search, char *dst, size_t size )
+{
+	if( search->wad && search->wad->backend )
+	{
+		FS_WadBackendBridge_PrintInfo( search->wad->backend, dst, size );
+		return;
+	}
+
+	FS_PrintInfo_WAD_Legacy( search, dst, size );
+}
+
+static file_t *FS_OpenFile_WAD( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+{
+	if( search->wad && search->wad->backend )
+		return FS_WadBackendBridge_OpenFile( search->wad->backend, filename, mode, pack_ind );
+
+	return FS_OpenFile_WAD_Legacy( search, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_WAD( searchpath_t *search, const char *filename )
+{
+	if( search->wad && search->wad->backend )
+		return FS_WadBackendBridge_FileTime( search->wad->backend, filename );
+
+	return FS_FileTime_WAD_Legacy( search, filename );
+}
+
+static int FS_FindFile_WAD( searchpath_t *search, const char *path, char *fixedname, size_t len )
+{
+	if( search->wad && search->wad->backend )
+		return FS_WadBackendBridge_FindFile( search->wad->backend, path, fixedname, len );
+
+	return FS_FindFile_WAD_Legacy( search, path, fixedname, len );
+}
+
+static void FS_Search_WAD( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	if( search->wad && search->wad->backend )
+	{
+		FS_WadBackendBridge_Search( search->wad->backend, list, pattern, caseinsensitive );
+		return;
+	}
+
+	FS_Search_WAD_Legacy( search, list, pattern, caseinsensitive );
+}
+
+static byte *W_ReadLump( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *lumpsizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+{
+	if( search->wad && search->wad->backend )
+		return FS_WadBackendBridge_LoadFile( search->wad->backend, path, pack_ind, lumpsizeptr, pfnAlloc, pfnFree );
+
+	return W_ReadLump_Legacy( search, path, pack_ind, lumpsizeptr, pfnAlloc, pfnFree );
+}
+
 /*
 ====================
 FS_AddWad_Fullpath
@@ -645,6 +757,19 @@ searchpath_t *FS_AddWad_Fullpath( const char *wadfile, int flags )
 	search->pfnFindFile = FS_FindFile_WAD;
 	search->pfnSearch = FS_Search_WAD;
 	search->pfnLoadFile = W_ReadLump;
+
+	{
+		fs_wad_backend_hooks_t hooks;
+		hooks.context = search;
+		hooks.close = FS_Close_WAD_Hook;
+		hooks.printInfo = FS_PrintInfo_WAD_Hook;
+		hooks.openFile = FS_OpenFile_WAD_Hook;
+		hooks.fileTime = FS_FileTime_WAD_Hook;
+		hooks.findFile = FS_FindFile_WAD_Hook;
+		hooks.search = FS_Search_WAD_Hook;
+		hooks.loadFile = W_ReadLump_Hook;
+		search->wad->backend = FS_CreateWadBackendBridge( search, &hooks );
+	}
 
 	Con_Reportf( "Adding WAD: %s (%i files)\n", wadfile, wad->numlumps );
 	return search;
