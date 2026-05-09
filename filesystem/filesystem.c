@@ -45,6 +45,8 @@ GNU General Public License for more details.
 #include "filesystem.h"
 #include "filesystem_internal.h"
 #include "archive_registry_adapter.h"
+#include "filesystem_state_adapter.h"
+#include "path_policy_adapter.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
 #include "common/protocol.h"
@@ -76,6 +78,80 @@ static char fs_gamedir[MAX_SYSPATH];	// game current directory
 static char fs_rodir[MAX_SYSPATH];
 static string fs_language;
 static qboolean fs_ext_path = false;	// attempt to read\write from ./ or ../ pathes
+
+static searchpath_t *FS_SearchPaths( void )
+{
+	return FS_FilesystemState_SearchPaths();
+}
+
+static void FS_SetSearchPaths( searchpath_t *value )
+{
+	fs_searchpaths = value;
+	FS_FilesystemState_SetSearchPaths( value );
+}
+
+static void FS_SetWritePath( searchpath_t *value )
+{
+	fs_writepath = value;
+	FS_FilesystemState_SetWritePath( value );
+}
+
+static searchpath_t *FS_WritePath( void )
+{
+	return FS_FilesystemState_WritePath();
+}
+
+static void FS_SetRootDir( const char *value )
+{
+	if( !value ) value = "";
+	Q_strncpy( fs_rootdir, value, sizeof( fs_rootdir ));
+	FS_FilesystemState_SetRootDir( fs_rootdir );
+}
+
+static void FS_SetBaseDir( const char *value )
+{
+	if( !value ) value = "";
+	Q_strncpy( fs_basedir, value, sizeof( fs_basedir ));
+	FS_FilesystemState_SetBaseDir( fs_basedir );
+}
+
+static void FS_SetGameDir( const char *value )
+{
+	if( !value ) value = "";
+	Q_strncpy( fs_gamedir, value, sizeof( fs_gamedir ));
+	FS_FilesystemState_SetGameDir( fs_gamedir );
+}
+
+static void FS_SetReadOnlyDir( const char *value )
+{
+	if( !value ) value = "";
+	Q_strncpy( fs_rodir, value, sizeof( fs_rodir ));
+	FS_FilesystemState_SetReadOnlyDir( fs_rodir );
+}
+
+static void FS_SetLanguage( const char *value )
+{
+	if( !value ) value = "";
+	Q_strncpy( fs_language, value, sizeof( fs_language ));
+	FS_FilesystemState_SetLanguage( fs_language );
+}
+
+static void FS_SetDirectPaths( qboolean enable )
+{
+	fs_ext_path = enable;
+	FS_FilesystemState_SetDirectPathsEnabled( enable );
+}
+
+static qboolean FS_DirectPathsEnabled( void )
+{
+	return FS_FilesystemState_DirectPathsEnabled();
+}
+
+static void FS_SyncStateFromGlobals( void )
+{
+	FS_FilesystemState_Configure( fs_rootdir, fs_basedir, fs_gamedir,
+		fs_rodir, fs_language, fs_searchpaths, fs_writepath, fs_ext_path );
+}
 
 typedef struct fs_archive_s
 {
@@ -413,7 +489,7 @@ static searchpath_t *FS_AddArchive_Fullpath( const fs_archive_t *archive, const 
 		}
 	}
 
-	for( search = fs_searchpaths; search; search = search->next )
+	for( search = FS_SearchPaths(); search; search = search->next )
 	{
 		if( search->type == archive->type && !Q_stricmp( search->filename, file ))
 			return search; // already loaded
@@ -424,8 +500,8 @@ static searchpath_t *FS_AddArchive_Fullpath( const fs_archive_t *archive, const 
 	if( !search )
 		return NULL;
 
-	search->next = fs_searchpaths;
-	fs_searchpaths = search;
+	search->next = FS_SearchPaths();
+	FS_SetSearchPaths( search );
 
 	// time to add in search list all the wads from this archive
 	if( archive->load_wads && !FBitSet( flags, FS_SKIP_ARCHIVED_WADS ))
@@ -445,8 +521,8 @@ static searchpath_t *FS_AddArchive_Fullpath( const fs_archive_t *archive, const 
 			Q_snprintf( fullpath, sizeof( fullpath ), "%s/%s", file, list.strings[i] );
 			if(( wad = FS_AddWad_Fullpath( fullpath, flags | FS_LOAD_PACKED_WAD )))
 			{
-				wad->next = fs_searchpaths;
-				fs_searchpaths = wad;
+				wad->next = FS_SearchPaths();
+				FS_SetSearchPaths( wad );
 			}
 		}
 
@@ -518,7 +594,7 @@ void FS_AddGameDirectory( const char *dir, uint flags )
 	// (unpacked files have the priority over packed files)
 	search = FS_AddArchive_Fullpath( &g_directory_archive, dir, flags );
 	if( !FBitSet( flags, FS_NOWRITE_PATH ))
-		fs_writepath = search;
+		FS_SetWritePath( search );
 }
 
 /*
@@ -530,6 +606,7 @@ void FS_ClearSearchPath( void )
 {
 	searchpath_t *cur, **prev;
 	int i;
+	qboolean writepath_kept = false;
 
 	prev = &fs_searchpaths;
 
@@ -557,6 +634,21 @@ void FS_ClearSearchPath( void )
 		if( FI.games[i] )
 			FI.games[i]->added = false;
 	}
+
+	for( cur = fs_searchpaths; cur; cur = cur->next )
+	{
+		if( cur == fs_writepath )
+		{
+			writepath_kept = true;
+			break;
+		}
+	}
+
+	FS_FilesystemState_SetSearchPaths( fs_searchpaths );
+	if( !writepath_kept )
+		FS_SetWritePath( NULL );
+	else
+		FS_FilesystemState_SetWritePath( fs_writepath );
 }
 
 /*
@@ -570,37 +662,7 @@ Return true if the path should be rejected due to one of the following:
 */
 static int FS_CheckNastyPath( const char *path )
 {
-	// all: never allow an empty path, as for gamedir it would access the parent directory and a non-gamedir path it is just useless
-	if( COM_StringEmptyOrNULL( path )) return 2;
-
-	if( fs_ext_path ) return 0;     // allow any path
-
-	// Mac: don't allow Mac-only filenames - : is a directory separator
-	// instead of /, but we rely on / working already, so there's no reason to
-	// support a Mac-only path
-	// Amiga and Windows: : tries to go to root of drive
-	if( Q_strchr( path, ':' )) return 1; // non-portable attempt to go to root of drive
-
-	// Amiga: // is parent directory
-	if( Q_strstr( path, "//")) return 1; // non-portable attempt to go to parent directory
-
-	// all: don't allow going to parent directory (../ or /../)
-	if( Q_strstr( path, "..")) return 2; // attempt to go outside the game directory
-
-	// Windows and UNIXes: don't allow absolute paths
-	if( path[0] == '/') return 2; // attempt to go outside the game directory
-
-#if 0
-	// all: forbid trailing slash on gamedir
-	if( isgamedir && path[Q_strlen(path)-1] == '/' ) return 2;
-#endif
-
-	// all: forbid leading dot on any filename for any reason
-	if( Q_strstr(path, "/.")) return 2; // attempt to go outside the game directory
-
-	// after all these checks we're pretty sure it's a / separated filename
-	// and won't do much if any harm
-	return false;
+	return FS_PathPolicy_CheckPath( path, FS_DirectPathsEnabled() );
 }
 
 /*
@@ -1383,9 +1445,9 @@ void FS_Rescan( uint32_t flags, const char *language )
 	flags &= FS_MOUNT_HD|FS_MOUNT_LV|FS_MOUNT_ADDON|FS_MOUNT_L10N;
 
 	if( FBitSet( flags, FS_MOUNT_L10N ))
-		Q_strncpy( fs_language, language, sizeof( fs_language ));
+		FS_SetLanguage( language );
 	else
-		fs_language[0] = 0;
+		FS_SetLanguage( "" );
 
 	str = getenv( "XASH3D_EXTRAS_PAK1" );
 	if( !COM_StringEmptyOrNULL( str ))
@@ -1700,11 +1762,11 @@ qboolean FS_InitStdio( qboolean unused_set_to_true, const char *rootdir, const c
 	FS_InitAndroid();
 #endif
 
-	Q_strncpy( fs_rootdir, rootdir, sizeof( fs_rootdir ));
-	Q_strncpy( fs_gamedir, gamedir, sizeof( fs_gamedir ));
-	Q_strncpy( fs_basedir, basedir, sizeof( fs_basedir ));
-	Q_strncpy( fs_rodir, rodir, sizeof( fs_rodir ));
-	fs_language[0] = 0;
+	FS_SetRootDir( rootdir );
+	FS_SetGameDir( gamedir );
+	FS_SetBaseDir( basedir );
+	FS_SetReadOnlyDir( rodir );
+	FS_SetLanguage( "" );
 
 	// validate user input
 	if( !COM_StringEmpty( fs_rodir ) && !Q_stricmp( fs_rodir, fs_rootdir ))
@@ -1734,7 +1796,7 @@ qboolean FS_InitStdio( qboolean unused_set_to_true, const char *rootdir, const c
 
 				// revert to base game directory
 				if( has_base_dir )
-					Q_strncpy( fs_gamedir, fs_basedir, sizeof( fs_gamedir ));
+					FS_SetGameDir( fs_basedir );
 			}
 		}
 	}
@@ -1809,6 +1871,8 @@ qboolean FS_InitStdio( qboolean unused_set_to_true, const char *rootdir, const c
 
 	stringlistfreecontents( &dirs );
 
+	FS_SyncStateFromGlobals();
+
 	Con_Reportf( "%s: done\n", __func__ );
 
 	return true;
@@ -1816,7 +1880,7 @@ qboolean FS_InitStdio( qboolean unused_set_to_true, const char *rootdir, const c
 
 void FS_AllowDirectPaths( qboolean enable )
 {
-	fs_ext_path = enable;
+	FS_SetDirectPaths( enable );
 }
 
 /*
@@ -1856,7 +1920,7 @@ void FS_Path_f( void )
 
 	Con_Printf( "Current search path:\n" );
 
-	for( s = fs_searchpaths; s; s = s->next )
+	for( s = FS_SearchPaths(); s; s = s->next )
 	{
 		string info;
 
@@ -2199,7 +2263,7 @@ searchpath_t *FS_FindFile( const char *name, int *index, char *fixedname, size_t
 	searchpath_t	*search;
 
 	// search through the path, one element at a time
-	for( search = fs_searchpaths; search; search = search->next )
+	for( search = FS_SearchPaths(); search; search = search->next )
 	{
 		int pack_ind;
 
@@ -2215,7 +2279,7 @@ searchpath_t *FS_FindFile( const char *name, int *index, char *fixedname, size_t
 		}
 	}
 
-	if( fs_ext_path )
+	if( FS_DirectPathsEnabled() )
 	{
 		char netpath[MAX_SYSPATH], dirpath[MAX_SYSPATH];
 
@@ -2227,8 +2291,7 @@ searchpath_t *FS_FindFile( const char *name, int *index, char *fixedname, size_t
 		// the correct solution MIGHT be using fs_writepath instead of fs_rootdir here?
 		// but this need to be properly tested so as a temporary solution
 		// just strip ../
-		if( !Q_strncmp( name, "../", 3 ))
-			name += 3;
+		name = FS_PathPolicy_StripDirectRelativePrefix( name );
 
 		Q_snprintf( dirpath, sizeof( dirpath ), "%s/", fs_rootdir );
 		Q_snprintf( netpath, sizeof( netpath ), "%s%s", dirpath, name );
@@ -2274,7 +2337,7 @@ qboolean FS_FullPathToRelativePath( char *dst, const char *src, size_t size )
 {
 	searchpath_t *sp;
 
-	for( sp = fs_searchpaths; sp; sp = sp->next )
+	for( sp = FS_SearchPaths(); sp; sp = sp->next )
 	{
 		size_t splen = Q_strlen( sp->filename );
 
@@ -2328,7 +2391,7 @@ Open a file. The syntax is the same as fopen
 */
 file_t *FS_Open( const char *filepath, const char *mode, qboolean gamedironly )
 {
-	if( !fs_searchpaths )
+	if( !FS_SearchPaths() )
 		return NULL;
 
 	// some mappers used leading '/' or '\' in path to models or sounds
@@ -2342,12 +2405,16 @@ file_t *FS_Open( const char *filepath, const char *mode, qboolean gamedironly )
 		return NULL;
 
 	// if the file is opened in "write", "append", or "read/write" mode
-	if( mode[0] == 'w' || mode[0] == 'a'|| mode[0] == 'e' || Q_strchr( mode, '+' ))
+	if( FS_PathPolicy_IsWriteMode( mode ))
 	{
 		char	real_path[MAX_SYSPATH];
+		searchpath_t *writepath = FS_WritePath();
+
+		if( !writepath )
+			return NULL;
 
 		// open the file on disk directly
-		if( !FS_FixFileCase( fs_writepath->dir, filepath, real_path, sizeof( real_path ), true ))
+		if( !FS_FixFileCase( writepath->dir, filepath, real_path, sizeof( real_path ), true ))
 			return NULL;
 
 		FS_CreatePath( real_path ); // Create directories up to the file
@@ -2952,7 +3019,7 @@ static byte *FS_LoadFile_( const char *path, fs_offset_t *filesizeptr, const qbo
 	if( path[0] == '/' || path[0] == '\\' )
 		path++;
 
-	if( !fs_searchpaths || FS_CheckNastyPath( path ))
+	if( !FS_SearchPaths() || FS_CheckNastyPath( path ))
 		return NULL;
 
 	search = FS_FindFile( path, &pack_ind, netpath, sizeof( netpath ), gamedironly );
@@ -3215,6 +3282,7 @@ rename specified file from gamefolder
 qboolean FS_Rename( const char *oldname, const char *newname )
 {
 	char oldname2[MAX_SYSPATH], newname2[MAX_SYSPATH], oldpath[MAX_SYSPATH], newpath[MAX_SYSPATH];
+	searchpath_t *writepath;
 	int ret;
 
 	// a1ba: disallow path traversal
@@ -3233,15 +3301,16 @@ qboolean FS_Rename( const char *oldname, const char *newname )
 		return true;
 
 	// no writing directory is set, no changes should be made
-	if( !fs_writepath )
+	writepath = FS_WritePath();
+	if( !writepath )
 		return false;
 
 	// file does not exist
-	if( !FS_FixFileCase( fs_writepath->dir, oldname2, oldpath, sizeof( oldpath ), false ))
+	if( !FS_FixFileCase( writepath->dir, oldname2, oldpath, sizeof( oldpath ), false ))
 		return false;
 
 	// exit if overflowed
-	if( !FS_FixFileCase( fs_writepath->dir, newname2, newpath, sizeof( newpath ), true ))
+	if( !FS_FixFileCase( writepath->dir, newname2, newpath, sizeof( newpath ), true ))
 		return false;
 
 	ret = rename( oldpath, newpath );
@@ -3265,19 +3334,21 @@ delete specified file from gamefolder
 qboolean GAME_EXPORT FS_Delete( const char *path )
 {
 	char path2[MAX_SYSPATH], real_path[MAX_SYSPATH];
+	searchpath_t *writepath;
 	int ret;
 
 	// a1ba: disallow path traversal
 	if( FS_CheckNastyPath( path ))
 		return false;
 
-	if( !fs_writepath )
+	writepath = FS_WritePath();
+	if( !writepath )
 		return false;
 
 	Q_strncpy( path2, path, sizeof( path2 ));
 	COM_FixSlashes( path2 );
 
-	if( !FS_FixFileCase( fs_writepath->dir, path2, real_path, sizeof( real_path ), true ))
+	if( !FS_FixFileCase( writepath->dir, path2, real_path, sizeof( real_path ), true ))
 		return true;
 
 	ret = remove( real_path );
@@ -3344,7 +3415,7 @@ search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 	stringlistinit( &resultlist );
 
 	// search through the path, one element at a time
-	for( searchpath = fs_searchpaths; searchpath; searchpath = searchpath->next )
+	for( searchpath = FS_SearchPaths(); searchpath; searchpath = searchpath->next )
 	{
 		if( gamedironly && !FBitSet( searchpath->flags, FS_GAMEDIRONLY_SEARCH_FLAGS ))
 			continue;
@@ -3391,7 +3462,7 @@ static qboolean FS_IsArchiveExtensionSupported( const char *ext, uint flags )
 
 static searchpath_t *FS_GetArchiveByName( const char *name, searchpath_t *prev )
 {
-	searchpath_t *sp = prev ? prev->next : fs_searchpaths;
+	searchpath_t *sp = prev ? prev->next : FS_SearchPaths();
 
 	for( ; sp; sp = sp->next )
 	{
@@ -3414,8 +3485,11 @@ static file_t *FS_OpenFileFromArchive( searchpath_t *sp, const char *path, const
 
 void FS_InitMemory( void )
 {
+	FS_FilesystemState_Reset();
 	fs_mempool = Mem_AllocPool( "FileSystem Pool" );
-	fs_searchpaths = NULL;
+	FS_SetSearchPaths( NULL );
+	FS_SetWritePath( NULL );
+	FS_SetDirectPaths( false );
 }
 
 fs_interface_t g_engfuncs =

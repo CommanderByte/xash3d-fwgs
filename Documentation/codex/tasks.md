@@ -502,7 +502,159 @@ commit, test command, document link, or manual verification note that proves it.
   `valve/extras.pk3` mounted, printed search paths, and stopped with reason
   `"command"`.
 
-## Phase 11: Commit And Review Hygiene
+## Phase 11: Android Assets Backend Plan
+
+- [x] `FS-ANDROID-001` Analyze Android backend build and runtime impact before
+  adding bridge code.
+  Evidence: `Documentation/codex/modularization-plan/android-assets-backend-plan.md`.
+- [x] `FS-ANDROID-002` Add target-neutral `AndroidAssetsBackend` skeleton and
+  hook-forwarding tests.
+  Evidence: `src/include/filesystem/android_assets_backend.hpp`,
+  `src/filesystem/android_assets_backend.cpp`,
+  `tests/filesystem/android_assets_backend.cpp`.
+- [x] `FS-ANDROID-003` Add C adapter bridge without pulling Android headers
+  into desktop builds.
+  Evidence: `filesystem/android_assets_backend_adapter.h`,
+  `filesystem/android_assets_backend_adapter.cpp`.
+- [x] `FS-ANDROID-004` Forward Android asset print, close, open, file time,
+  find, search, and load callbacks through the bridge behind `XASH_ANDROID`.
+  Evidence: `filesystem/android.c`.
+- [x] `FS-ANDROID-005` Run desktop unit tests after Android bridge scaffolding.
+  Evidence: command
+  `.\waf.bat build --targets=test_filesystem_android_assets_backend` passed;
+  command `.\waf.bat clean build` passed 32/32 tests.
+- [x] `FS-ANDROID-006` Run Windows runtime smoke test after Android bridge
+  scaffolding.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` printed search
+  paths and stopped with reason `"command"`.
+- [x] `FS-ANDROID-007` Capture Android build/runtime validation plan or
+  evidence when an Android validation path is available.
+  Evidence: `Documentation/codex/modularization-plan/android-assets-backend-plan.md`
+  captures the Android build/device validation path; runtime execution remains
+  deferred until an Android validation target is available.
+
+## Phase 12: Filesystem.c State Extraction
+
+- [x] `FS-STATE-002` Add focused TODO list for `filesystem.c` state
+  migration.
+  Evidence: `Documentation/codex/todo/filesystem_state_todo.md`.
+- [x] `FS-STATE-003` Add target-neutral `FilesystemState` scaffold and tests.
+  Evidence: `src/include/filesystem/filesystem_state.hpp`,
+  `src/filesystem/filesystem_state.cpp`,
+  `tests/filesystem/filesystem_state.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_state`.
+- [x] `FS-STATE-004` Add read-only snapshot capture from current
+  `filesystem.c` globals.
+  Evidence: `filesystem/filesystem_state_adapter.h`,
+  `filesystem/filesystem_state_adapter.cpp`, and `FS_SyncStateFromGlobals` in
+  `filesystem/filesystem.c`.
+- [x] `FS-STATE-005` Route `FS_AllowDirectPaths` through the new state helper.
+  Evidence: `FS_SetDirectPaths` and `FS_DirectPathsEnabled` in
+  `filesystem/filesystem.c`.
+- [x] `FS-STATE-006` Route root/base/game/rodir/language assignment through
+  state setters.
+  Evidence: `FS_SetRootDir`, `FS_SetBaseDir`, `FS_SetGameDir`,
+  `FS_SetReadOnlyDir`, and `FS_SetLanguage` in `filesystem/filesystem.c`.
+- [x] `FS-STATE-007` Route search path list head and write path through state
+  accessors.
+  Evidence: `FS_SearchPaths`, `FS_SetSearchPaths`, `FS_WritePath`, and
+  `FS_SetWritePath` in `filesystem/filesystem.c`.
+- [x] `FS-STATE-008` Run desktop tests after the state scaffold.
+  Evidence: command `.\waf.bat clean build` passed 33/33 tests.
+- [x] `FS-STATE-009` Run Windows runtime smoke test after the state scaffold.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` printed search
+  paths and stopped with reason `"command"`.
+
+## Phase 13: Path Policy Extraction
+
+- [x] `FS-PATH-001` Add focused TODO list for path policy migration.
+  Evidence: `Documentation/codex/todo/path_policy_todo.md`.
+- [x] `FS-PATH-002` Add target-neutral path rejection helper and tests.
+  Evidence: `src/include/filesystem/path_policy.hpp`,
+  `src/filesystem/path_policy.cpp`, `tests/filesystem/path_policy.cpp`.
+- [x] `FS-PATH-003` Route `FS_CheckNastyPath` through `PathPolicy`.
+  Evidence: `filesystem/path_policy_adapter.h`,
+  `filesystem/path_policy_adapter.cpp`, `filesystem/filesystem.c`.
+- [x] `FS-PATH-004` Route direct-path relative path compatibility through
+  `PathPolicy`.
+  Evidence: `FS_PathPolicy_StripDirectRelativePrefix` usage in
+  `filesystem/filesystem.c`.
+- [x] `FS-PATH-005` Route write-mode mutation detection through a dedicated
+  policy helper.
+  Evidence: `FS_PathPolicy_IsWriteMode` usage in `filesystem/filesystem.c`.
+- [x] `FS-PATH-006` Run desktop tests after path policy extraction.
+  Evidence: command
+  `.\waf.bat build --targets=test_filesystem_path_policy,test_directpath,test_caseinsensitive,test_rodir`
+  passed 4/4 tests; command `.\waf.bat clean build` passed 34/34 tests.
+- [x] `FS-PATH-007` Run Windows runtime smoke test after path policy
+  extraction.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` printed search
+  paths and stopped with reason `"command"`.
+
+## Phase 14: Game Hierarchy Builder
+
+- [x] `FS-HIER-002` Add focused TODO list for game hierarchy migration.
+  Evidence: `Documentation/codex/todo/game_hierarchy_todo.md`.
+- [ ] `FS-HIER-003` Add mount request record type and tests.
+  Evidence:
+- [ ] `FS-HIER-004` Build hierarchy mount requests before applying them to
+  legacy search paths.
+  Evidence:
+- [ ] `FS-HIER-005` Route `FS_LoadGameInfo` mount construction through the
+  hierarchy builder.
+  Evidence:
+
+## Phase 15: File Handle Operations
+
+- [x] `FS-FILE-001` Add focused TODO list for file handle migration.
+  Evidence: `Documentation/codex/todo/file_handle_todo.md`.
+- [ ] `FS-FILE-002` Add focused tests for seek/read/write/decompression edge
+  cases before extraction.
+  Evidence:
+- [ ] `FS-FILE-003` Add first target-neutral helper around `file_t`
+  operations.
+  Evidence:
+
+## Phase 16: Search Result Assembly
+
+- [x] `FS-SEARCH-001` Add focused TODO list for search result migration.
+  Evidence: `Documentation/codex/todo/search_results_todo.md`.
+- [ ] `FS-SEARCH-002` Add tests for result ordering and duplicate filtering.
+  Evidence:
+- [ ] `FS-SEARCH-003` Add target-neutral `SearchResultBuilder`.
+  Evidence:
+- [ ] `FS-SEARCH-004` Route `FS_Search` result assembly through the builder.
+  Evidence:
+
+## Phase 17: Library Locator
+
+- [x] `FS-LIB-001` Add focused TODO list for library locator migration.
+  Evidence: `Documentation/codex/todo/library_locator_todo.md`.
+- [ ] `FS-LIB-002` Expand library lookup tests for direct-path and relative
+  path quirks.
+  Evidence:
+- [ ] `FS-LIB-003` Add target-neutral library short-path normalization helper.
+  Evidence:
+- [ ] `FS-LIB-004` Route `FS_FindLibrary` through `LibraryLocator`.
+  Evidence:
+
+## Phase 18: Compatibility Facades
+
+- [x] `FS-COMPAT-001` Add focused TODO list for legacy compatibility facades.
+  Evidence: `Documentation/codex/todo/compatibility_facades_todo.md`.
+- [ ] `FS-COMPAT-002` Add ABI drift checklist before larger rewires.
+  Evidence:
+- [ ] `FS-COMPAT-003` Add wrapper-only tests when internal helpers touch
+  public methods.
+  Evidence:
+
+## Phase 19: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push documentation commits to remote branch.
   Evidence:
@@ -538,3 +690,6 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-018 | Use the same behavior-neutral bridge pattern for the first PAK backend pilot: private C++ backend object, C adapter, legacy callback implementation retained behind hooks. | `src/include/filesystem/pak_backend.hpp`, `filesystem/pak_backend_adapter.h`, `filesystem/pak.c` |
 | 2026-05-09 | DEC-019 | Use the PAK bridge pattern for WAD while explicitly forwarding `pfnLoadFile`, because WAD lump loading is the primary read path. | `src/include/filesystem/wad_backend.hpp`, `filesystem/wad_backend_adapter.h`, `filesystem/wad.c` |
 | 2026-05-09 | DEC-020 | Use the same bridge pattern for ZIP/PK3 while explicitly preserving stored/deflated load paths and unsupported compression failure behavior. | `src/include/filesystem/zip_backend.hpp`, `filesystem/zip_backend_adapter.h`, `filesystem/zip.c`, `tests/filesystem/zip-archive.c` |
+| 2026-05-09 | DEC-021 | Keep Android runtime code behind `XASH_ANDROID`, but allow the target-neutral `AndroidAssetsBackend` class and adapter declarations to compile on desktop when they avoid Android headers and APIs. | `modularization-plan/android-assets-backend-plan.md`, `todo/android_assets_backend_todo.md` |
+| 2026-05-09 | DEC-022 | Start `filesystem.c` migration with a target-neutral `FilesystemState` scaffold and tests before routing legacy globals through it. | `todo/filesystem_state_todo.md`, `src/include/filesystem/filesystem_state.hpp`, `tests/filesystem/filesystem_state.cpp` |
+| 2026-05-09 | DEC-023 | Preserve current path rejection semantics exactly in `PathPolicy`, including direct-path bypass after empty-path rejection and the single leading `../` strip quirk. | `src/include/filesystem/path_policy.hpp`, `tests/filesystem/path_policy.cpp`, `filesystem/filesystem.c` |

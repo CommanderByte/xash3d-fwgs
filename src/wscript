@@ -24,9 +24,12 @@ def build(bld):
 	if bld.env.TESTS:
 		tests = {
 			'debugging': '../tests/debugging/debugging.cpp',
+			'filesystem_android_assets_backend': '../tests/filesystem/android_assets_backend.cpp',
 			'filesystem_archive_registry': '../tests/filesystem/archive_registry.cpp',
 			'filesystem_debug_snapshot': '../tests/filesystem/debug_snapshot.cpp',
 			'filesystem_directory_backend': '../tests/filesystem/directory_backend.cpp',
+			'filesystem_state': '../tests/filesystem/filesystem_state.cpp',
+			'filesystem_path_policy': '../tests/filesystem/path_policy.cpp',
 			'filesystem_pak_backend': '../tests/filesystem/pak_backend.cpp',
 			'filesystem_registry_snapshot': '../tests/filesystem/registry_snapshot.cpp',
 			'filesystem_wad_backend': '../tests/filesystem/wad_backend.cpp',
