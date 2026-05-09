@@ -13,6 +13,10 @@ in upstream-facing user documentation yet.
   an incremental migration path.
 - [windows-build-run-notes.md](windows-build-run-notes.md) records the current
   Windows build, SDL2, Steam asset, and HLSDK runtime smoke-test notes.
+- [modularization-plan/](modularization-plan/README.md) contains the working
+  plan for migrating internals toward a more modular C++ architecture.
+- [legacy/filesystem/](legacy/filesystem/README.md) documents the current
+  filesystem architecture with Mermaid diagrams.
 
 ## Repository At A Glance
 
