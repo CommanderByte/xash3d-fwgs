@@ -11,6 +11,9 @@ Current implementation notes:
 - `command-buffer-migration-guide.md`: how raw `Cbuf_*` buffer mechanics route
   through the private modern command-buffer primitive while dispatch policy
   stays in `cmd.c`.
+- `console-logging-migration-guide.md`: how console/logging should be split
+  into filters, formatters, and sinks while preserving the public C print
+  surface and the rendered console/platform console distinction.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports
   should delegate into `src/utilities` without making hash/checksum helpers
   engine-owned.

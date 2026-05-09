@@ -1461,23 +1461,25 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 43: Console And Logging Ownership
 
-- [ ] `ENG-LOG-001` Audit definitions and callers for `Con_Printf`,
+- [x] `ENG-LOG-001` Audit definitions and callers for `Con_Printf`,
   `Con_DPrintf`, `Con_Reportf`, `Log_Printf`, `Sys_Print`, and
   `Sys_PrintLog`.
-  Evidence: `Documentation/codex/todo/engine_logging_todo.md`.
-- [ ] `ENG-LOG-002` Document output ownership, filtering, color/control prefix
+  Evidence: `Documentation/codex/todo/engine_logging_todo.md`,
+  `Documentation/codex/legacy/engine/console-logging-baseline.md`.
+- [x] `ENG-LOG-002` Document output ownership, filtering, color/control prefix
   behavior, log file lifecycle, shutdown footer behavior, and fatal-path
   constraints.
-  Evidence:
+  Evidence: `Documentation/codex/legacy/engine/console-logging-baseline.md`,
+  `Documentation/codex/modern/engine/console-logging-migration-guide.md`.
 - [ ] `ENG-LOG-003` Add focused tests or a test seam for target-neutral message
   formatting/filtering behavior where practical.
-  Evidence:
-- [ ] `ENG-LOG-004` Decide how modern debugging utilities and deferred
+  Evidence: pending implementation pass.
+- [x] `ENG-LOG-004` Decide how modern debugging utilities and deferred
   filesystem logging cleanup should feed engine output.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/console-logging-migration-guide.md`.
 - [ ] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
   any output path changes.
-  Evidence:
+  Evidence: no output path changed during the audit pass; pending code changes.
 
 ## Phase 44: System Platform Facade Audit
 

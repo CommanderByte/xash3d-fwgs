@@ -12,6 +12,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [command-buffer-baseline.md](command-buffer-baseline.md) documents the
   command-buffer queue, splitter, comment, quote, insertion, and migration
   compatibility rules.
+- [console-logging-baseline.md](console-logging-baseline.md) documents the
+  current print hub, in-game console, platform console, engine log, and server
+  event log ownership.
 - [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated
