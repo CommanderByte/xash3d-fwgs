@@ -1551,21 +1551,35 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 44: System Platform Facade Audit
 
-- [ ] `ENG-SYS-001` Audit `system.c`, `system.h`, and platform source
+- [x] `ENG-SYS-001` Audit `system.c`, `system.h`, and platform source
   responsibilities.
-  Evidence: `Documentation/codex/todo/engine_platform_todo.md`.
-- [ ] `ENG-SYS-002` Document which branches can move to `engine/platform/`
+  Evidence: `Documentation/codex/todo/engine_platform_todo.md`,
+  `Documentation/codex/legacy/engine/system-platform-facade-audit.md`.
+- [x] `ENG-SYS-002` Document which branches can move to `engine/platform/`
   without changing `Sys_*` callers.
-  Evidence:
-- [ ] `ENG-SYS-003` Identify target-neutral helpers that can gain focused tests
+  Evidence: `Documentation/codex/legacy/engine/system-platform-facade-audit.md`,
+  `Documentation/codex/modern/engine/system-platform-facade-plan.md`.
+- [x] `ENG-SYS-003` Identify target-neutral helpers that can gain focused tests
   before any code movement.
-  Evidence:
-- [ ] `ENG-SYS-004` Move one narrow platform-neutral or platform-selected helper
+  Evidence: change-game command-line censor helper selected in
+  `Documentation/codex/legacy/engine/system-platform-facade-audit.md`.
+- [x] `ENG-SYS-004` Move one narrow platform-neutral or platform-selected helper
   only if the audit finds a low-risk candidate.
-  Evidence:
-- [ ] `ENG-SYS-005` Run focused tests, full tests, and Windows runtime smoke if
+  Evidence: `src/include/engine/platform/command_line.hpp`,
+  `src/include/engine/platform/command_line_adapter.h`,
+  `src/engine/platform/command_line.cpp`, `engine/common/system.c`,
+  `tests/engine/platform_command_line.cpp`.
+- [x] `ENG-SYS-005` Run focused tests, full tests, and Windows runtime smoke if
   any platform path changes.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_platform_command_line`
+  passed 1/1 tests, `.\waf.bat build` passed 30/30 tests, and Windows runtime
+  smoke copied `build\engine\xash.dll` plus
+  `build\filesystem\filesystem_stdio.dll` into `run-win32`, then ran
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  The smoke log `run-win32\engine.log` reached renderer initialization and
+  stopped with reason `command` at May 10 2026 00:14:26 local time. The quick
+  `+quit` smoke did not emit a first-frame timing marker.
 
 ## Phase 800: POSIX Console Backend Validation
 

@@ -54,6 +54,7 @@ GNU General Public License for more details.
 
 #include "library.h"
 #include "whereami.h"
+#include "engine/platform/command_line_adapter.h"
 
 int error_on_exit = 0;	// arg for exit();
 
@@ -175,7 +176,6 @@ Sys_ParseCommandLine
 */
 void Sys_ParseCommandLine( int argc, const char **argv )
 {
-	const char	*blank = "censored";
 	int		i;
 
 	host.argc = argc;
@@ -185,16 +185,9 @@ void Sys_ParseCommandLine( int argc, const char **argv )
 
 	for( i = 0; i < host.argc; i++ )
 	{
-		// we don't want to return to first game
-			 if( !Q_stricmp( "-game", host.argv[i] )) host.argv[i] = blank;
-		// probably it's timewaster, because engine rejected second change
-		else if( !Q_stricmp( "+game", host.argv[i] )) host.argv[i] = blank;
-		// you sure that map exists in new game?
-		else if( !Q_stricmp( "+map", host.argv[i] )) host.argv[i] = blank;
-		// just stupid action
-		else if( !Q_stricmp( "+load", host.argv[i] )) host.argv[i] = blank;
-		// changelevel beetwen games? wow it's great idea!
-		else if( !Q_stricmp( "+changelevel", host.argv[i] )) host.argv[i] = blank;
+		// Do not replay game/map/load commands while switching games.
+		if( Xash_ShouldCensorChangeGameArgument( host.argv[i] ))
+			host.argv[i] = Xash_ChangeGameCensoredArgument();
 	}
 }
 

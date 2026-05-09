@@ -24,3 +24,6 @@ It focuses on real ownership, coupling, global state, and migration risk.
   safe routing boundary.
 - [string-path-baseline.md](string-path-baseline.md) documents shared
   `crtlib` string/path helpers, path quirks, and the Phase 40 migration scope.
+- [system-platform-facade-audit.md](system-platform-facade-audit.md) audits
+  `system.c`, `system.h`, and the platform source split before Phase 44
+  platform-facade cleanup.
