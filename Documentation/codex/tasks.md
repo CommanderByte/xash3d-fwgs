@@ -666,18 +666,21 @@ commit, test command, document link, or manual verification note that proves it.
   `src/filesystem/library_locator.cpp`,
   `tests/filesystem/library_locator.cpp`; command
   `.\waf.bat build --targets=test_filesystem_library_locator`.
-- [ ] `FS-LIB-004` Route `FS_FindLibrary` through `LibraryLocator`.
-  Evidence:
+- [x] `FS-LIB-004` Route `FS_FindLibrary` through `LibraryLocator`.
+  Evidence: `filesystem/library_locator_adapter.cpp`,
+  `filesystem/filesystem.c`; command
+  `.\waf.bat build --targets=test_dll-lookup,test_filesystem_library_locator`.
 
 ## Phase 18: Compatibility Facades
 
 - [x] `FS-COMPAT-001` Add focused TODO list for legacy compatibility facades.
   Evidence: `Documentation/codex/todo/compatibility_facades_todo.md`.
-- [ ] `FS-COMPAT-002` Add ABI drift checklist before larger rewires.
-  Evidence:
-- [ ] `FS-COMPAT-003` Add wrapper-only tests when internal helpers touch
+- [x] `FS-COMPAT-002` Add ABI drift checklist before larger rewires.
+  Evidence: `Documentation/codex/modern/filesystem/abi-drift-checklist.md`.
+- [x] `FS-COMPAT-003` Add wrapper-only tests when internal helpers touch
   public methods.
-  Evidence:
+  Evidence: `tests/filesystem/interface.cpp`; command
+  `.\waf.bat build --targets=test_interface`.
 
 ## Phase 19: Commit And Review Hygiene
 

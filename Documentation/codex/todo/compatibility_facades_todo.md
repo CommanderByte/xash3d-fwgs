@@ -7,10 +7,10 @@ modern helpers.
 
 ## Migration Order
 
-- [ ] Keep `fs_api_t` as the C ABI facade.
-- [ ] Keep `VFileSystem009` as the C++ ABI facade.
-- [ ] Add ABI drift checklist before larger rewires.
-- [ ] Add wrapper-only tests when internal helper changes touch public methods.
+- [x] Keep `fs_api_t` as the C ABI facade.
+- [x] Keep `VFileSystem009` as the C++ ABI facade.
+- [x] Add ABI drift checklist before larger rewires.
+- [x] Add wrapper-only tests when internal helper changes touch public methods.
 
 ## Boundaries
 

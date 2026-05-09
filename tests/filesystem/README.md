@@ -35,7 +35,7 @@ structure.
 | Behavior | Current Coverage | Needed Test Location | Notes |
 | --- | --- | --- | --- |
 | API loads through `GetFSAPI` | `tests/filesystem/interface.cpp` | existing | Expand if API table layout changes. |
-| `CreateInterface` lookups | `tests/filesystem/interface.cpp` | existing | Covers known interfaces and missing interface retval. |
+| `CreateInterface` lookups | `tests/filesystem/interface.cpp` | existing | Covers known interfaces, missing interface retval, copied API table behavior, and public facade function pointers. |
 | No-init safety | `tests/filesystem/no-init.c` | existing | Keep passing during adapter work. |
 | Basic case-insensitive lookup | `tests/filesystem/caseinsensitive.c` | existing | Covers filesystem-created and direct-created files. |
 | Nested directory case repair | `tests/filesystem/caseinsensitive.c` | existing | Added before directory backend pilot. |

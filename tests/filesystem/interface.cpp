@@ -109,6 +109,30 @@ static bool TestXashFileSystemCopyBehavior()
 	return true;
 }
 
+static bool TestFsApiFacadePointers()
+{
+	if( !g_fs.InitStdio ||
+		!g_fs.ShutdownStdio ||
+		!g_fs.AddGameHierarchy ||
+		!g_fs.Search ||
+		!g_fs.FindLibrary ||
+		!g_fs.Open ||
+		!g_fs.Write ||
+		!g_fs.Read ||
+		!g_fs.Seek ||
+		!g_fs.Tell ||
+		!g_fs.Eof ||
+		!g_fs.Close ||
+		!g_fs.FileLength ||
+		!g_fs.MountArchive_Fullpath ||
+		!g_fs.OpenFileFromArchive )
+	{
+		return false;
+	}
+
+	return true;
+}
+
 int main()
 {
 	if( !LoadFilesystem() )
@@ -116,7 +140,8 @@ int main()
 
 	if( !TestMissingInterface() ||
 		!TestVFileSystemBehavior() ||
-		!TestXashFileSystemCopyBehavior() )
+		!TestXashFileSystemCopyBehavior() ||
+		!TestFsApiFacadePointers() )
 		return EXIT_FAILURE;
 
 	return EXIT_SUCCESS;
