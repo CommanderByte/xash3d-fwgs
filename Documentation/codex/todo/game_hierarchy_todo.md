@@ -8,8 +8,11 @@ Track extraction of game directory and mount-order construction from
 ## Migration Order
 
 - [x] Add `GameHierarchyBuilder` design note with current mount ordering.
-- [ ] Add fixtures for any hierarchy behavior not covered by
+- [x] Add fixtures for any hierarchy behavior not covered by
   `tests/filesystem/hierarchy.c`.
+  Note: no extra fixture is currently required. `hierarchy.c` now covers
+  falldir, downloads, custom, HD, LV, addon, localization, gamedir-only
+  filtering, and gamefolder-over-basedir precedence.
 - [x] Extract a target-neutral mount request record type.
 - [x] Build mount requests separately from applying them to `searchpath_t`.
 - [x] Route `FS_LoadGameInfo` hierarchy mounting through the builder.
