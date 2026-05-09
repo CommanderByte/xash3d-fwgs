@@ -25,16 +25,19 @@ static qboolean TestFindLibrary( void )
 {
 	fs_dllinfo_t dllinfo;
 	static const char dll_data[] = "not a real library";
+	static const char direct_dll_data[] = "not a real direct library";
 
 	if( !FS_TestCreateDirectory( "valve" ) ||
-		!FS_TestCreateDirectory( "valve/dlls" ))
+		!FS_TestCreateDirectory( "valve/dlls" ) ||
+		!FS_TestCreateDirectory( "directlibs" ))
 	{
 		printf( "failed to create dll lookup directories\n" );
 		return false;
 	}
 
 	if( !WriteGameInfoFixture() ||
-		!FS_TestWriteFile( "valve/dlls/hl." OS_LIB_EXT, dll_data, sizeof( dll_data ) - 1 ))
+		!FS_TestWriteFile( "valve/dlls/hl." OS_LIB_EXT, dll_data, sizeof( dll_data ) - 1 ) ||
+		!FS_TestWriteFile( "directlibs/directlib." OS_LIB_EXT, direct_dll_data, sizeof( direct_dll_data ) - 1 ))
 	{
 		printf( "failed to write dll lookup fixture\n" );
 		return false;
@@ -74,6 +77,45 @@ static qboolean TestFindLibrary( void )
 		return false;
 	}
 
+	memset( &dllinfo, 0, sizeof( dllinfo ));
+	if( !g_fs.FindLibrary( "../valve/dlls/hl." OS_LIB_EXT, false, &dllinfo ))
+	{
+		printf( "FindLibrary relative path quirk failed\n" );
+		return false;
+	}
+
+	if( strcmp( dllinfo.shortPath, "dlls/hl." OS_LIB_EXT ))
+	{
+		printf( "FindLibrary relative short path mismatch: %s\n", dllinfo.shortPath );
+		return false;
+	}
+
+	memset( &dllinfo, 0, sizeof( dllinfo ));
+	if( !g_fs.FindLibrary( "directlibs/directlib", true, &dllinfo ))
+	{
+		printf( "FindLibrary direct path failed\n" );
+		return false;
+	}
+
+	if( strcmp( dllinfo.shortPath, "directlibs/directlib." OS_LIB_EXT ))
+	{
+		printf( "FindLibrary direct short path mismatch: %s\n", dllinfo.shortPath );
+		return false;
+	}
+
+	if( !strstr( dllinfo.fullPath, "directlibs/directlib." OS_LIB_EXT ) &&
+		!strstr( dllinfo.fullPath, "directlibs\\directlib." OS_LIB_EXT ))
+	{
+		printf( "FindLibrary direct full path mismatch: %s\n", dllinfo.fullPath );
+		return false;
+	}
+
+	if( dllinfo.encrypted || dllinfo.custom_loader )
+	{
+		printf( "FindLibrary direct flags unexpectedly set\n" );
+		return false;
+	}
+
 	if( g_fs.FindLibrary( "", false, &dllinfo ))
 	{
 		printf( "FindLibrary accepted empty dll name\n" );
@@ -92,11 +134,15 @@ static void CleanupFixture( const char *root )
 
 	snprintf( path, sizeof( path ), "%s/valve/dlls/hl.%s", root, OS_LIB_EXT );
 	FS_TestRemoveFile( path );
+	snprintf( path, sizeof( path ), "%s/directlibs/directlib.%s", root, OS_LIB_EXT );
+	FS_TestRemoveFile( path );
 	snprintf( path, sizeof( path ), "%s/valve/gameinfo.txt", root );
 	FS_TestRemoveFile( path );
 	snprintf( path, sizeof( path ), "%s/valve/dlls", root );
 	FS_TestRemoveDirectory( path );
 	snprintf( path, sizeof( path ), "%s/valve", root );
+	FS_TestRemoveDirectory( path );
+	snprintf( path, sizeof( path ), "%s/directlibs", root );
 	FS_TestRemoveDirectory( path );
 	FS_TestRemoveDirectory( root );
 }

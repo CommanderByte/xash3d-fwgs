@@ -65,6 +65,7 @@ structure.
 | Directory backend skeleton | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
 | File handle cursor helpers | `tests/filesystem/file_handle_ops.cpp` | existing | Built by `src/wscript`; covers target-neutral tell/eof/seek math before routing legacy `file_t` calls. |
 | Game hierarchy builder | `tests/filesystem/game_hierarchy_builder.cpp` | existing | Built by `src/wscript`; freezes generated mount request order before legacy integration. |
+| Library locator normalization | `tests/filesystem/library_locator.cpp` | existing | Built by `src/wscript`; covers target-neutral short-path lowercasing, slash fixing, default extension, and relative game prefix stripping. |
 | Filesystem state scaffold | `tests/filesystem/filesystem_state.cpp` | existing | Built by `src/wscript`; covers target-neutral state storage before wiring into `filesystem.c`. |
 | Path policy scaffold | `tests/filesystem/path_policy.cpp` | existing | Built by `src/wscript`; freezes path rejection, direct-path prefix stripping, and write-mode detection. |
 | PAK backend skeleton | `tests/filesystem/pak_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
@@ -73,7 +74,7 @@ structure.
 | WAD backend skeleton | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
 | ZIP backend skeleton | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
 | Android assets backend skeleton | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and hook forwarding without Android runtime dependencies. |
-| DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, not loading real DLLs. |
+| DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, direct-path lookup, and historical relative path quirks, not loading real DLLs. |
 
 ## First Unit Tests To Add
 

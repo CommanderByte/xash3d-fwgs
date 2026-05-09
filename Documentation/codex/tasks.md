@@ -648,18 +648,24 @@ commit, test command, document link, or manual verification note that proves it.
   `src/filesystem/search_result_builder.cpp`,
   `tests/filesystem/search_result_builder.cpp`; command
   `.\waf.bat build --targets=test_filesystem_search_result_builder`.
-- [ ] `FS-SEARCH-004` Route `FS_Search` result assembly through the builder.
-  Evidence:
+- [x] `FS-SEARCH-004` Route `FS_Search` result assembly through the builder.
+  Evidence: `filesystem/search_result_builder_adapter.cpp`,
+  `filesystem/filesystem.c`; command
+  `.\waf.bat build --targets=test_search-results,test_filesystem_search_result_builder`.
 
 ## Phase 17: Library Locator
 
 - [x] `FS-LIB-001` Add focused TODO list for library locator migration.
   Evidence: `Documentation/codex/todo/library_locator_todo.md`.
-- [ ] `FS-LIB-002` Expand library lookup tests for direct-path and relative
+- [x] `FS-LIB-002` Expand library lookup tests for direct-path and relative
   path quirks.
-  Evidence:
-- [ ] `FS-LIB-003` Add target-neutral library short-path normalization helper.
-  Evidence:
+  Evidence: `tests/filesystem/dll-lookup.c`; command
+  `.\waf.bat build --targets=test_dll-lookup`.
+- [x] `FS-LIB-003` Add target-neutral library short-path normalization helper.
+  Evidence: `src/include/filesystem/library_locator.hpp`,
+  `src/filesystem/library_locator.cpp`,
+  `tests/filesystem/library_locator.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_library_locator`.
 - [ ] `FS-LIB-004` Route `FS_FindLibrary` through `LibraryLocator`.
   Evidence:
 

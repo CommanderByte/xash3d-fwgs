@@ -7,8 +7,8 @@ policy from `filesystem.c`.
 
 ## Migration Order
 
-- [ ] Expand tests for direct-path library lookup and relative path quirks.
-- [ ] Add target-neutral library short-path normalization helper.
+- [x] Expand tests for direct-path library lookup and relative path quirks.
+- [x] Add target-neutral library short-path normalization helper.
 - [ ] Route encrypted library detection through a small helper.
 - [ ] Route `FS_FindLibrary` through `LibraryLocator`.
 
