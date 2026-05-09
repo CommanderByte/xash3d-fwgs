@@ -57,6 +57,8 @@ structure.
 | ZIP deflated file | `tests/filesystem/zip-archive.c` | existing | Uses miniz raw deflate data inside generated PK3. |
 | WAD lump lookup | `tests/filesystem/wad-archive.c` | existing | Generated WAD3 fixture with a script lump. |
 | WADs mounted from archives | `tests/filesystem/wad-archive.c` | existing | Generated PAK fixture containing a WAD3 file. |
+| WAD lookup quirks | `tests/filesystem/wad-archive.c` | existing | Covers WAD-name-restricted lookup, case-insensitive lookup, extensionless lookup, and unknown-extension rejection. |
+| WAD search quirks | `tests/filesystem/wad-archive.c` | existing | Freezes current synthetic result paths, including unrestricted leading-slash results and WAD-restricted folder prefixes. |
 | `rodir` overlay precedence | `tests/filesystem/rodir.c` | existing | Writable root beats rodir; rodir-only content remains visible. |
 | `VFileSystem009` compatibility behavior | `tests/filesystem/interface.cpp` | existing | Covers simple method behavior after lookup. |
 | `XashFileSystem004` copied table behavior | `tests/filesystem/interface.cpp` | existing | Confirms returned table refreshes after caller mutation. |
@@ -71,7 +73,7 @@ structure.
 | PAK backend skeleton | `tests/filesystem/pak_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
 | Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
 | Search result builder | `tests/filesystem/search_result_builder.cpp` | existing | Built by `src/wscript`; covers target-neutral sort, duplicate compaction, and packed string copying. |
-| WAD backend skeleton | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
+| WAD backend helpers | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, load-file default behavior, WAD type mapping, sorted lump insertion, binary lump lookup, and lump-table parsing. |
 | ZIP backend skeleton | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
 | Android assets backend skeleton | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and hook forwarding without Android runtime dependencies. |
 | DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, direct-path lookup, and historical relative path quirks, not loading real DLLs. |

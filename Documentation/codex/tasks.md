@@ -696,21 +696,39 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 20: WAD Implementation Body Migration
 
-- [ ] `FS-WAD-IMPL-001` Audit `filesystem/wad.c` responsibilities and map each
+- [x] `FS-WAD-IMPL-001` Audit `filesystem/wad.c` responsibilities and map each
   function to `WadBackend`, adapter-only code, or shared runtime support.
-  Evidence:
-- [ ] `FS-WAD-IMPL-002` Expand WAD tests for any uncovered parsing, lookup,
+  Evidence: `Documentation/codex/modern/filesystem/wad-implementation-audit.md`.
+- [x] `FS-WAD-IMPL-002` Expand WAD tests for any uncovered parsing, lookup,
   load, or archive-in-archive behavior found during the audit.
-  Evidence:
-- [ ] `FS-WAD-IMPL-003` Move WAD parsing and lump lookup into
-  `src/filesystem/wad_backend.cpp`.
-  Evidence:
-- [ ] `FS-WAD-IMPL-004` Move WAD open/load/search behavior into
+  Evidence: `tests/filesystem/wad-archive.c`; `.\waf.bat build
+  --targets=test_wad-archive` passed on 2026-05-09.
+- [x] `FS-WAD-IMPL-003A` Move WAD type mapping, sorted lump insertion, and
+  binary lump lookup into `src/filesystem/wad_backend.cpp`.
+  Evidence: `src/filesystem/wad_backend.cpp`,
+  `filesystem/wad_backend_adapter.cpp`, `filesystem/wad.c`;
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`
+  passed on 2026-05-09, and `build\filesystem\test_wad-archive.exe` returned
+  exit code `0`.
+- [x] `FS-WAD-IMPL-003B` Move WAD header parsing and lump-table normalization
+  into `src/filesystem/wad_backend.cpp`.
+  Evidence: `src/filesystem/wad_backend.cpp`,
+  `filesystem/wad_backend_adapter.cpp`, `filesystem/wad.c`;
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`
+  passed on 2026-05-09.
+- [x] `FS-WAD-IMPL-004` Move WAD open/load/search behavior into
   `src/filesystem/wad_backend.cpp` while preserving the C callback adapter.
-  Evidence:
-- [ ] `FS-WAD-IMPL-005` Shrink `filesystem/wad.c` to adapter-only or document
+  Evidence: `src/filesystem/wad_backend.cpp`,
+  `filesystem/wad_backend_adapter.cpp`, `filesystem/wad.c`;
+  `.\waf.bat build --targets=test_filesystem_wad_backend,test_wad-archive`
+  passed on 2026-05-09.
+- [x] `FS-WAD-IMPL-005` Shrink `filesystem/wad.c` to adapter-only or document
   remaining blockers.
-  Evidence:
+  Evidence: `filesystem/wad.c` now delegates WAD parsing, lookup, search, open
+  orchestration, and lump reads through `filesystem/wad_backend_adapter.cpp`;
+  remaining `wfile_t`, callback registration, and `FS_AddWad_Fullpath`
+  ownership blockers are documented in
+  `Documentation/codex/modern/filesystem/wad-implementation-audit.md`.
 
 ## Phase 21: PAK Implementation Body Migration
 

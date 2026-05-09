@@ -14,7 +14,7 @@ objects.
 
 - [x] Classify every `filesystem/` file as facade, adapter, legacy
   implementation, or build/public glue.
-- [ ] Migrate WAD implementation body into `src/filesystem/wad_backend.cpp`.
+- [x] Migrate WAD implementation body into `src/filesystem/wad_backend.cpp`.
 - [ ] Migrate PAK implementation body into `src/filesystem/pak_backend.cpp`.
 - [ ] Migrate ZIP/PK3 implementation body into
   `src/filesystem/zip_backend.cpp`.

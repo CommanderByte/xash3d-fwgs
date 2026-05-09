@@ -180,8 +180,84 @@ static qboolean CheckLoadedText( const char *path, const char *expected )
 	return true;
 }
 
+static qboolean ExpectMissingLoad( const char *path )
+{
+	fs_offset_t len = -1;
+	byte *data = g_fs.LoadFile( path, &len, true );
+
+	if( data )
+	{
+		printf( "LoadFile unexpectedly succeeded for %s\n", path );
+		free( data );
+		return false;
+	}
+
+	return true;
+}
+
+static qboolean ExpectSearchResult( const search_t *search, int index, const char *expected )
+{
+	if( !search )
+	{
+		printf( "missing search result for %s\n", expected );
+		return false;
+	}
+
+	if( index >= search->numfilenames )
+	{
+		printf( "missing search index %d for %s\n", index, expected );
+		return false;
+	}
+
+	if( strcmp( search->filenames[index], expected ))
+	{
+		printf( "search result %d mismatch: got %s expected %s\n",
+			index, search->filenames[index], expected );
+		return false;
+	}
+
+	return true;
+}
+
+static qboolean CheckSearchResults( const char *pattern, const char **expected, int count )
+{
+	search_t *search = g_fs.Search( pattern, true, true );
+	int i;
+
+	if( !search )
+	{
+		printf( "Search failed for %s\n", pattern );
+		return false;
+	}
+
+	if( search->numfilenames != count )
+	{
+		printf( "expected %d search results for %s, got %d\n",
+			count, pattern, search->numfilenames );
+		return false;
+	}
+
+	for( i = 0; i < count; i++ )
+	{
+		if( !ExpectSearchResult( search, i, expected[i] ))
+			return false;
+	}
+
+	return true;
+}
+
 static qboolean TestWadLoads( void )
 {
+	static const char *all_txt_results[] =
+	{
+		"/packed.txt",
+		"/probe.txt"
+	};
+	static const char *raw_txt_results[] =
+	{
+		"raw/probe.txt"
+	};
+
 	if( !WriteWadFixture( "raw.wad", "probe", "raw wad payload" ) ||
 		!WriteWadFixture( "inside.wad", "packed", "packed wad payload" ) ||
 		!WritePakWithWadFixture( "pak0.pak", "inside.wad", "inside.wad" ))
@@ -199,7 +275,23 @@ static qboolean TestWadLoads( void )
 	if( !CheckLoadedText( "packed.txt", "packed wad payload" ))
 		return false;
 
-	return true;
+	if( !CheckLoadedText( "raw.wad/probe.txt", "raw wad payload" ))
+		return false;
+
+	if( !CheckLoadedText( "PROBE.TXT", "raw wad payload" ))
+		return false;
+
+	if( !CheckLoadedText( "probe", "raw wad payload" ))
+		return false;
+
+	if( !ExpectMissingLoad( "other.wad/probe.txt" ))
+		return false;
+
+	if( !ExpectMissingLoad( "probe.bin" ))
+		return false;
+
+	return CheckSearchResults( "*.txt", all_txt_results, 2 ) &&
+		CheckSearchResults( "raw.wad/*.txt", raw_txt_results, 1 );
 }
 
 static void CleanupFixture( const char *root )
