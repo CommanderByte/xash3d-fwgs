@@ -17,20 +17,13 @@ GNU General Public License for more details.
 #include "client.h"
 #include "server.h"
 #include "base_cmd.h"
+#include "command_buffer_adapter.h"
 
 #define MAX_CMD_BUFFER	32768
 #define MAX_CMD_LINE	2048
 #define MAX_ALIAS_NAME	32
 
-typedef struct
-{
-	byte data[MAX_CMD_BUFFER];
-	int  cursize;
-} cmdbuf_t;
-
 static int cmd_wait;
-static cmdbuf_t cmd_text;
-static cmdbuf_t filteredcmd_text;
 static cmdalias_t *cmd_alias;
 static uint cmd_condition;
 static int  cmd_condlevel;
@@ -54,43 +47,19 @@ Cbuf_Clear
 */
 void Cbuf_Clear( void )
 {
-	memset( &cmd_text, 0, sizeof( cmd_text ));
-	memset( &filteredcmd_text, 0, sizeof( filteredcmd_text ));
+	CommandBufferAdapter_ClearAll();
 	cmd_wait = 0;
 }
 
-/*
-============
-Cbuf_GetSpace
-============
-*/
-static void *Cbuf_GetSpace( cmdbuf_t *buf, int length )
+static void Cbuf_AddTextToBuffer( cbuf_adapter_buffer_t buffer, const char *text )
 {
-	void *data;
+	cbuf_adapter_status_t status = CommandBufferAdapter_AddText( buffer, text );
 
-	if(( buf->cursize + length ) >= sizeof( buf->data ))
-	{
-		buf->cursize = 0;
-		Host_Error( "%s: overflow\n", __func__ );
-	}
-
-	data = buf->data + buf->cursize;
-	buf->cursize += length;
-
-	return data;
-}
-
-static void Cbuf_AddTextToBuffer( cmdbuf_t *buf, const char *text )
-{
-	int l = Q_strlen( text );
-
-	if(( buf->cursize + l ) >= sizeof( buf->data ))
+	if( status.overflow )
 	{
 		Con_Reportf( S_WARN "%s: overflow\n", __func__ );
 		return;
 	}
-
-	memcpy( Cbuf_GetSpace( buf, l ), text, l );
 }
 
 /*
@@ -102,7 +71,7 @@ Adds command text at the end of the buffer
 */
 void Cbuf_AddText( const char *text )
 {
-	Cbuf_AddTextToBuffer( &cmd_text, text );
+	Cbuf_AddTextToBuffer( CBUF_ADAPTER_PRIVILEGED, text );
 }
 
 void Cbuf_AddTextf( const char *fmt, ... )
@@ -124,7 +93,7 @@ Cbuf_AddFilteredText
 */
 void Cbuf_AddFilteredText( const char *text )
 {
-	Cbuf_AddTextToBuffer( &filteredcmd_text, text );
+	Cbuf_AddTextToBuffer( CBUF_ADAPTER_FILTERED, text );
 }
 
 /*
@@ -134,17 +103,13 @@ Cbuf_InsertText
 Adds command text immediately after the current command
 ============
 */
-static void Cbuf_InsertTextToBuffer( cmdbuf_t *buf, const char *text, size_t len, size_t requested_len )
+static void Cbuf_InsertTextToBuffer( cbuf_adapter_buffer_t buffer, const char *text, size_t len, size_t requested_len )
 {
-	if(( buf->cursize + requested_len ) >= sizeof( buf->data ))
+	cbuf_adapter_status_t status = CommandBufferAdapter_InsertText( buffer, text, len, requested_len );
+
+	if( status.overflow )
 	{
 		Con_Reportf( S_WARN "%s: overflow\n", __func__ );
-	}
-	else
-	{
-		memmove( buf->data + len, buf->data, buf->cursize );
-		memcpy( buf->data, text, len );
-		buf->cursize += len;
 	}
 }
 
@@ -152,13 +117,13 @@ static void Cbuf_InsertTextLen( const char *text, size_t len, size_t requested_l
 {
 	// sometimes we need to insert more data than we have
 	// but also prevent overflow
-	Cbuf_InsertTextToBuffer( &cmd_text, text, len, requested_len );
+	Cbuf_InsertTextToBuffer( CBUF_ADAPTER_PRIVILEGED, text, len, requested_len );
 }
 
 void Cbuf_InsertText( const char *text )
 {
 	size_t l = Q_strlen( text );
-	Cbuf_InsertTextToBuffer( &cmd_text, text, l, l );
+	Cbuf_InsertTextToBuffer( CBUF_ADAPTER_PRIVILEGED, text, l, l );
 }
 
 /*
@@ -166,14 +131,12 @@ void Cbuf_InsertText( const char *text )
 Cbuf_Execute
 ============
 */
-static void Cbuf_ExecuteCommandsFromBuffer( cmdbuf_t *buf, qboolean isPrivileged, int cmdsToExecute )
+static void Cbuf_ExecuteCommandsFromBuffer( cbuf_adapter_buffer_t buffer, qboolean isPrivileged, int cmdsToExecute )
 {
-	char	*text;
 	char	line[MAX_CMD_LINE];
-	int	i, quotes;
-	char	*comment;
+	int	overflow;
 
-	while( buf->cursize )
+	while( CommandBufferAdapter_Size( buffer ) )
 	{
 		if( cmd_wait > 0 )
 		{
@@ -188,59 +151,13 @@ static void Cbuf_ExecuteCommandsFromBuffer( cmdbuf_t *buf, qboolean isPrivileged
 				break;
 		}
 
-		// find a \n or ; line break
-		text = (char *)buf->data;
+		if( !CommandBufferAdapter_PopLine( buffer, line, sizeof( line ), &overflow ))
+			break;
 
-		quotes = false;
-		comment = NULL;
-
-		for( i = 0; i < buf->cursize; i++ )
-		{
-			if( !comment )
-			{
-				if( text[i] == '"' ) quotes = !quotes;
-
-				if( quotes )
-				{
-					// make sure i doesn't get > cursize which causes a negative size in memmove, which is fatal --blub
-					if( i < ( buf->cursize - 1 ) && ( text[i+0] == '\\' && (text[i+1] == '"' || text[i+1] == '\\')))
-						i++;
-				}
-				else
-				{
-					if( text[i+0] == '/' && text[i+1] == '/' && ( i == 0 || (byte)text[i - 1] <= ' ' ))
-						comment = &text[i];
-					if( text[i] == ';' ) break; // don't break if inside a quoted string or comment
-				}
-			}
-
-			if( text[i] == '\n' || text[i] == '\r' )
-				break;
-		}
-
-		if( i >= ( MAX_CMD_LINE - 1 ))
+		if( overflow )
 		{
 			Con_DPrintf( S_ERROR "%s: command string owerflow\n", __func__ );
 			line[0] = 0;
-		}
-		else
-		{
-			memcpy( line, text, comment ? (comment - text) : i );
-			line[comment ? (comment - text) : i] = 0;
-		}
-
-		// delete the text from the command buffer and move remaining commands down
-		// this is necessary because commands (exec) can insert data at the
-		// beginning of the text buffer
-		if( i == buf->cursize )
-		{
-			buf->cursize = 0;
-		}
-		else
-		{
-			i++;
-			buf->cursize -= i;
-			memmove( buf->data, text + i, buf->cursize );
 		}
 
 		// execute the command line
@@ -255,7 +172,7 @@ Cbuf_Execute
 */
 void Cbuf_Execute( void )
 {
-	Cbuf_ExecuteCommandsFromBuffer( &cmd_text, true, -1 );
+	Cbuf_ExecuteCommandsFromBuffer( CBUF_ADAPTER_PRIVILEGED, true, -1 );
 
 	// a1ba: goldsrc limits unprivileged commands per frame to 1 here
 	// I don't see any sense in restricting that at this moment
@@ -265,7 +182,7 @@ void Cbuf_Execute( void )
 	// local game, as client runs server code anyway
 	// do this for singleplayer only though, to make it easier to catch
 	// possible bugs during local multiplayer testing
-	Cbuf_ExecuteCommandsFromBuffer( &filteredcmd_text, SV_Active() && SV_GetMaxClients() == 1, -1 );
+	Cbuf_ExecuteCommandsFromBuffer( CBUF_ADAPTER_FILTERED, SV_Active() && SV_GetMaxClients() == 1, -1 );
 }
 
 /*
@@ -944,7 +861,7 @@ static void Cmd_ExecuteStringWithPrivilegeCheck( const char *text, qboolean isPr
 	if( a )
 	{
 		size_t len = Q_strlen( a->value );
-		Cbuf_InsertTextToBuffer( isPrivileged ? &cmd_text : &filteredcmd_text, a->value, len, len );
+		Cbuf_InsertTextToBuffer( isPrivileged ? CBUF_ADAPTER_PRIVILEGED : CBUF_ADAPTER_FILTERED, a->value, len, len );
 		return;
 	}
 
@@ -1572,6 +1489,14 @@ static void Test_CbufC_f( void )
 	Test_CbufRecord( 'C' );
 }
 
+static void Test_CbufQuoted_f( void )
+{
+	if( Cmd_Argc() == 2 && !Q_strcmp( Cmd_Argv( 1 ), "quoted;value" ))
+		Test_CbufRecord( 'Q' );
+	else
+		Test_CbufRecord( 'X' );
+}
+
 static void Test_CbufInsert_f( void )
 {
 	Test_CbufRecord( 'I' );
@@ -1664,6 +1589,7 @@ static void Test_RunCommandBufferPolicy( void )
 	TASSERT( Cmd_AddCommand( "test_cbuf_a", Test_CbufA_f, "command buffer order test A" ));
 	TASSERT( Cmd_AddCommand( "test_cbuf_b", Test_CbufB_f, "command buffer order test B" ));
 	TASSERT( Cmd_AddCommand( "test_cbuf_c", Test_CbufC_f, "command buffer order test C" ));
+	TASSERT( Cmd_AddCommand( "test_cbuf_quoted", Test_CbufQuoted_f, "command buffer quoted semicolon test" ));
 	TASSERT( Cmd_AddCommand( "test_cbuf_insert", Test_CbufInsert_f, "command buffer insert test" ));
 	TASSERT( Cmd_AddCommand( "test_cbuf_privileged", Test_CbufPrivileged_f, "privileged buffer order test" ));
 	TASSERT( Cmd_AddCommand( "test_cbuf_filtered", Test_CbufFiltered_f, "filtered buffer order test" ));
@@ -1672,6 +1598,30 @@ static void Test_RunCommandBufferPolicy( void )
 	Cbuf_AddText( "test_cbuf_a; test_cbuf_insert; test_cbuf_c\n" );
 	Cbuf_Execute();
 	TASSERT( Test_CbufOrderEquals( "AIBC" ));
+
+	Test_CbufResetOrder();
+	Cbuf_AddText( "test_cbuf_a\r\ntest_cbuf_b\ntest_cbuf_c\r" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "ABC" ));
+
+	Test_CbufResetOrder();
+	Cbuf_AddText( "test_cbuf_quoted \"quoted;value\"; test_cbuf_b\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "QB" ));
+
+	Test_CbufResetOrder();
+	Cbuf_AddText( "test_cbuf_a // ; test_cbuf_b\ntest_cbuf_c\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "AC" ));
+
+	Cbuf_AddText( "alias test_cbuf_alias test_cbuf_b\n" );
+	Cbuf_Execute();
+	Test_CbufResetOrder();
+	Cbuf_AddText( "test_cbuf_a; test_cbuf_alias; test_cbuf_c\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "ABC" ));
+	Cbuf_AddText( "unalias test_cbuf_alias\n" );
+	Cbuf_Execute();
 
 	Test_CbufResetOrder();
 	Cbuf_AddText( "test_cbuf_a; wait; test_cbuf_b\n" );
@@ -1697,6 +1647,7 @@ static void Test_RunCommandBufferPolicy( void )
 	Cmd_RemoveCommand( "test_cbuf_filtered" );
 	Cmd_RemoveCommand( "test_cbuf_privileged" );
 	Cmd_RemoveCommand( "test_cbuf_insert" );
+	Cmd_RemoveCommand( "test_cbuf_quoted" );
 	Cmd_RemoveCommand( "test_cbuf_c" );
 	Cmd_RemoveCommand( "test_cbuf_b" );
 	Cmd_RemoveCommand( "test_cbuf_a" );

@@ -1407,19 +1407,30 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 41: Command Buffer Primitive
 
-- [ ] `ENG-CBUF-001` Audit command buffer ownership, command splitting,
+- [x] `ENG-CBUF-001` Audit command buffer ownership, command splitting,
   quote/comment handling, insertion behavior, overflow behavior, filtered
   buffer behavior, and `wait` semantics.
-  Evidence: `Documentation/codex/todo/engine_command_buffer_todo.md`.
-- [ ] `ENG-CBUF-002` Expand command-buffer tests for semicolon/newline
+  Evidence: `Documentation/codex/legacy/engine/command-buffer-baseline.md` and
+  `Documentation/codex/todo/engine_command_buffer_todo.md`.
+- [x] `ENG-CBUF-002` Expand command-buffer tests for semicolon/newline
   splitting, CRLF, comments, quotes, inserted alias text, and overflow paths.
-  Evidence:
-- [ ] `ENG-CBUF-003` Add a modern command-buffer primitive and route `Cbuf_*`
+  Evidence: `engine/common/cmd.c` `Test_RunCommandBufferPolicy` covers legacy
+  runtime behavior; `tests/engine/command_buffer.cpp` covers the standalone
+  modern primitive with matching splitter and overflow cases.
+- [x] `ENG-CBUF-003` Add a modern command-buffer primitive and route `Cbuf_*`
   mechanics through it while keeping command dispatch policy stable.
-  Evidence:
-- [ ] `ENG-CBUF-004` Run focused tests, `xash_tests`, full tests, and Windows
+  Evidence: `src/include/engine/commands/command_buffer.hpp`,
+  `src/engine/commands/command_buffer.cpp`, and
+  `engine/common/command_buffer_adapter.cpp`; dispatch policy remains in
+  `engine/common/cmd.c`.
+- [x] `ENG-CBUF-004` Run focused tests, `xash_tests`, full tests, and Windows
   runtime smoke after routing.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_command_buffer`,
+  `.\waf.bat build --targets=xash_tests`, and `.\waf.bat build --alltests`
+  passed 52/52. `.\waf.bat install --destdir=C:\git\xash3d-fwgs\run-win32`
+  refreshed the runtime; `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited
+  0, reached `Time to first frame: 0.534 seconds`, and stopped with reason
+  `command`.
 
 ## Phase 42: Memory Pools And Allocation
 

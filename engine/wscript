@@ -191,7 +191,7 @@ def build(bld):
 
 	# basic build: dedicated only
 	source = bld.path.ant_glob(['common/*.c', 'common/imagelib/*.c', 'common/soundlib/*.c', 'server/*.c'])
-	source += ['common/base_cmd_adapter.cpp', 'common/infostring.cpp']
+	source += ['common/base_cmd_adapter.cpp', 'common/command_buffer_adapter.cpp', 'common/infostring.cpp']
 	libs += ['modern_engine']
 
 	# include platform-specific sources, this shall not fail if directory doesn't exist

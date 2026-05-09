@@ -13,5 +13,8 @@ small tested pieces behind them.
 Current helper:
 
 - `BaseCommandRegistry`: private C++ registry for the legacy `BaseCmd_*`
-  command/alias/cvar name table. It is tested standalone and is not yet routed
-  through `engine/common/base_cmd.c`.
+  command/alias/cvar name table. It is tested standalone and routed through the
+  private `engine/common/base_cmd_adapter.cpp` bridge.
+- `CommandBuffer`: private C++ byte queue for legacy-compatible `Cbuf_*`
+  append, insert, overflow, and command-splitting mechanics. Dispatch policy
+  remains in `engine/common/cmd.c`.

@@ -8,3 +8,5 @@ Current private headers:
 
 - `base_command_registry.hpp`: modern helper for the legacy typed BaseCmd name
   table.
+- `command_buffer.hpp`: modern helper for raw `Cbuf_*` byte-queue mechanics and
+  legacy-compatible command splitting.

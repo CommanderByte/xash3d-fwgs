@@ -8,6 +8,9 @@ Current implementation notes:
 
 - `basecmd-migration-guide.md`: how the legacy `BaseCmd_*` registry should move
   toward `src/engine/commands/` without changing the public C surface.
+- `command-buffer-migration-guide.md`: how raw `Cbuf_*` buffer mechanics route
+  through the private modern command-buffer primitive while dispatch policy
+  stays in `cmd.c`.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports
   should delegate into `src/utilities` without making hash/checksum helpers
   engine-owned.

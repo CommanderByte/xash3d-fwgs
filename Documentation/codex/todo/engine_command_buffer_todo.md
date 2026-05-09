@@ -30,27 +30,38 @@ Legacy surface:
 
 ## Phase 41 Tasks: Command Buffer Primitive
 
-- [ ] `ENG-CBUF-001` Audit current command buffer ownership, command splitting,
+- [x] `ENG-CBUF-001` Audit current command buffer ownership, command splitting,
   quote/comment handling, insertion behavior, overflow behavior, filtered
   buffer behavior, and `wait` semantics.
-  Evidence:
+  Evidence: `Documentation/codex/legacy/engine/command-buffer-baseline.md`.
 
-- [ ] `ENG-CBUF-002` Expand tests for semicolon and newline splitting inside
+- [x] `ENG-CBUF-002` Expand tests for semicolon and newline splitting inside
   and outside quotes, line comments, CRLF handling, and inserted alias text.
-  Evidence:
+  Evidence: `engine/common/cmd.c` `Test_RunCommandBufferPolicy` now covers
+  CRLF, quoted semicolons, line-comment stripping, alias insertion, `wait`,
+  filtered order, and overflow rejection.
 
-- [ ] `ENG-CBUF-003` Add a modern command-buffer primitive under
+- [x] `ENG-CBUF-003` Add a modern command-buffer primitive under
   `src/engine/commands` without changing command dispatch.
-  Evidence:
+  Evidence: `src/include/engine/commands/command_buffer.hpp` and
+  `src/engine/commands/command_buffer.cpp`.
 
-- [ ] `ENG-CBUF-004` Add shadow tests comparing legacy buffer mechanics and the
+- [x] `ENG-CBUF-004` Add shadow tests comparing legacy buffer mechanics and the
   modern primitive.
-  Evidence:
+  Evidence: `tests/engine/command_buffer.cpp` mirrors the splitter, insertion,
+  overflow, quote, escape, comment, and CR/LF cases now pinned in `xash_tests`.
 
-- [ ] `ENG-CBUF-005` Route `Cbuf_*` mechanics through the modern primitive while
+- [x] `ENG-CBUF-005` Route `Cbuf_*` mechanics through the modern primitive while
   keeping command dispatch and cvar policy in legacy code.
-  Evidence:
+  Evidence: `engine/common/command_buffer_adapter.cpp` owns the two runtime C++
+  buffers; `engine/common/cmd.c` still owns command dispatch, alias expansion,
+  filtered privilege policy, `stuffcmds`, and `wait`.
 
-- [ ] `ENG-CBUF-006` Run focused tests, `xash_tests`, `.\waf.bat build
+- [x] `ENG-CBUF-006` Run focused tests, `xash_tests`, `.\waf.bat build
   --alltests`, and a Windows runtime smoke.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_command_buffer`,
+  `.\waf.bat build --targets=xash_tests`, and `.\waf.bat build --alltests`
+  passed 52/52. Runtime smoke command
+  `.\xash3d.exe -dev 2 -log +wait +wait +quit` from `run-win32` exited 0,
+  reached `Time to first frame: 0.534 seconds`, and stopped with reason
+  `command`.
