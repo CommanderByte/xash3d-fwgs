@@ -17,6 +17,8 @@ Current implementation notes:
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.
+- `rendered-console-sink.md`: why the in-game rendered console remains a
+  legacy client sink until a later router/client-rendering phase.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports
   should delegate into `src/utilities` without making hash/checksum helpers
   engine-owned.

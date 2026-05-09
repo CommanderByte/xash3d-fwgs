@@ -109,6 +109,54 @@ private:
 	PlatformConsoleConfig m_lastConfig;
 };
 
+class IWin32ConsoleIo
+{
+public:
+	virtual ~IWin32ConsoleIo() = default;
+
+	virtual void initialize(const PlatformConsoleConfig &config) = 0;
+	virtual void shutdown() = 0;
+	virtual void print(const char *text) = 0;
+	virtual const char *readCommand() = 0;
+	virtual void show(bool visible) = 0;
+	virtual void disableInput() = 0;
+	virtual void setStatus(const char *text) = 0;
+	virtual void registerCommands() = 0;
+};
+
+class Win32PlatformConsoleBackend : public IPlatformConsoleBackend
+{
+public:
+	explicit Win32PlatformConsoleBackend(IWin32ConsoleIo &io,
+		PlatformConsoleCapabilities capabilities =
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::Output) |
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::Input) |
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::Visibility) |
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::StatusLine) |
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::CommandRegistration));
+
+	PlatformConsoleCapabilities capabilities() const override;
+	void initialize(const PlatformConsoleConfig &config) override;
+	void shutdown() override;
+	void print(const char *text) override;
+	const char *readCommand() override;
+	void show(bool visible) override;
+	void disableInput() override;
+	void setStatus(const char *text) override;
+	void registerCommands() override;
+
+	bool initialized() const;
+	bool inputEnabled() const;
+	const PlatformConsoleConfig &lastConfig() const;
+
+private:
+	IWin32ConsoleIo &m_io;
+	PlatformConsoleCapabilities m_capabilities;
+	bool m_initialized;
+	bool m_inputEnabled;
+	PlatformConsoleConfig m_lastConfig;
+};
+
 }
 }
 }

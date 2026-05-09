@@ -88,6 +88,10 @@ Keep sink implementations thin:
 - `ServerEventLog` should remain a separate server log service, even if it
   shares formatting helpers.
 
+The rendered in-game console is documented separately in
+`rendered-console-sink.md`. For now it remains a legacy client sink reached
+through `Con_Print()` from `Sys_Print()`.
+
 ## Compatibility Surface
 
 Do not change these signatures during the first pass:
@@ -157,14 +161,15 @@ audit passes do not need a smoke test.
 
 1. Document current ownership and compatibility rules.
 2. Add platform console backend capability/config types and a null backend.
-3. Wrap POSIX and Win32 background console behavior behind backend adapters
-   while preserving existing C functions.
-4. Add target-neutral filter/format helpers and unit tests.
-5. Route `Con_Printf`, `Con_DPrintf`, and `Con_Reportf` through helpers while
+3. Wrap POSIX and Win32 background console behavior behind backend wrappers.
+4. Route Win32 `Wcon_*` through the Win32 backend with Windows smoke coverage.
+5. Route POSIX live paths in Phase 800 with POSIX validation.
+6. Add target-neutral filter/format helpers and unit tests.
+7. Route `Con_Printf`, `Con_DPrintf`, and `Con_Reportf` through helpers while
    preserving `Sys_Print()` fanout.
-6. Extract platform/log formatting helpers from `Sys_Print()` and
+8. Extract platform/log formatting helpers from `Sys_Print()` and
    `Sys_PrintLog()` behind tests.
-7. Only then consider a router/sink abstraction.
+9. Only then consider a router/sink abstraction.
 
 This keeps the first code change small and avoids moving the rendered console
 or Win32 console window before we know exactly what behavior is contractual.

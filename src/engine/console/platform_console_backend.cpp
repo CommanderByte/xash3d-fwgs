@@ -168,6 +168,120 @@ const PlatformConsoleConfig &PosixPlatformConsoleBackend::lastConfig() const
 	return m_lastConfig;
 }
 
+Win32PlatformConsoleBackend::Win32PlatformConsoleBackend(IWin32ConsoleIo &io,
+	PlatformConsoleCapabilities capabilities)
+	: m_io(io)
+	, m_capabilities(capabilities)
+	, m_initialized(false)
+	, m_inputEnabled(false)
+	, m_lastConfig()
+{
+}
+
+PlatformConsoleCapabilities Win32PlatformConsoleBackend::capabilities() const
+{
+	return m_capabilities;
+}
+
+void Win32PlatformConsoleBackend::initialize(const PlatformConsoleConfig &config)
+{
+	m_lastConfig = config;
+	m_initialized = true;
+	m_inputEnabled = true;
+	m_io.initialize(config);
+}
+
+void Win32PlatformConsoleBackend::shutdown()
+{
+	if (m_initialized)
+		m_io.shutdown();
+
+	m_initialized = false;
+	m_inputEnabled = false;
+}
+
+void Win32PlatformConsoleBackend::print(const char *text)
+{
+	if (!m_initialized || !text ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::Output))
+	{
+		return;
+	}
+
+	m_io.print(text);
+}
+
+const char *Win32PlatformConsoleBackend::readCommand()
+{
+	if (!m_initialized || !m_inputEnabled ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::Input))
+	{
+		return nullptr;
+	}
+
+	return m_io.readCommand();
+}
+
+void Win32PlatformConsoleBackend::show(bool visible)
+{
+	if (!m_initialized ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::Visibility))
+	{
+		return;
+	}
+
+	m_io.show(visible);
+}
+
+void Win32PlatformConsoleBackend::disableInput()
+{
+	if (!m_initialized || !m_lastConfig.dedicated ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::Input))
+	{
+		return;
+	}
+
+	m_inputEnabled = false;
+	m_io.disableInput();
+}
+
+void Win32PlatformConsoleBackend::setStatus(const char *text)
+{
+	if (!m_initialized || !text ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::StatusLine))
+	{
+		return;
+	}
+
+	m_io.setStatus(text);
+}
+
+void Win32PlatformConsoleBackend::registerCommands()
+{
+	if (!m_initialized || !m_lastConfig.dedicated ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::CommandRegistration))
+	{
+		return;
+	}
+
+	m_io.registerCommands();
+}
+
+bool Win32PlatformConsoleBackend::initialized() const
+{
+	return m_initialized;
+}
+
+bool Win32PlatformConsoleBackend::inputEnabled() const
+{
+	return m_inputEnabled;
+}
+
+const PlatformConsoleConfig &Win32PlatformConsoleBackend::lastConfig() const
+{
+	return m_lastConfig;
+}
+
 }
 }
 }

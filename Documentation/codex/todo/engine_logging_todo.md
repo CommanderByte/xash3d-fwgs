@@ -91,9 +91,12 @@ Platform backend decision from the second audit:
   filesystem logging cleanup should feed engine output.
   Evidence: `Documentation/codex/modern/engine/console-logging-migration-guide.md`.
 
-- [ ] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
+- [x] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
   any output path changes.
-  Evidence: no output path changed during the audit pass; pending code changes.
+  Evidence: backend-wrapper changes did not reroute any legacy output/input
+  path, so Windows runtime smoke is not required yet. Focused/full validation
+  evidence is recorded under `ENG-LOG-007`, `ENG-LOG-008`, and `ENG-LOG-009`;
+  the first live `Wcon_*` routing smoke test is tracked by `ENG-LOG-013`.
 
 - [x] `ENG-LOG-006` Document background console backend ownership, command
   input hierarchy, and per-platform capability expectations.
@@ -123,16 +126,33 @@ Platform backend decision from the second audit:
   `.\waf.bat build --targets=test_engine_base_command_registry,test_engine_command_buffer,test_engine_info_string,test_engine_network_buffer,test_engine_platform_console_backend`,
   and `.\waf.bat build` passed 24/24 executed tests.
 
-- [ ] `ENG-LOG-009` Wrap Win32 external console output/input/lifecycle behind
-  a platform console backend while preserving the existing `Wcon_*` C surface.
-  Evidence: pending implementation pass.
+- [x] `ENG-LOG-009` Add a Win32 external-console backend wrapper with
+  injectable output/input/lifecycle operations and tests for current `Wcon_*`
+  behavior boundaries: print/show/status/read are normal capabilities,
+  input-disable and command registration are dedicated-only, missing
+  capabilities are honored, and shutdown is idempotent.
+  Evidence: `src/include/engine/console/platform_console_backend.hpp`,
+  `src/engine/console/platform_console_backend.cpp`,
+  `tests/engine/platform_console_backend.cpp`; commands
+  `.\waf.bat build --targets=test_engine_platform_console_backend`,
+  direct execution of `build\src\test_engine_platform_console_backend.exe`,
+  `.\waf.bat build --targets=test_engine_base_command_registry,test_engine_command_buffer,test_engine_info_string,test_engine_network_buffer,test_engine_platform_console_backend`,
+  and `.\waf.bat build` passed 24/24 executed tests.
 
 - [ ] `ENG-LOG-010` Decide whether Android/iOS/Switch/Vita should use explicit
   output-only backends or remain direct `Sys_PrintStdout()` platform branches
   until the router phase.
   Evidence: pending implementation pass.
 
-- [ ] `ENG-LOG-011` Route the legacy POSIX/Linux `Platform_Input()` and stdout
-  output path through the POSIX backend once a POSIX validation build is
-  available.
-  Evidence: pending platform validation pass.
+- [x] `ENG-LOG-011` Move live POSIX/Linux console routing and validation out of
+  Phase 43.
+  Evidence: `Documentation/codex/todo/posix_console_backend_todo.md`, Phase 800
+  in `Documentation/codex/tasks.md`.
+
+- [x] `ENG-LOG-012` Document the rendered in-game console sink boundary and
+  defer code extraction until a later router/client-rendering phase.
+  Evidence: `Documentation/codex/modern/engine/rendered-console-sink.md`.
+
+- [ ] `ENG-LOG-013` Route the existing Win32 `Wcon_*` C functions through the
+  Win32 backend wrapper and run a Windows runtime smoke test.
+  Evidence: pending implementation pass.
