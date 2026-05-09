@@ -60,6 +60,7 @@ def build(bld):
 			'no-init': '../tests/filesystem/no-init.c',
 			'pk3dir': '../tests/filesystem/pk3dir.c',
 			'rodir': '../tests/filesystem/rodir.c',
+			'search-results': '../tests/filesystem/search-results.c',
 			'wad-archive': '../tests/filesystem/wad-archive.c',
 			'zip-archive': '../tests/filesystem/zip-archive.c'
 		}

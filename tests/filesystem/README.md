@@ -52,6 +52,7 @@ structure.
 | Falldir/custom/downloaded/HD/LV/addon/localization hierarchy | `tests/filesystem/hierarchy.c` | existing | Freezes high-risk game hierarchy mount behavior before extraction. |
 | PAK open/search | `tests/filesystem/archive-order.c` | existing | Generated PAK contains archive-only file. |
 | PK3 directory mount behavior | `tests/filesystem/pk3dir.c` | existing | Covers `.pk3dir` directory mounts and loose-file precedence. |
+| Search result ordering and duplicates | `tests/filesystem/search-results.c` | existing | Covers sorted `FS_Search` output, current duplicate filtering, and `gamedironly` filtering. |
 | ZIP stored file | `tests/filesystem/zip-archive.c` | existing | Generated PK3 fixture with manual ZIP records. |
 | ZIP deflated file | `tests/filesystem/zip-archive.c` | existing | Uses miniz raw deflate data inside generated PK3. |
 | WAD lump lookup | `tests/filesystem/wad-archive.c` | existing | Generated WAD3 fixture with a script lump. |
@@ -68,6 +69,7 @@ structure.
 | Path policy scaffold | `tests/filesystem/path_policy.cpp` | existing | Built by `src/wscript`; freezes path rejection, direct-path prefix stripping, and write-mode detection. |
 | PAK backend skeleton | `tests/filesystem/pak_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
 | Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
+| Search result builder | `tests/filesystem/search_result_builder.cpp` | existing | Built by `src/wscript`; covers target-neutral sort, duplicate compaction, and packed string copying. |
 | WAD backend skeleton | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
 | ZIP backend skeleton | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
 | Android assets backend skeleton | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and hook forwarding without Android runtime dependencies. |

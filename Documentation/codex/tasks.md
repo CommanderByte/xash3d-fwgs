@@ -630,17 +630,24 @@ commit, test command, document link, or manual verification note that proves it.
   `.\waf.bat build --targets=test_filesystem_file_handle_ops`.
 - [x] `FS-FILE-004` Document decompression and backup-handle ownership rules.
   Evidence: `Documentation/codex/modern/filesystem/file-handle-ownership.md`.
-- [ ] `FS-FILE-005` Route tell/eof/seek cursor math through `FileHandleOps`.
-  Evidence:
+- [x] `FS-FILE-005` Route tell/eof/seek cursor math through `FileHandleOps`.
+  Evidence: `filesystem/file_handle_ops_adapter.cpp`,
+  `filesystem/filesystem.c`; commands
+  `.\waf.bat build --targets=test_filesystem_file_handle_ops,test_file-handle`
+  and direct execution of both test binaries.
 
 ## Phase 16: Search Result Assembly
 
 - [x] `FS-SEARCH-001` Add focused TODO list for search result migration.
   Evidence: `Documentation/codex/todo/search_results_todo.md`.
-- [ ] `FS-SEARCH-002` Add tests for result ordering and duplicate filtering.
-  Evidence:
-- [ ] `FS-SEARCH-003` Add target-neutral `SearchResultBuilder`.
-  Evidence:
+- [x] `FS-SEARCH-002` Add tests for result ordering and duplicate filtering.
+  Evidence: `tests/filesystem/search-results.c`; command
+  `.\waf.bat build --targets=test_search-results`.
+- [x] `FS-SEARCH-003` Add target-neutral `SearchResultBuilder`.
+  Evidence: `src/include/filesystem/search_result_builder.hpp`,
+  `src/filesystem/search_result_builder.cpp`,
+  `tests/filesystem/search_result_builder.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_search_result_builder`.
 - [ ] `FS-SEARCH-004` Route `FS_Search` result assembly through the builder.
   Evidence:
 
