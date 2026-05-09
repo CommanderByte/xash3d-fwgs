@@ -682,9 +682,128 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence: `tests/filesystem/interface.cpp`; command
   `.\waf.bat build --targets=test_interface`.
 
-## Phase 19: Commit And Review Hygiene
+## Phase 19: Filesystem Folder Migration Map
 
-- [ ] `REVIEW-001` Push documentation commits to remote branch.
+- [x] `FS-MAP-001` Classify remaining `filesystem/` files by migration role.
+  Evidence: `Documentation/codex/modern/filesystem/filesystem-folder-migration-map.md`.
+- [x] `FS-MAP-002` Add implementation-body migration TODO list.
+  Evidence: `Documentation/codex/todo/backend_implementation_migration_todo.md`.
+- [ ] `FS-MAP-003` Add `Documentation/codex/done/` archival policy before
+  moving completed TODO or audit files.
+  Evidence:
+
+## Phase 20: WAD Implementation Body Migration
+
+- [ ] `FS-WAD-IMPL-001` Audit `filesystem/wad.c` responsibilities and map each
+  function to `WadBackend`, adapter-only code, or shared runtime support.
+  Evidence:
+- [ ] `FS-WAD-IMPL-002` Expand WAD tests for any uncovered parsing, lookup,
+  load, or archive-in-archive behavior found during the audit.
+  Evidence:
+- [ ] `FS-WAD-IMPL-003` Move WAD parsing and lump lookup into
+  `src/filesystem/wad_backend.cpp`.
+  Evidence:
+- [ ] `FS-WAD-IMPL-004` Move WAD open/load/search behavior into
+  `src/filesystem/wad_backend.cpp` while preserving the C callback adapter.
+  Evidence:
+- [ ] `FS-WAD-IMPL-005` Shrink `filesystem/wad.c` to adapter-only or document
+  remaining blockers.
+  Evidence:
+
+## Phase 21: PAK Implementation Body Migration
+
+- [ ] `FS-PAK-IMPL-001` Audit `filesystem/pak.c` responsibilities and expand
+  tests for uncovered PAK parsing/search/open behavior.
+  Evidence:
+- [ ] `FS-PAK-IMPL-002` Move PAK parsing and file table lookup into
+  `src/filesystem/pak_backend.cpp`.
+  Evidence:
+- [ ] `FS-PAK-IMPL-003` Move PAK open/search behavior into
+  `src/filesystem/pak_backend.cpp` while preserving the C callback adapter.
+  Evidence:
+- [ ] `FS-PAK-IMPL-004` Shrink `filesystem/pak.c` to adapter-only or document
+  remaining blockers.
+  Evidence:
+
+## Phase 22: ZIP/PK3 Implementation Body Migration
+
+- [ ] `FS-ZIP-IMPL-001` Audit `filesystem/zip.c` responsibilities, including
+  central directory parsing, unsupported compression, and deflated handles.
+  Evidence:
+- [ ] `FS-ZIP-IMPL-002` Expand ZIP/PK3 tests for uncovered edge cases before
+  moving parser code.
+  Evidence:
+- [ ] `FS-ZIP-IMPL-003` Move ZIP/PK3 parsing and lookup into
+  `src/filesystem/zip_backend.cpp`.
+  Evidence:
+- [ ] `FS-ZIP-IMPL-004` Move stored/deflated open/search setup into
+  `src/filesystem/zip_backend.cpp` while preserving file-handle behavior.
+  Evidence:
+- [ ] `FS-ZIP-IMPL-005` Shrink `filesystem/zip.c` to adapter-only or document
+  remaining blockers.
+  Evidence:
+
+## Phase 23: Directory Implementation Body Migration
+
+- [ ] `FS-DIR-IMPL-001` Audit `filesystem/dir.c` cache, search, and
+  case-insensitive path repair responsibilities.
+  Evidence:
+- [ ] `FS-DIR-IMPL-002` Expand directory tests for uncovered cache refresh,
+  case repair, and platform path quirks.
+  Evidence:
+- [ ] `FS-DIR-IMPL-003` Move directory cache/search behavior into
+  `src/filesystem/directory_backend.cpp`.
+  Evidence:
+- [ ] `FS-DIR-IMPL-004` Shrink `filesystem/dir.c` to adapter-only or document
+  remaining blockers.
+  Evidence:
+
+## Phase 24: Android Assets Implementation Body Migration
+
+- [ ] `FS-ANDROID-IMPL-001` Audit `filesystem/android.c` platform-specific
+  runtime responsibilities.
+  Evidence:
+- [ ] `FS-ANDROID-IMPL-002` Move target-neutral Android asset behavior into
+  `src/filesystem/android_assets_backend.cpp`.
+  Evidence:
+- [ ] `FS-ANDROID-IMPL-003` Keep Android headers and runtime calls behind
+  platform adapters so desktop builds remain clean.
+  Evidence:
+
+## Phase 25: Filesystem Runtime Ownership
+
+- [ ] `FS-RUNTIME-001` Design `FilesystemRuntime` ownership boundaries for
+  state, search paths, write path, gameinfo mounts, archive registry, and
+  diagnostics.
+  Evidence:
+- [ ] `FS-RUNTIME-002` Move search path list ownership behind
+  `FilesystemRuntime` while preserving `fs_api_t` behavior.
+  Evidence:
+- [ ] `FS-RUNTIME-003` Move `file_t` allocation/lifetime behind runtime-owned
+  handle helpers.
+  Evidence:
+- [ ] `FS-RUNTIME-004` Move gameinfo loading and rescan orchestration behind
+  runtime helpers.
+  Evidence:
+
+## Phase 26: Facade Thinning And Build Convergence
+
+- [ ] `FS-FACADE-001` Route `VFileSystem009.cpp` methods through the modern
+  runtime while preserving the public vtable and `CreateInterface` behavior.
+  Evidence:
+- [ ] `FS-FACADE-002` Update `filesystem/wscript` so modern implementation
+  bodies are the primary source of filesystem behavior.
+  Evidence:
+- [ ] `FS-FACADE-003` Remove or quarantine obsolete legacy implementation
+  files once they are adapter-only and unused.
+  Evidence:
+- [ ] `FS-FACADE-004` Move completed TODO and audit documents into
+  `Documentation/codex/done/` after implementation evidence is complete.
+  Evidence:
+
+## Phase 27: Commit And Review Hygiene
+
+- [ ] `REVIEW-001` Push modernization commits to remote branch.
   Evidence:
 - [ ] `REVIEW-002` Open draft PR for documentation and baseline setup.
   Evidence:
@@ -721,3 +840,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-021 | Keep Android runtime code behind `XASH_ANDROID`, but allow the target-neutral `AndroidAssetsBackend` class and adapter declarations to compile on desktop when they avoid Android headers and APIs. | `modularization-plan/android-assets-backend-plan.md`, `todo/android_assets_backend_todo.md` |
 | 2026-05-09 | DEC-022 | Start `filesystem.c` migration with a target-neutral `FilesystemState` scaffold and tests before routing legacy globals through it. | `todo/filesystem_state_todo.md`, `src/include/filesystem/filesystem_state.hpp`, `tests/filesystem/filesystem_state.cpp` |
 | 2026-05-09 | DEC-023 | Preserve current path rejection semantics exactly in `PathPolicy`, including direct-path bypass after empty-path rejection and the single leading `../` strip quirk. | `src/include/filesystem/path_policy.hpp`, `tests/filesystem/path_policy.cpp`, `filesystem/filesystem.c` |
+| 2026-05-09 | DEC-024 | Treat `src/filesystem` as the long-term implementation home and shrink `filesystem/` toward stable facades plus temporary adapters. | `modern/filesystem/filesystem-folder-migration-map.md`, `todo/backend_implementation_migration_todo.md` |

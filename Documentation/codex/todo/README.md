@@ -7,6 +7,9 @@ main `tasks.md` phase tracker, but still useful for auditability.
 
 Documents:
 
+- [backend_implementation_migration_todo.md](backend_implementation_migration_todo.md)
+  tracks the larger movement of implementation bodies from `filesystem/` to
+  `src/filesystem`.
 - [android_assets_backend_todo.md](android_assets_backend_todo.md) tracks the
   Android asset backend migration after desktop backend patterns are stable.
 - [archive_registry_todo.md](archive_registry_todo.md) tracks the
