@@ -601,11 +601,13 @@ commit, test command, document link, or manual verification note that proves it.
 
 - [x] `FS-HIER-002` Add focused TODO list for game hierarchy migration.
   Evidence: `Documentation/codex/todo/game_hierarchy_todo.md`.
-- [ ] `FS-HIER-003` Add mount request record type and tests.
-  Evidence:
-- [ ] `FS-HIER-004` Build hierarchy mount requests before applying them to
+- [x] `FS-HIER-003` Add mount request record type and tests.
+  Evidence: `src/include/filesystem/game_hierarchy_builder.hpp`,
+  `tests/filesystem/game_hierarchy_builder.cpp`.
+- [x] `FS-HIER-004` Build hierarchy mount requests before applying them to
   legacy search paths.
-  Evidence:
+  Evidence: `src/filesystem/game_hierarchy_builder.cpp`,
+  `Documentation/codex/modern/filesystem/game-hierarchy-builder.md`.
 - [ ] `FS-HIER-005` Route `FS_LoadGameInfo` mount construction through the
   hierarchy builder.
   Evidence:

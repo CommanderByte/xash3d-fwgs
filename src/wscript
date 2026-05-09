@@ -28,6 +28,7 @@ def build(bld):
 			'filesystem_archive_registry': '../tests/filesystem/archive_registry.cpp',
 			'filesystem_debug_snapshot': '../tests/filesystem/debug_snapshot.cpp',
 			'filesystem_directory_backend': '../tests/filesystem/directory_backend.cpp',
+			'filesystem_game_hierarchy_builder': '../tests/filesystem/game_hierarchy_builder.cpp',
 			'filesystem_state': '../tests/filesystem/filesystem_state.cpp',
 			'filesystem_path_policy': '../tests/filesystem/path_policy.cpp',
 			'filesystem_pak_backend': '../tests/filesystem/pak_backend.cpp',

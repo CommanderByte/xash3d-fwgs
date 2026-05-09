@@ -7,11 +7,11 @@ Track extraction of game directory and mount-order construction from
 
 ## Migration Order
 
-- [ ] Add `GameHierarchyBuilder` design note with current mount ordering.
+- [x] Add `GameHierarchyBuilder` design note with current mount ordering.
 - [ ] Add fixtures for any hierarchy behavior not covered by
   `tests/filesystem/hierarchy.c`.
-- [ ] Extract a target-neutral mount request record type.
-- [ ] Build mount requests separately from applying them to `searchpath_t`.
+- [x] Extract a target-neutral mount request record type.
+- [x] Build mount requests separately from applying them to `searchpath_t`.
 - [ ] Route `FS_LoadGameInfo` hierarchy mounting through the builder.
 
 ## Boundaries
