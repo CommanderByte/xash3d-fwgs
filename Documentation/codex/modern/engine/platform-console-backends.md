@@ -112,7 +112,13 @@ Initial implementation landed in:
 The implemented slice includes capability helpers, default config values,
 `IPlatformConsoleBackend`, `NullPlatformConsoleBackend`,
 `PosixPlatformConsoleBackend`, and `Win32PlatformConsoleBackend` wrappers with
-injectable I/O. It does not route legacy platform output/input yet.
+injectable I/O.
+
+The Win32 live route now keeps the public C surface in
+`engine/platform/win32/con_win.c`, but those `Wcon_*` functions delegate through
+`src/engine/console/platform_console_backend_adapter.cpp` before calling the
+legacy implementation. This proves the backend boundary without changing the
+external platform ABI or rewriting the Win32 console editor in the same step.
 
 ## Backend Types
 
@@ -172,7 +178,7 @@ flowchart LR
 6. Wrap POSIX stdin/stdout behavior behind the POSIX backend in a POSIX
    validation build.
 7. Route Win32 `Wcon_*` behavior through the Win32 backend while preserving the
-   C functions as adapters.
+   C functions as adapters. Completed for the current Windows smoke path.
 8. Only after platform backends are stable, revisit `Sys_Print()` fanout and the
    higher-level console router.
 

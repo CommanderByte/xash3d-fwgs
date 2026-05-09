@@ -14,6 +14,7 @@ GNU General Public License for more details.
 */
 
 #include "common.h"
+#include "engine/console/platform_console_backend_adapter.h"
 #include "xash3d_mathlib.h"
 
 /*
@@ -127,24 +128,34 @@ static void Wcon_PrintInternal( const char *msg, int length )
 	SetConsoleTextAttribute( s_wcd.hOutput, g_color_table[7] );
 }
 
-void Wcon_ShowConsole( qboolean show )
+void Wcon_LegacyShowConsole( int show )
 {
-	if( !s_wcd.hWnd || show == s_wcd.consoleVisible || s_wcd.attached )
+	if( !s_wcd.hWnd || (qboolean)show == s_wcd.consoleVisible || s_wcd.attached )
 		return;
 
-	s_wcd.consoleVisible = show;
+	s_wcd.consoleVisible = (qboolean)show;
 	if( show )
 		ShowWindow( s_wcd.hWnd, SW_SHOW );
 	else
 		ShowWindow( s_wcd.hWnd, SW_HIDE );
 }
 
-void Wcon_DisableInput( void )
+void Wcon_ShowConsole( qboolean show )
+{
+	Xash_Win32Console_Show( show );
+}
+
+void Wcon_LegacyDisableInput( void )
 {
 	if( host.type != HOST_DEDICATED || !s_wcd.hWnd )
 		return;
 
 	s_wcd.inputEnabled = false;
+}
+
+void Wcon_DisableInput( void )
+{
+	Xash_Win32Console_DisableInput();
 }
 
 static void Wcon_SetInputText( const char *inputText )
@@ -463,7 +474,7 @@ Con_WinPrint
 print into window console
 ================
 */
-void Wcon_WinPrint( const char *pMsg )
+void Wcon_LegacyWinPrint( const char *pMsg )
 {
 	if( !s_wcd.hWnd )
 		return;
@@ -489,6 +500,11 @@ void Wcon_WinPrint( const char *pMsg )
 		Wcon_UpdateStatusLine();
 }
 
+void Wcon_WinPrint( const char *pMsg )
+{
+	Xash_Win32Console_Print( pMsg );
+}
+
 /*
 ================
 Con_CreateConsole
@@ -496,7 +512,7 @@ Con_CreateConsole
 create win32 console
 ================
 */
-void Wcon_CreateConsole( qboolean con_showalways )
+void Wcon_LegacyCreateConsole( int con_showalways )
 {
 	if( host.type == HOST_NORMAL )
 	{
@@ -559,6 +575,11 @@ void Wcon_CreateConsole( qboolean con_showalways )
 	}
 }
 
+void Wcon_CreateConsole( qboolean con_showalways )
+{
+	Xash_Win32Console_Create( host.type == HOST_DEDICATED, con_showalways, (int)host_developer.value );
+}
+
 /*
 ================
 Con_InitConsoleCommands
@@ -566,12 +587,17 @@ Con_InitConsoleCommands
 register console commands (dedicated only)
 ================
 */
-void Wcon_InitConsoleCommands( void )
+void Wcon_LegacyRegisterCommands( void )
 {
 	if( host.type != HOST_DEDICATED || !s_wcd.hWnd )
 		return;
 
 	Cmd_AddCommand( "clear", Wcon_Clear_f, "clear console history" );
+}
+
+void Wcon_InitConsoleCommands( void )
+{
+	Xash_Win32Console_RegisterCommands();
 }
 
 /*
@@ -581,7 +607,7 @@ Con_DestroyConsole
 destroy win32 console
 ================
 */
-void Wcon_DestroyConsole( void )
+void Wcon_LegacyDestroyConsole( void )
 {
 	// last text message into console or log
 	Con_Reportf( "%s: Unloading xash.dll\n", __func__ );
@@ -606,6 +632,11 @@ void Wcon_DestroyConsole( void )
 	FreeConsole();
 }
 
+void Wcon_DestroyConsole( void )
+{
+	Xash_Win32Console_Destroy();
+}
+
 /*
 ================
 Con_Input
@@ -613,7 +644,7 @@ Con_Input
 returned input text
 ================
 */
-char *Wcon_Input( void )
+char *Wcon_LegacyInput( void )
 {
 	DWORD i;
 	DWORD eventsCount;
@@ -653,6 +684,11 @@ char *Wcon_Input( void )
 	return NULL;
 }
 
+char *Wcon_Input( void )
+{
+	return Xash_Win32Console_Input();
+}
+
 /*
 ================
 Platform_SetStatus
@@ -660,7 +696,7 @@ Platform_SetStatus
 set server status string in console
 ================
 */
-void Platform_SetStatus( const char *pStatus )
+void Wcon_LegacySetStatus( const char *pStatus )
 {
 	if( s_wcd.attached || !s_wcd.hWnd )
 		return;
@@ -668,4 +704,9 @@ void Platform_SetStatus( const char *pStatus )
 	Q_strncpy( s_wcd.statusLine, pStatus, sizeof( s_wcd.statusLine ) - 1 );
 	s_wcd.statusLine[sizeof( s_wcd.statusLine ) - 2] = '\0';
 	Wcon_UpdateStatusLine();
+}
+
+void Platform_SetStatus( const char *pStatus )
+{
+	Xash_Win32Console_SetStatus( pStatus );
 }

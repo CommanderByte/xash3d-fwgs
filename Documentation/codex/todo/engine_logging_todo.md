@@ -93,10 +93,9 @@ Platform backend decision from the second audit:
 
 - [x] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
   any output path changes.
-  Evidence: backend-wrapper changes did not reroute any legacy output/input
-  path, so Windows runtime smoke is not required yet. Focused/full validation
-  evidence is recorded under `ENG-LOG-007`, `ENG-LOG-008`, and `ENG-LOG-009`;
-  the first live `Wcon_*` routing smoke test is tracked by `ENG-LOG-013`.
+  Evidence: focused/full validation evidence is recorded under `ENG-LOG-007`,
+  `ENG-LOG-008`, `ENG-LOG-009`, and `ENG-LOG-013`; the live Windows runtime
+  smoke for the first routed `Wcon_*` path is recorded under `ENG-LOG-013`.
 
 - [x] `ENG-LOG-006` Document background console backend ownership, command
   input hierarchy, and per-platform capability expectations.
@@ -139,10 +138,10 @@ Platform backend decision from the second audit:
   `.\waf.bat build --targets=test_engine_base_command_registry,test_engine_command_buffer,test_engine_info_string,test_engine_network_buffer,test_engine_platform_console_backend`,
   and `.\waf.bat build` passed 24/24 executed tests.
 
-- [ ] `ENG-LOG-010` Decide whether Android/iOS/Switch/Vita should use explicit
-  output-only backends or remain direct `Sys_PrintStdout()` platform branches
-  until the router phase.
-  Evidence: pending implementation pass.
+- [x] `ENG-LOG-010` Move Android/iOS/Switch/Vita output-only backend decisions
+  out of the Windows-focused Phase 43 pass.
+  Evidence: `Documentation/codex/todo/non_windows_console_backend_todo.md`,
+  Phase 801 in `Documentation/codex/tasks.md`.
 
 - [x] `ENG-LOG-011` Move live POSIX/Linux console routing and validation out of
   Phase 43.
@@ -153,6 +152,17 @@ Platform backend decision from the second audit:
   defer code extraction until a later router/client-rendering phase.
   Evidence: `Documentation/codex/modern/engine/rendered-console-sink.md`.
 
-- [ ] `ENG-LOG-013` Route the existing Win32 `Wcon_*` C functions through the
+- [x] `ENG-LOG-013` Route the existing Win32 `Wcon_*` C functions through the
   Win32 backend wrapper and run a Windows runtime smoke test.
-  Evidence: pending implementation pass.
+  Evidence: `engine/platform/win32/con_win.c`,
+  `src/include/engine/console/platform_console_backend_adapter.h`,
+  `src/engine/console/platform_console_backend_adapter.cpp`; commands
+  `.\waf.bat build --targets=test_engine_platform_console_backend` passed
+  1/1 tests, `.\waf.bat build` passed 28/28 tests, and Windows runtime smoke
+  copied `build\engine\xash.dll` plus `build\filesystem\filesystem_stdio.dll`
+  into `run-win32`, then ran
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  The smoke log `run-win32\engine.log` reached renderer initialization and
+  stopped with reason `command` at May 10 2026 00:03:23 local time. The quick
+  `+quit` smoke did not emit a first-frame timing marker.
