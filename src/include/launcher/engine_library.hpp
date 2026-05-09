@@ -19,7 +19,7 @@ class EngineLibrary
 public:
 	EngineLibrary();
 
-	bool load(char *errorBuffer, size_t errorBufferSize);
+	bool load(const LaunchSettings &settings, char *errorBuffer, size_t errorBufferSize);
 	int run(int argc, char **argv, const LaunchSettings &settings, ChangeGameFn changeGame);
 	void shutdownAndUnload();
 
@@ -32,7 +32,6 @@ public:
 private:
 	void clear();
 	void formatError(char *errorBuffer, size_t errorBufferSize, const char *format, ...) const;
-	const char *lastSystemError() const;
 
 	void *m_handle;
 	HostMainFn m_hostMain;

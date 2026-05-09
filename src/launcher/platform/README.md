@@ -7,6 +7,9 @@ Keep this layer thin:
 
 - POSIX `main` and Windows `WinMain` signatures.
 - Windows GPU-selection exports.
+- Windows command-line argument capture.
+- Win32/POSIX dynamic library loading.
+- Default/Sailfish environment setup.
 - User-visible fatal launch errors.
 - Calls into reusable launcher code under `src/launcher/`.
 

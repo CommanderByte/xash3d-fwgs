@@ -13,8 +13,8 @@ Top-level file counts from `rg --files`:
 | --- | ---: | --- |
 | `3rdparty/` | 2065 | Bundled dependency and optional module sources. |
 | `engine/` | 276 | Main engine, host, client, server, platform code, ABI headers. |
-| `Documentation/` | 115 | User, development, protocol, extension docs. |
-| `src/` | 105 | New modular C++ internals, compatibility adapters, tests, and private headers. |
+| `Documentation/` | 116 | User, development, protocol, extension docs. |
+| `src/` | 112 | New modular C++ internals, compatibility adapters, tests, launcher code, and private headers. |
 | `android/` | 83 | Android app wrapper and native build integration. |
 | `ref/` | 62 | Renderer implementations and shared renderer support. |
 | `scripts/` | 54 | CI, release, cross-compile, packaging, Waf helpers. |
@@ -23,8 +23,7 @@ Top-level file counts from `rg --files`:
 | `public/` | 29 | Portable utility library, math/string/CRC/miniz/build metadata. |
 | `utils/` | 18 | Developer utilities and fuzz runner. |
 | `filesystem/` | 7 | Virtual filesystem ABI facade and module exports. |
-| `resources/` | 4 | First-party product/build assets, currently launcher resources. |
-| `game_launch/` | 1 | Native launcher executable Waf wrapper. |
+| `resources/` | 5 | First-party product/build assets, currently launcher resources. |
 | `pm_shared/` | 2 | Shared player movement definitions. |
 
 First-party source type counts excluding `3rdparty/` are mostly C:
@@ -33,9 +32,9 @@ First-party source type counts excluding `3rdparty/` are mostly C:
 | --- | ---: |
 | `.c` | 266 |
 | `.h` | 173 |
-| `.md` | 125 |
-| `.cpp` | 65 |
-| `.hpp` | 30 |
+| `.md` | 126 |
+| `.cpp` | 70 |
+| `.hpp` | 32 |
 | `.kt` | 16 |
 | `.py` | 15 |
 | `.java` | 3 |
@@ -77,7 +76,7 @@ Key build outputs:
 | `ref_gl`, `ref_gles1`, `ref_gles2`, `ref_gl4es`, `ref_gles3compat` | `ref/gl/wscript` | GL-family renderer shared libraries. |
 | `ref_soft` | `ref/soft/wscript` | Software renderer shared library. |
 | `ref_null` | `ref/null/wscript` | Null renderer shared library. |
-| `game_launch` executable | `game_launch/wscript` plus `src/launcher/platform/entry.cpp` | Launcher when engine is built as a library. |
+| `xash3d` launcher | `src/wscript` plus `src/launcher/platform/entry.cpp` | Launcher when engine is built as a library. |
 
 Android uses `android/app/build.gradle.kts` to call a native Ninja/Waf bridge via
 `scripts/configure-ninja.py`. CI lives in `.github/workflows/c-cpp.yml` and

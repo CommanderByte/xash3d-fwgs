@@ -49,9 +49,8 @@ The first-party engine surface is concentrated in:
   renderers.
 - `public/`, `common/`, `pm_shared/`: shared SDK-style headers and utility
   libraries consumed by the engine, renderers, and game/client DLL interfaces.
-- `game_launch/`: Waf wrapper for the native launcher executable when the
-  engine is built as a shared library.
-- `src/launcher/`: modern launcher implementation and platform entry shell.
+- `src/launcher/`: modern launcher implementation, platform entry shell, and
+  native launcher executable wiring through `src/wscript`.
 - `resources/`: first-party product/build assets such as launcher icons and
   platform resource files.
 

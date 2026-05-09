@@ -4,7 +4,8 @@
 
 Track the next modularization pilot after the filesystem milestone. The goal is
 to understand the native launcher, document its current startup behavior, and
-move source code into `src/launcher/` without changing executable behavior.
+move source code and executable target ownership into `src/launcher/` and
+`src/wscript` without changing executable behavior.
 
 The launcher is a good pilot because it is small, platform-sensitive, and
 boundary-heavy: it parses process arguments, checks dynamic-library
@@ -74,8 +75,9 @@ unloads cleanly.
 - [x] `LAUNCH-008` Move shared launch sequencing and Windows argv ownership
   into launcher helpers.
   Evidence: `src/include/launcher/application.hpp`,
-  `src/launcher/application.cpp`, `src/include/launcher/win32_argv.hpp`,
-  `src/launcher/win32_argv.cpp`, `tests/launcher/application.cpp`;
+  `src/launcher/application.cpp`,
+  `src/include/launcher/platform/win32_argv.hpp`,
+  `src/launcher/platform/win32_argv.cpp`, `tests/launcher/application.cpp`;
   command
   `.\waf.bat build --targets=test_launcher_application,test_launcher_engine_library,test_launcher_launch_settings,xash3d`
   passed; command `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0
@@ -136,3 +138,103 @@ unloads cleanly.
 - Keep GUI error presentation behavior stable until an explicit UX/error
   policy phase changes it.
 - Do not move `Host_Main` or `Host_Shutdown` ownership out of the engine.
+- Keep reusable launcher behavior under `src/launcher/`, platform process glue
+  under `src/launcher/platform/`, and executable wiring in `src/wscript`.
+
+## Phase 31 Tasks: Platform Interfaces And Runtime Config
+
+- [x] `LAUNCH-013` Move dynamic-library OS calls out of shared launcher code
+  and into `src/launcher/platform/`.
+  Evidence: `src/include/launcher/platform/library.hpp`,
+  `src/launcher/platform/library_win32.cpp`,
+  `src/launcher/platform/library_posix.cpp`,
+  `src/launcher/engine_library.cpp`;
+  command
+  `.\waf.bat build --targets=test_launcher_application,test_launcher_engine_library,test_launcher_launch_settings,xash3d`
+  passed; command `.\waf.bat build --alltests` passed 45/45 tests on
+  2026-05-09.
+  Notes: `EngineLibrary` now owns the target-neutral sequence; platform code
+  owns dynamic library loading, symbol lookup, unload, and default library
+  labels.
+
+- [x] `LAUNCH-014` Move platform environment setup out of shared launch
+  sequencing.
+  Evidence: `src/include/launcher/platform/environment.hpp`,
+  `src/launcher/platform/environment_default.cpp`,
+  `src/launcher/platform/environment_sailfish.cpp`,
+  `src/launcher/application.cpp`.
+  Notes: platform code now owns environment defaults; Phase 32 tightens this
+  further with Waf-selected implementation files.
+
+- [x] `LAUNCH-015` Add optional runtime launcher configuration with compiled
+  default fallback.
+  Evidence: `src/include/launcher/launch_settings.hpp`,
+  `src/launcher/launch_settings.cpp`, `src/launcher/config.cpp`,
+  `resources/launcher/launcher.example.json`,
+  `tests/launcher/launch_settings.cpp`; copied `build\game_launch\xash3d.exe`
+  to `run-win32`; command `.\xash3d.exe -dev 2 -log +wait +wait +quit` with
+  `XASH3D_BASEDIR=C:\git\xash3d-fwgs\run-win32` and
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`
+  exited 0 and logged `Time to first frame: 0.407 seconds`,
+  `COM_FreeLibrary: Unloading filesystem_stdio.dll`, and
+  `Stopped with reason "command"` on 2026-05-09.
+  Notes: JSON was chosen over YAML for the first pass because a flat JSON
+  object is easier to parse predictably without adding a dependency. Missing,
+  inaccessible, or invalid config files keep the compiled defaults.
+
+- [x] `LAUNCH-017` Decide whether launcher JSON parsing should stay minimal or
+  move to a shared third-party JSON parser.
+  Evidence: `Documentation/codex/modern/game-launch/json-policy.md`.
+  Notes: keep the local flat reader for now. If another runtime JSON reader
+  appears, or the schema grows nested structure, evaluate a shared dependency
+  such as yyjson, RapidJSON, simdjson, nlohmann/json, or Boost.JSON.
+
+## Phase 32 Tasks: Platform Source Selection Cleanup
+
+- [x] `LAUNCH-016` Move Windows argument ownership fully under the platform
+  folder.
+  Evidence: `src/include/launcher/platform/win32_argv.hpp`,
+  `src/launcher/platform/win32_argv.cpp`, `src/launcher/platform/entry.cpp`.
+  Notes: the class is Windows-only by source selection, but it no longer lives
+  in the shared launcher folder.
+
+- [x] `LAUNCH-018` Replace mixed platform implementation files with
+  Waf-selected platform sources.
+  Evidence: `src/wscript`, `src/launcher/platform/library_win32.cpp`,
+  `src/launcher/platform/library_posix.cpp`,
+  `src/launcher/platform/environment_default.cpp`,
+  `src/launcher/platform/environment_sailfish.cpp`; command
+  `.\waf.bat build --targets=test_launcher_application,test_launcher_engine_library,test_launcher_launch_settings,xash3d`
+  passed; command `.\waf.bat build --alltests` passed 45/45 tests; runtime
+  smoke logged `Time to first frame: 0.407 seconds` on 2026-05-09.
+  Notes: Waf now selects Win32 versus POSIX library loading sources and
+  Sailfish versus default environment sources.
+
+## Phase 33 Tasks: Build Ownership Consolidation
+
+- [x] `LAUNCH-019` Move launcher executable target ownership into `src/wscript`
+  and remove the obsolete `game_launch` subproject.
+  Evidence: `wscript`, `src/wscript`, deleted `game_launch/wscript`;
+  command
+  `.\waf.bat build --targets=test_launcher_application,test_launcher_engine_library,test_launcher_launch_settings,xash3d`
+  passed on 2026-05-09; command `.\waf.bat build --alltests` passed 45/45
+  tests; copied `build\src\xash3d.exe`, `build\engine\xash.dll`, and
+  `build\filesystem\filesystem_stdio.dll` to `run-win32`; command
+  `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0 and logged
+  `Time to first frame: 0.566 seconds`,
+  `COM_FreeLibrary: Unloading filesystem_stdio.dll`, and
+  `Stopped with reason "command"` on 2026-05-09.
+  Notes: `build\src\xash3d.exe` is now the direct build output for the native
+  launcher; installed/smoke-test layouts remain the supported runtime shape.
+
+- [x] `LAUNCH-020` Update launcher docs and the codebase map after removing
+  `game_launch/`.
+  Evidence: `Documentation/codex/codebase-map.md`,
+  `Documentation/codex/README.md`,
+  `Documentation/codex/modern/game-launch/README.md`,
+  `Documentation/codex/modern/game-launch/layout-policy.md`,
+  `Documentation/codex/modern/game-launch/platform-support.md`,
+  `Documentation/codex/modern/game-launch/architecture.md`,
+  `Documentation/codex/windows-build-run-notes.md`.
+  Notes: older task entries still mention `game_launch/` where that was the
+  historical evidence at the time of the task.

@@ -3,11 +3,19 @@
 from waflib.extras import pthread
 
 def options(opt):
-	pass
+	grp = opt.add_option_group('Game launcher options')
+
+	grp.add_option('--disable-menu-changegame', action = 'store_true', dest = 'DISABLE_MENU_CHANGEGAME', default = False,
+		help = 'disable changing the game from the menu [default: %(default)s]')
 
 def configure(conf):
+	if conf.env.DEST_OS == 'win32':
+		conf.load('winres')
+
 	if not conf.env.DEST_OS in ['win32', 'android']:
 		conf.check_pthreads(mode='c')
+
+	conf.define('XASH_DISABLE_MENU_CHANGEGAME', conf.options.DISABLE_MENU_CHANGEGAME)
 
 def build(bld):
 	bld(name = 'modern_debugging_includes',
@@ -17,14 +25,49 @@ def build(bld):
 		source = bld.path.ant_glob('debugging/*.cpp'),
 		use = 'modern_debugging_includes werror')
 
+	launcher_sources = bld.path.ant_glob('launcher/*.cpp')
+
+	if bld.env.DEST_OS == 'win32':
+		launcher_sources += [
+			'launcher/platform/library_win32.cpp',
+			'launcher/platform/win32_argv.cpp',
+		]
+	else:
+		launcher_sources += ['launcher/platform/library_posix.cpp']
+
+	if bld.env.SAILFISH:
+		launcher_sources += ['launcher/platform/environment_sailfish.cpp']
+	else:
+		launcher_sources += ['launcher/platform/environment_default.cpp']
+
 	bld.stlib(target = 'modern_launcher',
-		source = bld.path.ant_glob('launcher/*.cpp'),
+		source = launcher_sources,
 		use = 'modern_debugging_includes sdk_includes werror',
 		export_includes = 'include')
 
 	bld.stlib(target = 'modern_filesystem',
 		source = bld.path.ant_glob('filesystem/*.cpp'),
 		use = 'modern_debugging modern_debugging_includes sdk_includes werror')
+
+	if bld.env.LAUNCHER:
+		source = ['launcher/platform/entry.cpp']
+		linkflags = []
+
+		if bld.env.DEST_OS == 'win32':
+			source += ['../resources/launcher/windows/game.rc']
+
+		# Half-Life 25th anniversary update doesn't have server library explicitly linked to libm
+		if bld.env.DEST_OS == 'linux':
+			linkflags += ['-Wl,--no-as-needed', '-lm']
+
+		bld.program(source = source,
+			target   = 'xash3d', # hl.exe
+			use      = 'modern_launcher sdk_includes DL USER32 SHELL32 werror',
+			linkflags = linkflags,
+			rpath    = bld.env.DEFAULT_RPATH,
+			install_path = bld.env.BINDIR,
+			subsystem = bld.env.MSVC_SUBSYSTEM
+		)
 
 	if bld.env.TESTS:
 		tests = {
@@ -55,5 +98,5 @@ def build(bld):
 			bld.program(features = 'test',
 				source = tests[i],
 				target = 'test_%s' % i,
-				use = 'modern_filesystem modern_launcher modern_debugging modern_debugging_includes sdk_includes werror PTHREAD',
+				use = 'modern_filesystem modern_launcher modern_debugging modern_debugging_includes sdk_includes werror PTHREAD DL',
 				install_path = None)

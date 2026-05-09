@@ -1,13 +1,11 @@
 #ifndef XASH_LAUNCHER_WIN32_ARGV_HPP
 #define XASH_LAUNCHER_WIN32_ARGV_HPP
 
-#include "port.h"
-
-#if XASH_WIN32
-
 namespace xash
 {
 namespace launcher
+{
+namespace platform
 {
 
 class Win32Argv
@@ -33,7 +31,6 @@ private:
 
 }
 }
-
-#endif
+}
 
 #endif

@@ -1,9 +1,5 @@
 #include <string.h>
 
-#if XASH_WIN32
-#include <wchar.h>
-#endif
-
 #include "launcher/launch_settings.hpp"
 
 #ifndef XASH_GAMEDIR
@@ -28,6 +24,9 @@ static bool TestMenuChangeFlag()
 
 	return ExpectString(enabled.defaultGameDir, "valve") &&
 		enabled.allowMenuChangeGame &&
+		ExpectString(enabled.engineLibraryName, EngineLibraryName()) &&
+		ExpectString(enabled.sdl2LibraryName, Sdl2LibraryName()) &&
+		enabled.probeSdl2Library == ShouldProbeSdl2Library() &&
 		ExpectString(disabled.defaultGameDir, "valve") &&
 		!disabled.allowMenuChangeGame;
 }
@@ -73,23 +72,71 @@ static bool TestLibraryNames()
 		return false;
 	}
 
-#if XASH_WIN32
-	if (!ShouldProbeSdl2Library() ||
-		!ExpectString(Sdl2LibraryName(), "SDL2.dll") ||
-		wcscmp(EngineLibraryNameWide(), L"xash.dll") != 0 ||
-		wcscmp(Sdl2LibraryNameWide(), L"SDL2.dll") != 0)
+	if (ShouldProbeSdl2Library())
 	{
-		return false;
+		return ExpectString(Sdl2LibraryName(), "SDL2.dll");
 	}
-#else
-	if (ShouldProbeSdl2Library() ||
-		!ExpectString(Sdl2LibraryName(), ""))
-	{
-		return false;
-	}
-#endif
 
-	return true;
+	return ExpectString(Sdl2LibraryName(), "");
+}
+
+static bool TestJsonOverrides()
+{
+	LaunchSettings settings = GetDefaultLaunchSettings();
+	const char *json =
+		"{"
+		"\"defaultGameDir\":\"gearbox\","
+		"\"allowMenuChangeGame\":false,"
+		"\"engineLibrary\":\"custom_xash.dll\","
+		"\"sdl2Library\":\"custom_sdl2.dll\","
+		"\"probeSdl2\":false"
+		"}";
+
+	if (!ApplyLaunchSettingsJson(json, &settings))
+	{
+		return false;
+	}
+
+	return ExpectString(settings.defaultGameDir, "gearbox") &&
+		!settings.allowMenuChangeGame &&
+		ExpectString(settings.engineLibraryName, "custom_xash.dll") &&
+		ExpectString(settings.sdl2LibraryName, "custom_sdl2.dll") &&
+		!settings.probeSdl2Library;
+}
+
+static bool TestJsonSnakeCaseAndDisableAlias()
+{
+	LaunchSettings settings = GetDefaultLaunchSettings();
+	const char *json =
+		"{"
+		"\"default_game_dir\":\"bshift\","
+		"\"disable_menu_change_game\":true,"
+		"\"engine_library\":\"libcustom.so\","
+		"\"sdl2_library\":\"\","
+		"\"probe_sdl2\":false"
+		"}";
+
+	if (!ApplyLaunchSettingsJson(json, &settings))
+	{
+		return false;
+	}
+
+	return ExpectString(settings.defaultGameDir, "bshift") &&
+		!settings.allowMenuChangeGame &&
+		ExpectString(settings.engineLibraryName, "libcustom.so") &&
+		ExpectString(settings.sdl2LibraryName, "") &&
+		!settings.probeSdl2Library;
+}
+
+static bool TestInvalidJsonKeepsDefaults()
+{
+	LaunchSettings settings = GetDefaultLaunchSettings();
+	LaunchSettings before = settings;
+
+	return !ApplyLaunchSettingsJson("{\"defaultGameDir\":true}", &settings) &&
+		ExpectString(settings.defaultGameDir, before.defaultGameDir) &&
+		settings.allowMenuChangeGame == before.allowMenuChangeGame &&
+		ExpectString(settings.engineLibraryName, before.engineLibraryName);
 }
 
 int main()
@@ -104,6 +151,12 @@ int main()
 		return 4;
 	if (!TestLibraryNames())
 		return 5;
+	if (!TestJsonOverrides())
+		return 6;
+	if (!TestJsonSnakeCaseAndDisableAlias())
+		return 7;
+	if (!TestInvalidJsonKeepsDefaults())
+		return 8;
 
 	return 0;
 }

@@ -17,7 +17,7 @@ GNU General Public License for more details.
 #include "build.h"
 #include "launcher/application.hpp"
 #include "launcher/engine_library.hpp"
-#include "launcher/win32_argv.hpp"
+#include "launcher/platform/win32_argv.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,7 +84,7 @@ int main( int argc, char **argv )
 #else
 int __stdcall WinMain( HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nShow )
 {
-	xash::launcher::Win32Argv argv;
+	xash::launcher::platform::Win32Argv argv;
 
 	if( !argv.capture())
 		Launch_Error( "Unable to parse command line" );

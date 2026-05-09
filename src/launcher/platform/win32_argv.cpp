@@ -1,15 +1,18 @@
-#include "launcher/win32_argv.hpp"
+#include "launcher/platform/win32_argv.hpp"
 
-#if XASH_WIN32
+#include "port.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include <shellapi.h>
 
 namespace xash
 {
 namespace launcher
+{
+namespace platform
 {
 
 Win32Argv::Win32Argv()
@@ -90,5 +93,4 @@ void Win32Argv::release()
 
 }
 }
-
-#endif
+}

@@ -1,0 +1,7 @@
+{
+  "defaultGameDir": "valve",
+  "allowMenuChangeGame": true,
+  "engineLibrary": "xash.dll",
+  "sdl2Library": "SDL2.dll",
+  "probeSdl2": true
+}

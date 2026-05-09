@@ -12,3 +12,6 @@ module.
 - `launcher/windows/`: Windows launcher resource compiler inputs.
 - `launcher/source/`: editable launcher source assets used to produce platform
   resources.
+- `launcher/launcher.example.json`: optional runtime launcher configuration
+  example. The launcher falls back to compiled defaults when no config file is
+  present.

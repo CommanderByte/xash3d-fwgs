@@ -22,7 +22,7 @@ development package placed under `3rdparty/SDL2_VC`:
 Copy-Item .\3rdparty\SDL2_VC\lib\x86\SDL2.dll .\run-win32\SDL2.dll
 ```
 
-Run from the installed layout, not directly from `build/game_launch`, because
+Run from the installed layout, not directly from `build/src`, because
 `xash3d.exe` expects `xash.dll` and related runtime DLLs beside it.
 
 The repeatable setup script is:

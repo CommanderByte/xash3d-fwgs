@@ -8,10 +8,18 @@ namespace xash
 namespace launcher
 {
 
+enum
+{
+	LauncherStringMax = 256
+};
+
 struct LaunchSettings
 {
-	const char *defaultGameDir;
+	char defaultGameDir[LauncherStringMax];
 	bool allowMenuChangeGame;
+	char engineLibraryName[LauncherStringMax];
+	char sdl2LibraryName[LauncherStringMax];
+	bool probeSdl2Library;
 };
 
 struct EngineExportNames
@@ -22,17 +30,16 @@ struct EngineExportNames
 
 LaunchSettings MakeLaunchSettings(const char *defaultGameDir, bool disableMenuChangeGame);
 LaunchSettings GetDefaultLaunchSettings();
+LaunchSettings GetLaunchSettings(int argc, char **argv);
+bool ApplyLaunchSettingsJson(const char *json, LaunchSettings *settings);
+bool LoadLaunchSettingsFile(const char *path, LaunchSettings *settings);
+const char *LauncherConfigFileName();
 
 EngineExportNames GetEngineExportNames();
 
 const char *EngineLibraryName();
 const char *Sdl2LibraryName();
 bool ShouldProbeSdl2Library();
-
-#if XASH_WIN32
-const wchar_t *EngineLibraryNameWide();
-const wchar_t *Sdl2LibraryNameWide();
-#endif
 
 }
 }

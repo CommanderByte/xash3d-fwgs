@@ -1,6 +1,10 @@
 #include "launcher/launch_settings.hpp"
 
+#include "launcher/platform/library.hpp"
+
 #include "port.h"
+
+#include <stdio.h>
 
 #ifndef XASH_GAMEDIR
 #define XASH_GAMEDIR "valve"
@@ -15,11 +19,32 @@ namespace xash
 namespace launcher
 {
 
+static void CopySettingString(char *dst, size_t dstSize, const char *src)
+{
+	if (!dst || !dstSize)
+	{
+		return;
+	}
+
+	if (!src)
+	{
+		src = "";
+	}
+
+	snprintf(dst, dstSize, "%s", src);
+	dst[dstSize - 1] = '\0';
+}
+
 LaunchSettings MakeLaunchSettings(const char *defaultGameDir, bool disableMenuChangeGame)
 {
 	LaunchSettings settings;
-	settings.defaultGameDir = defaultGameDir ? defaultGameDir : "";
+	CopySettingString(settings.defaultGameDir, sizeof(settings.defaultGameDir), defaultGameDir);
 	settings.allowMenuChangeGame = !disableMenuChangeGame;
+	CopySettingString(settings.engineLibraryName, sizeof(settings.engineLibraryName),
+		platform::DefaultEngineLibraryName());
+	CopySettingString(settings.sdl2LibraryName, sizeof(settings.sdl2LibraryName),
+		platform::DefaultSdl2LibraryName());
+	settings.probeSdl2Library = platform::DefaultProbeSdl2Library();
 	return settings;
 }
 
@@ -38,42 +63,18 @@ EngineExportNames GetEngineExportNames()
 
 const char *EngineLibraryName()
 {
-#if XASH_WIN32
-	return "xash.dll";
-#else
-	return OS_LIB_PREFIX "xash." OS_LIB_EXT;
-#endif
+	return platform::DefaultEngineLibraryName();
 }
 
 const char *Sdl2LibraryName()
 {
-#if XASH_WIN32
-	return "SDL2.dll";
-#else
-	return "";
-#endif
+	return platform::DefaultSdl2LibraryName();
 }
 
 bool ShouldProbeSdl2Library()
 {
-#if XASH_WIN32
-	return true;
-#else
-	return false;
-#endif
+	return platform::DefaultProbeSdl2Library();
 }
-
-#if XASH_WIN32
-const wchar_t *EngineLibraryNameWide()
-{
-	return L"xash.dll";
-}
-
-const wchar_t *Sdl2LibraryNameWide()
-{
-	return L"SDL2.dll";
-}
-#endif
 
 }
 }

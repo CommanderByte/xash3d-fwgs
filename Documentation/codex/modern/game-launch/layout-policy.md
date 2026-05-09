@@ -13,14 +13,13 @@ clean convention for future top-level executable modules.
 ```text
 src/
   include/launcher/        private launcher contracts
+  include/launcher/platform/
+                            private platform bridge contracts
   launcher/                shared launcher implementation
   launcher/platform/       executable entry points and process glue
 
 tests/
   launcher/                target-neutral launcher unit tests
-
-game_launch/
-  wscript                  executable target and platform resource wiring
 
 resources/
   launcher/
@@ -38,8 +37,9 @@ product/build assets rather than launcher implementation code.
 
 - `src/launcher/` owns reusable launcher behavior.
 - `src/launcher/platform/` owns platform entry-point signatures and
-  process-level error presentation.
-- `game_launch/wscript` owns executable target wiring.
+  process-level error presentation, dynamic-library calls, and platform
+  environment defaults.
+- `src/wscript` owns executable target wiring.
 - Launcher resources live under `resources/launcher/`.
 - Do not put platform packaging assets under `src/`; `src/` is for compiled
   implementation and private headers.
@@ -60,8 +60,13 @@ product/build assets rather than launcher implementation code.
 1. Move the thin entry shell to `src/launcher/platform/entry.cpp`.
 2. Move Windows resource files into `resources/launcher/windows/`.
 3. Move the editable PNG into `resources/launcher/source/`.
-4. Update `game_launch/wscript` and `game.rc` paths.
-5. Rebuild `xash3d` and run the Windows launcher smoke.
+4. Update `src/wscript` and `game.rc` paths.
+5. Move dynamic-library and environment platform calls under
+   `src/launcher/platform/`.
+6. Add optional runtime config overrides backed by compiled defaults.
+7. Move launcher executable target ownership into `src/wscript` and remove the
+   obsolete `game_launch/` subproject.
+8. Rebuild `xash3d` and run the Windows launcher smoke.
 
 ## Non-Goals
 

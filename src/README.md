@@ -23,7 +23,7 @@ Planned subfolders:
   utility implementation units
 - `filesystem/`: future filesystem implementation units after the pilot
 - `launcher/`: native launcher implementation, with executable entry glue in
-  `launcher/platform/`
+  `launcher/platform/` and target wiring in `src/wscript`
 - `utilities/`: subsystem-neutral helper implementation units when a helper is
   not header-only
 
