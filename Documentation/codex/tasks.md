@@ -1459,7 +1459,7 @@ commit, test command, document link, or manual verification note that proves it.
   0, reached `Time to first frame: 0.519 seconds`, and stopped with reason
   `command`.
 
-## Phase 43: Console And Logging Ownership
+## Phase 43: System Console And Logging Ownership
 
 - [x] `ENG-LOG-001` Audit definitions and callers for `Con_Printf`,
   `Con_DPrintf`, `Con_Reportf`, `Log_Printf`, `Sys_Print`, and
@@ -1471,9 +1471,13 @@ commit, test command, document link, or manual verification note that proves it.
   constraints.
   Evidence: `Documentation/codex/legacy/engine/console-logging-baseline.md`,
   `Documentation/codex/modern/engine/console-logging-migration-guide.md`.
-- [ ] `ENG-LOG-003` Add focused tests or a test seam for target-neutral message
+- [x] `ENG-LOG-003` Add focused tests or a test seam for target-neutral message
   formatting/filtering behavior where practical.
-  Evidence: pending implementation pass.
+  Evidence: `src/include/engine/console/system_console_message.hpp`,
+  `src/engine/console/system_console_message.cpp`,
+  `tests/engine/system_console_message.cpp`; commands
+  `.\waf.bat build --targets=test_engine_system_console_message` passed
+  1/1 tests and `.\waf.bat build` passed 29/29 tests.
 - [x] `ENG-LOG-004` Decide how modern debugging utilities and deferred
   filesystem logging cleanup should feed engine output.
   Evidence: `Documentation/codex/modern/engine/console-logging-migration-guide.md`.

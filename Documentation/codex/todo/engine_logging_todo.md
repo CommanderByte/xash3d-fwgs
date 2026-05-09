@@ -1,11 +1,11 @@
-# Engine Console And Logging TODO
+# Engine System Console And Logging TODO
 
 ## Purpose
 
-Plan the next engine/common ownership pass around console and logging output.
-This is the blocker for resuming deferred filesystem logging cleanup because the
-filesystem currently receives engine print/log callbacks through the legacy
-filesystem bridge.
+Plan the next engine/common ownership pass around system console and logging
+output. This is the blocker for resuming deferred filesystem logging cleanup
+because the filesystem currently receives engine print/log callbacks through
+the legacy filesystem bridge.
 
 ## Scope
 
@@ -71,7 +71,7 @@ Platform backend decision from the second audit:
 - Defer the broad output hub until platform backends are small, testable, and
   selected through a stable internal interface.
 
-## Phase 43 Tasks: Console And Logging Ownership
+## Phase 43 Tasks: System Console And Logging Ownership
 
 - [x] `ENG-LOG-001` Audit definitions and callers for console, report, debug,
   log, and system print functions.
@@ -83,9 +83,13 @@ Platform backend decision from the second audit:
   Evidence: `Documentation/codex/legacy/engine/console-logging-baseline.md`,
   `Documentation/codex/modern/engine/console-logging-migration-guide.md`.
 
-- [ ] `ENG-LOG-003` Add focused tests or a test seam for target-neutral message
+- [x] `ENG-LOG-003` Add focused tests or a test seam for target-neutral message
   formatting/filtering behavior where practical.
-  Evidence: pending implementation pass.
+  Evidence: `src/include/engine/console/system_console_message.hpp`,
+  `src/engine/console/system_console_message.cpp`,
+  `tests/engine/system_console_message.cpp`; commands
+  `.\waf.bat build --targets=test_engine_system_console_message` passed
+  1/1 tests and `.\waf.bat build` passed 29/29 tests.
 
 - [x] `ENG-LOG-004` Decide how modern debugging utilities and deferred
   filesystem logging cleanup should feed engine output.

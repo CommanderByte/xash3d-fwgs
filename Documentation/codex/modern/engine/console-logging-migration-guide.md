@@ -1,9 +1,9 @@
-# Console And Logging Migration Guide
+# System Console And Logging Migration Guide
 
 ## Goal
 
-Modernize console and logging ownership without changing the public C print
-surface or confusing three separate concerns:
+Modernize system console and logging ownership without changing the public C
+print surface or confusing three separate concerns:
 
 - message formatting and developer filtering;
 - rendered in-game console UI;
@@ -68,8 +68,9 @@ implementation begins:
 | Candidate | Responsibility |
 | --- | --- |
 | `xash::engine::console::ConsoleChannel` | Distinguish normal, debug, report, system, rcon, and server-event messages. |
-| `xash::engine::console::ConsoleFilter` | Decide whether a message is visible for `host.allow_console` and developer level. |
-| `xash::engine::console::ConsoleFormatter` | Own bounded formatting results and compatibility newline-on-overflow behavior. |
+| `xash::engine::console::SystemConsoleMessage` | First tested seam for `Con_Printf`, `Con_DPrintf`, and `Con_Reportf` visibility plus bounded-format compatibility results. |
+| `xash::engine::console::ConsoleFilter` | Future broader filter for channels beyond the first system-console seam. |
+| `xash::engine::console::ConsoleFormatter` | Future owner for full varargs formatting and color/control normalization. |
 | `xash::engine::console::ColorPolicy` | Strip, preserve, or translate `^` color escapes and one-byte legacy prefixes. |
 | `xash::engine::console::LinePrefixState` | Track line-start state for timestamp prefixes. |
 | `xash::engine::console::LineEndingPolicy` | Normalize Win32 platform-console CR/LF behavior without touching the rendered console. |
@@ -144,11 +145,13 @@ code depend on engine globals.
 
 Add tests before changing fanout behavior:
 
-- `ConsoleFilter` accepts/rejects normal, debug, and report messages for each
-  developer level and `allow_console` setting.
+- `SystemConsoleMessage` accepts/rejects normal, debug, and report messages for
+  each developer level and `allow_console` setting. Covered by
+  `tests/engine/system_console_message.cpp`.
 - Bounded formatting preserves the current extra-newline-on-overflow behavior.
+  Covered by `tests/engine/system_console_message.cpp`.
 - The known `Con_DPrintf("0\n")` spam suppression remains documented or is
-  explicitly retired later.
+  explicitly retired later. Covered by `tests/engine/system_console_message.cpp`.
 - Win32 line ending normalization is covered independently of `Wcon_WinPrint`.
 - Color/control processing covers preserve, strip, and ANSI translate policies.
 - `LinePrefixState` preserves current timestamp-prefix behavior across partial
