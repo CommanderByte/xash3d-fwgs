@@ -100,9 +100,15 @@ Platform backend decision from the second audit:
   Evidence: `Documentation/codex/modern/engine/platform-console-backends.md`,
   `Documentation/codex/legacy/engine/console-logging-baseline.md`.
 
-- [ ] `ENG-LOG-007` Add internal platform-console capability/config types,
+- [x] `ENG-LOG-007` Add internal platform-console capability/config types,
   null backend, and focused unit tests.
-  Evidence: pending implementation pass.
+  Evidence: `src/include/engine/console/platform_console_backend.hpp`,
+  `src/engine/console/platform_console_backend.cpp`,
+  `tests/engine/platform_console_backend.cpp`; commands
+  `.\waf.bat build --targets=test_engine_platform_console_backend`,
+  `.\waf.bat build --targets=test_engine_base_command_registry,test_engine_command_buffer,test_engine_info_string,test_engine_network_buffer,test_engine_platform_console_backend`,
+  direct execution of `build\src\test_engine_platform_console_backend.exe`,
+  and `.\waf.bat build` passed 24/24 executed tests.
 
 - [ ] `ENG-LOG-008` Wrap POSIX/Linux background console output/input behind a
   platform console backend while preserving `Platform_Input()` semantics.

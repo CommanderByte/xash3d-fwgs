@@ -103,6 +103,16 @@ This interface should remain internal. Existing C functions such as
 `Platform_SetStatus` can delegate into it later. That keeps legacy call sites
 stable while giving the platform implementation a cleaner internal shape.
 
+Initial implementation landed in:
+
+- `src/include/engine/console/platform_console_backend.hpp`
+- `src/engine/console/platform_console_backend.cpp`
+- `tests/engine/platform_console_backend.cpp`
+
+The implemented slice includes capability helpers, default config values,
+`IPlatformConsoleBackend`, and `NullPlatformConsoleBackend`. It does not route
+legacy platform output/input yet.
+
 ## Backend Types
 
 Recommended initial backend classes:

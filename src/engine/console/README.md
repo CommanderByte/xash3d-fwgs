@@ -1,7 +1,10 @@
 # Engine Console
 
-Reserved for future console and logging policy helpers.
+Private console/logging modernization helpers.
 
-Do not move filesystem diagnostics here until `Con_Printf`, `Con_DPrintf`,
-`Con_Reportf`, `Log_Printf`, `Sys_Print`, and `Sys_PrintLog` ownership has been
-audited. The current plan is to do command/cvar work first.
+- `platform_console_backend.cpp` implements target-neutral background console
+  backend helpers and the null backend.
+
+Filesystem diagnostics should still reach this area through engine-owned
+adapters. The filesystem module should not depend directly on rendered console,
+platform console, or log-file globals.
