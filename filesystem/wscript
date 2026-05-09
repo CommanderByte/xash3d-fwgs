@@ -49,9 +49,15 @@ def build(bld):
 		# build in same module, so dynamic linking will work
 		# for now (until we turn libpublic to shared module lol)
 		tests = {
-			'interface' : 'tests/interface.cpp',
-			'caseinsensitive' : 'tests/caseinsensitive.c',
-			'no-init': 'tests/no-init.c'
+			'archive-order': '../tests/filesystem/archive-order.c',
+			'interface' : '../tests/filesystem/interface.cpp',
+			'caseinsensitive' : '../tests/filesystem/caseinsensitive.c',
+			'directpath': '../tests/filesystem/directpath.c',
+			'hierarchy': '../tests/filesystem/hierarchy.c',
+			'no-init': '../tests/filesystem/no-init.c',
+			'rodir': '../tests/filesystem/rodir.c',
+			'wad-archive': '../tests/filesystem/wad-archive.c',
+			'zip-archive': '../tests/filesystem/zip-archive.c'
 		}
 
 		for i in tests:

@@ -3,9 +3,14 @@
 This folder tracks filesystem behaviors that should be covered before and
 during the modular C++ migration.
 
-Compiled tests currently belong in `filesystem/tests` because
-`filesystem/wscript` already builds them when `--enable-tests` is set. This
-folder is the behavior inventory and fixture-planning layer.
+Compiled tests live in this folder and are built by `filesystem/wscript` when
+`--enable-tests` is set. The filesystem module still owns linking the tests
+because they need to run beside `filesystem_stdio`.
+
+## Baselines
+
+- [windows-test-baseline.md](windows-test-baseline.md) records the current
+  Windows `--enable-tests` result and existing filesystem test coverage.
 
 ## Why This Exists
 
@@ -28,33 +33,46 @@ structure.
 
 | Behavior | Current Coverage | Needed Test Location | Notes |
 | --- | --- | --- | --- |
-| API loads through `GetFSAPI` | `filesystem/tests/interface.cpp` | existing | Expand if API table layout changes. |
-| `CreateInterface` lookups | `filesystem/tests/interface.cpp` | existing | Add behavior tests beyond lookup. |
-| No-init safety | `filesystem/tests/no-init.c` | existing | Keep passing during adapter work. |
-| Basic case-insensitive lookup | `filesystem/tests/caseinsensitive.c` | existing | Expand for nested paths and cache refresh. |
-| Write path directory creation | missing | `filesystem/tests` | Use temporary fixture dirs. |
-| Path rejection | missing | `filesystem/tests` | Cover `..`, absolute paths, colon paths. |
-| Direct path behavior | missing | `filesystem/tests` | Preserve current compatibility quirks first. |
-| Loose file beats archive file | missing | `filesystem/tests` | Requires tiny generated PAK/ZIP fixture. |
-| Gamefolder beats basedir | missing | `filesystem/tests` | Requires generated game hierarchy fixture. |
-| `gamedironly` filtering | missing | `filesystem/tests` | Should inspect found/missing behavior through public API. |
-| PAK open/search | missing | `filesystem/tests` | Generate minimal PAK. |
-| ZIP stored file | missing | `filesystem/tests` | Generate minimal ZIP/PK3. |
-| ZIP deflated file | missing | `filesystem/tests` | May use miniz or prebuilt tiny fixture. |
-| WAD lump lookup | missing | `filesystem/tests` | Generate tiny WAD or commit minimal binary fixture. |
-| WADs mounted from archives | missing | `filesystem/tests` | Later, after archive fixtures exist. |
-| `rodir` overlay precedence | missing | `filesystem/tests` | Use temp readonly/writable roots. |
-| DLL lookup | missing | `filesystem/tests` | Focus on returned `fs_dllinfo_t`, not loading real DLLs. |
+| API loads through `GetFSAPI` | `tests/filesystem/interface.cpp` | existing | Expand if API table layout changes. |
+| `CreateInterface` lookups | `tests/filesystem/interface.cpp` | existing | Covers known interfaces and missing interface retval. |
+| No-init safety | `tests/filesystem/no-init.c` | existing | Keep passing during adapter work. |
+| Basic case-insensitive lookup | `tests/filesystem/caseinsensitive.c` | existing | Covers filesystem-created and direct-created files. |
+| Nested directory case repair | `tests/filesystem/caseinsensitive.c` | existing | Added before directory backend pilot. |
+| Cache refresh after direct file appears | `tests/filesystem/caseinsensitive.c` | existing | Covers direct file in existing cached directory. |
+| Write path directory creation | `tests/filesystem/caseinsensitive.c` | existing | Uses `FS_Open(..., "wb", true)`. |
+| Path rejection | `tests/filesystem/caseinsensitive.c` | existing | Covers `..`, absolute paths, colon paths. |
+| Direct path behavior | `tests/filesystem/directpath.c` | existing | Covers `../` strip behavior when direct paths are enabled and reset. |
+| Loose file beats archive file | `tests/filesystem/archive-order.c` | existing | Uses generated PAK fixture. |
+| Gamefolder beats basedir | `tests/filesystem/hierarchy.c` | existing | Generated `valve` plus `mod` fixture. |
+| `gamedironly` filtering | `tests/filesystem/hierarchy.c` | existing | Confirms base-only content is hidden when requested. |
+| PAK open/search | `tests/filesystem/archive-order.c` | existing | Generated PAK contains archive-only file. |
+| ZIP stored file | `tests/filesystem/zip-archive.c` | existing | Generated PK3 fixture with manual ZIP records. |
+| ZIP deflated file | `tests/filesystem/zip-archive.c` | existing | Uses miniz raw deflate data inside generated PK3. |
+| WAD lump lookup | `tests/filesystem/wad-archive.c` | existing | Generated WAD3 fixture with a script lump. |
+| WADs mounted from archives | `tests/filesystem/wad-archive.c` | existing | Generated PAK fixture containing a WAD3 file. |
+| `rodir` overlay precedence | `tests/filesystem/rodir.c` | existing | Writable root beats rodir; rodir-only content remains visible. |
+| `VFileSystem009` compatibility behavior | `tests/filesystem/interface.cpp` | existing | Covers simple method behavior after lookup. |
+| `XashFileSystem004` copied table behavior | `tests/filesystem/interface.cpp` | existing | Confirms returned table refreshes after caller mutation. |
+| DLL lookup | missing | `tests/filesystem` | Focus on returned `fs_dllinfo_t`, not loading real DLLs. |
 
 ## First Unit Tests To Add
 
-1. Nested directory case-fixing.
-2. Cache refresh after a file appears outside the filesystem API.
-3. Write path creation through `FS_Open(..., "wb", true)`.
-4. Path rejection while direct paths are disabled.
-5. Loose file versus archive precedence.
+1. DLL lookup through `FS_FindLibrary`.
+2. Archive edge cases: duplicate names, unsupported compression, unsupported extensions.
+3. Search result ordering and `FindFirst`/`FindNext` behavior through `VFileSystem009`.
 
 These give the directory backend pilot a safety net before any C++ adapter work.
+
+## Test Support Helpers
+
+`tests/filesystem/fs_test_common.h` contains the shared test loader helper for
+opening `filesystem_stdio`, finding `GetFSAPI`, and retrieving the `fs_api_t`
+table. It also contains small fixture helpers for unique test directories,
+directory creation/removal, and direct fixture-file writes.
+
+`tests/filesystem/archive-order.c` currently generates its own tiny PAK fixture.
+If more archive tests need generated archives, move those helpers into shared
+test support instead of duplicating them.
 
 ## Fixture Notes
 

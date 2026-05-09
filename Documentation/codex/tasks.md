@@ -69,53 +69,75 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 2: Filesystem Test Coverage
 
-- [ ] `FS-TEST-001` Confirm how filesystem tests are built and run on Windows.
+- [x] `FS-TEST-001` Confirm how filesystem tests are built and run on Windows.
   Suggested command: `.\waf.bat configure --enable-tests --sdl2=...` then
   `.\waf.bat build`.
-  Evidence:
-- [ ] `FS-TEST-001A` Decide when root `tests/` should become a build-integrated
+  Evidence: `tests/filesystem/windows-test-baseline.md`.
+- [x] `FS-TEST-001A` Decide when root `tests/` should become a build-integrated
   Waf test subproject versus remaining a planning/fixture home.
-  Decision:
-- [ ] `FS-TEST-002` Add a fixture helper for temporary directories and files.
-  Evidence:
-- [ ] `FS-TEST-003` Expand directory case-fixing tests for nested paths.
-  Evidence:
-- [ ] `FS-TEST-004` Test cache refresh when files appear after initial scan.
-  Evidence:
-- [ ] `FS-TEST-005` Test write path creation through `FS_Open(..., "wb", ...)`.
-  Evidence:
-- [ ] `FS-TEST-006` Test path rejection for `..`, absolute paths, and colon
+  Decision: Keep compiled filesystem tests under `tests/filesystem`, built by
+  `filesystem/wscript`, until a shared cross-module test target is needed.
+- [x] `FS-TEST-001B` Add shared filesystem test loader helper and migrate
+  existing filesystem tests to use it.
+  Evidence: `tests/filesystem/fs_test_common.h`; command `.\waf.bat build`
+  passed filesystem tests 3/3.
+- [x] `FS-TEST-002` Add a fixture helper for temporary directories and files.
+  Evidence: `tests/filesystem/fs_test_common.h`; command `.\waf.bat build`
+  passed filesystem tests 3/3.
+- [x] `FS-TEST-003` Expand directory case-fixing tests for nested paths.
+  Evidence: `tests/filesystem/caseinsensitive.c`; command `.\waf.bat build`
+  passed filesystem tests 3/3.
+- [x] `FS-TEST-004` Test cache refresh when files appear after initial scan.
+  Evidence: `tests/filesystem/caseinsensitive.c`; command `.\waf.bat build`
+  passed filesystem tests 3/3.
+- [x] `FS-TEST-005` Test write path creation through `FS_Open(..., "wb", ...)`.
+  Evidence: `tests/filesystem/caseinsensitive.c`; command `.\waf.bat build`
+  passed filesystem tests 3/3.
+- [x] `FS-TEST-006` Test path rejection for `..`, absolute paths, and colon
   paths when direct paths are disabled.
-  Evidence:
-- [ ] `FS-TEST-007` Test direct-path behavior when `FS_AllowDirectPaths(true)`
+  Evidence: `tests/filesystem/caseinsensitive.c`; command `.\waf.bat build`
+  passed filesystem tests 3/3.
+- [x] `FS-TEST-007` Test direct-path behavior when `FS_AllowDirectPaths(true)`
   is enabled.
-  Evidence:
-- [ ] `FS-TEST-008` Add search path ordering test for loose file overriding
+  Evidence: `tests/filesystem/directpath.c`; command `.\waf.bat build`
+  passed filesystem tests 5/5.
+- [x] `FS-TEST-008` Add search path ordering test for loose file overriding
   archive file.
-  Evidence:
-- [ ] `FS-TEST-009` Add search path ordering test for gamefolder overriding
+  Evidence: `tests/filesystem/archive-order.c`; command `.\waf.bat build`
+  passed filesystem tests 5/5.
+- [x] `FS-TEST-009` Add search path ordering test for gamefolder overriding
   basedir.
-  Evidence:
-- [ ] `FS-TEST-010` Test `gamedironly` filtering.
-  Evidence:
-- [ ] `FS-TEST-011` Add basic PAK open/search fixture test.
-  Evidence:
-- [ ] `FS-TEST-012` Add basic ZIP/PK3 stored-file fixture test.
-  Evidence:
-- [ ] `FS-TEST-013` Add ZIP/PK3 deflated-file load test.
-  Evidence:
-- [ ] `FS-TEST-014` Add WAD lump lookup fixture test.
-  Evidence:
-- [ ] `FS-TEST-015` Test WADs mounted from archives.
-  Evidence:
-- [ ] `FS-TEST-016` Add `rodir` plus writable root precedence test.
-  Evidence:
-- [ ] `FS-TEST-017` Add `CreateInterface("VFileSystem009")` regression test
+  Evidence: `tests/filesystem/hierarchy.c`; command `.\waf.bat clean build`
+  passed all tests 18/18.
+- [x] `FS-TEST-010` Test `gamedironly` filtering.
+  Evidence: `tests/filesystem/hierarchy.c`; command `.\waf.bat clean build`
+  passed all tests 18/18.
+- [x] `FS-TEST-011` Add basic PAK open/search fixture test.
+  Evidence: `tests/filesystem/archive-order.c`; command `.\waf.bat build`
+  passed filesystem tests 5/5.
+- [x] `FS-TEST-012` Add basic ZIP/PK3 stored-file fixture test.
+  Evidence: `tests/filesystem/zip-archive.c`; command `.\waf.bat clean build`
+  passed all tests 18/18.
+- [x] `FS-TEST-013` Add ZIP/PK3 deflated-file load test.
+  Evidence: `tests/filesystem/zip-archive.c`; command `.\waf.bat clean build`
+  passed all tests 18/18.
+- [x] `FS-TEST-014` Add WAD lump lookup fixture test.
+  Evidence: `tests/filesystem/wad-archive.c`; command `.\waf.bat clean build`
+  passed all tests 19/19.
+- [x] `FS-TEST-015` Test WADs mounted from archives.
+  Evidence: `tests/filesystem/wad-archive.c`; command `.\waf.bat clean build`
+  passed all tests 19/19.
+- [x] `FS-TEST-016` Add `rodir` plus writable root precedence test.
+  Evidence: `tests/filesystem/rodir.c`; command `.\waf.bat clean build`
+  passed all tests 20/20.
+- [x] `FS-TEST-017` Add `CreateInterface("VFileSystem009")` regression test
   coverage beyond simple lookup.
-  Evidence:
-- [ ] `FS-TEST-018` Add `CreateInterface("XashFileSystem004")` copied table
+  Evidence: `tests/filesystem/interface.cpp`; command `.\waf.bat clean build`
+  passed all tests 20/20.
+- [x] `FS-TEST-018` Add `CreateInterface("XashFileSystem004")` copied table
   behavior test.
-  Evidence:
+  Evidence: `tests/filesystem/interface.cpp`; command `.\waf.bat clean build`
+  passed all tests 20/20.
 
 ## Phase 3: Filesystem Design Decisions
 
