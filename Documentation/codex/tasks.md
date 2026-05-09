@@ -813,15 +813,21 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 24: Android Assets Implementation Body Migration
 
-- [ ] `FS-ANDROID-IMPL-001` Audit `filesystem/android.c` platform-specific
+- [x] `FS-ANDROID-IMPL-001` Audit `filesystem/android.c` platform-specific
   runtime responsibilities.
-  Evidence:
-- [ ] `FS-ANDROID-IMPL-002` Move target-neutral Android asset behavior into
+  Evidence: `Documentation/codex/modern/filesystem/android-assets-implementation-audit.md`.
+- [x] `FS-ANDROID-IMPL-002` Move target-neutral Android asset behavior into
   `src/filesystem/android_assets_backend.cpp`.
-  Evidence:
-- [ ] `FS-ANDROID-IMPL-003` Keep Android headers and runtime calls behind
+  Evidence: `src/filesystem/android_assets_backend.cpp`,
+  `filesystem/android_assets_backend_adapter.cpp`, `filesystem/android.c`,
+  `tests/filesystem/android_assets_backend.cpp`;
+  `.\waf.bat build --targets=test_filesystem_android_assets_backend` passed
+  on 2026-05-09.
+- [x] `FS-ANDROID-IMPL-003` Keep Android headers and runtime calls behind
   platform adapters so desktop builds remain clean.
-  Evidence:
+  Evidence: Android JNI and `AAssetManager` calls remain inside
+  `filesystem/android.c` behind `#if XASH_ANDROID`; desktop helper tests pass
+  with opaque fake asset handles.
 
 ## Phase 25: Filesystem Runtime Ownership
 

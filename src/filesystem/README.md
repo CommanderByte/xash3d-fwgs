@@ -9,6 +9,8 @@ policy helpers, and debug snapshot builders may move here.
 
 Current files:
 
+- `android_assets_backend.cpp`: private C++ Android assets backend helpers for
+  opaque asset find/search/open/load orchestration without Android headers
 - `archive_registry.cpp`: archive registry type helpers and default archive
   descriptors; it does not route archive mounting yet
 - `debug_snapshot.cpp`: filesystem mount snapshot human and JSON writers

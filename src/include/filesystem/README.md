@@ -4,6 +4,8 @@ This folder contains private C++ headers for modern filesystem internals.
 
 Current headers:
 
+- `android_assets_backend.hpp`: private C++ Android assets backend and opaque
+  runtime callback boundaries
 - `archive_registry.hpp`: archive backend descriptor types and archive registry
   typedef over the shared ordered registry utility
 - `debug_snapshot.hpp`: immutable filesystem mount snapshot records and writer

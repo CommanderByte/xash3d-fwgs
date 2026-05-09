@@ -1,9 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "filesystem/android_assets_backend.hpp"
 
 using namespace xash::filesystem;
+
+struct stringlist_s
+{
+	int maxstrings;
+	int numstrings;
+	char **strings;
+};
 
 struct HookState
 {
@@ -20,6 +28,36 @@ struct HookState
 static bool ExpectString(const char *actual, const char *expected)
 {
 	return strcmp(actual, expected) == 0;
+}
+
+static char *DuplicateString(const char *text)
+{
+	const size_t length = strlen(text) + 1;
+	char *copy = static_cast<char *>(malloc(length));
+	if (copy)
+		memcpy(copy, text, length);
+	return copy;
+}
+
+static void AddListString(stringlist_t *list, const char *text)
+{
+	char **strings = static_cast<char **>(realloc(list->strings,
+		sizeof(char *) * static_cast<size_t>(list->numstrings + 1)));
+	if (!strings)
+		return;
+
+	list->strings = strings;
+	list->strings[list->numstrings++] = DuplicateString(text);
+}
+
+static void FreeListStrings(stringlist_t *list)
+{
+	for (int i = 0; i < list->numstrings; ++i)
+		free(list->strings[i]);
+	free(list->strings);
+	list->strings = NULL;
+	list->numstrings = 0;
+	list->maxstrings = 0;
 }
 
 static SearchPathMetadata TestMetadata()
@@ -235,12 +273,242 @@ static bool TestAndroidAssetsBackendHooks()
 		state.loadCalls == 1;
 }
 
+struct AssetState
+{
+	int closeCalls;
+	int setupCalls;
+	int allocationFailedCalls;
+	int handle;
+	fs_offset_t offset;
+	fs_offset_t length;
+	void *searchPath;
+};
+
+static void *AssetAlloc(void *, size_t size, bool clear)
+{
+	void *memory = malloc(size);
+	if (memory && clear)
+		memset(memory, 0, size);
+	return memory;
+}
+
+static void AssetFree(void *, void *memory)
+{
+	free(memory);
+}
+
+static stringlist_t *AssetListCreate(void *)
+{
+	return static_cast<stringlist_t *>(calloc(1, sizeof(stringlist_t)));
+}
+
+static void AssetListDirectory(void *, stringlist_t *list, const char *path)
+{
+	if (ExpectString(path, "sound/"))
+	{
+		AddListString(list, "one.wav");
+		AddListString(list, "two.txt");
+	}
+}
+
+static void AssetListDestroy(void *, stringlist_t *list)
+{
+	if (!list)
+		return;
+
+	FreeListStrings(list);
+	free(list);
+}
+
+static bool CaseInsensitiveEquals(const char *left, const char *right)
+{
+	while (*left && *right)
+	{
+		if (tolower(static_cast<unsigned char>(*left)) !=
+			tolower(static_cast<unsigned char>(*right)))
+		{
+			return false;
+		}
+		++left;
+		++right;
+	}
+
+	return *left == *right;
+}
+
+static bool AssetMatchPattern(void *, const char *text, const char *pattern,
+	bool)
+{
+	return CaseInsensitiveEquals(pattern, "sound/*.wav") &&
+		CaseInsensitiveEquals(text, "sound/one.wav");
+}
+
+static int AssetStringCount(void *, stringlist_t *list)
+{
+	return list ? list->numstrings : 0;
+}
+
+static const char *AssetStringAt(void *, stringlist_t *list, int index)
+{
+	if (!list || index < 0 || index >= list->numstrings)
+		return NULL;
+
+	return list->strings[index];
+}
+
+static void AssetAppend(void *, stringlist_t *list, const char *text)
+{
+	AddListString(list, text);
+}
+
+static void *AssetOpen(void *, const char *path, int)
+{
+	return ExpectString(path, "asset.txt") ?
+		reinterpret_cast<void *>(static_cast<size_t>(0x1234)) : NULL;
+}
+
+static void AssetClose(void *context, void *)
+{
+	static_cast<AssetState *>(context)->closeCalls++;
+}
+
+static void *AssetAllocFile(void *)
+{
+	return malloc(1);
+}
+
+static void AssetFreeFile(void *, file_t *file)
+{
+	free(file);
+}
+
+static int AssetOpenFileDescriptor(void *, void *, fs_offset_t *offset,
+	fs_offset_t *length)
+{
+	*offset = 4;
+	*length = 9;
+	return 77;
+}
+
+static void AssetSetupFile(void *context, file_t *, void *searchPath,
+	int handle, fs_offset_t offset, fs_offset_t length)
+{
+	AssetState *state = static_cast<AssetState *>(context);
+	state->setupCalls++;
+	state->searchPath = searchPath;
+	state->handle = handle;
+	state->offset = offset;
+	state->length = length;
+}
+
+static fs_offset_t AssetLength(void *, void *)
+{
+	return 5;
+}
+
+static int AssetRead(void *, void *, void *buffer, size_t size)
+{
+	if (size != 5)
+		return -1;
+
+	memcpy(buffer, "hello", 5);
+	return 5;
+}
+
+static void AssetAllocationFailed(void *context, size_t)
+{
+	static_cast<AssetState *>(context)->allocationFailedCalls++;
+}
+
+static bool TestAndroidAssetHelpers()
+{
+	AssetState state = {};
+
+	AndroidAssetsFindRuntime findRuntime = {
+		&state,
+		AssetOpen,
+		AssetClose
+	};
+
+	char fixedName[16] = {};
+	if (FindAndroidAsset(findRuntime, "asset.txt", fixedName,
+		sizeof(fixedName)) != 0)
+	{
+		return false;
+	}
+
+	if (!ExpectString(fixedName, "asset.txt") || state.closeCalls != 1)
+		return false;
+
+	stringlist_t results = {};
+	AndroidAssetsSearchRuntime searchRuntime = {
+		&state,
+		AssetAlloc,
+		AssetFree,
+		AssetListCreate,
+		AssetListDirectory,
+		AssetListDestroy,
+		AssetMatchPattern,
+		AssetStringCount,
+		AssetStringAt,
+		AssetAppend
+	};
+	SearchAndroidAssets(searchRuntime, &results, "sound/*.wav", false);
+	if (results.numstrings != 1 || !ExpectString(results.strings[0],
+		"sound/one.wav"))
+	{
+		FreeListStrings(&results);
+		return false;
+	}
+	FreeListStrings(&results);
+
+	AndroidAssetsOpenRuntime openRuntime = {
+		&state,
+		AssetAllocFile,
+		AssetFreeFile,
+		AssetOpen,
+		AssetOpenFileDescriptor,
+		AssetClose,
+		AssetSetupFile
+	};
+	void *searchPath = reinterpret_cast<void *>(static_cast<size_t>(0x5678));
+	file_t *file = OpenAndroidAsset(openRuntime, searchPath, "asset.txt");
+	if (!file || state.setupCalls != 1 || state.searchPath != searchPath ||
+		state.handle != 77 || state.offset != 4 || state.length != 9)
+	{
+		return false;
+	}
+	free(file);
+
+	AndroidAssetsLoadRuntime loadRuntime = {
+		&state,
+		AssetOpen,
+		AssetLength,
+		AssetRead,
+		AssetClose,
+		AssetAllocationFailed
+	};
+	fs_offset_t fileSize = 0;
+	byte *data = LoadAndroidAsset(loadRuntime, "asset.txt", &fileSize,
+		TestAlloc, TestFree);
+	if (!data || fileSize != 5 || memcmp(data, "hello", 5) != 0 ||
+		data[5] != '\0')
+	{
+		TestFree(data);
+		return false;
+	}
+	TestFree(data);
+
+	return state.allocationFailedCalls == 0;
+}
+
 int main()
 {
 	if (!TestAndroidAssetsBackendMetadata() ||
 		!TestAndroidAssetsBackendPrintInfo() ||
 		!TestAndroidAssetsBackendDefaultOperations() ||
-		!TestAndroidAssetsBackendHooks())
+		!TestAndroidAssetsBackendHooks() ||
+		!TestAndroidAssetHelpers())
 	{
 		return EXIT_FAILURE;
 	}

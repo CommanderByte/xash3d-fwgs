@@ -20,7 +20,7 @@ objects.
   `src/filesystem/zip_backend.cpp`.
 - [x] Migrate directory cache/search/case-fix behavior into
   `src/filesystem/directory_backend.cpp`.
-- [ ] Migrate Android asset implementation into
+- [x] Migrate Android asset implementation into
   `src/filesystem/android_assets_backend.cpp` while preserving desktop
   compileability.
 - [ ] Introduce `FilesystemRuntime` as the owner of state, search paths,

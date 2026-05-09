@@ -154,21 +154,6 @@ static int FS_FileTime_AndroidAssets_Legacy( searchpath_t *search, const char *f
 	return time;
 }
 
-static int FS_FindFile_AndroidAssets_Legacy( struct searchpath_s *search, const char *path, char *fixedname, size_t len )
-{
-	AAsset *assets = AAssetManager_open( search->assets->asset_manager, path, AASSET_MODE_UNKNOWN );
-
-	if( assets )
-	{
-		AAsset_close( assets );
-
-		Q_strncpy( fixedname, path, len );
-		return 0;
-	}
-
-	return -1;
-}
-
 static void FS_PrintInfo_AndroidAssets_Legacy( searchpath_t *search, char *dst, size_t size )
 {
 	Q_snprintf( dst, size, "%s", search->assets->package_name );
@@ -179,105 +164,217 @@ static void FS_Close_AndroidAssets_Legacy( searchpath_t *search )
 	FS_CloseAndroidAssets( search->assets );
 }
 
+static void *FS_AndroidAssetsAlloc( void *context, size_t size, int clear )
+{
+	(void)context;
+	return clear ? Mem_Calloc( fs_mempool, size ) : Mem_Malloc( fs_mempool, size );
+}
+
+static void FS_AndroidAssetsFree( void *context, void *memory )
+{
+	(void)context;
+	Mem_Free( memory );
+}
+
+static stringlist_t *FS_AndroidAssetsListCreate( void *context )
+{
+	stringlist_t *list;
+
+	(void)context;
+	list = Mem_Calloc( fs_mempool, sizeof( *list ));
+	stringlistinit( list );
+	return list;
+}
+
+static void FS_AndroidAssetsListDirectory( void *context, stringlist_t *list, const char *path )
+{
+	searchpath_t *search = (searchpath_t *)context;
+	Android_ListDirectory( list, path, search->assets->engine );
+}
+
+static void FS_AndroidAssetsListDestroy( void *context, stringlist_t *list )
+{
+	(void)context;
+	stringlistfreecontents( list );
+	Mem_Free( list );
+}
+
+static int FS_AndroidAssetsMatchPattern( void *context, const char *text, const char *pattern, int caseInsensitive )
+{
+	(void)context;
+	return matchpattern( text, pattern, caseInsensitive );
+}
+
+static int FS_AndroidAssetsStringCount( void *context, stringlist_t *list )
+{
+	(void)context;
+	return list ? list->numstrings : 0;
+}
+
+static const char *FS_AndroidAssetsStringAt( void *context, stringlist_t *list, int index )
+{
+	(void)context;
+	return ( list && index >= 0 && index < list->numstrings ) ? list->strings[index] : NULL;
+}
+
+static void FS_AndroidAssetsAppend( void *context, stringlist_t *list, const char *text )
+{
+	(void)context;
+	stringlistappend( list, text );
+}
+
+static fs_android_assets_search_runtime_t FS_MakeAndroidAssetsSearchRuntime( searchpath_t *search )
+{
+	fs_android_assets_search_runtime_t runtime;
+
+	runtime.context = search;
+	runtime.alloc = FS_AndroidAssetsAlloc;
+	runtime.free = FS_AndroidAssetsFree;
+	runtime.listCreate = FS_AndroidAssetsListCreate;
+	runtime.listDirectory = FS_AndroidAssetsListDirectory;
+	runtime.listDestroy = FS_AndroidAssetsListDestroy;
+	runtime.matchPattern = FS_AndroidAssetsMatchPattern;
+	runtime.stringCount = FS_AndroidAssetsStringCount;
+	runtime.stringAt = FS_AndroidAssetsStringAt;
+	runtime.append = FS_AndroidAssetsAppend;
+
+	return runtime;
+}
+
 static void FS_Search_AndroidAssets_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
-	string temp;
-	stringlist_t dirlist;
-	const char *slash, *backslash, *colon, *separator;
-	int basepathlength, dirlistindex, resultlistindex;
-	char *basepath;
+	fs_android_assets_search_runtime_t runtime = FS_MakeAndroidAssetsSearchRuntime( search );
+	FS_AndroidAssetsBackend_SearchAssets( &runtime, list, pattern, caseinsensitive );
+}
 
-	slash = Q_strrchr( pattern, '/' );
-	backslash = Q_strrchr( pattern, '\\' );
-	colon = Q_strrchr( pattern, ':' );
+static void *FS_AndroidAssetsOpenAsset( void *context, const char *path, int mode )
+{
+	searchpath_t *search = (searchpath_t *)context;
+	int asset_mode = AASSET_MODE_UNKNOWN;
 
-	separator = Q_max( slash, backslash );
-	separator = Q_max( separator, colon );
+	if( mode == 1 )
+		asset_mode = AASSET_MODE_RANDOM;
+	else if( mode == 2 )
+		asset_mode = AASSET_MODE_BUFFER;
 
-	basepathlength = separator ? (separator + 1 - pattern) : 0;
-	basepath = Mem_Calloc( fs_mempool, basepathlength + 1 );
-	if( basepathlength )
-		memcpy( basepath, pattern, basepathlength );
-	basepath[basepathlength] = '\0';
+	return AAssetManager_open( search->assets->asset_manager, path, asset_mode );
+}
 
-	stringlistinit( &dirlist );
-	Android_ListDirectory( &dirlist, basepath, search->assets->engine );
+static void FS_AndroidAssetsCloseAsset( void *context, void *asset )
+{
+	(void)context;
+	if( asset )
+		AAsset_close( (AAsset *)asset );
+}
 
-	Q_strncpy( temp, basepath, sizeof( temp ));
+static fs_android_assets_find_runtime_t FS_MakeAndroidAssetsFindRuntime( searchpath_t *search )
+{
+	fs_android_assets_find_runtime_t runtime;
 
-	for( dirlistindex = 0; dirlistindex < dirlist.numstrings; dirlistindex++ )
-	{
-		Q_strncpy( &temp[basepathlength], dirlist.strings[dirlistindex], sizeof( temp ) - basepathlength );
+	runtime.context = search;
+	runtime.openAsset = FS_AndroidAssetsOpenAsset;
+	runtime.closeAsset = FS_AndroidAssetsCloseAsset;
 
-		if( matchpattern( temp, (char *)pattern, true ))
-		{
-			for( resultlistindex = 0; resultlistindex < list->numstrings; resultlistindex++ )
-			{
-				if( !Q_strcmp( list->strings[resultlistindex], temp ))
-					break;
-			}
+	return runtime;
+}
 
-			if( resultlistindex == list->numstrings )
-				stringlistappend( list, temp );
-		}
-	}
+static int FS_FindFile_AndroidAssets_Legacy( struct searchpath_s *search, const char *path, char *fixedname, size_t len )
+{
+	fs_android_assets_find_runtime_t runtime = FS_MakeAndroidAssetsFindRuntime( search );
+	return FS_AndroidAssetsBackend_FindAsset( &runtime, path, fixedname, len );
+}
 
-	stringlistfreecontents( &dirlist );
+static void *FS_AndroidAssetsAllocFile( void *context )
+{
+	(void)context;
+	return Mem_Calloc( fs_mempool, sizeof( file_t ));
+}
 
-	Mem_Free( basepath );
+static void FS_AndroidAssetsFreeFile( void *context, file_t *file )
+{
+	(void)context;
+	Mem_Free( file );
+}
+
+static int FS_AndroidAssetsOpenFileDescriptor( void *context, void *asset, fs_offset_t *offset, fs_offset_t *length )
+{
+	(void)context;
+	return AAsset_openFileDescriptor( (AAsset *)asset, offset, length );
+}
+
+static void FS_AndroidAssetsSetupFile( void *context, file_t *file, void *searchPath, int handle, fs_offset_t offset, fs_offset_t length )
+{
+	(void)context;
+	file->handle = handle;
+	file->offset = offset;
+	file->real_length = length;
+	file->position = 0;
+	file->ungetc = EOF;
+	file->searchpath = (searchpath_t *)searchPath;
+}
+
+static fs_android_assets_open_runtime_t FS_MakeAndroidAssetsOpenRuntime( searchpath_t *search )
+{
+	fs_android_assets_open_runtime_t runtime;
+
+	runtime.context = search;
+	runtime.allocFile = FS_AndroidAssetsAllocFile;
+	runtime.freeFile = FS_AndroidAssetsFreeFile;
+	runtime.openAsset = FS_AndroidAssetsOpenAsset;
+	runtime.openFileDescriptor = FS_AndroidAssetsOpenFileDescriptor;
+	runtime.closeAsset = FS_AndroidAssetsCloseAsset;
+	runtime.setupFile = FS_AndroidAssetsSetupFile;
+
+	return runtime;
 }
 
 static file_t *FS_OpenFile_AndroidAssets_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
-	file_t *file = Mem_Calloc( fs_mempool, sizeof( *file ));
-	AAsset *assets = AAssetManager_open( search->assets->asset_manager, filename, AASSET_MODE_RANDOM );
+	fs_android_assets_open_runtime_t runtime = FS_MakeAndroidAssetsOpenRuntime( search );
 
-	file->handle = AAsset_openFileDescriptor( assets, &file->offset, &file->real_length );
+	(void)mode;
+	(void)pack_ind;
+	return FS_AndroidAssetsBackend_OpenAsset( &runtime, search, filename );
+}
 
-	file->position = 0;
-	file->ungetc = EOF;
-	file->searchpath = search;
+static fs_offset_t FS_AndroidAssetsLength( void *context, void *asset )
+{
+	(void)context;
+	return AAsset_getLength( (AAsset *)asset );
+}
 
-	AAsset_close( assets );
+static int FS_AndroidAssetsRead( void *context, void *asset, void *buffer, size_t size )
+{
+	(void)context;
+	return AAsset_read( (AAsset *)asset, buffer, size );
+}
 
-	return file;
+static void FS_AndroidAssetsAllocationFailed( void *context, size_t size )
+{
+	(void)context;
+	Con_Reportf( "%s: can't alloc %zu bytes, no free memory\n", __func__, size );
+}
+
+static fs_android_assets_load_runtime_t FS_MakeAndroidAssetsLoadRuntime( searchpath_t *search )
+{
+	fs_android_assets_load_runtime_t runtime;
+
+	runtime.context = search;
+	runtime.openAsset = FS_AndroidAssetsOpenAsset;
+	runtime.length = FS_AndroidAssetsLength;
+	runtime.read = FS_AndroidAssetsRead;
+	runtime.closeAsset = FS_AndroidAssetsCloseAsset;
+	runtime.allocationFailed = FS_AndroidAssetsAllocationFailed;
+
+	return runtime;
 }
 
 static byte *FS_LoadAndroidAssetsFile_Legacy( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *filesize, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
 {
-	byte *buf;
-	off_t size;
-	AAsset *asset;
+	fs_android_assets_load_runtime_t runtime = FS_MakeAndroidAssetsLoadRuntime( search );
 
-	if( filesize ) *filesize = 0;
-
-	asset = AAssetManager_open( search->assets->asset_manager, path, AASSET_MODE_BUFFER );
-	if( !asset )
-		return NULL;
-
-	size = AAsset_getLength( asset );
-
-	buf = (byte *)pfnAlloc( size + 1 );
-	if( unlikely( !buf ))
-	{
-		Con_Reportf( "%s: can't alloc %d bytes, no free memory\n", __func__, size + 1 );
-		AAsset_close( asset );
-		return NULL;
-	}
-
-	buf[size] = '\0';
-
-	if( AAsset_read( asset, buf, size ) < 0 )
-	{
-		pfnFree( buf );
-		AAsset_close( asset );
-		return NULL;
-	}
-
-	AAsset_close( asset );
-	if( filesize ) *filesize = size;
-
-	return buf;
+	(void)pack_ind;
+	return FS_AndroidAssetsBackend_LoadAsset( &runtime, path, filesize, pfnAlloc, pfnFree );
 }
 
 static void FS_Close_AndroidAssets_Hook( void *context )

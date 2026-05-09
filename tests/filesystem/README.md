@@ -77,7 +77,7 @@ structure.
 | Search result builder | `tests/filesystem/search_result_builder.cpp` | existing | Built by `src/wscript`; covers target-neutral sort, duplicate compaction, and packed string copying. |
 | WAD backend helpers | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, load-file default behavior, WAD type mapping, sorted lump insertion, binary lump lookup, and lump-table parsing. |
 | ZIP backend helpers | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, entry sorting, binary lookup, central-directory parsing, and stored load behavior. |
-| Android assets backend skeleton | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and hook forwarding without Android runtime dependencies. |
+| Android assets backend helpers | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, hook forwarding, opaque asset find/search/open/load helpers, and desktop compileability without Android runtime dependencies. |
 | DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, direct-path lookup, and historical relative path quirks, not loading real DLLs. |
 
 ## First Unit Tests To Add

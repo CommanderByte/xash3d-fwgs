@@ -1,5 +1,7 @@
 #include "filesystem/android_assets_backend.hpp"
 
+#include <string.h>
+
 namespace xash
 {
 namespace filesystem
@@ -21,6 +23,19 @@ void CopyString(char *dst, size_t size, const char *text)
 		dst[i] = text[i];
 
 	dst[i] = '\0';
+}
+
+const char *FindLastPathSeparator(const char *text)
+{
+	const char *separator = NULL;
+
+	for (const char *cursor = text ? text : ""; *cursor; ++cursor)
+	{
+		if (*cursor == '/' || *cursor == '\\' || *cursor == ':')
+			separator = cursor;
+	}
+
+	return separator;
 }
 
 }
@@ -127,6 +142,170 @@ byte *AndroidAssetsBackend::loadFile(const char *path, int index,
 			freeFn);
 
 	return ISearchPathBackend::loadFile(path, index, fileSize, alloc, freeFn);
+}
+
+int FindAndroidAsset(const AndroidAssetsFindRuntime &runtime,
+	const char *path, char *fixedName, size_t fixedNameSize)
+{
+	if (!runtime.openAsset || !runtime.closeAsset)
+		return -1;
+
+	void *asset = runtime.openAsset(runtime.context, path, 0);
+	if (!asset)
+		return -1;
+
+	runtime.closeAsset(runtime.context, asset);
+
+	if (fixedName)
+		CopyString(fixedName, fixedNameSize, path);
+
+	return 0;
+}
+
+void SearchAndroidAssets(const AndroidAssetsSearchRuntime &runtime,
+	stringlist_t *list, const char *pattern, bool caseInsensitive)
+{
+	if (!runtime.alloc || !runtime.free || !runtime.listDirectory ||
+		!runtime.listCreate || !runtime.listDestroy || !runtime.matchPattern ||
+		!runtime.stringCount || !runtime.stringAt || !runtime.append)
+	{
+		return;
+	}
+
+	const char *separator = FindLastPathSeparator(pattern);
+	const size_t basePathLength = separator ?
+		static_cast<size_t>(separator + 1 - pattern) : 0;
+
+	char *basePath = static_cast<char *>(runtime.alloc(runtime.context,
+		basePathLength + 1, true));
+	if (!basePath)
+		return;
+
+	if (basePathLength)
+		memcpy(basePath, pattern, basePathLength);
+	basePath[basePathLength] = '\0';
+
+	stringlist_t *dirList = runtime.listCreate(runtime.context);
+	if (!dirList)
+	{
+		runtime.free(runtime.context, basePath);
+		return;
+	}
+	runtime.listDirectory(runtime.context, dirList, basePath);
+
+	char temp[MAX_STRING];
+	if (basePathLength >= sizeof(temp))
+	{
+		runtime.listDestroy(runtime.context, dirList);
+		runtime.free(runtime.context, basePath);
+		return;
+	}
+	CopyString(temp, sizeof(temp), basePath);
+
+	const int dirCount = runtime.stringCount(runtime.context, dirList);
+	for (int i = 0; i < dirCount; ++i)
+	{
+		CopyString(&temp[basePathLength], sizeof(temp) - basePathLength,
+			runtime.stringAt(runtime.context, dirList, i));
+
+		if (runtime.matchPattern(runtime.context, temp, pattern, true))
+		{
+			int resultIndex = 0;
+			const int resultCount = runtime.stringCount(runtime.context, list);
+			for (; resultIndex < resultCount; ++resultIndex)
+			{
+				const char *existing = runtime.stringAt(runtime.context, list,
+					resultIndex);
+				if (existing && strcmp(existing, temp) == 0)
+					break;
+			}
+
+			if (resultIndex == resultCount)
+				runtime.append(runtime.context, list, temp);
+		}
+	}
+
+	runtime.listDestroy(runtime.context, dirList);
+	runtime.free(runtime.context, basePath);
+
+	(void)caseInsensitive;
+}
+
+file_t *OpenAndroidAsset(const AndroidAssetsOpenRuntime &runtime,
+	void *searchPath, const char *filename)
+{
+	if (!runtime.allocFile || !runtime.freeFile || !runtime.openAsset ||
+		!runtime.openFileDescriptor || !runtime.closeAsset || !runtime.setupFile)
+	{
+		return NULL;
+	}
+
+	file_t *file = static_cast<file_t *>(runtime.allocFile(runtime.context));
+	if (!file)
+		return NULL;
+
+	void *asset = runtime.openAsset(runtime.context, filename, 1);
+	if (!asset)
+	{
+		runtime.freeFile(runtime.context, file);
+		return NULL;
+	}
+
+	fs_offset_t offset = 0;
+	fs_offset_t length = 0;
+	const int handle = runtime.openFileDescriptor(runtime.context, asset,
+		&offset, &length);
+
+	runtime.setupFile(runtime.context, file, searchPath, handle, offset, length);
+	runtime.closeAsset(runtime.context, asset);
+
+	return file;
+}
+
+byte *LoadAndroidAsset(const AndroidAssetsLoadRuntime &runtime,
+	const char *path, fs_offset_t *fileSize, void *(*alloc)(size_t),
+	void (*freeFn)(void *))
+{
+	if (fileSize)
+		*fileSize = 0;
+
+	if (!runtime.openAsset || !runtime.length || !runtime.read ||
+		!runtime.closeAsset || !alloc)
+	{
+		return NULL;
+	}
+
+	void *asset = runtime.openAsset(runtime.context, path, 2);
+	if (!asset)
+		return NULL;
+
+	const fs_offset_t size = runtime.length(runtime.context, asset);
+	byte *buffer = static_cast<byte *>(alloc(static_cast<size_t>(size + 1)));
+	if (!buffer)
+	{
+		if (runtime.allocationFailed)
+			runtime.allocationFailed(runtime.context,
+				static_cast<size_t>(size + 1));
+		runtime.closeAsset(runtime.context, asset);
+		return NULL;
+	}
+
+	buffer[size] = '\0';
+
+	if (runtime.read(runtime.context, asset, buffer,
+		static_cast<size_t>(size)) < 0)
+	{
+		if (freeFn)
+			freeFn(buffer);
+		runtime.closeAsset(runtime.context, asset);
+		return NULL;
+	}
+
+	runtime.closeAsset(runtime.context, asset);
+	if (fileSize)
+		*fileSize = size;
+
+	return buffer;
 }
 
 }
