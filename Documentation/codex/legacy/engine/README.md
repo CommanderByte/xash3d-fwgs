@@ -9,3 +9,5 @@ It focuses on real ownership, coupling, global state, and migration risk.
   `engine/common/`.
 - [command-cvar-baseline.md](command-cvar-baseline.md) documents the current
   command/cvar ownership, lifecycle, tests, and migration seams.
+- [info-string-baseline.md](info-string-baseline.md) documents the migrated
+  `Info_*` compatibility rules, quirks, and test coverage.

@@ -8,3 +8,5 @@ Current implementation notes:
 
 - `basecmd-migration-guide.md`: how the legacy `BaseCmd_*` registry should move
   toward `src/engine/commands/` without changing the public C surface.
+- `info-string-migration-guide.md`: how the legacy `Info_*` API now routes
+  through `src/engine/info_string.*` while keeping C callers stable.

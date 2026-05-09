@@ -1338,6 +1338,101 @@ commit, test command, document link, or manual verification note that proves it.
   `COM_FreeLibrary: Unloading filesystem_stdio.dll`, and
   `Stopped with reason "command"` on 2026-05-09.
 
+## Phase 38: Info String Rewrite
+
+- [x] `ENG-INFO-001` Audit `infostring.c` format rules, invalid characters,
+  max-size behavior, important-key behavior, star-key handling, and largest-key
+  removal policy.
+  Evidence: `Documentation/codex/legacy/engine/info-string-baseline.md` and
+  `Documentation/codex/todo/engine_infostring_todo.md`.
+- [x] `ENG-INFO-002` Add standalone and parallel tests for `Info_*` behavior.
+  Evidence: `tests/engine/info_string.cpp` covers the modern core; `Test_InfoStrings`
+  in `engine/common/common.c` covers the routed legacy `Info_*` API.
+- [x] `ENG-INFO-003` Add a modern info-string implementation and route the
+  existing C API through it only after tests prove compatibility.
+  Evidence: `src/include/engine/info_string.hpp`, `src/engine/info_string.cpp`,
+  `engine/common/infostring.cpp`, and `Documentation/codex/modern/engine/info-string-migration-guide.md`.
+- [x] `ENG-INFO-004` Run focused tests, `.\waf.bat build --alltests`, and a
+  Windows runtime smoke after routing.
+  Evidence: `.\waf.bat build --targets=test_engine_info_string` passed;
+  `.\waf.bat build --targets=xash_tests` passed; `.\waf.bat build --alltests`
+  passed 47/47; Windows smoke copied the rebuilt launcher/engine/filesystem DLLs
+  to `run-win32`, launched with `XASH3D_BASEDIR=C:\git\xash3d-fwgs\run-win32`
+  and `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached `Time to first frame: 0.565 seconds`, and stopped with reason
+  `command`.
+
+## Phase 39: Hash And Checksum Helpers
+
+- [ ] `ENG-HASH-001` Audit hash/checksum helpers such as `COM_HashKey`, their
+  callers, and known-output compatibility requirements.
+  Evidence: `Documentation/codex/todo/engine_hash_todo.md`.
+- [ ] `ENG-HASH-002` Add tests for hash/checksum vectors, case folding,
+  hash-size assumptions, and edge inputs.
+  Evidence:
+- [ ] `ENG-HASH-003` Replace one narrow implementation group behind existing C
+  symbols after focused tests and full tests pass.
+  Evidence:
+
+## Phase 40: String And Path Utilities
+
+- [ ] `ENG-STRPATH-001` Audit shared string/path helpers and rank them by
+  caller breadth, compatibility risk, and testability.
+  Evidence: `Documentation/codex/todo/engine_string_path_todo.md`.
+- [ ] `ENG-STRPATH-002` Add focused tests for path extension, basename,
+  slash-normalization, case comparison, and bounded copy/concat behavior.
+  Evidence:
+- [ ] `ENG-STRPATH-003` Migrate one narrow helper group after deciding whether
+  it belongs in `src/engine`, `src/utilities`, or public C utility space.
+  Evidence:
+
+## Phase 41: Command Buffer Primitive
+
+- [ ] `ENG-CBUF-001` Audit command buffer ownership, command splitting,
+  quote/comment handling, insertion behavior, overflow behavior, filtered
+  buffer behavior, and `wait` semantics.
+  Evidence: `Documentation/codex/todo/engine_command_buffer_todo.md`.
+- [ ] `ENG-CBUF-002` Expand command-buffer tests for semicolon/newline
+  splitting, CRLF, comments, quotes, inserted alias text, and overflow paths.
+  Evidence:
+- [ ] `ENG-CBUF-003` Add a modern command-buffer primitive and route `Cbuf_*`
+  mechanics through it while keeping command dispatch policy stable.
+  Evidence:
+- [ ] `ENG-CBUF-004` Run focused tests, `xash_tests`, full tests, and Windows
+  runtime smoke after routing.
+  Evidence:
+
+## Phase 42: Memory Pools And Allocation
+
+- [ ] `ENG-MEM-001` Audit `zone.c`, allocation families, ownership rules, pool
+  lifecycle, debug reporting, and shutdown behavior.
+  Evidence: `Documentation/codex/todo/engine_memory_todo.md`.
+- [ ] `ENG-MEM-002` Add tests for pool lifecycle, realloc, null/zero-size
+  behavior, string duplication ownership, and shutdown cleanup.
+  Evidence:
+- [ ] `ENG-MEM-003` Extract or rewrite one tiny helper group before considering
+  a broad allocator abstraction.
+  Evidence:
+- [ ] `ENG-MEM-004` Run focused tests, full tests, and extended runtime smoke
+  after any allocator-path change.
+  Evidence:
+
+## Phase 43: Network Buffer Primitive
+
+- [ ] `ENG-NETBUF-001` Audit `net_buffer.c/.h` read/write helpers, overflow
+  behavior, bit order, endian behavior, string handling, and caller
+  expectations.
+  Evidence: `Documentation/codex/todo/engine_netbuffer_todo.md`.
+- [ ] `ENG-NETBUF-002` Add golden-vector and round-trip tests comparing legacy
+  and modern behavior on deterministic byte streams.
+  Evidence:
+- [ ] `ENG-NETBUF-003` Add a modern private buffer primitive and route one
+  narrow helper group only after compatibility tests pass.
+  Evidence:
+- [ ] `ENG-NETBUF-004` Run focused tests, full tests, and multiplayer/protocol
+  smoke where practical.
+  Evidence:
+
 ## Phase 1000: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push modernization commits to remote branch.
@@ -1391,3 +1486,5 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-035 | Start BaseCmd migration with a private C++ registry helper and standalone tests, then add a C adapter later once legacy routing is ready. | `modern/engine/basecmd-migration-guide.md`, `src/include/engine/commands/base_command_registry.hpp` |
 | 2026-05-09 | DEC-036 | Use a parallel/shadow verification phase for BaseCmd before making the modern registry authoritative, so focused tests can compare legacy and modern behavior directly. | `modern/engine/basecmd-migration-guide.md`, `tasks.md` |
 | 2026-05-09 | DEC-037 | Route legacy `BaseCmd_*` through a private C adapter backed by `BaseCommandRegistry`, keeping `base_cmd.h` and public command/cvar surfaces unchanged. | `engine/common/base_cmd_adapter.cpp`, `engine/common/base_cmd.c`, `modern/engine/basecmd-migration-guide.md` |
+| 2026-05-09 | DEC-038 | Use six ordered low-level engine candidates for the next rewrite-style migrations: info strings, hash/checksum helpers, string/path utilities, command buffer, memory pools, and network buffers. | `todo/engine_infostring_todo.md`, `todo/engine_hash_todo.md`, `todo/engine_string_path_todo.md`, `todo/engine_command_buffer_todo.md`, `todo/engine_memory_todo.md`, `todo/engine_netbuffer_todo.md` |
+| 2026-05-09 | DEC-039 | Implement info strings as a direct low-level C++ replacement under `src/engine` while exporting the unchanged legacy `Info_*` C surface from `engine/common/infostring.cpp`. | `legacy/engine/info-string-baseline.md`, `modern/engine/info-string-migration-guide.md`, `src/engine/info_string.cpp`, `engine/common/infostring.cpp` |

@@ -998,6 +998,50 @@ static void Test_LZSS( void )
 	TASSERT_STR( out, decompressed );
 }
 
+static void Test_InfoStrings( void )
+{
+	char info[256] = "";
+	char prefix[256] = "\\foo2\\bad\\foo\\good";
+	char small[80] = "";
+
+	TASSERT( Info_SetValueForKey( info, "name", "Gordon", sizeof( info )));
+	TASSERT( Info_SetValueForKey( info, "model", "barney", sizeof( info )));
+	TASSERT_STR( info, "\\name\\Gordon\\model\\barney" );
+	TASSERT_STR( Info_ValueForKey( info, "name" ), "Gordon" );
+	TASSERT( Info_IsValid( info ));
+
+	TASSERT( Info_RemoveKey( info, "name" ));
+	TASSERT_STR( info, "\\model\\barney" );
+
+	TASSERT( Info_SetValueForStarKey( info, "*sid", "123", sizeof( info )));
+	Info_RemovePrefixedKeys( info, '*' );
+	TASSERT_STR( info, "\\model\\barney" );
+
+	TASSERT( !Info_SetValueForKey( info, "*sid", "123", sizeof( info )));
+	TASSERT( !Info_SetValueForKey( info, "bad\\key", "1", sizeof( info )));
+	TASSERT( !Info_SetValueForKey( info, "bad", "has..dots", sizeof( info )));
+	TASSERT( !Info_SetValueForKey( info, "bad", "has\"quote", sizeof( info )));
+
+	TASSERT( Info_SetValueForKey( info, "team", "BLUE TEAM", sizeof( info )));
+	TASSERT_STR( Info_ValueForKey( info, "team" ), "blue team" );
+	TASSERT( Info_SetValueForKey( info, "team", "", sizeof( info )));
+	TASSERT_STR( Info_ValueForKey( info, "team" ), "" );
+
+	TASSERT( Info_RemoveKey( prefix, "foo" ));
+	TASSERT_STR( prefix, "\\foo\\good" );
+
+	TASSERT( Info_SetValueForKey( small, "junk", "abcdefghijklmnopqrstuvwxyz", sizeof( small )));
+	TASSERT( Info_SetValueForKey( small, "name", "GordonFreemanWithALongName", 45 ));
+	TASSERT_STR( Info_ValueForKey( small, "name" ), "GordonFreemanWithALongName" );
+	TASSERT_STR( Info_ValueForKey( small, "junk" ), "" );
+
+	TASSERT( Info_SetValueForKeyf( info, "format", sizeof( info ), "%s-%d", "value", 7 ));
+	TASSERT_STR( Info_ValueForKey( info, "format" ), "value-7" );
+
+	TASSERT( !Info_IsValid( "\\name\\" ));
+	TASSERT( !Info_IsValid( "\\name" ));
+}
+
 void Test_RunCommon( void )
 {
 	Msg( "Checking COM_IsSafeFileToDownload...\n" );
@@ -1012,5 +1056,8 @@ void Test_RunCommon( void )
 
 	Msg( "Checking LZSS_Decompress...\n" );
 	Test_LZSS();
+
+	Msg( "Checking Info strings...\n" );
+	Test_InfoStrings();
 }
 #endif

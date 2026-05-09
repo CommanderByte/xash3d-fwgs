@@ -15,6 +15,18 @@ Active documents:
   debugging utility layer.
 - [engine_deferred_todo.md](engine_deferred_todo.md) tracks deferred
   engine/common candidates after the BaseCmd pilot.
+- [engine_infostring_todo.md](engine_infostring_todo.md) tracks the proposed
+  low-level info-string rewrite.
+- [engine_hash_todo.md](engine_hash_todo.md) tracks hash/checksum helper
+  modernization.
+- [engine_string_path_todo.md](engine_string_path_todo.md) tracks shared
+  string/path helper modernization.
+- [engine_command_buffer_todo.md](engine_command_buffer_todo.md) tracks command
+  buffer primitive extraction.
+- [engine_memory_todo.md](engine_memory_todo.md) tracks cautious memory pool and
+  allocation modernization.
+- [engine_netbuffer_todo.md](engine_netbuffer_todo.md) tracks network/message
+  buffer modernization.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
 - [game_launch_todo.md](game_launch_todo.md) tracks the launcher
