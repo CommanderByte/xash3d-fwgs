@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include <stddef.h>
 #include <stdint.h>
 #include "filesystem_internal.h"
+#include "android_assets_backend_adapter.h"
 #include "crtlib.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
@@ -40,6 +41,7 @@ struct android_assets_s
 	qboolean engine;
 	AAssetManager *asset_manager;
 	AAssetDir *dir;
+	void *backend;
 };
 
 struct jni_methods_s
@@ -137,7 +139,7 @@ static android_assets_t *FS_LoadAndroidAssets( qboolean engine )
 	return assets;
 }
 
-static int FS_FileTime_AndroidAssets( searchpath_t *search, const char *filename )
+static int FS_FileTime_AndroidAssets_Legacy( searchpath_t *search, const char *filename )
 {
 	static time_t time;
 
@@ -152,7 +154,7 @@ static int FS_FileTime_AndroidAssets( searchpath_t *search, const char *filename
 	return time;
 }
 
-static int FS_FindFile_AndroidAssets( struct searchpath_s *search, const char *path, char *fixedname, size_t len )
+static int FS_FindFile_AndroidAssets_Legacy( struct searchpath_s *search, const char *path, char *fixedname, size_t len )
 {
 	AAsset *assets = AAssetManager_open( search->assets->asset_manager, path, AASSET_MODE_UNKNOWN );
 
@@ -167,17 +169,17 @@ static int FS_FindFile_AndroidAssets( struct searchpath_s *search, const char *p
 	return -1;
 }
 
-static void FS_PrintInfo_AndroidAssets( searchpath_t *search, char *dst, size_t size )
+static void FS_PrintInfo_AndroidAssets_Legacy( searchpath_t *search, char *dst, size_t size )
 {
 	Q_snprintf( dst, size, "%s", search->assets->package_name );
 }
 
-static void FS_Close_AndroidAssets( searchpath_t *search )
+static void FS_Close_AndroidAssets_Legacy( searchpath_t *search )
 {
 	FS_CloseAndroidAssets( search->assets );
 }
 
-static void FS_Search_AndroidAssets( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+static void FS_Search_AndroidAssets_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
 	string temp;
 	stringlist_t dirlist;
@@ -225,7 +227,7 @@ static void FS_Search_AndroidAssets( searchpath_t *search, stringlist_t *list, c
 	Mem_Free( basepath );
 }
 
-static file_t *FS_OpenFile_AndroidAssets( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+static file_t *FS_OpenFile_AndroidAssets_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
 	file_t *file = Mem_Calloc( fs_mempool, sizeof( *file ));
 	AAsset *assets = AAssetManager_open( search->assets->asset_manager, filename, AASSET_MODE_RANDOM );
@@ -241,7 +243,7 @@ static file_t *FS_OpenFile_AndroidAssets( searchpath_t *search, const char *file
 	return file;
 }
 
-static byte *FS_LoadAndroidAssetsFile( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *filesize, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+static byte *FS_LoadAndroidAssetsFile_Legacy( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *filesize, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
 {
 	byte *buf;
 	off_t size;
@@ -276,6 +278,109 @@ static byte *FS_LoadAndroidAssetsFile( searchpath_t *search, const char *path, i
 	if( filesize ) *filesize = size;
 
 	return buf;
+}
+
+static void FS_Close_AndroidAssets_Hook( void *context )
+{
+	FS_Close_AndroidAssets_Legacy( (searchpath_t *)context );
+}
+
+static void FS_PrintInfo_AndroidAssets_Hook( void *context, char *dst, size_t size )
+{
+	FS_PrintInfo_AndroidAssets_Legacy( (searchpath_t *)context, dst, size );
+}
+
+static file_t *FS_OpenFile_AndroidAssets_Hook( void *context, const char *filename, const char *mode, int pack_ind )
+{
+	return FS_OpenFile_AndroidAssets_Legacy( (searchpath_t *)context, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_AndroidAssets_Hook( void *context, const char *filename )
+{
+	return FS_FileTime_AndroidAssets_Legacy( (searchpath_t *)context, filename );
+}
+
+static int FS_FindFile_AndroidAssets_Hook( void *context, const char *path, char *fixedname, size_t len )
+{
+	return FS_FindFile_AndroidAssets_Legacy( (searchpath_t *)context, path, fixedname, len );
+}
+
+static void FS_Search_AndroidAssets_Hook( void *context, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	FS_Search_AndroidAssets_Legacy( (searchpath_t *)context, list, pattern, caseinsensitive );
+}
+
+static byte *FS_LoadAndroidAssetsFile_Hook( void *context, const char *path, int pack_ind, fs_offset_t *filesize, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+{
+	return FS_LoadAndroidAssetsFile_Legacy( (searchpath_t *)context, path, pack_ind, filesize, pfnAlloc, pfnFree );
+}
+
+static void FS_Close_AndroidAssets( searchpath_t *search )
+{
+	if( search->assets && search->assets->backend )
+	{
+		void *backend = search->assets->backend;
+		search->assets->backend = NULL;
+		FS_AndroidAssetsBackendBridge_Close( backend );
+		FS_DestroyAndroidAssetsBackendBridge( backend );
+		return;
+	}
+
+	FS_Close_AndroidAssets_Legacy( search );
+}
+
+static void FS_PrintInfo_AndroidAssets( searchpath_t *search, char *dst, size_t size )
+{
+	if( search->assets && search->assets->backend )
+	{
+		FS_AndroidAssetsBackendBridge_PrintInfo( search->assets->backend, dst, size );
+		return;
+	}
+
+	FS_PrintInfo_AndroidAssets_Legacy( search, dst, size );
+}
+
+static file_t *FS_OpenFile_AndroidAssets( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+{
+	if( search->assets && search->assets->backend )
+		return FS_AndroidAssetsBackendBridge_OpenFile( search->assets->backend, filename, mode, pack_ind );
+
+	return FS_OpenFile_AndroidAssets_Legacy( search, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_AndroidAssets( searchpath_t *search, const char *filename )
+{
+	if( search->assets && search->assets->backend )
+		return FS_AndroidAssetsBackendBridge_FileTime( search->assets->backend, filename );
+
+	return FS_FileTime_AndroidAssets_Legacy( search, filename );
+}
+
+static int FS_FindFile_AndroidAssets( struct searchpath_s *search, const char *path, char *fixedname, size_t len )
+{
+	if( search->assets && search->assets->backend )
+		return FS_AndroidAssetsBackendBridge_FindFile( search->assets->backend, path, fixedname, len );
+
+	return FS_FindFile_AndroidAssets_Legacy( search, path, fixedname, len );
+}
+
+static void FS_Search_AndroidAssets( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	if( search->assets && search->assets->backend )
+	{
+		FS_AndroidAssetsBackendBridge_Search( search->assets->backend, list, pattern, caseinsensitive );
+		return;
+	}
+
+	FS_Search_AndroidAssets_Legacy( search, list, pattern, caseinsensitive );
+}
+
+static byte *FS_LoadAndroidAssetsFile( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *filesize, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+{
+	if( search->assets && search->assets->backend )
+		return FS_AndroidAssetsBackendBridge_LoadFile( search->assets->backend, path, pack_ind, filesize, pfnAlloc, pfnFree );
+
+	return FS_LoadAndroidAssetsFile_Legacy( search, path, pack_ind, filesize, pfnAlloc, pfnFree );
 }
 
 searchpath_t *FS_AddAndroidAssets_Fullpath( const char *path, int flags )
@@ -317,6 +422,19 @@ searchpath_t *FS_AddAndroidAssets_Fullpath( const char *path, int flags )
 	search->pfnFindFile = FS_FindFile_AndroidAssets;
 	search->pfnSearch = FS_Search_AndroidAssets;
 	search->pfnLoadFile = FS_LoadAndroidAssetsFile;
+
+	{
+		fs_android_assets_backend_hooks_t hooks;
+		hooks.context = search;
+		hooks.close = FS_Close_AndroidAssets_Hook;
+		hooks.printInfo = FS_PrintInfo_AndroidAssets_Hook;
+		hooks.openFile = FS_OpenFile_AndroidAssets_Hook;
+		hooks.fileTime = FS_FileTime_AndroidAssets_Hook;
+		hooks.findFile = FS_FindFile_AndroidAssets_Hook;
+		hooks.search = FS_Search_AndroidAssets_Hook;
+		hooks.loadFile = FS_LoadAndroidAssetsFile_Hook;
+		search->assets->backend = FS_CreateAndroidAssetsBackendBridge( search, &hooks );
+	}
 
 	Con_Reportf( "Adding Android assets: %s\n", assets->package_name );
 
