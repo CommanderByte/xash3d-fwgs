@@ -145,6 +145,51 @@ provides `Posix_Input()` for dedicated server stdin, while stdout text is
 written by `Sys_PrintStdout()` in `sys_con.c`. Mobile platforms route stripped
 console text into their platform logging APIs where available.
 
+## Command And Input Hierarchy
+
+Background console input and in-game console input are separate paths:
+
+```mermaid
+flowchart TD
+    Wcon["Wcon_Input"]
+    Posix["Posix_Input"]
+    Platform["Platform_Input"]
+    Host["Host_GetCommands"]
+    Cbuf["Cbuf_AddText + Cbuf_Execute"]
+    Cmd["Cmd_* registry"]
+    KeyConsole["Key_Console"]
+    KeyMessage["Key_Message"]
+
+    Wcon --> Platform
+    Posix --> Platform
+    Platform --> Host
+    Host --> Cbuf
+    Cbuf --> Cmd
+
+    KeyConsole --> Cbuf
+    KeyMessage --> Cbuf
+```
+
+`Host_GetCommands()` polls `Platform_Input()` once per host frame and executes
+returned command text immediately. On Win32 this comes from `Wcon_Input()`. On
+POSIX desktop/dedicated builds it comes from `Posix_Input()`. The declaration
+for `Sys_Input()` remains in `system.h`, but the active command path is the
+platform facade.
+
+The rendered in-game console uses `Key_Console()` and `Key_Message()` instead.
+Those functions manage edit fields, history, command completion, chat routing,
+and then push text into the same command buffer. This is why platform console
+backends should model background consoles only.
+
+Console-related command registration is split:
+
+- `Con_Init()` registers rendered-console commands such as `toggleconsole`,
+  restricted `clear`, `messagemode`, `messagemode2`, and `contimes`.
+- `Wcon_InitConsoleCommands()` registers the Win32 dedicated-console `clear`
+  command when the host is dedicated and a Win32 console exists.
+- Common command/cvar systems register the actual command registry and
+  autocomplete surface consumed by both paths.
+
 ## Engine Log File
 
 `engine/common/sys_con.c` owns the engine log file:

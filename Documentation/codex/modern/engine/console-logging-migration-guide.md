@@ -13,6 +13,11 @@ The first implementation step should be target-neutral and testable. The
 rendered console and Win32 console window should stay in their current modules
 until the output semantics are covered.
 
+After the platform-console audit, the preferred first concrete step is the
+platform/backend boundary described in `platform-console-backends.md`. That
+lets Win32, POSIX, mobile log-only, and null-console behavior be described as
+capabilities before `Sys_Print()` is converted into a full router.
+
 ## Recommended Shape
 
 ```mermaid
@@ -68,6 +73,7 @@ implementation begins:
 | `xash::engine::console::ColorPolicy` | Strip, preserve, or translate `^` color escapes and one-byte legacy prefixes. |
 | `xash::engine::console::LinePrefixState` | Track line-start state for timestamp prefixes. |
 | `xash::engine::console::LineEndingPolicy` | Normalize Win32 platform-console CR/LF behavior without touching the rendered console. |
+| `xash::engine::console::IPlatformConsoleBackend` | Internal backend for background console output/input capabilities. |
 | `xash::engine::console::ConsoleRouter` | Later fanout abstraction, once formatter/filter behavior is tested. |
 
 Keep sink implementations thin:
@@ -150,12 +156,15 @@ audit passes do not need a smoke test.
 ## Suggested Phase Split
 
 1. Document current ownership and compatibility rules.
-2. Add target-neutral filter/format helpers and unit tests.
-3. Route `Con_Printf`, `Con_DPrintf`, and `Con_Reportf` through helpers while
+2. Add platform console backend capability/config types and a null backend.
+3. Wrap POSIX and Win32 background console behavior behind backend adapters
+   while preserving existing C functions.
+4. Add target-neutral filter/format helpers and unit tests.
+5. Route `Con_Printf`, `Con_DPrintf`, and `Con_Reportf` through helpers while
    preserving `Sys_Print()` fanout.
-4. Extract platform/log formatting helpers from `Sys_Print()` and
+6. Extract platform/log formatting helpers from `Sys_Print()` and
    `Sys_PrintLog()` behind tests.
-5. Only then consider a router/sink abstraction.
+7. Only then consider a router/sink abstraction.
 
 This keeps the first code change small and avoids moving the rendered console
 or Win32 console window before we know exactly what behavior is contractual.

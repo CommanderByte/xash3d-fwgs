@@ -58,8 +58,18 @@ Design decision from the audit:
 - Keep the rendered console and platform console as sinks, not as the core
   logging abstraction.
 - Keep `Log_Printf` as a server event log service, separate from `engine.log`.
-- Start implementation with target-neutral filtering/formatting helpers, not a
-  full sink router.
+- Start implementation with platform console backend boundaries and
+  target-neutral filtering/formatting helpers, not a full sink router.
+
+Platform backend decision from the second audit:
+
+- Treat Win32, POSIX, mobile log-only, and missing consoles as capability sets.
+- Keep background platform console input separate from the rendered in-game
+  console input path.
+- Preserve `Platform_Input()` and `Wcon_*` style C functions as adapters while
+  adding internal C++ backend types.
+- Defer the broad output hub until platform backends are small, testable, and
+  selected through a stable internal interface.
 
 ## Phase 43 Tasks: Console And Logging Ownership
 
@@ -84,3 +94,25 @@ Design decision from the audit:
 - [ ] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
   any output path changes.
   Evidence: no output path changed during the audit pass; pending code changes.
+
+- [x] `ENG-LOG-006` Document background console backend ownership, command
+  input hierarchy, and per-platform capability expectations.
+  Evidence: `Documentation/codex/modern/engine/platform-console-backends.md`,
+  `Documentation/codex/legacy/engine/console-logging-baseline.md`.
+
+- [ ] `ENG-LOG-007` Add internal platform-console capability/config types,
+  null backend, and focused unit tests.
+  Evidence: pending implementation pass.
+
+- [ ] `ENG-LOG-008` Wrap POSIX/Linux background console output/input behind a
+  platform console backend while preserving `Platform_Input()` semantics.
+  Evidence: pending implementation pass.
+
+- [ ] `ENG-LOG-009` Wrap Win32 external console output/input/lifecycle behind
+  a platform console backend while preserving the existing `Wcon_*` C surface.
+  Evidence: pending implementation pass.
+
+- [ ] `ENG-LOG-010` Decide whether Android/iOS/Switch/Vita should use explicit
+  output-only backends or remain direct `Sys_PrintStdout()` platform branches
+  until the router phase.
+  Evidence: pending implementation pass.

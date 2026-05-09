@@ -1480,6 +1480,23 @@ commit, test command, document link, or manual verification note that proves it.
 - [ ] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
   any output path changes.
   Evidence: no output path changed during the audit pass; pending code changes.
+- [x] `ENG-LOG-006` Document background console backend ownership, command
+  input hierarchy, and per-platform capability expectations.
+  Evidence: `Documentation/codex/modern/engine/platform-console-backends.md`,
+  `Documentation/codex/legacy/engine/console-logging-baseline.md`.
+- [ ] `ENG-LOG-007` Add internal platform-console capability/config types,
+  null backend, and focused unit tests.
+  Evidence:
+- [ ] `ENG-LOG-008` Wrap POSIX/Linux background console output/input behind a
+  platform console backend while preserving `Platform_Input()` semantics.
+  Evidence:
+- [ ] `ENG-LOG-009` Wrap Win32 external console output/input/lifecycle behind
+  a platform console backend while preserving the existing `Wcon_*` C surface.
+  Evidence:
+- [ ] `ENG-LOG-010` Decide whether Android/iOS/Switch/Vita should use explicit
+  output-only backends or remain direct `Sys_PrintStdout()` platform branches
+  until the router phase.
+  Evidence:
 
 ## Phase 44: System Platform Facade Audit
 
