@@ -23,8 +23,8 @@ objects.
 - [x] Migrate Android asset implementation into
   `src/filesystem/android_assets_backend.cpp` while preserving desktop
   compileability.
-- [ ] Introduce `FilesystemRuntime` as the owner of state, search paths,
-  gameinfo-derived mounts, policies, and diagnostics.
+- [x] Introduce `FilesystemRuntime` as the owner of state, search paths,
+  file-handle memory routing, and target-neutral rescan planning.
 - [ ] Route `VFileSystem009.cpp` through the modern runtime while preserving
   the public vtable and `CreateInterface` behavior.
 - [ ] Update build scripts so `src/filesystem` is the implementation source

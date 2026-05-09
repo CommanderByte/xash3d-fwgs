@@ -831,19 +831,32 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 25: Filesystem Runtime Ownership
 
-- [ ] `FS-RUNTIME-001` Design `FilesystemRuntime` ownership boundaries for
+- [x] `FS-RUNTIME-001` Design `FilesystemRuntime` ownership boundaries for
   state, search paths, write path, gameinfo mounts, archive registry, and
   diagnostics.
-  Evidence:
-- [ ] `FS-RUNTIME-002` Move search path list ownership behind
+  Evidence: `Documentation/codex/modern/filesystem/filesystem-runtime-ownership.md`,
+  `src/include/filesystem/filesystem_runtime.hpp`.
+- [x] `FS-RUNTIME-002` Move search path list ownership behind
   `FilesystemRuntime` while preserving `fs_api_t` behavior.
-  Evidence:
-- [ ] `FS-RUNTIME-003` Move `file_t` allocation/lifetime behind runtime-owned
+  Evidence: `src/filesystem/filesystem_runtime.cpp`,
+  `filesystem/filesystem_runtime_adapter.cpp`, `filesystem/filesystem.c`,
+  `tests/filesystem/filesystem_runtime.cpp`;
+  `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_state,test_archive-order,test_file-handle,test_hierarchy,test_search-results`
+  passed on 2026-05-09.
+- [x] `FS-RUNTIME-003` Move `file_t` allocation/lifetime behind runtime-owned
   handle helpers.
-  Evidence:
-- [ ] `FS-RUNTIME-004` Move gameinfo loading and rescan orchestration behind
-  runtime helpers.
-  Evidence:
+  Evidence: `src/filesystem/filesystem_runtime.cpp`,
+  `filesystem/filesystem_runtime_adapter.cpp`, `filesystem/filesystem.c`,
+  `tests/filesystem/filesystem_runtime.cpp`;
+  `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_state,test_archive-order,test_file-handle,test_hierarchy,test_search-results`
+  passed on 2026-05-09.
+- [x] `FS-RUNTIME-004` Move target-neutral rescan planning behind runtime
+  helpers and document remaining gameinfo blockers.
+  Evidence: `FilesystemRuntime::beginRescan` now owns target-neutral rescan
+  planning for mount flag masking, direct-path reset, and localization
+  language selection; gameinfo parsing and `FI.games` ownership remain legacy
+  blockers documented in
+  `Documentation/codex/modern/filesystem/filesystem-runtime-ownership.md`.
 
 ## Phase 26: Facade Thinning And Build Convergence
 

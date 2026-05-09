@@ -4,6 +4,7 @@
 #include "xash3d_types.h"
 
 typedef struct searchpath_s searchpath_t;
+typedef struct file_s file_t;
 
 namespace xash
 {

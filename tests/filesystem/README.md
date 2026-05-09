@@ -70,6 +70,7 @@ structure.
 | File handle cursor helpers | `tests/filesystem/file_handle_ops.cpp` | existing | Built by `src/wscript`; covers target-neutral tell/eof/seek math before routing legacy `file_t` calls. |
 | Game hierarchy builder | `tests/filesystem/game_hierarchy_builder.cpp` | existing | Built by `src/wscript`; freezes generated mount request order before legacy integration. |
 | Library locator normalization | `tests/filesystem/library_locator.cpp` | existing | Built by `src/wscript`; covers target-neutral short-path lowercasing, slash fixing, default extension, and relative game prefix stripping. |
+| Filesystem runtime ownership | `tests/filesystem/filesystem_runtime.cpp` | existing | Built by `src/wscript`; covers runtime-owned state, search path prepend/clear behavior, write-path retention/drop, file handle allocation hooks, and rescan planning. |
 | Filesystem state scaffold | `tests/filesystem/filesystem_state.cpp` | existing | Built by `src/wscript`; covers target-neutral state storage before wiring into `filesystem.c`. |
 | Path policy scaffold | `tests/filesystem/path_policy.cpp` | existing | Built by `src/wscript`; freezes path rejection, direct-path prefix stripping, and write-mode detection. |
 | PAK backend helpers | `tests/filesystem/pak_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, entry sorting, binary lookup, and directory parsing. |

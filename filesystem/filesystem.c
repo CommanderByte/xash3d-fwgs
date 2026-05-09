@@ -46,6 +46,7 @@ GNU General Public License for more details.
 #include "filesystem_internal.h"
 #include "archive_registry_adapter.h"
 #include "file_handle_ops_adapter.h"
+#include "filesystem_runtime_adapter.h"
 #include "filesystem_state_adapter.h"
 #include "game_hierarchy_adapter.h"
 #include "library_locator_adapter.h"
@@ -149,6 +150,101 @@ static void FS_SetDirectPaths( qboolean enable )
 static qboolean FS_DirectPathsEnabled( void )
 {
 	return FS_FilesystemState_DirectPathsEnabled();
+}
+
+static searchpath_t *FS_RuntimeSearchPathNext( void *context, searchpath_t *path )
+{
+	(void)context;
+	return path ? path->next : NULL;
+}
+
+static void FS_RuntimeSearchPathSetNext( void *context, searchpath_t *path, searchpath_t *next )
+{
+	(void)context;
+	if( path )
+		path->next = next;
+}
+
+static qboolean FS_RuntimeSearchPathIsStatic( void *context, searchpath_t *path )
+{
+	(void)context;
+	return path && FBitSet( path->flags, FS_STATIC_PATH );
+}
+
+static void FS_RuntimeSearchPathClose( void *context, searchpath_t *path )
+{
+	(void)context;
+	if( path && path->pfnClose )
+		path->pfnClose( path );
+}
+
+static void FS_RuntimeSearchPathFree( void *context, searchpath_t *path )
+{
+	(void)context;
+	Mem_Free( path );
+}
+
+static void FS_RuntimeMarkGamesNotAdded( void *context )
+{
+	int i;
+
+	(void)context;
+	for( i = 0; i < FI.numgames; i++ )
+	{
+		if( FI.games[i] )
+			FI.games[i]->added = false;
+	}
+}
+
+static fs_runtime_searchpath_ops_t FS_MakeRuntimeSearchPathOps( void )
+{
+	fs_runtime_searchpath_ops_t ops;
+
+	ops.context = NULL;
+	ops.next = FS_RuntimeSearchPathNext;
+	ops.setNext = FS_RuntimeSearchPathSetNext;
+	ops.isStatic = FS_RuntimeSearchPathIsStatic;
+	ops.close = FS_RuntimeSearchPathClose;
+	ops.freePath = FS_RuntimeSearchPathFree;
+	ops.markGamesNotAdded = FS_RuntimeMarkGamesNotAdded;
+
+	return ops;
+}
+
+static file_t *FS_RuntimeAllocFile( void *context, int clear )
+{
+	(void)context;
+	return clear ? Mem_Calloc( fs_mempool, sizeof( file_t )) :
+		Mem_Malloc( fs_mempool, sizeof( file_t ));
+}
+
+static void FS_RuntimeFreeFile( void *context, file_t *file )
+{
+	(void)context;
+	Mem_Free( file );
+}
+
+static fs_runtime_file_memory_ops_t FS_MakeRuntimeFileMemoryOps( void )
+{
+	fs_runtime_file_memory_ops_t ops;
+
+	ops.context = NULL;
+	ops.alloc = FS_RuntimeAllocFile;
+	ops.free = FS_RuntimeFreeFile;
+
+	return ops;
+}
+
+static file_t *FS_AllocFileHandle( qboolean clear )
+{
+	fs_runtime_file_memory_ops_t ops = FS_MakeRuntimeFileMemoryOps();
+	return FS_FilesystemRuntime_AllocFile( &ops, clear );
+}
+
+static void FS_FreeFileHandle( file_t *file )
+{
+	fs_runtime_file_memory_ops_t ops = FS_MakeRuntimeFileMemoryOps();
+	FS_FilesystemRuntime_FreeFile( &ops, file );
 }
 
 static void FS_SyncStateFromGlobals( void )
@@ -504,8 +600,11 @@ static searchpath_t *FS_AddArchive_Fullpath( const fs_archive_t *archive, const 
 	if( !search )
 		return NULL;
 
-	search->next = FS_SearchPaths();
-	FS_SetSearchPaths( search );
+	{
+		fs_runtime_searchpath_ops_t ops = FS_MakeRuntimeSearchPathOps();
+		FS_FilesystemRuntime_PrependSearchPath( search, &ops );
+		fs_searchpaths = FS_SearchPaths();
+	}
 
 	// time to add in search list all the wads from this archive
 	if( archive->load_wads && !FBitSet( flags, FS_SKIP_ARCHIVED_WADS ))
@@ -525,8 +624,9 @@ static searchpath_t *FS_AddArchive_Fullpath( const fs_archive_t *archive, const 
 			Q_snprintf( fullpath, sizeof( fullpath ), "%s/%s", file, list.strings[i] );
 			if(( wad = FS_AddWad_Fullpath( fullpath, flags | FS_LOAD_PACKED_WAD )))
 			{
-				wad->next = FS_SearchPaths();
-				FS_SetSearchPaths( wad );
+				fs_runtime_searchpath_ops_t ops = FS_MakeRuntimeSearchPathOps();
+				FS_FilesystemRuntime_PrependSearchPath( wad, &ops );
+				fs_searchpaths = FS_SearchPaths();
 			}
 		}
 
@@ -608,51 +708,12 @@ FS_ClearSearchPath
 */
 void FS_ClearSearchPath( void )
 {
-	searchpath_t *cur, **prev;
-	int i;
-	qboolean writepath_kept = false;
+	fs_runtime_searchpath_ops_t ops = FS_MakeRuntimeSearchPathOps();
+	fs_runtime_searchpath_clear_result_t result;
 
-	prev = &fs_searchpaths;
-
-	while( true )
-	{
-		cur = *prev;
-
-		if( !cur )
-			break;
-
-		// never delete static paths
-		if( FBitSet( cur->flags, FS_STATIC_PATH ))
-		{
-			prev = &cur->next;
-			continue;
-		}
-
-		*prev = cur->next;
-		cur->pfnClose( cur );
-		Mem_Free( cur );
-	}
-
-	for( i = 0; i < FI.numgames; i++ )
-	{
-		if( FI.games[i] )
-			FI.games[i]->added = false;
-	}
-
-	for( cur = fs_searchpaths; cur; cur = cur->next )
-	{
-		if( cur == fs_writepath )
-		{
-			writepath_kept = true;
-			break;
-		}
-	}
-
-	FS_FilesystemState_SetSearchPaths( fs_searchpaths );
-	if( !writepath_kept )
-		FS_SetWritePath( NULL );
-	else
-		FS_FilesystemState_SetWritePath( fs_writepath );
+	result = FS_FilesystemRuntime_ClearDynamicSearchPaths( &ops );
+	fs_searchpaths = result.searchPaths;
+	fs_writepath = result.writePath;
 }
 
 /*
@@ -1392,16 +1453,18 @@ FS_Rescan
 void FS_Rescan( uint32_t flags, const char *language )
 {
 	const char *str;
+	fs_runtime_rescan_plan_t rescan;
+
 	Con_Reportf( "%s( %s )\n", __func__, GI->title );
 
 	FS_ClearSearchPath();
 
-	flags &= FS_MOUNT_HD|FS_MOUNT_LV|FS_MOUNT_ADDON|FS_MOUNT_L10N;
-
-	if( FBitSet( flags, FS_MOUNT_L10N ))
-		FS_SetLanguage( language );
-	else
-		FS_SetLanguage( "" );
+	rescan = FS_FilesystemRuntime_BeginRescan( flags, language,
+		FS_MOUNT_HD|FS_MOUNT_LV|FS_MOUNT_ADDON|FS_MOUNT_L10N,
+		FS_MOUNT_L10N );
+	flags = rescan.mountFlags;
+	Q_strncpy( fs_language, rescan.language, sizeof( fs_language ));
+	fs_ext_path = false;
 
 	str = getenv( "XASH3D_EXTRAS_PAK1" );
 	if( !COM_StringEmptyOrNULL( str ))
@@ -1972,7 +2035,7 @@ file_t *FS_SysOpen( const char *filepath, const char *mode )
 		return NULL;
 	}
 
-	file = (file_t *)Mem_Calloc( fs_mempool, sizeof( *file ));
+	file = FS_AllocFileHandle( true );
 	file->filetime = memfile ? 0 : FS_SysFileTime( filepath );
 	file->ungetc = EOF;
 	file->handle = fd;
@@ -2010,7 +2073,7 @@ static int FS_DuplicateHandle( const char *filename, int handle, fs_offset_t pos
 
 file_t *FS_OpenHandle( searchpath_t *searchpath, int handle, fs_offset_t offset, fs_offset_t len )
 {
-	file_t *file = (file_t *)Mem_Calloc( fs_mempool, sizeof( file_t ));
+	file_t *file = FS_AllocFileHandle( true );
 #ifndef XASH_REDUCE_FD
 #ifdef HAVE_DUP
 	file->handle = dup( handle );
@@ -2021,13 +2084,13 @@ file_t *FS_OpenHandle( searchpath_t *searchpath, int handle, fs_offset_t offset,
 	if( file->handle < 0 )
 	{
 		Con_Printf( S_ERROR "%s: couldn't create fd for %s:0x%lx: %s\n", __func__, searchpath->filename, (long)offset, strerror( errno ));
-		Mem_Free( file );
+		FS_FreeFileHandle( file );
 		return NULL;
 	}
 
 	if( lseek( file->handle, offset, SEEK_SET ) == -1 )
 	{
-		Mem_Free( file );
+		FS_FreeFileHandle( file );
 		return NULL;
 	}
 
@@ -2376,7 +2439,7 @@ int FS_Close( file_t *file )
 		Mem_Free( file->ztk );
 	}
 
-	Mem_Free( file );
+	FS_FreeFileHandle( file );
 	return 0;
 }
 

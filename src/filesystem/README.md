@@ -17,6 +17,8 @@ Current files:
   built on the shared modern debugging utilities
 - `directory_backend.cpp`: private C++ directory backend helpers for cache
   population, case repair, loose-file lookup/open, and directory search
+- `filesystem_runtime.cpp`: runtime owner for filesystem state, search path
+  list operations, file handle allocation hooks, and rescan planning
 - `registry_snapshot.cpp`: archive registry snapshot capture and human/JSON
   writers for future `fs_registry` output
 - `search_path_backend.cpp`: shared backend interface defaults and type-name

@@ -7,6 +7,7 @@
 
 typedef struct file_s file_t;
 typedef struct stringlist_s stringlist_t;
+typedef struct searchpath_s searchpath_t;
 
 namespace xash
 {
