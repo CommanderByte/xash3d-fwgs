@@ -25,6 +25,8 @@ in upstream-facing user documentation yet.
   Windows build, SDL2, Steam asset, and HLSDK runtime smoke-test notes.
 - [modularization-plan/](modularization-plan/README.md) contains the working
   plan for migrating internals toward a more modular C++ architecture.
+- [legacy/engine/](legacy/engine/README.md) audits current engine/common
+  architecture and coupling before engine-side modularization.
 - [legacy/filesystem/](legacy/filesystem/README.md) documents the current
   filesystem architecture with Mermaid diagrams.
 - [modern/](modern/README.md) documents intended modernized internal

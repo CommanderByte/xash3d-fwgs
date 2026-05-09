@@ -1335,6 +1335,32 @@ void Cvar_PostFSInit( void )
 #if XASH_ENGINE_TESTS
 #include "tests.h"
 
+static void Test_CvarCommandCollision_f( void )
+{
+}
+
+static void Test_RunCvarRegistrationPolicy( void )
+{
+	convar_t *first;
+	convar_t *second;
+
+	TASSERT( Cmd_AddCommand( "test_cvar_command_collision", Test_CvarCommandCollision_f, "cvar collision test command" ));
+	TASSERT_EQp( Cvar_Get( "test_cvar_command_collision", "1", FCVAR_REFDLL, "must reject command collision" ), NULL );
+	TASSERT_EQp( Cvar_FindVar( "test_cvar_command_collision" ), NULL );
+	Cmd_RemoveCommand( "test_cvar_command_collision" );
+
+	first = Cvar_Get( "test_cvar_duplicate", "1", FCVAR_REFDLL, "first duplicate policy test cvar" );
+	TASSERT_NEQp( first, NULL );
+	second = Cvar_Get( "test_cvar_duplicate", "2", FCVAR_REFDLL|FCVAR_ARCHIVE, "second duplicate policy test cvar" );
+	TASSERT_EQp( first, second );
+	TASSERT_STR( first->string, "2" );
+	TASSERT( FBitSet( first->flags, FCVAR_REFDLL ));
+	TASSERT( FBitSet( first->flags, FCVAR_ARCHIVE ));
+
+	Cvar_Unlink( FCVAR_REFDLL );
+	TASSERT_EQp( Cvar_FindVar( "test_cvar_duplicate" ), NULL );
+}
+
 void Test_RunCvar( void )
 {
 	convar_t *test_privileged = Cvar_Get( "test_privileged", "0", FCVAR_PRIVILEGED, "bark bark" );
@@ -1376,5 +1402,7 @@ void Test_RunCvar( void )
 	TASSERT( test_unprivileged->value != 0.0f );
 	TASSERT( hud_filtered->value      == 0.0f );
 	TASSERT( filtered2->value         == 0.0f );
+
+	Test_RunCvarRegistrationPolicy();
 }
 #endif

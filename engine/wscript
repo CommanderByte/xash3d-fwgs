@@ -191,6 +191,8 @@ def build(bld):
 
 	# basic build: dedicated only
 	source = bld.path.ant_glob(['common/*.c', 'common/imagelib/*.c', 'common/soundlib/*.c', 'server/*.c'])
+	source += ['common/base_cmd_adapter.cpp']
+	libs += ['modern_engine']
 
 	# include platform-specific sources, this shall not fail if directory doesn't exist
 	source += bld.path.ant_glob('platform/%s/*.c' % bld.env.DEST_OS)
@@ -250,6 +252,7 @@ def build(bld):
 			target = 'xash',
 			use = server_libs,
 			includes = includes,
+			features = 'cxx c',
 			defines = 'XASH_ENABLE_MAIN=1 XASH_DEDICATED=1',
 			rpath = bld.env.DEFAULT_RPATH,
 			install_path = bld.env.BINDIR,
@@ -264,7 +267,7 @@ def build(bld):
 				target = 'xash_tests_dedicated',
 				use = server_libs,
 				includes = includes,
-				features = 'test',
+				features = 'cxx c test',
 				defines = 'XASH_ENABLE_MAIN=1 XASH_DEDICATED=1 XASH_ENGINE_TESTS=1',
 				rpath = bld.env.DEFAULT_RPATH,
 				install_path = None,

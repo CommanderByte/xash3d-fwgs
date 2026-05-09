@@ -11,6 +11,8 @@ migration phases and decisions.
 
 - [debugging/](debugging/README.md) contains detailed architecture notes for
   the modern shared debugging utility layer.
+- [engine/](engine/README.md) contains modern engine migration notes, starting
+  with the BaseCmd registry pilot.
 - [filesystem/](filesystem/) contains filesystem modernization audits,
   ownership boundaries, and compatibility notes.
 - [game-launch/](game-launch/README.md) contains the launcher modernization

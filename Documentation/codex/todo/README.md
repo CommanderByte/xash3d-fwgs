@@ -13,6 +13,8 @@ Active documents:
 
 - [debugging_todo.md](debugging_todo.md) tracks remaining work for the modern
   debugging utility layer.
+- [engine_deferred_todo.md](engine_deferred_todo.md) tracks deferred
+  engine/common candidates after the BaseCmd pilot.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
 - [game_launch_todo.md](game_launch_todo.md) tracks the launcher

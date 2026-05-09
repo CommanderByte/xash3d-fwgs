@@ -11,6 +11,7 @@ auditability and evidence lookup while active migration work continues under
 - [backend_implementation_migration_todo.md](backend_implementation_migration_todo.md)
 - [compatibility_facades_todo.md](compatibility_facades_todo.md)
 - [directory_backend_todo.md](directory_backend_todo.md)
+- [engine_common_todo.md](engine_common_todo.md)
 - [filesystem_decluttering_todo.md](filesystem_decluttering_todo.md)
 - [filesystem_state_todo.md](filesystem_state_todo.md)
 - [game_hierarchy_todo.md](game_hierarchy_todo.md)

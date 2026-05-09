@@ -49,6 +49,11 @@ def build(bld):
 		source = bld.path.ant_glob('filesystem/*.cpp'),
 		use = 'modern_debugging modern_debugging_includes sdk_includes werror')
 
+	bld.stlib(target = 'modern_engine',
+		source = bld.path.ant_glob('engine/**/*.cpp'),
+		use = 'modern_debugging_includes werror',
+		export_includes = 'include')
+
 	if bld.env.LAUNCHER:
 		source = ['launcher/platform/entry.cpp']
 		linkflags = []
@@ -72,6 +77,7 @@ def build(bld):
 	if bld.env.TESTS:
 		tests = {
 			'debugging': '../tests/debugging/debugging.cpp',
+			'engine_base_command_registry': '../tests/engine/base_command_registry.cpp',
 			'filesystem_android_assets_backend': '../tests/filesystem/android_assets_backend.cpp',
 			'filesystem_archive_registry': '../tests/filesystem/archive_registry.cpp',
 			'filesystem_debug_snapshot': '../tests/filesystem/debug_snapshot.cpp',
@@ -98,5 +104,5 @@ def build(bld):
 			bld.program(features = 'test',
 				source = tests[i],
 				target = 'test_%s' % i,
-				use = 'modern_filesystem modern_launcher modern_debugging modern_debugging_includes sdk_includes werror PTHREAD DL',
+				use = 'modern_filesystem modern_launcher modern_engine modern_debugging modern_debugging_includes sdk_includes werror PTHREAD DL',
 				install_path = None)

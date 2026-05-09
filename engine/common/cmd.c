@@ -1500,6 +1500,11 @@ enum
 };
 
 static int test_flags[3] = { NO_CALL, NO_CALL, NO_CALL };
+static int test_cmd_duplicate_calls[2] = { 0, 0 };
+static int test_cmd_overridable_calls[2] = { 0, 0 };
+static int test_cmd_alias_calls[2] = { 0, 0 };
+static char test_cbuf_order[16];
+static int test_cbuf_order_count;
 
 static void Test_PrivilegedCommand_f( void )
 {
@@ -1514,6 +1519,188 @@ static void Test_UnprivilegedCommand_f( void )
 static void Test_FilteredCommand_f( void )
 {
 	test_flags[2] = Cmd_CurrentCommandIsPrivileged() ? PRIV : UNPRIV;
+}
+
+static void Test_DuplicateCommandFirst_f( void )
+{
+	test_cmd_duplicate_calls[0]++;
+}
+
+static void Test_DuplicateCommandSecond_f( void )
+{
+	test_cmd_duplicate_calls[1]++;
+}
+
+static void Test_OverridableCommandFirst_f( void )
+{
+	test_cmd_overridable_calls[0]++;
+}
+
+static void Test_OverridableCommandSecond_f( void )
+{
+	test_cmd_overridable_calls[1]++;
+}
+
+static void Test_AliasTargetCommand_f( void )
+{
+	test_cmd_alias_calls[0]++;
+}
+
+static void Test_AliasShadowedCommand_f( void )
+{
+	test_cmd_alias_calls[1]++;
+}
+
+static void Test_CbufRecord( char value )
+{
+	if( test_cbuf_order_count < (int)sizeof( test_cbuf_order ))
+		test_cbuf_order[test_cbuf_order_count++] = value;
+}
+
+static void Test_CbufA_f( void )
+{
+	Test_CbufRecord( 'A' );
+}
+
+static void Test_CbufB_f( void )
+{
+	Test_CbufRecord( 'B' );
+}
+
+static void Test_CbufC_f( void )
+{
+	Test_CbufRecord( 'C' );
+}
+
+static void Test_CbufInsert_f( void )
+{
+	Test_CbufRecord( 'I' );
+	Cbuf_InsertText( "test_cbuf_b\n" );
+}
+
+static void Test_CbufPrivileged_f( void )
+{
+	Test_CbufRecord( 'P' );
+}
+
+static void Test_CbufFiltered_f( void )
+{
+	Test_CbufRecord( 'F' );
+}
+
+static void Test_CbufResetOrder( void )
+{
+	memset( test_cbuf_order, 0, sizeof( test_cbuf_order ));
+	test_cbuf_order_count = 0;
+}
+
+static qboolean Test_CbufOrderEquals( const char *expected )
+{
+	size_t len = Q_strlen( expected );
+
+	if( len != (size_t)test_cbuf_order_count )
+		return false;
+
+	return !memcmp( test_cbuf_order, expected, len );
+}
+
+static void Test_RunCmdRegistrationPolicy( void )
+{
+	convar_t *collision_cvar;
+
+	test_cmd_duplicate_calls[0] = 0;
+	test_cmd_duplicate_calls[1] = 0;
+	TASSERT( Cmd_AddCommand( "test_cmd_duplicate", Test_DuplicateCommandFirst_f, "first duplicate policy test command" ));
+	TASSERT( !Cmd_AddCommand( "test_cmd_duplicate", Test_DuplicateCommandSecond_f, "second duplicate policy test command" ));
+	Cbuf_AddText( "test_cmd_duplicate\n" );
+	Cbuf_Execute();
+	TASSERT_EQi( test_cmd_duplicate_calls[0], 1 );
+	TASSERT_EQi( test_cmd_duplicate_calls[1], 0 );
+	Cmd_RemoveCommand( "test_cmd_duplicate" );
+
+	test_cmd_overridable_calls[0] = 0;
+	test_cmd_overridable_calls[1] = 0;
+	TASSERT( Cmd_AddCommandEx( "test_cmd_overridable", Test_OverridableCommandFirst_f, "first overridable policy test command", CMD_OVERRIDABLE, __func__ ));
+	TASSERT( Cmd_AddCommandEx( "test_cmd_overridable", Test_OverridableCommandSecond_f, "second overridable policy test command", 0, __func__ ));
+	Cbuf_AddText( "test_cmd_overridable\n" );
+	Cbuf_Execute();
+	TASSERT_EQi( test_cmd_overridable_calls[0], 0 );
+	TASSERT_EQi( test_cmd_overridable_calls[1], 1 );
+	Cmd_RemoveCommand( "test_cmd_overridable" );
+
+	collision_cvar = Cvar_Get( "test_cmd_cvar_collision", "1", FCVAR_REFDLL, "command collision test cvar" );
+	TASSERT_NEQp( collision_cvar, NULL );
+	TASSERT( !Cmd_AddCommand( "test_cmd_cvar_collision", Test_DuplicateCommandFirst_f, "must reject cvar collision" ));
+	TASSERT_EQp( Cvar_FindVar( "test_cmd_cvar_collision" ), collision_cvar );
+	Cvar_Unlink( FCVAR_REFDLL );
+}
+
+static void Test_RunCmdAliasCollisionPolicy( void )
+{
+	test_cmd_alias_calls[0] = 0;
+	test_cmd_alias_calls[1] = 0;
+
+	TASSERT( Cmd_AddCommand( "test_alias_target", Test_AliasTargetCommand_f, "alias target test command" ));
+	Cbuf_AddText( "alias test_alias_collision test_alias_target\n" );
+	Cbuf_Execute();
+	TASSERT( Cmd_AddCommand( "test_alias_collision", Test_AliasShadowedCommand_f, "alias shadowed test command" ));
+
+	Cbuf_AddText( "test_alias_collision\n" );
+	Cbuf_Execute();
+	TASSERT_EQi( test_cmd_alias_calls[0], 1 );
+	TASSERT_EQi( test_cmd_alias_calls[1], 0 );
+
+	Cbuf_AddText( "unalias test_alias_collision\n" );
+	Cbuf_Execute();
+	Cmd_RemoveCommand( "test_alias_collision" );
+	Cmd_RemoveCommand( "test_alias_target" );
+}
+
+static void Test_RunCommandBufferPolicy( void )
+{
+	char overflow[MAX_CMD_BUFFER + 8];
+
+	Cbuf_Clear();
+	TASSERT( Cmd_AddCommand( "test_cbuf_a", Test_CbufA_f, "command buffer order test A" ));
+	TASSERT( Cmd_AddCommand( "test_cbuf_b", Test_CbufB_f, "command buffer order test B" ));
+	TASSERT( Cmd_AddCommand( "test_cbuf_c", Test_CbufC_f, "command buffer order test C" ));
+	TASSERT( Cmd_AddCommand( "test_cbuf_insert", Test_CbufInsert_f, "command buffer insert test" ));
+	TASSERT( Cmd_AddCommand( "test_cbuf_privileged", Test_CbufPrivileged_f, "privileged buffer order test" ));
+	TASSERT( Cmd_AddCommand( "test_cbuf_filtered", Test_CbufFiltered_f, "filtered buffer order test" ));
+
+	Test_CbufResetOrder();
+	Cbuf_AddText( "test_cbuf_a; test_cbuf_insert; test_cbuf_c\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "AIBC" ));
+
+	Test_CbufResetOrder();
+	Cbuf_AddText( "test_cbuf_a; wait; test_cbuf_b\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "A" ));
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "AB" ));
+
+	Test_CbufResetOrder();
+	Cbuf_AddFilteredText( "test_cbuf_filtered\n" );
+	Cbuf_AddText( "test_cbuf_privileged\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "PF" ));
+
+	memset( overflow, 'x', sizeof( overflow ));
+	overflow[sizeof( overflow ) - 1] = '\0';
+	Test_CbufResetOrder();
+	Cbuf_AddText( overflow );
+	Cbuf_AddText( "test_cbuf_a\n" );
+	Cbuf_Execute();
+	TASSERT( Test_CbufOrderEquals( "A" ));
+
+	Cmd_RemoveCommand( "test_cbuf_filtered" );
+	Cmd_RemoveCommand( "test_cbuf_privileged" );
+	Cmd_RemoveCommand( "test_cbuf_insert" );
+	Cmd_RemoveCommand( "test_cbuf_c" );
+	Cmd_RemoveCommand( "test_cbuf_b" );
+	Cmd_RemoveCommand( "test_cbuf_a" );
+	Cbuf_Clear();
 }
 
 void Test_RunCmd( void )
@@ -1547,5 +1734,9 @@ void Test_RunCmd( void )
 	Cmd_RemoveCommand( "hud_filtered" );
 	Cmd_RemoveCommand( "test_unprivileged" );
 	Cmd_RemoveCommand( "test_privileged" );
+
+	Test_RunCmdRegistrationPolicy();
+	Test_RunCmdAliasCollisionPolicy();
+	Test_RunCommandBufferPolicy();
 }
 #endif

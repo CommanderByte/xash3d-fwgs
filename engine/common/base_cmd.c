@@ -15,68 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "base_cmd.h"
-#include "cdll_int.h"
-
-#define HASH_SIZE 64 // 64 * 4 * 4 == 1024 bytes
-
-typedef struct base_command_hashmap_s base_command_hashmap_t;
-
-struct base_command_hashmap_s
-{
-	base_command_t         *basecmd; // base command: cvar, alias or command
-	base_command_hashmap_t *next;
-	base_command_type_e    type;     // type for faster searching
-	char                   name[];   // key for searching
-};
-
-static base_command_hashmap_t *hashed_cmds[HASH_SIZE];
-static poolhandle_t basecmd_pool;
-
-#define BaseCmd_HashKey( x ) COM_HashKey( name, HASH_SIZE )
-
-/*
-============
-BaseCmd_FindInBucket
-
-Find base command in bucket
-============
-*/
-static base_command_hashmap_t *BaseCmd_FindInBucket( base_command_hashmap_t *bucket, base_command_type_e type, const char *name )
-{
-	base_command_hashmap_t *i;
-
-	for( i = bucket; i != NULL; i = i->next )
-	{
-		int cmp;
-
-		if( i->type != type )
-			continue;
-
-		cmp = Q_stricmp( i->name, name );
-
-		if( cmp < 0 )
-			continue;
-
-		if( cmp > 0 )
-			break;
-
-		return i;
-	}
-
-	return NULL;
-}
-
-/*
-============
-BaseCmd_GetBucket
-
-Get bucket which contain basecmd by given name
-============
-*/
-static base_command_hashmap_t *BaseCmd_GetBucket( const char *name )
-{
-	return hashed_cmds[ BaseCmd_HashKey( name ) ];
-}
+#include "base_cmd_adapter.h"
 
 /*
 ============
@@ -87,12 +26,7 @@ Find base command in hashmap
 */
 base_command_t *BaseCmd_Find( base_command_type_e type, const char *name )
 {
-	base_command_hashmap_t *base = BaseCmd_GetBucket( name );
-	base_command_hashmap_t *found = BaseCmd_FindInBucket( base, type, name );
-
-	if( found )
-		return found->basecmd;
-	return NULL;
+	return BaseCmdAdapter_Find( type, name );
 }
 
 /*
@@ -104,38 +38,7 @@ Find every type of base command and write into arguments
 */
 void BaseCmd_FindAll( const char *name, cmd_t **cmd, cmdalias_t **alias, convar_t **cvar )
 {
-	base_command_hashmap_t *base = BaseCmd_GetBucket( name );
-	base_command_hashmap_t *i = base;
-
-	*cmd = NULL;
-	*alias = NULL;
-	*cvar = NULL;
-
-	for( ; i; i = i->next )
-	{
-		int cmp = Q_stricmp( i->name, name );
-
-		if( cmp < 0 )
-			continue;
-
-		if( cmp > 0 )
-			break;
-
-		switch( i->type )
-		{
-		case HM_CMD:
-			*cmd = (cmd_t *)i->basecmd;
-			break;
-		case HM_CMDALIAS:
-			*alias = (cmdalias_t *)i->basecmd;
-			break;
-		case HM_CVAR:
-			*cvar = (convar_t *)i->basecmd;
-			break;
-		default:
-			break;
-		}
-	}
+	BaseCmdAdapter_FindAll( name, cmd, alias, cvar );
 }
 
 /*
@@ -147,24 +50,8 @@ Add new typed base command to hashmap
 */
 void BaseCmd_Insert( base_command_type_e type, base_command_t *basecmd, const char *name )
 {
-	base_command_hashmap_t *elem, *cur, *find;
-	uint hash = BaseCmd_HashKey( name );
-	size_t len = Q_strlen( name );
-
-	elem = Mem_Malloc( basecmd_pool, sizeof( base_command_hashmap_t ) + len + 1 );
-	elem->basecmd = basecmd;
-	elem->type = type;
-	Q_strncpy( elem->name, name, len + 1 );
-
-	// link the variable in alphanumerical order
-	for( cur = NULL, find = hashed_cmds[hash];
-		  find && Q_stricmp( find->name, elem->name ) < 0;
-		  cur = find, find = find->next );
-
-	if( cur ) cur->next = elem;
-	else hashed_cmds[hash] = elem;
-
-	elem->next = find;
+	if( !BaseCmdAdapter_Insert( type, basecmd, name ))
+		Con_Reportf( S_ERROR "%s: Couldn't insert %s in buckets\n", __func__, name );
 }
 
 /*
@@ -176,39 +63,8 @@ Remove base command from hashmap
 */
 void BaseCmd_Remove( base_command_type_e type, const char *name )
 {
-	uint hash = BaseCmd_HashKey( name );
-	base_command_hashmap_t *i, *prev;
-
-	for( prev = NULL, i = hashed_cmds[hash]; i != NULL; prev = i, i = i->next )
-	{
-		int cmp;
-
-		if( i->type != type )
-			continue;
-
-		cmp = Q_stricmp( i->name, name );
-
-		if( cmp < 0 )
-			continue;
-
-		if( cmp > 0 )
-			i = NULL;
-
-		break;
-	}
-
-	if( !i )
-	{
+	if( !BaseCmdAdapter_Remove( type, name ))
 		Con_Reportf( S_ERROR "%s: Couldn't find %s in buckets\n", __func__, name );
-		return;
-	}
-
-	if( prev )
-		prev->next = i->next;
-	else
-		hashed_cmds[hash] = i->next;
-
-	Z_Free( i );
 }
 
 /*
@@ -220,13 +76,12 @@ initialize base command hashmap system
 */
 void BaseCmd_Init( void )
 {
-	basecmd_pool = Mem_AllocPool( "BaseCmd" );
-	memset( hashed_cmds, 0, sizeof( hashed_cmds ) );
+	BaseCmdAdapter_Init();
 }
 
 void BaseCmd_Shutdown( void )
 {
-	Mem_FreePool( &basecmd_pool );
+	BaseCmdAdapter_Shutdown();
 }
 
 /*
@@ -237,31 +92,9 @@ BaseCmd_Stats_f
 */
 void BaseCmd_Stats_f( void )
 {
-	int minsize = 99999, maxsize = -1, empty = 0;
+	basecmd_adapter_stats_t stats = BaseCmdAdapter_Stats();
 
-	for( int i = 0; i < HASH_SIZE; i++ )
-	{
-		base_command_hashmap_t *hm;
-		int len = 0;
-
-		// count bucket length
-		for( hm = hashed_cmds[i]; hm; hm = hm->next, len++ );
-
-		if( len == 0 )
-		{
-			empty++;
-			continue;
-		}
-
-		if( len < minsize )
-			minsize = len;
-
-		if( len > maxsize )
-			maxsize = len;
-
-	}
-
-	Con_Printf( "min length: %d, max length: %d, empty: %d\n", minsize, maxsize, empty );
+	Con_Printf( "min length: %zu, max length: %zu, empty: %zu\n", stats.min_depth, stats.max_depth, stats.empty_buckets );
 }
 
 struct basecmd_test_stats_s

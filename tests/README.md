@@ -7,6 +7,7 @@ The current build system already has module-local Waf tests, especially:
 
 - `public/tests`
 - `tests/debugging`, built by `src/wscript`
+- `tests/engine`, built by `src/wscript`
 - `tests/filesystem`, built by `filesystem/wscript`
 - `tests/launcher`, built by `src/wscript`
 - `tests/utilities`, built by `src/wscript`
@@ -43,6 +44,7 @@ programs when `bld.env.TESTS` is true.
 | --- | --- | --- |
 | Public utility unit tests | `public/tests` | Exercise low-level string, parsing, math, and helper behavior. |
 | Debugging utility unit tests | `tests/debugging` | Exercise shared modern debugging helpers through `src/wscript`. |
+| Engine unit tests | `tests/engine` | Exercise modern engine helpers before they are routed through legacy engine code. |
 | Filesystem unit tests | `tests/filesystem` | Exercise `filesystem_stdio` through public module APIs. |
 | Launcher unit tests | `tests/launcher` | Exercise target-neutral native launcher helpers through `src/wscript`. |
 | Utility unit tests | `tests/utilities` | Exercise subsystem-neutral modern helpers through `src/wscript`. |

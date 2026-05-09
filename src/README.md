@@ -21,6 +21,8 @@ Planned subfolders:
 - `include/`: private reusable C++ headers for new internals
 - `debugging/`: future shared debugging, snapshot, serialization, and trace
   utility implementation units
+- `engine/`: reserved modern engine internals, starting with command/cvar
+  separation work
 - `filesystem/`: future filesystem implementation units after the pilot
 - `launcher/`: native launcher implementation, with executable entry glue in
   `launcher/platform/` and target wiring in `src/wscript`
