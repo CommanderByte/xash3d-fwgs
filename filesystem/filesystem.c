@@ -49,6 +49,7 @@ GNU General Public License for more details.
 #include "filesystem_state_adapter.h"
 #include "game_hierarchy_adapter.h"
 #include "path_policy_adapter.h"
+#include "search_result_builder_adapter.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
 #include "common/protocol.h"
@@ -3341,7 +3342,8 @@ search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 {
 	search_t *search = NULL;
 	searchpath_t *searchpath;
-	int i, numfiles, numchars;
+	int numfiles;
+	size_t numchars;
 	stringlist_t resultlist;
 
 	if( pattern[0] == '.' || pattern[0] == ':' || pattern[0] == '/' || pattern[0] == '\\' )
@@ -3360,28 +3362,14 @@ search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 
 	if( resultlist.numstrings )
 	{
-		stringlistsort( &resultlist );
+		FS_SearchResult_Sort( &resultlist );
 		numfiles = resultlist.numstrings;
-		numchars = 0;
-
-		for( i = 0; i < resultlist.numstrings; i++ )
-			numchars += (int)Q_strlen( resultlist.strings[i]) + 1;
+		numchars = FS_SearchResult_PackedStringBytes( &resultlist );
 		search = Mem_Calloc( fs_mempool, sizeof(search_t) + numchars + numfiles * sizeof( char* ));
 		search->filenames = (char **)((char *)search + sizeof( search_t ));
 		search->filenamesbuffer = (char *)((char *)search + sizeof( search_t ) + numfiles * sizeof( char* ));
 		search->numfilenames = (int)numfiles;
-		numfiles = numchars = 0;
-
-		for( i = 0; i < resultlist.numstrings; i++ )
-		{
-			size_t	textlen;
-
-			search->filenames[numfiles] = search->filenamesbuffer + numchars;
-			textlen = Q_strlen(resultlist.strings[i]) + 1;
-			memcpy( search->filenames[numfiles], resultlist.strings[i], textlen );
-			numfiles++;
-			numchars += (int)textlen;
-		}
+		FS_SearchResult_CopyPacked( &resultlist, search );
 	}
 
 	stringlistfreecontents( &resultlist );

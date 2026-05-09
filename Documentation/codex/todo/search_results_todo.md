@@ -10,7 +10,7 @@ Track migration of `FS_Search` and `search_t` allocation/result assembly from
 - [x] Add focused tests for search ordering and duplicate filtering.
 - [x] Add target-neutral `SearchResultBuilder` over temporary string lists.
 - [ ] Preserve `search_t` packed allocation layout.
-- [ ] Route `FS_Search` result assembly through the builder.
+- [x] Route `FS_Search` result assembly through the builder.
 - [ ] Keep `VFileSystem009` search handle behavior covered.
 
 ## Boundaries
