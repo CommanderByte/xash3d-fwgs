@@ -15,11 +15,26 @@ archives and compressed file reads.
 
 ## Migration Order
 
-- [ ] Expand ZIP tests for unsupported/corrupted archive failure cases.
-- [ ] Keep stored and deflated fixtures passing before implementation movement.
-- [ ] Add `ZipBackend` skeleton after PAK migration is stable.
-- [ ] Preserve decompression and `file_t::ztk` behavior exactly.
-- [ ] Keep `FS_AddZip_Fullpath` callable from C.
+- [x] Expand ZIP tests for unsupported/corrupted archive failure cases.
+  Evidence: `tests/filesystem/zip-archive.c` covers corrupt ZIP mount
+  rejection and unsupported compression load failure.
+- [x] Keep stored and deflated fixtures passing before implementation movement.
+  Evidence: `tests/filesystem/zip-archive.c`; command
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`.
+- [x] Add `ZipBackend` skeleton after PAK migration is stable.
+  Evidence: `src/include/filesystem/zip_backend.hpp`,
+  `src/filesystem/zip_backend.cpp`, `tests/filesystem/zip_backend.cpp`.
+- [x] Preserve decompression and `file_t::ztk` behavior exactly.
+  Evidence: legacy `FS_OpenFile_ZIP_Legacy` and `FS_LoadZIPFile_Legacy`
+  remain the implementation behind bridge hooks.
+- [x] Keep `FS_AddZip_Fullpath` callable from C.
+  Evidence: `tests/filesystem/zip-archive.c`.
+- [x] Run archive, no-init, and Windows smoke tests after callback forwarding.
+  Evidence: `.\waf.bat build`,
+  `.\build\src\test_filesystem_zip_backend.exe`,
+  `.\build\filesystem\test_zip-archive.exe`,
+  `.\build\filesystem\test_wad-archive.exe`,
+  `.\build\filesystem\test_no-init.exe`, and Windows `+fs_path +quit` smoke.
 
 ## Boundaries
 

@@ -469,7 +469,40 @@ commit, test command, document link, or manual verification note that proves it.
   install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` showed WAD
   mounts, printed search paths, and stopped with reason `"command"`.
 
-## Phase 10: Commit And Review Hygiene
+## Phase 10: ZIP/PK3 Backend Pilot
+
+- [x] `FS-ZIP-001` Add private `ZipBackend` skeleton mirroring
+  `ISearchPathBackend`, including the ZIP load-file callback.
+  Evidence: `src/include/filesystem/zip_backend.hpp`,
+  `src/filesystem/zip_backend.cpp`,
+  `tests/filesystem/zip_backend.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`.
+- [x] `FS-ZIP-002` Add C adapter bridge for legacy ZIP callbacks.
+  Evidence: `filesystem/zip_backend_adapter.h`,
+  `filesystem/zip_backend_adapter.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`.
+- [x] `FS-ZIP-003` Forward ZIP print, close, open, file time, find, search,
+  and load callbacks through the bridge.
+  Evidence: `filesystem/zip.c`; command
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`.
+- [x] `FS-ZIP-004` Expand ZIP negative coverage for corrupt archives and
+  unsupported compression.
+  Evidence: `tests/filesystem/zip-archive.c`; command
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`.
+- [x] `FS-ZIP-005` Run filesystem unit tests after ZIP bridge.
+  Evidence: command `.\waf.bat build` passed 18/18 selected tests; explicit
+  follow-up commands `.\build\src\test_filesystem_zip_backend.exe`,
+  `.\build\filesystem\test_zip-archive.exe`,
+  `.\build\filesystem\test_wad-archive.exe`, and
+  `.\build\filesystem\test_no-init.exe` passed.
+- [x] `FS-ZIP-006` Run Windows runtime smoke test after ZIP bridge.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` showed
+  `valve/extras.pk3` mounted, printed search paths, and stopped with reason
+  `"command"`.
+
+## Phase 11: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push documentation commits to remote branch.
   Evidence:
@@ -504,3 +537,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-017 | Keep legacy archive factory function pointers in `filesystem.c` during first registry integration, and expose modern archive descriptor metadata through a small C adapter. | `filesystem/archive_registry_adapter.h`, `filesystem/filesystem.c`, `todo/archive_registry_todo.md` |
 | 2026-05-09 | DEC-018 | Use the same behavior-neutral bridge pattern for the first PAK backend pilot: private C++ backend object, C adapter, legacy callback implementation retained behind hooks. | `src/include/filesystem/pak_backend.hpp`, `filesystem/pak_backend_adapter.h`, `filesystem/pak.c` |
 | 2026-05-09 | DEC-019 | Use the PAK bridge pattern for WAD while explicitly forwarding `pfnLoadFile`, because WAD lump loading is the primary read path. | `src/include/filesystem/wad_backend.hpp`, `filesystem/wad_backend_adapter.h`, `filesystem/wad.c` |
+| 2026-05-09 | DEC-020 | Use the same bridge pattern for ZIP/PK3 while explicitly preserving stored/deflated load paths and unsupported compression failure behavior. | `src/include/filesystem/zip_backend.hpp`, `filesystem/zip_backend_adapter.h`, `filesystem/zip.c`, `tests/filesystem/zip-archive.c` |

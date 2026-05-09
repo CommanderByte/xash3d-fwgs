@@ -8,6 +8,7 @@
 #define ZIP_EOCD_HEADER 0x06054b50U
 #define ZIP_METHOD_STORED 0
 #define ZIP_METHOD_DEFLATED 8
+#define ZIP_METHOD_UNSUPPORTED 99
 
 typedef struct
 {
@@ -115,7 +116,8 @@ static qboolean WriteZipFixture( const char *path )
 	static const char deflated_data[] =
 		"deflated zip payload deflated zip payload deflated zip payload "
 		"deflated zip payload deflated zip payload";
-	zip_entry_t entries[2];
+	static const char unsupported_data[] = "unsupported zip payload";
+	zip_entry_t entries[3];
 	void *deflated_payload;
 	size_t deflated_size = 0;
 	uint32_t central_offset;
@@ -149,6 +151,13 @@ static qboolean WriteZipFixture( const char *path )
 	entries[1].compressed_size = (uint32_t)deflated_size;
 	entries[1].uncompressed_size = sizeof( deflated_data ) - 1;
 
+	entries[2].name = "unsupported.txt";
+	entries[2].data = unsupported_data;
+	entries[2].method = ZIP_METHOD_UNSUPPORTED;
+	entries[2].crc32 = (uint32_t)mz_crc32( MZ_CRC32_INIT, (const unsigned char *)unsupported_data, sizeof( unsupported_data ) - 1 );
+	entries[2].compressed_size = sizeof( unsupported_data ) - 1;
+	entries[2].uncompressed_size = sizeof( unsupported_data ) - 1;
+
 	file = fopen( path, "wb" );
 	if( !file )
 	{
@@ -157,7 +166,8 @@ static qboolean WriteZipFixture( const char *path )
 	}
 
 	if( !WriteZipLocalEntry( file, &entries[0] ) ||
-		!WriteZipLocalEntry( file, &entries[1] ))
+		!WriteZipLocalEntry( file, &entries[1] ) ||
+		!WriteZipLocalEntry( file, &entries[2] ))
 	{
 		printf( "failed to write zip local entries\n" );
 		ok = false;
@@ -169,7 +179,8 @@ static qboolean WriteZipFixture( const char *path )
 	central_offset = (uint32_t)position;
 
 	if( ok && ( !WriteZipCentralEntry( file, &entries[0] ) ||
-		!WriteZipCentralEntry( file, &entries[1] )))
+		!WriteZipCentralEntry( file, &entries[1] ) ||
+		!WriteZipCentralEntry( file, &entries[2] )))
 	{
 		printf( "failed to write zip central directory\n" );
 		ok = false;
@@ -183,8 +194,8 @@ static qboolean WriteZipFixture( const char *path )
 	if( ok && ( !WriteU32( file, ZIP_EOCD_HEADER ) ||
 		!WriteU16( file, 0 ) ||
 		!WriteU16( file, 0 ) ||
-		!WriteU16( file, 2 ) ||
-		!WriteU16( file, 2 ) ||
+		!WriteU16( file, 3 ) ||
+		!WriteU16( file, 3 ) ||
 		!WriteU32( file, central_size ) ||
 		!WriteU32( file, central_offset ) ||
 		!WriteU16( file, 0 )))
@@ -224,6 +235,17 @@ static qboolean CheckLoadedText( const char *path, const char *expected )
 
 static qboolean TestZipArchiveLoads( void )
 {
+	static const char bad_zip[] = "not a zip";
+
+	if( !FS_TestWriteFile( "bad.pk3", bad_zip, sizeof( bad_zip ) - 1 ))
+		return false;
+
+	if( g_fs.MountArchive_Fullpath( "bad.pk3", FS_GAMEDIR_PATH ))
+	{
+		printf( "corrupted zip unexpectedly mounted\n" );
+		return false;
+	}
+
 	if( !WriteZipFixture( "test.pk3" ))
 		return false;
 
@@ -237,6 +259,12 @@ static qboolean TestZipArchiveLoads( void )
 		"deflated zip payload deflated zip payload" ))
 		return false;
 
+	if( g_fs.LoadFile( "unsupported.txt", NULL, true ))
+	{
+		printf( "unsupported compressed zip file unexpectedly loaded\n" );
+		return false;
+	}
+
 	return true;
 }
 
@@ -248,6 +276,8 @@ static void CleanupFixture( const char *root )
 	g_fs.SetCurrentDirectory( ".." );
 
 	snprintf( path, sizeof( path ), "%s/test.pk3", root );
+	FS_TestRemoveFile( path );
+	snprintf( path, sizeof( path ), "%s/bad.pk3", root );
 	FS_TestRemoveFile( path );
 	FS_TestRemoveDirectory( root );
 }

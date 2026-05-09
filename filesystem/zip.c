@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include <stdint.h>
 #include "port.h"
 #include "filesystem_internal.h"
+#include "zip_backend_adapter.h"
 #include "crtlib.h"
 #include "common/com_strings.h"
 
@@ -124,6 +125,7 @@ struct zip_s
 {
 	file_t *handle;
 	int		numfiles;
+	void *backend;
 	zipfile_t files[]; // flexible
 };
 
@@ -147,7 +149,7 @@ static void FS_CloseZIP( zip_t *zip )
 FS_Close_ZIP
 ============
 */
-static void FS_Close_ZIP( searchpath_t *search )
+static void FS_Close_ZIP_Legacy( searchpath_t *search )
 {
 	FS_CloseZIP( search->zip );
 }
@@ -422,7 +424,7 @@ FS_OpenZipFile
 Open a packed file using its package file descriptor
 ===========
 */
-static file_t *FS_OpenFile_ZIP( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+static file_t *FS_OpenFile_ZIP_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
 	zipfile_t *pfile = &search->zip->files[pack_ind];
 	file_t *f = FS_OpenHandle( search, search->zip->handle->handle, pfile->offset, pfile->size );
@@ -470,7 +472,7 @@ FS_LoadZIPFile
 
 ===========
 */
-static byte *FS_LoadZIPFile( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *sizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+static byte *FS_LoadZIPFile_Legacy( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *sizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
 {
 	zipfile_t *file;
 	byte		*compressed_buffer = NULL, *decompressed_buffer = NULL;
@@ -610,8 +612,10 @@ FS_FileTime_ZIP
 
 ===========
 */
-static int FS_FileTime_ZIP( searchpath_t *search, const char *filename )
+static int FS_FileTime_ZIP_Legacy( searchpath_t *search, const char *filename )
 {
+	(void)filename;
+
 	return search->zip->handle->filetime;
 }
 
@@ -621,7 +625,7 @@ FS_PrintInfo_ZIP
 
 ===========
 */
-static void FS_PrintInfo_ZIP( searchpath_t *search, char *dst, size_t size )
+static void FS_PrintInfo_ZIP_Legacy( searchpath_t *search, char *dst, size_t size )
 {
 	if( search->zip->handle->searchpath )
 		Q_snprintf( dst, size, "%s (%i files)" S_CYAN " from %s" S_DEFAULT, search->filename, search->zip->numfiles, search->zip->handle->searchpath->filename );
@@ -634,7 +638,7 @@ FS_FindFile_ZIP
 
 ===========
 */
-static int FS_FindFile_ZIP( searchpath_t *search, const char *path, char *fixedname, size_t len )
+static int FS_FindFile_ZIP_Legacy( searchpath_t *search, const char *path, char *fixedname, size_t len )
 {
 	int	left, right, middle;
 
@@ -671,7 +675,7 @@ FS_Search_ZIP
 
 ===========
 */
-static void FS_Search_ZIP( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+static void FS_Search_ZIP_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
 	string temp;
 	const char *slash, *backslash, *colon, *separator;
@@ -711,6 +715,109 @@ static void FS_Search_ZIP( searchpath_t *search, stringlist_t *list, const char 
 	}
 }
 
+static void FS_Close_ZIP_Hook( void *context )
+{
+	FS_Close_ZIP_Legacy( (searchpath_t *)context );
+}
+
+static void FS_PrintInfo_ZIP_Hook( void *context, char *dst, size_t size )
+{
+	FS_PrintInfo_ZIP_Legacy( (searchpath_t *)context, dst, size );
+}
+
+static file_t *FS_OpenFile_ZIP_Hook( void *context, const char *filename, const char *mode, int pack_ind )
+{
+	return FS_OpenFile_ZIP_Legacy( (searchpath_t *)context, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_ZIP_Hook( void *context, const char *filename )
+{
+	return FS_FileTime_ZIP_Legacy( (searchpath_t *)context, filename );
+}
+
+static int FS_FindFile_ZIP_Hook( void *context, const char *path, char *fixedname, size_t len )
+{
+	return FS_FindFile_ZIP_Legacy( (searchpath_t *)context, path, fixedname, len );
+}
+
+static void FS_Search_ZIP_Hook( void *context, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	FS_Search_ZIP_Legacy( (searchpath_t *)context, list, pattern, caseinsensitive );
+}
+
+static byte *FS_LoadZIPFile_Hook( void *context, const char *path, int pack_ind, fs_offset_t *sizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+{
+	return FS_LoadZIPFile_Legacy( (searchpath_t *)context, path, pack_ind, sizeptr, pfnAlloc, pfnFree );
+}
+
+static void FS_Close_ZIP( searchpath_t *search )
+{
+	if( search->zip && search->zip->backend )
+	{
+		void *backend = search->zip->backend;
+		search->zip->backend = NULL;
+		FS_ZipBackendBridge_Close( backend );
+		FS_DestroyZipBackendBridge( backend );
+		return;
+	}
+
+	FS_Close_ZIP_Legacy( search );
+}
+
+static void FS_PrintInfo_ZIP( searchpath_t *search, char *dst, size_t size )
+{
+	if( search->zip && search->zip->backend )
+	{
+		FS_ZipBackendBridge_PrintInfo( search->zip->backend, dst, size );
+		return;
+	}
+
+	FS_PrintInfo_ZIP_Legacy( search, dst, size );
+}
+
+static file_t *FS_OpenFile_ZIP( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+{
+	if( search->zip && search->zip->backend )
+		return FS_ZipBackendBridge_OpenFile( search->zip->backend, filename, mode, pack_ind );
+
+	return FS_OpenFile_ZIP_Legacy( search, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_ZIP( searchpath_t *search, const char *filename )
+{
+	if( search->zip && search->zip->backend )
+		return FS_ZipBackendBridge_FileTime( search->zip->backend, filename );
+
+	return FS_FileTime_ZIP_Legacy( search, filename );
+}
+
+static int FS_FindFile_ZIP( searchpath_t *search, const char *path, char *fixedname, size_t len )
+{
+	if( search->zip && search->zip->backend )
+		return FS_ZipBackendBridge_FindFile( search->zip->backend, path, fixedname, len );
+
+	return FS_FindFile_ZIP_Legacy( search, path, fixedname, len );
+}
+
+static void FS_Search_ZIP( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	if( search->zip && search->zip->backend )
+	{
+		FS_ZipBackendBridge_Search( search->zip->backend, list, pattern, caseinsensitive );
+		return;
+	}
+
+	FS_Search_ZIP_Legacy( search, list, pattern, caseinsensitive );
+}
+
+static byte *FS_LoadZIPFile( searchpath_t *search, const char *path, int pack_ind, fs_offset_t *sizeptr, void *( *pfnAlloc )( size_t ), void ( *pfnFree )( void * ))
+{
+	if( search->zip && search->zip->backend )
+		return FS_ZipBackendBridge_LoadFile( search->zip->backend, path, pack_ind, sizeptr, pfnAlloc, pfnFree );
+
+	return FS_LoadZIPFile_Legacy( search, path, pack_ind, sizeptr, pfnAlloc, pfnFree );
+}
+
 /*
 ===========
 FS_AddZip_Fullpath
@@ -746,7 +853,19 @@ searchpath_t *FS_AddZip_Fullpath( const char *zipfile, int flags )
 	search->pfnSearch = FS_Search_ZIP;
 	search->pfnLoadFile = FS_LoadZIPFile;
 
+	{
+		fs_zip_backend_hooks_t hooks;
+		hooks.context = search;
+		hooks.close = FS_Close_ZIP_Hook;
+		hooks.printInfo = FS_PrintInfo_ZIP_Hook;
+		hooks.openFile = FS_OpenFile_ZIP_Hook;
+		hooks.fileTime = FS_FileTime_ZIP_Hook;
+		hooks.findFile = FS_FindFile_ZIP_Hook;
+		hooks.search = FS_Search_ZIP_Hook;
+		hooks.loadFile = FS_LoadZIPFile_Hook;
+		search->zip->backend = FS_CreateZipBackendBridge( search, &hooks );
+	}
+
 	Con_Reportf( "Adding ZIP: %s (%i files)\n", zipfile, zip->numfiles );
 	return search;
 }
-

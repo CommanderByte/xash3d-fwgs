@@ -30,6 +30,7 @@ def build(bld):
 			'filesystem_pak_backend': '../tests/filesystem/pak_backend.cpp',
 			'filesystem_registry_snapshot': '../tests/filesystem/registry_snapshot.cpp',
 			'filesystem_wad_backend': '../tests/filesystem/wad_backend.cpp',
+			'filesystem_zip_backend': '../tests/filesystem/zip_backend.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',
 		}
 
