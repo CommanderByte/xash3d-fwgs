@@ -547,8 +547,8 @@ commit, test command, document link, or manual verification note that proves it.
   `.\waf.bat build --targets=test_filesystem_state`.
 - [x] `FS-STATE-004` Add read-only snapshot capture from current
   `filesystem.c` globals.
-  Evidence: `filesystem/filesystem_runtime_adapter.h`,
-  `filesystem/filesystem_runtime_adapter.cpp`, and `FS_SyncStateFromGlobals`
+  Evidence: `src/include/filesystem/compat/filesystem_runtime_adapter.h`,
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`, and `FS_SyncStateFromGlobals`
   in `filesystem/filesystem.c`; the original state adapter was folded into
   the runtime adapter during Phase 26.
 - [x] `FS-STATE-005` Route `FS_AllowDirectPaths` through the new state helper.
@@ -632,7 +632,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-FILE-004` Document decompression and backup-handle ownership rules.
   Evidence: `Documentation/codex/modern/filesystem/file-handle-ownership.md`.
 - [x] `FS-FILE-005` Route tell/eof/seek cursor math through `FileHandleOps`.
-  Evidence: `filesystem/file_handle_ops_adapter.cpp`,
+  Evidence: `src/filesystem/compat/file_handle_ops_adapter.cpp`,
   `filesystem/filesystem.c`; commands
   `.\waf.bat build --targets=test_filesystem_file_handle_ops,test_file-handle`
   and direct execution of both test binaries.
@@ -650,7 +650,7 @@ commit, test command, document link, or manual verification note that proves it.
   `tests/filesystem/search_result_builder.cpp`; command
   `.\waf.bat build --targets=test_filesystem_search_result_builder`.
 - [x] `FS-SEARCH-004` Route `FS_Search` result assembly through the builder.
-  Evidence: `filesystem/search_result_builder_adapter.cpp`,
+  Evidence: `src/filesystem/compat/search_result_builder_adapter.cpp`,
   `filesystem/filesystem.c`; command
   `.\waf.bat build --targets=test_search-results,test_filesystem_search_result_builder`.
 
@@ -840,14 +840,14 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-RUNTIME-002` Move search path list ownership behind
   `FilesystemRuntime` while preserving `fs_api_t` behavior.
   Evidence: `src/filesystem/filesystem_runtime.cpp`,
-  `filesystem/filesystem_runtime_adapter.cpp`, `filesystem/filesystem.c`,
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`, `filesystem/filesystem.c`,
   `tests/filesystem/filesystem_runtime.cpp`;
   `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_state,test_archive-order,test_file-handle,test_hierarchy,test_search-results`
   passed on 2026-05-09.
 - [x] `FS-RUNTIME-003` Move `file_t` allocation/lifetime behind runtime-owned
   handle helpers.
   Evidence: `src/filesystem/filesystem_runtime.cpp`,
-  `filesystem/filesystem_runtime_adapter.cpp`, `filesystem/filesystem.c`,
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`, `filesystem/filesystem.c`,
   `tests/filesystem/filesystem_runtime.cpp`;
   `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_state,test_archive-order,test_file-handle,test_hierarchy,test_search-results`
   passed on 2026-05-09.
@@ -864,7 +864,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-FACADE-001` Route `VFileSystem009.cpp` methods through the modern
   runtime while preserving the public vtable and `CreateInterface` behavior.
   Evidence: `src/filesystem/valve_path_resolver.cpp`,
-  `filesystem/filesystem_runtime_adapter.cpp`, and
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`, and
   `filesystem/VFileSystem009.cpp`; `VFileSystem009.h` was unchanged.
 - [x] `FS-FACADE-002` Update `filesystem/wscript` so modern implementation
   bodies are the primary source of filesystem behavior.
@@ -875,7 +875,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-FACADE-003` Remove or quarantine obsolete legacy implementation
   files once they are adapter-only and unused.
   Evidence: `filesystem/filesystem_state_adapter.h` was folded into
-  `filesystem/filesystem_runtime_adapter.h`; `filesystem_state_adapter.cpp`
+  `src/include/filesystem/compat/filesystem_runtime_adapter.h`; `filesystem_state_adapter.cpp`
   was already removed in Phase 25.
 - [x] `FS-FACADE-004` Move completed TODO and audit documents into
   `Documentation/codex/done/` after implementation evidence is complete.
@@ -904,18 +904,20 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-HANDLER-001` Define the first `LegacyAdapter` boundary for
   compatibility calls.
   Evidence: `Documentation/codex/todo/modern_filesystem_handlers_todo.md`,
-  `filesystem/filesystem_facade_adapter.h`.
+  `src/include/filesystem/compat/filesystem_facade_adapter.h`.
 - [x] `FS-HANDLER-002` Move `VFileSystem009.cpp` off
   `filesystem_internal.h` through a narrow facade adapter.
-  Evidence: `filesystem/filesystem_facade_adapter.h`,
-  `filesystem/filesystem_facade_adapter.cpp`,
-  `filesystem/VFileSystem009.cpp`; `.\waf.bat build --targets=test_interface`,
+  Evidence: `src/include/filesystem/compat/filesystem_facade_adapter.h`,
+  `src/filesystem/compat/filesystem_facade_adapter.cpp`,
+  `src/filesystem/compat/VFileSystem009.cpp`;
+  `.\waf.bat build --targets=test_interface`,
   `build\filesystem\test_interface.exe`, and `.\waf.bat build` passed on
   2026-05-09.
 - [x] `FS-HANDLER-003` Extract `FS_Search` result assembly into a modern
   handler while preserving public `search_t`.
-  Evidence: `filesystem/search_result_builder_adapter.cpp`,
-  `filesystem/search_result_builder_adapter.h`, `filesystem/filesystem.c`;
+  Evidence: `src/filesystem/compat/search_result_builder_adapter.cpp`,
+  `src/include/filesystem/compat/search_result_builder_adapter.h`,
+  `filesystem/filesystem.c`;
   commands `.\waf.bat build --targets=test_search-results,test_filesystem_search_result_builder`,
   direct `build\filesystem\test_search-results.exe`, and direct
   `build\src\test_filesystem_search_result_builder.exe`,
@@ -926,8 +928,9 @@ commit, test command, document link, or manual verification note that proves it.
   handlers while preserving public `file_t` opacity.
   Evidence: `src/include/filesystem/file_handle_ops.hpp`,
   `src/filesystem/file_handle_ops.cpp`,
-  `filesystem/file_handle_ops_adapter.h`,
-  `filesystem/file_handle_ops_adapter.cpp`, `filesystem/filesystem.c`,
+  `src/include/filesystem/compat/file_handle_ops_adapter.h`,
+  `src/filesystem/compat/file_handle_ops_adapter.cpp`,
+  `filesystem/filesystem.c`,
   `tests/filesystem/file_handle_ops.cpp`; command
   `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive`
   passed 6/6 tests on 2026-05-09; `.\waf.bat build` passed 25/25
@@ -936,12 +939,13 @@ commit, test command, document link, or manual verification note that proves it.
   toward runtime-owned mount handlers.
   Evidence: `src/include/filesystem/filesystem_runtime.hpp`,
   `src/filesystem/filesystem_runtime.cpp`,
-  `filesystem/filesystem_runtime_adapter.h`,
-  `filesystem/filesystem_runtime_adapter.cpp`,
-  `filesystem/searchpath_mount_adapter.h`,
-  `filesystem/searchpath_mount_adapter.cpp`, `filesystem/dir.c`,
-  `filesystem/pak.c`, `filesystem/wad.c`, `filesystem/zip.c`,
-  `filesystem/android.c`, `tests/filesystem/filesystem_runtime.cpp`;
+  `src/include/filesystem/compat/filesystem_runtime_adapter.h`,
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`,
+  `src/include/filesystem/compat/searchpath_mount_adapter.h`,
+  `src/filesystem/compat/searchpath_mount_adapter.cpp`,
+  `src/filesystem/compat/dir.c`, `src/filesystem/compat/pak.c`,
+  `src/filesystem/compat/wad.c`, `src/filesystem/compat/zip.c`,
+  `src/filesystem/compat/android.c`, `tests/filesystem/filesystem_runtime.cpp`;
   command
   `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive`
   passed 6/6 tests on 2026-05-09; `.\waf.bat build` passed 25/25
@@ -1039,24 +1043,110 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence: `Documentation/codex/modern/filesystem/filesystem-folder-migration-map.md`,
   `Documentation/codex/done/todo/filesystem_decluttering_todo.md`.
 
-## Phase 30: Filesystem Logging And Diagnostics Streamlining
+## Deferred Stage: Filesystem Logging And Diagnostics Streamlining
 
-- [ ] `FS-LOG-001` Inventory filesystem logging and fatal-error call sites.
-  Evidence: `Documentation/codex/todo/filesystem_logging_todo.md`.
-- [ ] `FS-LOG-002` Define a filesystem logging facade backed by existing
+- [!] `FS-LOG-001` Inventory filesystem logging and fatal-error call sites.
+  Evidence: `Documentation/codex/deferred/todo/filesystem_logging_todo.md`.
+  Resume condition: engine console/logging ownership has been audited.
+- [!] `FS-LOG-002` Define a filesystem logging facade backed by existing
   engine callbacks.
-  Evidence:
-- [ ] `FS-LOG-003` Add structured log categories for filesystem runtime work.
-  Evidence:
-- [ ] `FS-LOG-004` Add tests for log capture where behavior depends on
+  Evidence: deferred until the engine console/common layer defines the
+  preferred logging and fatal-error policy.
+- [!] `FS-LOG-003` Add structured log categories for filesystem runtime work.
+  Evidence: deferred until `FS-LOG-002` resumes.
+- [!] `FS-LOG-004` Add tests for log capture where behavior depends on
   diagnostics.
-  Evidence:
-- [ ] `FS-LOG-005` Route modern backend/handler code through the logging
+  Evidence: deferred until the logging facade design is no longer
+  filesystem-local guesswork.
+- [!] `FS-LOG-005` Route modern backend/handler code through the logging
   facade.
-  Evidence:
-- [ ] `FS-LOG-006` Define release-build behavior for trace-heavy filesystem
+  Evidence: deferred to avoid coupling filesystem internals to a premature
+  console design.
+- [!] `FS-LOG-006` Define release-build behavior for trace-heavy filesystem
   diagnostics.
-  Evidence:
+  Evidence: deferred until the engine logging policy exists.
+
+## Phase 30: Game Launch Modularization Pilot
+
+- [x] `LAUNCH-001` Audit current launcher responsibilities and platform
+  branches.
+  Evidence: `Documentation/codex/modern/game-launch/architecture.md`.
+- [x] `LAUNCH-002` Capture current launch behavior in modern documentation.
+  Evidence: `Documentation/codex/modern/game-launch/architecture.md`.
+- [x] `LAUNCH-003` Add a minimal launcher TODO/test strategy before extraction.
+  Evidence: `Documentation/codex/modern/game-launch/architecture.md`,
+  `tests/launcher/README.md`.
+- [x] `LAUNCH-004` Create `src/launcher/` and `src/include/launcher/` only when
+  a helper is ready to move.
+  Evidence: `src/include/launcher/launch_settings.hpp`,
+  `src/launcher/launch_settings.cpp`.
+- [x] `LAUNCH-005` Extract the first target-neutral helper with tests.
+  Evidence: `src/include/launcher/launch_settings.hpp`,
+  `src/launcher/launch_settings.cpp`, `tests/launcher/launch_settings.cpp`;
+  command `.\waf.bat build --targets=test_launcher_launch_settings,xash3d`
+  passed on 2026-05-09.
+  Notes: `GetDefaultLaunchSettings()` now owns the build-configured
+  `XASH_GAMEDIR` fallback and `XASH_DISABLE_MENU_CHANGEGAME` calculation.
+- [x] `LAUNCH-006` Rebuild and smoke test the launcher on Windows defaults.
+  Evidence: command
+  `.\waf.bat build --targets=test_launcher_launch_settings,xash3d` passed;
+  full `.\waf.bat build` passed 41/41 tests;
+  copied `build\game_launch\xash3d.exe` to `run-win32`; command
+  `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0 and logged
+  `FS_LoadProgs`, `FS_InitStdio`, `Time to first frame: 0.440 seconds`,
+  `COM_FreeLibrary: Unloading filesystem_stdio.dll`, and
+  `Stopped with reason "command"` on 2026-05-09.
+- [x] `LAUNCH-007` Move engine DLL/SO loading and export lookup behind a
+  launcher helper while initially keeping entry points in `game_launch/`.
+  Evidence: `src/include/launcher/engine_library.hpp`,
+  `src/launcher/engine_library.cpp`, `tests/launcher/engine_library.cpp`;
+  command
+  `.\waf.bat build --targets=test_launcher_engine_library,test_launcher_launch_settings,xash3d`
+  passed; command `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0
+  from `run-win32` and logged `Time to first frame: 0.406 seconds` on
+  2026-05-09.
+- [x] `LAUNCH-008` Move shared launch sequencing and Windows argv ownership
+  into launcher helpers.
+  Evidence: `src/include/launcher/application.hpp`,
+  `src/launcher/application.cpp`, `src/include/launcher/win32_argv.hpp`,
+  `src/launcher/win32_argv.cpp`, `tests/launcher/application.cpp`;
+  command
+  `.\waf.bat build --targets=test_launcher_application,test_launcher_engine_library,test_launcher_launch_settings,xash3d`
+  passed; command `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0
+  from `run-win32` and logged `Time to first frame: 0.414 seconds` on
+  2026-05-09.
+- [x] `LAUNCH-009` Define launcher source/resource layout policy before moving
+  platform assets.
+  Evidence: `Documentation/codex/modern/game-launch/layout-policy.md`.
+- [x] `LAUNCH-010` Move Windows launcher resources into a platform resource
+  subfolder and update `game_launch/wscript`.
+  Evidence: `resources/launcher/windows/game.rc`,
+  `resources/launcher/windows/icon-xash-material.ico`,
+  `resources/launcher/source/icon-xash-material.png`,
+  `game_launch/wscript`; command `.\waf.bat build --targets=xash3d`
+  passed; command `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0
+  from `run-win32` on 2026-05-09.
+
+- [x] `LAUNCH-011` Move the thin executable entry source into the `src`
+  launcher tree.
+  Evidence: `src/launcher/platform/entry.cpp`,
+  `src/launcher/platform/README.md`, `game_launch/wscript`; command
+  `.\waf.bat build --targets=test_launcher_application,test_launcher_engine_library,test_launcher_launch_settings,xash3d`
+  passed; direct `build\src\test_launcher_application.exe`,
+  `build\src\test_launcher_engine_library.exe`, and
+  `build\src\test_launcher_launch_settings.exe` passed; copied
+  `build\game_launch\xash3d.exe` to `run-win32`; command
+  `.\xash3d.exe -dev 2 -log +wait +wait +quit` with
+  `XASH3D_BASEDIR=C:\git\xash3d-fwgs\run-win32` and
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`
+  exited 0 and logged `Time to first frame: 0.430 seconds`,
+  `COM_FreeLibrary: Unloading filesystem_stdio.dll`, and
+  `Stopped with reason "command"`; command
+  `.\waf.bat build --alltests` passed 45/45 tests on 2026-05-09.
+
+- [x] `LAUNCH-012` Document platform-support expectations for the modular
+  launcher layout.
+  Evidence: `Documentation/codex/modern/game-launch/platform-support.md`.
 
 ## Phase 31: Commit And Review Hygiene
 
@@ -1100,4 +1190,6 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-024 | Treat `src/filesystem` as the long-term implementation home and shrink `filesystem/` toward stable facades plus temporary adapters. | `modern/filesystem/filesystem-folder-migration-map.md`, `done/todo/backend_implementation_migration_todo.md` |
 | 2026-05-09 | DEC-025 | Keep `VFileSystem009.h` frozen, and move compatibility logic behind private runtime adapter calls instead of exposing modern C++ types through the public vtable. | `filesystem/VFileSystem009.cpp`, `src/include/filesystem/valve_path_resolver.hpp`, `tests/filesystem/interface.cpp` |
 | 2026-05-09 | DEC-026 | Consolidate legacy compatibility toward a future `src/filesystem/legacy_adapter.cpp` boundary while keeping `filesystem/` as the temporary export/facade layer. | `todo/modern_filesystem_handlers_todo.md`, `modern/filesystem/export-dependency-audit.md` |
-| 2026-05-09 | DEC-027 | Treat filesystem logging as a migration blocker in its own right, because direct `Con_*` calls keep modern handlers coupled to engine globals. | `todo/filesystem_logging_todo.md` |
+| 2026-05-09 | DEC-027 | Defer filesystem logging facade work until the engine console/logging ownership pass, because direct `Con_*` calls are engine-owned behavior rather than filesystem-owned policy. | `deferred/todo/filesystem_logging_todo.md` |
+| 2026-05-09 | DEC-028 | Use `game_launch` as the next modularization pilot, initially keeping platform entry points in `game_launch/` while moving only small target-neutral helpers into `src/launcher/`. | `todo/game_launch_todo.md`, `modern/game-launch/architecture.md` |
+| 2026-05-09 | DEC-029 | Move the launcher entry source into `src/launcher/platform/`, leaving `game_launch/wscript` as the executable target wrapper and `resources/launcher/` as the platform asset home. | `modern/game-launch/layout-policy.md`, `modern/game-launch/platform-support.md` |

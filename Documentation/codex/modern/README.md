@@ -13,6 +13,8 @@ migration phases and decisions.
   the modern shared debugging utility layer.
 - [filesystem/](filesystem/) contains filesystem modernization audits,
   ownership boundaries, and compatibility notes.
+- [game-launch/](game-launch/README.md) contains the launcher modernization
+  pilot notes and resource layout policy.
 - [thread-safe-debugging-utilities.md](thread-safe-debugging-utilities.md)
   describes the shared debugging, snapshot, serialization, and trace utility
   model intended for the rewrite.

@@ -13,7 +13,7 @@ Track migration of `FS_Search` and `search_t` allocation/result assembly from
 - [x] Route `FS_Search` result assembly through the builder.
 - [x] Keep `VFileSystem009` search handle behavior covered.
 
-Evidence: `filesystem/search_result_builder_adapter.cpp` owns duplicate
+Evidence: `src/filesystem/compat/search_result_builder_adapter.cpp` owns duplicate
 compaction, packed allocation byte calculation, and `search_t` initialization;
 `.\waf.bat build --targets=test_search-results,test_filesystem_search_result_builder`,
 direct `build\filesystem\test_search-results.exe`, direct

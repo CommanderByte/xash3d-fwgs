@@ -15,8 +15,8 @@ Active documents:
   debugging utility layer.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
-- [filesystem_logging_todo.md](filesystem_logging_todo.md) tracks filesystem
-  console-output and structured logging migration.
+- [game_launch_todo.md](game_launch_todo.md) tracks the launcher
+  modularization pilot.
 - [modern_filesystem_handlers_todo.md](modern_filesystem_handlers_todo.md)
   tracks migration of legacy-facing behavior into modern handlers and a future
   `src/filesystem/legacy_adapter.cpp` boundary.

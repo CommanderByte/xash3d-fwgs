@@ -1,5 +1,7 @@
 # Filesystem Logging TODO
 
+Status: deferred until the engine console/logging subsystem is audited.
+
 ## Purpose
 
 Track migration away from scattered direct console output in legacy filesystem
@@ -11,7 +13,14 @@ The current code calls `Con_Printf`, `Con_DPrintf`, `Con_Reportf`, and
 `Sys_Error` directly from many legacy paths. That is convenient, but it keeps
 modern handlers tied to engine globals and makes structured diagnostics harder.
 
-## Phase 30 Tasks
+## Deferral Rationale
+
+The console and fatal-error paths are engine-owned behavior. A filesystem-only
+logging facade would likely duplicate or constrain the eventual engine console
+design. Resume this TODO after the engine console/common layer has an ownership
+map and a preferred logging/error policy.
+
+## Deferred Tasks
 
 - [ ] `FS-LOG-001` Inventory filesystem logging and fatal-error call sites.
   Evidence:

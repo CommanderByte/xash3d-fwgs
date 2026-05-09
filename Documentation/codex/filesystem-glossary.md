@@ -101,19 +101,25 @@ archive dispatch behavior but are not real archive files.
 
 ### PAK
 
-The Quake-style `.pak` archive backend implemented in `filesystem/pak.c`.
-Entries are read from a linear archive directory and sorted for lookup.
+The Quake-style `.pak` archive backend. The modern parser/lookup logic lives
+under `src/filesystem/`; the current compatibility body is
+`src/filesystem/compat/pak.c`. Entries are read from a linear archive directory
+and sorted for lookup.
 
 ### WAD
 
-The `.wad` archive backend implemented in `filesystem/wad.c`. WAD content is
-organized as lumps. Lookup behavior includes type/extension mapping for common
-Half-Life and Quake asset types.
+The `.wad` archive backend. The modern parser/lookup logic lives under
+`src/filesystem/`; the current compatibility body is
+`src/filesystem/compat/wad.c`. WAD content is organized as lumps. Lookup
+behavior includes type/extension mapping for common Half-Life and Quake asset
+types.
 
 ### ZIP / PK3
 
-The ZIP archive backend implemented in `filesystem/zip.c`. `.pk3` uses this
-same backend. The backend supports stored and deflated entries.
+The ZIP archive backend. The modern parser/lookup logic lives under
+`src/filesystem/`; the current compatibility body is
+`src/filesystem/compat/zip.c`. `.pk3` uses this same backend. The backend
+supports stored and deflated entries.
 
 ### PK3 Directory
 
@@ -123,8 +129,10 @@ source.
 
 ### Android Assets
 
-The Android asset manager backend implemented in `filesystem/android.c`. It
-appears as a search path type when building for Android.
+The Android asset manager backend. Target-neutral pieces live under
+`src/filesystem/`; the platform compatibility body is
+`src/filesystem/compat/android.c` and appears as a search path type when
+building for Android.
 
 ## API And Compatibility Terms
 

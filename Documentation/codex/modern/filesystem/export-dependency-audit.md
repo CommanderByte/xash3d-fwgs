@@ -138,10 +138,9 @@ or compatibility shim because the struct layout is public:
 
 These candidates are now tracked in
 `Documentation/codex/todo/modern_filesystem_handlers_todo.md`. Logging cleanup
-is tracked separately in
-`Documentation/codex/todo/filesystem_logging_todo.md` because direct
-`Con_Printf`, `Con_DPrintf`, `Con_Reportf`, and `Sys_Error` usage is one of the
-remaining reasons modern handlers still need legacy engine globals nearby.
+is deferred in `Documentation/codex/deferred/todo/filesystem_logging_todo.md`
+because direct `Con_Printf`, `Con_DPrintf`, `Con_Reportf`, and `Sys_Error`
+usage is engine console behavior, and should resume after that ownership pass.
 
 ## Things Not To Trim Yet
 

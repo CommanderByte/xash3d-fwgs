@@ -13,26 +13,31 @@ Top-level file counts from `rg --files`:
 | --- | ---: | --- |
 | `3rdparty/` | 2065 | Bundled dependency and optional module sources. |
 | `engine/` | 276 | Main engine, host, client, server, platform code, ABI headers. |
+| `Documentation/` | 115 | User, development, protocol, extension docs. |
+| `src/` | 105 | New modular C++ internals, compatibility adapters, tests, and private headers. |
 | `android/` | 83 | Android app wrapper and native build integration. |
 | `ref/` | 62 | Renderer implementations and shared renderer support. |
-| `scripts/` | 53 | CI, release, cross-compile, packaging, Waf helpers. |
-| `Documentation/` | 43 | User, development, protocol, extension docs. |
+| `scripts/` | 54 | CI, release, cross-compile, packaging, Waf helpers. |
+| `tests/` | 42 | Behavior-preserving unit tests and fixtures for modularization work. |
 | `common/` | 39 | Public SDK/game-facing data structures. |
 | `public/` | 29 | Portable utility library, math/string/CRC/miniz/build metadata. |
 | `utils/` | 18 | Developer utilities and fuzz runner. |
-| `filesystem/` | 16 | Virtual filesystem module. |
-| `game_launch/` | 5 | Native launcher. |
+| `filesystem/` | 7 | Virtual filesystem ABI facade and module exports. |
+| `resources/` | 4 | First-party product/build assets, currently launcher resources. |
+| `game_launch/` | 1 | Native launcher executable Waf wrapper. |
 | `pm_shared/` | 2 | Shared player movement definitions. |
 
 First-party source type counts excluding `3rdparty/` are mostly C:
 
 | Extension | Files |
 | --- | ---: |
-| `.c` | 256 |
-| `.h` | 154 |
+| `.c` | 266 |
+| `.h` | 173 |
+| `.md` | 125 |
+| `.cpp` | 65 |
+| `.hpp` | 30 |
 | `.kt` | 16 |
 | `.py` | 15 |
-| `.cpp` | 3 |
 | `.java` | 3 |
 
 The engine is therefore not just "C flavored"; its central architecture is C:
@@ -72,7 +77,7 @@ Key build outputs:
 | `ref_gl`, `ref_gles1`, `ref_gles2`, `ref_gl4es`, `ref_gles3compat` | `ref/gl/wscript` | GL-family renderer shared libraries. |
 | `ref_soft` | `ref/soft/wscript` | Software renderer shared library. |
 | `ref_null` | `ref/null/wscript` | Null renderer shared library. |
-| `game_launch` executable | `game_launch/wscript` | Launcher when engine is built as a library. |
+| `game_launch` executable | `game_launch/wscript` plus `src/launcher/platform/entry.cpp` | Launcher when engine is built as a library. |
 
 Android uses `android/app/build.gradle.kts` to call a native Ninja/Waf bridge via
 `scripts/configure-ninja.py`. CI lives in `.github/workflows/c-cpp.yml` and

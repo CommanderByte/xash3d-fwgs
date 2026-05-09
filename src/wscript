@@ -17,6 +17,11 @@ def build(bld):
 		source = bld.path.ant_glob('debugging/*.cpp'),
 		use = 'modern_debugging_includes werror')
 
+	bld.stlib(target = 'modern_launcher',
+		source = bld.path.ant_glob('launcher/*.cpp'),
+		use = 'modern_debugging_includes sdk_includes werror',
+		export_includes = 'include')
+
 	bld.stlib(target = 'modern_filesystem',
 		source = bld.path.ant_glob('filesystem/*.cpp'),
 		use = 'modern_debugging modern_debugging_includes sdk_includes werror')
@@ -40,6 +45,9 @@ def build(bld):
 			'filesystem_valve_path_resolver': '../tests/filesystem/valve_path_resolver.cpp',
 			'filesystem_wad_backend': '../tests/filesystem/wad_backend.cpp',
 			'filesystem_zip_backend': '../tests/filesystem/zip_backend.cpp',
+			'launcher_application': '../tests/launcher/application.cpp',
+			'launcher_engine_library': '../tests/launcher/engine_library.cpp',
+			'launcher_launch_settings': '../tests/launcher/launch_settings.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',
 		}
 
@@ -47,5 +55,5 @@ def build(bld):
 			bld.program(features = 'test',
 				source = tests[i],
 				target = 'test_%s' % i,
-				use = 'modern_filesystem modern_debugging modern_debugging_includes sdk_includes werror PTHREAD',
+				use = 'modern_filesystem modern_launcher modern_debugging modern_debugging_includes sdk_includes werror PTHREAD',
 				install_path = None)

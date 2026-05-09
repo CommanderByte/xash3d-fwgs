@@ -26,7 +26,7 @@ The desired end state is:
 | `filesystem/filesystem_internal.h` | Compatibility umbrella for legacy filesystem private headers. | Keep only for large legacy `.c` bodies until they finish shrinking. |
 | `src/include/filesystem/compat/private/filesystem_private_types.h` | Private legacy layouts for `file_t`, `searchpath_t`, `stringlist_t`, and backend type enums. | Keep private; modern code should prefer target-neutral contracts. |
 | `src/include/filesystem/compat/private/filesystem_private_globals.h` | Private declarations for legacy global filesystem state. | Shrink as globals move behind `FilesystemRuntime`/query APIs. |
-| `src/include/filesystem/compat/private/filesystem_private_memory.h` | Private memory and engine callback macros. | Replace with logging/memory facades as Phase 30 progresses. |
+| `src/include/filesystem/compat/private/filesystem_private_memory.h` | Private memory and engine callback macros. | Replace with logging/memory facades after the engine console/logging ownership pass. |
 | `src/include/filesystem/compat/private/filesystem_private_api.h` | Private declarations for legacy `FS_*` entry points used by adapters. | Shrink toward `src/filesystem/legacy_adapter.cpp`. |
 | `filesystem/filesystem.c` | Runtime orchestration, globals, file handles, search paths, API table. | Shrink into C facade and runtime adapter over `FilesystemRuntime`. |
 | `src/filesystem/compat/*.cpp` | DLL-only compatibility adapters for modern helpers/backends and legacy callbacks. | Shrink toward one explicit legacy adapter boundary as legacy `.c` bodies disappear. |

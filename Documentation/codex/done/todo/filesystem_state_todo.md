@@ -22,8 +22,8 @@ Track the migration of `filesystem.c` global state into a private modern
   `tests/filesystem/filesystem_state.cpp`; command
   `.\waf.bat build --targets=test_filesystem_state`.
 - [x] Add read-only state snapshot capture from `filesystem.c` globals.
-  Evidence: `filesystem/filesystem_runtime_adapter.h`,
-  `filesystem/filesystem_runtime_adapter.cpp`, and
+  Evidence: `src/include/filesystem/compat/filesystem_runtime_adapter.h`,
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`, and
   `FS_SyncStateFromGlobals` in `filesystem/filesystem.c`; the original state
   adapter was folded into the runtime adapter during Phase 26.
 - [x] Route `FS_AllowDirectPaths` through a tiny state helper.

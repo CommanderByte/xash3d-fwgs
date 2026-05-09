@@ -34,15 +34,16 @@ flowchart LR
 ## Phase 28 Tasks
 
 - [x] `FS-HANDLER-001` Define the first `LegacyAdapter` boundary.
-  Evidence: `filesystem/filesystem_facade_adapter.h`,
+  Evidence: `src/include/filesystem/compat/filesystem_facade_adapter.h`,
   `Documentation/codex/todo/modern_filesystem_handlers_todo.md`.
   Notes: it should expose C-compatible functions to legacy facades but keep
   modern C++ types private to `src/filesystem`.
 
 - [x] `FS-HANDLER-002` Move `VFileSystem009.cpp` off
   `filesystem_internal.h`.
-  Evidence: `filesystem/filesystem_facade_adapter.h`,
-  `filesystem/filesystem_facade_adapter.cpp`, `filesystem/VFileSystem009.cpp`;
+  Evidence: `src/include/filesystem/compat/filesystem_facade_adapter.h`,
+  `src/filesystem/compat/filesystem_facade_adapter.cpp`,
+  `src/filesystem/compat/VFileSystem009.cpp`;
   `.\waf.bat build --targets=test_interface`, direct
   `build\filesystem\test_interface.exe`, and `.\waf.bat build` passed on
   2026-05-09.
@@ -52,8 +53,9 @@ flowchart LR
 
 - [x] `FS-HANDLER-003` Extract `FS_Search` result assembly into a modern
   handler.
-  Evidence: `filesystem/search_result_builder_adapter.cpp`,
-  `filesystem/search_result_builder_adapter.h`, `filesystem/filesystem.c`;
+  Evidence: `src/filesystem/compat/search_result_builder_adapter.cpp`,
+  `src/include/filesystem/compat/search_result_builder_adapter.h`,
+  `filesystem/filesystem.c`;
   `.\waf.bat build --targets=test_search-results,test_filesystem_search_result_builder`,
   direct `build\filesystem\test_search-results.exe`, and direct
   `build\src\test_filesystem_search_result_builder.exe`,
@@ -68,8 +70,9 @@ flowchart LR
   handlers.
   Evidence: `src/include/filesystem/file_handle_ops.hpp`,
   `src/filesystem/file_handle_ops.cpp`,
-  `filesystem/file_handle_ops_adapter.h`,
-  `filesystem/file_handle_ops_adapter.cpp`, `filesystem/filesystem.c`,
+  `src/include/filesystem/compat/file_handle_ops_adapter.h`,
+  `src/filesystem/compat/file_handle_ops_adapter.cpp`,
+  `filesystem/filesystem.c`,
   `tests/filesystem/file_handle_ops.cpp`; command
   `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive`
   passed 6/6 tests on 2026-05-09; `.\waf.bat build` passed 25/25
@@ -82,12 +85,13 @@ flowchart LR
   into runtime-owned mount handlers.
   Evidence: `src/include/filesystem/filesystem_runtime.hpp`,
   `src/filesystem/filesystem_runtime.cpp`,
-  `filesystem/filesystem_runtime_adapter.h`,
-  `filesystem/filesystem_runtime_adapter.cpp`,
-  `filesystem/searchpath_mount_adapter.h`,
-  `filesystem/searchpath_mount_adapter.cpp`, `filesystem/dir.c`,
-  `filesystem/pak.c`, `filesystem/wad.c`, `filesystem/zip.c`,
-  `filesystem/android.c`, `tests/filesystem/filesystem_runtime.cpp`;
+  `src/include/filesystem/compat/filesystem_runtime_adapter.h`,
+  `src/filesystem/compat/filesystem_runtime_adapter.cpp`,
+  `src/include/filesystem/compat/searchpath_mount_adapter.h`,
+  `src/filesystem/compat/searchpath_mount_adapter.cpp`,
+  `src/filesystem/compat/dir.c`, `src/filesystem/compat/pak.c`,
+  `src/filesystem/compat/wad.c`, `src/filesystem/compat/zip.c`,
+  `src/filesystem/compat/android.c`, `tests/filesystem/filesystem_runtime.cpp`;
   command
   `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive`
   passed 6/6 tests on 2026-05-09; `.\waf.bat build` passed 25/25
@@ -141,11 +145,12 @@ changing the DLL/SO exports or public vtable.
 
 ## Current Compatibility Boundary
 
-The first slice added `filesystem/filesystem_facade_adapter.h/.cpp` as a
-temporary C-compatible bridge. `VFileSystem009.cpp` now includes that narrow
-adapter instead of `filesystem_internal.h`.
+The first slice added `src/include/filesystem/compat/filesystem_facade_adapter.h`
+and `src/filesystem/compat/filesystem_facade_adapter.cpp` as a temporary
+C-compatible bridge. `src/filesystem/compat/VFileSystem009.cpp` now includes
+that narrow adapter instead of `filesystem_internal.h`.
 
-This is intentionally still under `filesystem/` because it calls legacy
-functions and macros directly. When enough handlers live under `src/filesystem`,
-this boundary can move inward and become the proposed
+This is intentionally still build-scoped to the filesystem DLL because it calls
+legacy functions and macros directly. When enough handlers live under
+`src/filesystem`, this boundary can collapse into the proposed
 `src/filesystem/legacy_adapter.cpp`.

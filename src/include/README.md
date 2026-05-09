@@ -20,4 +20,6 @@ Planned subfolders:
 - `debugging/`: private contracts for shared debug snapshots, sinks,
   formatters, JSON writers, and trace helpers
 - `filesystem/`: private modern filesystem records and helper interfaces
+- `launcher/`: private contracts for launcher settings, library loading,
+  application sequencing, and argument ownership
 - `utilities/`: subsystem-neutral helpers such as the ordered registry

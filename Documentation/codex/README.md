@@ -31,6 +31,8 @@ in upstream-facing user documentation yet.
   architecture and shared utility contracts for the rewrite.
 - [todo/](todo/README.md) contains focused implementation checklists derived
   from the modernization docs.
+- [deferred/](deferred/README.md) contains paused work that waits on broader
+  subsystem ownership decisions.
 
 ## Repository At A Glance
 
@@ -47,8 +49,11 @@ The first-party engine surface is concentrated in:
   renderers.
 - `public/`, `common/`, `pm_shared/`: shared SDK-style headers and utility
   libraries consumed by the engine, renderers, and game/client DLL interfaces.
-- `game_launch/`: native launcher executable when the engine is built as a
-  shared library.
+- `game_launch/`: Waf wrapper for the native launcher executable when the
+  engine is built as a shared library.
+- `src/launcher/`: modern launcher implementation and platform entry shell.
+- `resources/`: first-party product/build assets such as launcher icons and
+  platform resource files.
 
 Large dependency and packaging surfaces live in:
 

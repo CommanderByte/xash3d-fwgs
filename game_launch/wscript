@@ -21,10 +21,10 @@ def configure(conf):
 	conf.define('XASH_DISABLE_MENU_CHANGEGAME', conf.options.DISABLE_MENU_CHANGEGAME)
 
 def build(bld):
-	source = ['game.cpp']
+	source = ['../src/launcher/platform/entry.cpp']
 
 	if bld.env.DEST_OS == 'win32':
-		source += ['game.rc']
+		source += ['../resources/launcher/windows/game.rc']
 
 	# Half-Life 25th anniversary update doesn't have server library explicitly linked to libm
 	if bld.env.DEST_OS == 'linux':
@@ -32,7 +32,7 @@ def build(bld):
 
 	bld.program(source = source,
 		target   = 'xash3d', # hl.exe
-		use      = 'sdk_includes DL USER32 SHELL32 werror',
+		use      = 'modern_launcher sdk_includes DL USER32 SHELL32 werror',
 		rpath    = bld.env.DEFAULT_RPATH,
 		install_path = bld.env.BINDIR,
 		subsystem = bld.env.MSVC_SUBSYSTEM
