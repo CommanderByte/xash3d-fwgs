@@ -136,9 +136,9 @@ or compatibility shim because the struct layout is public:
    directly. Keep `FI` as a compatibility mirror until engine call sites stop
    indexing `FI->games` directly.
 
-These candidates are now tracked in
-`Documentation/codex/todo/modern_filesystem_handlers_todo.md`. Logging cleanup
-is deferred in `Documentation/codex/deferred/todo/filesystem_logging_todo.md`
+These completed candidates are archived in
+`Documentation/codex/done/todo/modern_filesystem_handlers_todo.md`. Logging
+cleanup is deferred in `Documentation/codex/deferred/todo/filesystem_logging_todo.md`
 because direct `Con_Printf`, `Con_DPrintf`, `Con_Reportf`, and `Sys_Error`
 usage is engine console behavior, and should resume after that ownership pass.
 

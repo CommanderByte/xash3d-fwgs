@@ -35,7 +35,7 @@ flowchart LR
 
 - [x] `FS-HANDLER-001` Define the first `LegacyAdapter` boundary.
   Evidence: `src/include/filesystem/compat/filesystem_facade_adapter.h`,
-  `Documentation/codex/todo/modern_filesystem_handlers_todo.md`.
+  `Documentation/codex/done/todo/modern_filesystem_handlers_todo.md`.
   Notes: it should expose C-compatible functions to legacy facades but keep
   modern C++ types private to `src/filesystem`.
 

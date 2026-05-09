@@ -7,16 +7,14 @@ BaseCmd command/cvar pilot moved to the completed TODO folder.
 
 These are not the immediate next phase unless selected in `tasks.md`.
 
+## Promoted Candidates
+
+- `ENG-LOG-*` is now promoted to Phase 43 and tracked in
+  `Documentation/codex/todo/engine_logging_todo.md`.
+- `ENG-SYS-*` is now promoted to Phase 44 and tracked in
+  `Documentation/codex/todo/engine_platform_todo.md`.
+
 ## Deferred Candidates
-
-- [ ] `ENG-LOG-001` Audit `Con_Printf`, `Con_DPrintf`, `Con_Reportf`,
-  `Log_Printf`, `Sys_Print`, and `Sys_PrintLog` ownership after command/cvar
-  tests are stable.
-  Evidence:
-
-- [ ] `ENG-SYS-001` Audit `system.c` platform branches and decide what can move
-  under `engine/platform/` without changing `Sys_*` callers.
-  Evidence:
 
 - [ ] `ENG-FSBRIDGE-001` Revisit `filesystem_engine.c` adapter cleanup after
   console/logging policy exists.

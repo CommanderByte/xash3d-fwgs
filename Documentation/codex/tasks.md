@@ -903,7 +903,7 @@ commit, test command, document link, or manual verification note that proves it.
 
 - [x] `FS-HANDLER-001` Define the first `LegacyAdapter` boundary for
   compatibility calls.
-  Evidence: `Documentation/codex/todo/modern_filesystem_handlers_todo.md`,
+  Evidence: `Documentation/codex/done/todo/modern_filesystem_handlers_todo.md`,
   `src/include/filesystem/compat/filesystem_facade_adapter.h`.
 - [x] `FS-HANDLER-002` Move `VFileSystem009.cpp` off
   `filesystem_internal.h` through a narrow facade adapter.
@@ -1344,7 +1344,7 @@ commit, test command, document link, or manual verification note that proves it.
   max-size behavior, important-key behavior, star-key handling, and largest-key
   removal policy.
   Evidence: `Documentation/codex/legacy/engine/info-string-baseline.md` and
-  `Documentation/codex/todo/engine_infostring_todo.md`.
+  `Documentation/codex/done/todo/engine_infostring_todo.md`.
 - [x] `ENG-INFO-002` Add standalone and parallel tests for `Info_*` behavior.
   Evidence: `tests/engine/info_string.cpp` covers the modern core; `Test_InfoStrings`
   in `engine/common/common.c` covers the routed legacy `Info_*` API.
@@ -1367,7 +1367,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-HASH-001` Audit hash/checksum helpers such as `COM_HashKey`, their
   callers, and known-output compatibility requirements.
   Evidence: `Documentation/codex/legacy/engine/hash-checksum-baseline.md` and
-  `Documentation/codex/todo/engine_hash_todo.md`.
+  `Documentation/codex/done/todo/engine_hash_todo.md`.
 - [x] `ENG-HASH-002` Add tests for hash/checksum vectors, case folding,
   hash-size assumptions, and edge inputs.
   Evidence: `public/tests/test_crclib.c` covers public `crclib` hash, CRC32,
@@ -1389,7 +1389,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-STRPATH-001` Audit shared string/path helpers and rank them by
   caller breadth, compatibility risk, and testability.
   Evidence: `Documentation/codex/legacy/engine/string-path-baseline.md` and
-  `Documentation/codex/todo/engine_string_path_todo.md`.
+  `Documentation/codex/done/todo/engine_string_path_todo.md`.
 - [x] `ENG-STRPATH-002` Add focused tests for path extension, basename,
   slash-normalization, case comparison, and bounded copy/concat behavior.
   Evidence: new `public/tests/test_path.c` and `tests/utilities/path.cpp`; older
@@ -1411,7 +1411,7 @@ commit, test command, document link, or manual verification note that proves it.
   quote/comment handling, insertion behavior, overflow behavior, filtered
   buffer behavior, and `wait` semantics.
   Evidence: `Documentation/codex/legacy/engine/command-buffer-baseline.md` and
-  `Documentation/codex/todo/engine_command_buffer_todo.md`.
+  `Documentation/codex/done/todo/engine_command_buffer_todo.md`.
 - [x] `ENG-CBUF-002` Expand command-buffer tests for semicolon/newline
   splitting, CRLF, comments, quotes, inserted alias text, and overflow paths.
   Evidence: `engine/common/cmd.c` `Test_RunCommandBufferPolicy` covers legacy
@@ -1438,7 +1438,7 @@ commit, test command, document link, or manual verification note that proves it.
   behavior, bit order, endian behavior, string handling, coordinate/angle
   encoding, and caller expectations.
   Evidence: `Documentation/codex/legacy/engine/network-buffer-baseline.md` and
-  `Documentation/codex/todo/engine_netbuffer_todo.md`.
+  `Documentation/codex/done/todo/engine_netbuffer_todo.md`.
 - [x] `ENG-NETBUF-002` Add golden-vector and round-trip tests comparing legacy
   and modern behavior on deterministic byte streams.
   Evidence: existing `xash_tests` vectors in `engine/common/net_buffer.c`,
@@ -1458,6 +1458,44 @@ commit, test command, document link, or manual verification note that proves it.
   refreshed the runtime; `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited
   0, reached `Time to first frame: 0.519 seconds`, and stopped with reason
   `command`.
+
+## Phase 43: Console And Logging Ownership
+
+- [ ] `ENG-LOG-001` Audit definitions and callers for `Con_Printf`,
+  `Con_DPrintf`, `Con_Reportf`, `Log_Printf`, `Sys_Print`, and
+  `Sys_PrintLog`.
+  Evidence: `Documentation/codex/todo/engine_logging_todo.md`.
+- [ ] `ENG-LOG-002` Document output ownership, filtering, color/control prefix
+  behavior, log file lifecycle, shutdown footer behavior, and fatal-path
+  constraints.
+  Evidence:
+- [ ] `ENG-LOG-003` Add focused tests or a test seam for target-neutral message
+  formatting/filtering behavior where practical.
+  Evidence:
+- [ ] `ENG-LOG-004` Decide how modern debugging utilities and deferred
+  filesystem logging cleanup should feed engine output.
+  Evidence:
+- [ ] `ENG-LOG-005` Run focused tests, full tests, and Windows runtime smoke if
+  any output path changes.
+  Evidence:
+
+## Phase 44: System Platform Facade Audit
+
+- [ ] `ENG-SYS-001` Audit `system.c`, `system.h`, and platform source
+  responsibilities.
+  Evidence: `Documentation/codex/todo/engine_platform_todo.md`.
+- [ ] `ENG-SYS-002` Document which branches can move to `engine/platform/`
+  without changing `Sys_*` callers.
+  Evidence:
+- [ ] `ENG-SYS-003` Identify target-neutral helpers that can gain focused tests
+  before any code movement.
+  Evidence:
+- [ ] `ENG-SYS-004` Move one narrow platform-neutral or platform-selected helper
+  only if the audit finds a low-risk candidate.
+  Evidence:
+- [ ] `ENG-SYS-005` Run focused tests, full tests, and Windows runtime smoke if
+  any platform path changes.
+  Evidence:
 
 ## Phase 990: Memory Pools And Allocation
 
@@ -1515,9 +1553,9 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-023 | Preserve current path rejection semantics exactly in `PathPolicy`, including direct-path bypass after empty-path rejection and the single leading `../` strip quirk. | `src/include/filesystem/path_policy.hpp`, `tests/filesystem/path_policy.cpp`, `filesystem/filesystem.c` |
 | 2026-05-09 | DEC-024 | Treat `src/filesystem` as the long-term implementation home and shrink `filesystem/` toward stable facades plus temporary adapters. | `modern/filesystem/filesystem-folder-migration-map.md`, `done/todo/backend_implementation_migration_todo.md` |
 | 2026-05-09 | DEC-025 | Keep `VFileSystem009.h` frozen, and move compatibility logic behind private runtime adapter calls instead of exposing modern C++ types through the public vtable. | `filesystem/VFileSystem009.cpp`, `src/include/filesystem/valve_path_resolver.hpp`, `tests/filesystem/interface.cpp` |
-| 2026-05-09 | DEC-026 | Consolidate legacy compatibility toward a future `src/filesystem/legacy_adapter.cpp` boundary while keeping `filesystem/` as the temporary export/facade layer. | `todo/modern_filesystem_handlers_todo.md`, `modern/filesystem/export-dependency-audit.md` |
+| 2026-05-09 | DEC-026 | Consolidate legacy compatibility toward a future `src/filesystem/legacy_adapter.cpp` boundary while keeping `filesystem/` as the temporary export/facade layer. | `done/todo/modern_filesystem_handlers_todo.md`, `modern/filesystem/export-dependency-audit.md` |
 | 2026-05-09 | DEC-027 | Defer filesystem logging facade work until the engine console/logging ownership pass, because direct `Con_*` calls are engine-owned behavior rather than filesystem-owned policy. | `deferred/todo/filesystem_logging_todo.md` |
-| 2026-05-09 | DEC-028 | Use `game_launch` as the next modularization pilot, initially keeping platform entry points in `game_launch/` while moving only small target-neutral helpers into `src/launcher/`. | `todo/game_launch_todo.md`, `modern/game-launch/architecture.md` |
+| 2026-05-09 | DEC-028 | Use `game_launch` as the next modularization pilot, initially keeping platform entry points in `game_launch/` while moving only small target-neutral helpers into `src/launcher/`. | `done/todo/game_launch_todo.md`, `modern/game-launch/architecture.md` |
 | 2026-05-09 | DEC-029 | Move the launcher entry source into `src/launcher/platform/`, leaving `game_launch/wscript` as the executable target wrapper and `resources/launcher/` as the platform asset home. | `modern/game-launch/layout-policy.md`, `modern/game-launch/platform-support.md` |
 | 2026-05-09 | DEC-030 | Keep platform-dependent launcher calls under `src/launcher/platform/` and allow a flat optional `launcher.json` to override safe startup defaults while compiled defaults remain the fallback. | `modern/game-launch/architecture.md`, `resources/launcher/launcher.example.json` |
 | 2026-05-09 | DEC-031 | Prefer Waf-selected launcher platform implementation files over mixed-platform source files, and defer a JSON dependency until there is a second runtime reader or the launcher schema grows beyond flat defaults. | `modern/game-launch/platform-support.md`, `modern/game-launch/json-policy.md` |
@@ -1527,8 +1565,9 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-035 | Start BaseCmd migration with a private C++ registry helper and standalone tests, then add a C adapter later once legacy routing is ready. | `modern/engine/basecmd-migration-guide.md`, `src/include/engine/commands/base_command_registry.hpp` |
 | 2026-05-09 | DEC-036 | Use a parallel/shadow verification phase for BaseCmd before making the modern registry authoritative, so focused tests can compare legacy and modern behavior directly. | `modern/engine/basecmd-migration-guide.md`, `tasks.md` |
 | 2026-05-09 | DEC-037 | Route legacy `BaseCmd_*` through a private C adapter backed by `BaseCommandRegistry`, keeping `base_cmd.h` and public command/cvar surfaces unchanged. | `engine/common/base_cmd_adapter.cpp`, `engine/common/base_cmd.c`, `modern/engine/basecmd-migration-guide.md` |
-| 2026-05-09 | DEC-038 | Use six ordered low-level engine candidates for the next rewrite-style migrations: info strings, hash/checksum helpers, string/path utilities, command buffer, memory pools, and network buffers. | `todo/engine_infostring_todo.md`, `todo/engine_hash_todo.md`, `todo/engine_string_path_todo.md`, `todo/engine_command_buffer_todo.md`, `todo/engine_memory_todo.md`, `todo/engine_netbuffer_todo.md` |
+| 2026-05-09 | DEC-038 | Use six ordered low-level engine candidates for the next rewrite-style migrations: info strings, hash/checksum helpers, string/path utilities, command buffer, memory pools, and network buffers. | `done/todo/engine_infostring_todo.md`, `done/todo/engine_hash_todo.md`, `done/todo/engine_string_path_todo.md`, `done/todo/engine_command_buffer_todo.md`, `todo/engine_memory_todo.md`, `done/todo/engine_netbuffer_todo.md` |
 | 2026-05-09 | DEC-039 | Implement info strings as a direct low-level C++ replacement under `src/engine` while exporting the unchanged legacy `Info_*` C surface from `engine/common/infostring.cpp`. | `legacy/engine/info-string-baseline.md`, `modern/engine/info-string-migration-guide.md`, `src/engine/info_string.cpp`, `engine/common/infostring.cpp` |
 | 2026-05-09 | DEC-040 | Treat `public/crclib.h` as the legacy C ABI and `src/utilities` as the implementation home; route `COM_HashKey` through a compatibility export while leaving CRC32/MD5 C symbols in `public/crclib.c` until a dedicated performance pass. | `legacy/engine/hash-checksum-baseline.md`, `modern/engine/hash-checksum-migration-guide.md`, `src/utilities/compat/crclib_hash.cpp`, `src/utilities/hash.cpp`, `public/tests/test_crclib.c` |
 | 2026-05-09 | DEC-041 | Treat `public/crtlib.h` path helpers as public C ABI and route the non-inline path helper implementations through `src/utilities/path.*`, while deferring parser, formatting, and inline copy/compare helpers to narrower later passes. | `legacy/engine/string-path-baseline.md`, `modern/engine/string-path-migration-guide.md`, `src/utilities/compat/crtlib_path.cpp`, `src/utilities/path.cpp`, `public/tests/test_path.c` |
-| 2026-05-09 | DEC-042 | Defer broad memory-pool modernization to Phase 990 and promote network buffers to Phase 42, using golden byte vectors and narrow helper routing before any broad `MSG_*` rewrite. | `todo/engine_memory_todo.md`, `todo/engine_netbuffer_todo.md`, `legacy/engine/network-buffer-baseline.md`, `modern/engine/network-buffer-migration-guide.md` |
+| 2026-05-09 | DEC-042 | Defer broad memory-pool modernization to Phase 990 and promote network buffers to Phase 42, using golden byte vectors and narrow helper routing before any broad `MSG_*` rewrite. | `todo/engine_memory_todo.md`, `done/todo/engine_netbuffer_todo.md`, `legacy/engine/network-buffer-baseline.md`, `modern/engine/network-buffer-migration-guide.md` |
+| 2026-05-09 | DEC-043 | Use console/logging ownership as the next engine phase because it unlocks deferred filesystem logging cleanup, then use the launcher/platform lessons for a `system.c` facade audit. | `todo/engine_logging_todo.md`, `todo/engine_platform_todo.md`, `legacy/engine/common-audit.md` |

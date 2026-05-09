@@ -4,7 +4,7 @@ These TODO lists are complete for their original scope. They remain here for
 auditability and evidence lookup while active migration work continues under
 `Documentation/codex/todo/`.
 
-## Completed Filesystem And Utility TODOs
+## Completed TODOs
 
 - [android_assets_backend_todo.md](android_assets_backend_todo.md)
 - [archive_registry_todo.md](archive_registry_todo.md)
@@ -12,10 +12,17 @@ auditability and evidence lookup while active migration work continues under
 - [compatibility_facades_todo.md](compatibility_facades_todo.md)
 - [directory_backend_todo.md](directory_backend_todo.md)
 - [engine_common_todo.md](engine_common_todo.md)
+- [engine_command_buffer_todo.md](engine_command_buffer_todo.md)
+- [engine_hash_todo.md](engine_hash_todo.md)
+- [engine_infostring_todo.md](engine_infostring_todo.md)
+- [engine_netbuffer_todo.md](engine_netbuffer_todo.md)
+- [engine_string_path_todo.md](engine_string_path_todo.md)
 - [filesystem_decluttering_todo.md](filesystem_decluttering_todo.md)
 - [filesystem_state_todo.md](filesystem_state_todo.md)
+- [game_launch_todo.md](game_launch_todo.md)
 - [game_hierarchy_todo.md](game_hierarchy_todo.md)
 - [library_locator_todo.md](library_locator_todo.md)
+- [modern_filesystem_handlers_todo.md](modern_filesystem_handlers_todo.md)
 - [pak_backend_todo.md](pak_backend_todo.md)
 - [path_policy_todo.md](path_policy_todo.md)
 - [search_results_todo.md](search_results_todo.md)
