@@ -15,11 +15,13 @@ Active documents:
   debugging utility layer.
 - [engine_deferred_todo.md](engine_deferred_todo.md) tracks deferred
   engine/common candidates after the BaseCmd pilot.
-- [engine_logging_todo.md](engine_logging_todo.md) tracks console/logging
-  ownership and the path back to deferred filesystem logging cleanup.
 - [engine_memory_todo.md](engine_memory_todo.md) tracks cautious memory pool and
   allocation modernization.
-- [engine_platform_todo.md](engine_platform_todo.md) tracks the `system.c` and
-  platform facade audit.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
+- [low_risk_stragglers_todo.md](low_risk_stragglers_todo.md) tracks standalone
+  utility cleanup candidates, starting with CRC32 constants.
+- [non_windows_console_backend_todo.md](non_windows_console_backend_todo.md)
+  tracks deferred non-Windows output backend decisions.
+- [posix_console_backend_todo.md](posix_console_backend_todo.md) tracks POSIX
+  console backend validation.

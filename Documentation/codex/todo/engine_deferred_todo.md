@@ -10,9 +10,9 @@ These are not the immediate next phase unless selected in `tasks.md`.
 ## Promoted Candidates
 
 - `ENG-LOG-*` is now promoted to Phase 43 and tracked in
-  `Documentation/codex/todo/engine_logging_todo.md`.
+  `Documentation/codex/done/todo/engine_logging_todo.md`.
 - `ENG-SYS-*` is now promoted to Phase 44 and tracked in
-  `Documentation/codex/todo/engine_platform_todo.md`.
+  `Documentation/codex/done/todo/engine_platform_todo.md`.
 
 ## Deferred Candidates
 

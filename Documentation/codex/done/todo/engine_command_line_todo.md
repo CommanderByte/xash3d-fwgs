@@ -72,7 +72,8 @@ Out of scope:
 - [x] `ENG-CMDLINE-006` Run focused tests, full tests, and Windows runtime
   smoke, recording first-frame timing when available.
   Evidence: `.\waf.bat build --targets=test_engine_platform_command_line`
-  passed 1/1 tests, `.\waf.bat build` passed 30/30 tests, and Windows runtime
+  passed 1/1 tests, `.\waf.bat build --alltests` passed 56/56 tests, and
+  Windows runtime
   smoke copied `build\engine\xash.dll` plus
   `build\filesystem\filesystem_stdio.dll` into `run-win32`, then ran
   `.\xash3d.exe -dev 2 -log +fs_path +quit` from `run-win32` with

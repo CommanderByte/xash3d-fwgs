@@ -1464,7 +1464,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-LOG-001` Audit definitions and callers for `Con_Printf`,
   `Con_DPrintf`, `Con_Reportf`, `Log_Printf`, `Sys_Print`, and
   `Sys_PrintLog`.
-  Evidence: `Documentation/codex/todo/engine_logging_todo.md`,
+  Evidence: `Documentation/codex/done/todo/engine_logging_todo.md`,
   `Documentation/codex/legacy/engine/console-logging-baseline.md`.
 - [x] `ENG-LOG-002` Document output ownership, filtering, color/control prefix
   behavior, log file lifecycle, shutdown footer behavior, and fatal-path
@@ -1553,7 +1553,7 @@ commit, test command, document link, or manual verification note that proves it.
 
 - [x] `ENG-SYS-001` Audit `system.c`, `system.h`, and platform source
   responsibilities.
-  Evidence: `Documentation/codex/todo/engine_platform_todo.md`,
+  Evidence: `Documentation/codex/done/todo/engine_platform_todo.md`,
   `Documentation/codex/legacy/engine/system-platform-facade-audit.md`.
 - [x] `ENG-SYS-002` Document which branches can move to `engine/platform/`
   without changing `Sys_*` callers.
@@ -1585,7 +1585,7 @@ commit, test command, document link, or manual verification note that proves it.
 
 - [x] `ENG-CMDLINE-001` Audit `Sys_CheckParm`, `_Sys_GetParmFromCmdLine`, and
   `Sys_GetIntFromCmdLine` for target-neutral behavior.
-  Evidence: `Documentation/codex/todo/engine_command_line_todo.md`.
+  Evidence: `Documentation/codex/done/todo/engine_command_line_todo.md`.
 - [x] `ENG-CMDLINE-002` Add modern command-line view, argument lookup, and value
   lookup helpers.
   Evidence: `src/include/engine/platform/command_line.hpp`,
@@ -1603,7 +1603,8 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-CMDLINE-006` Run focused tests, full tests, and Windows runtime
   smoke, recording first-frame timing when available.
   Evidence: `.\waf.bat build --targets=test_engine_platform_command_line`
-  passed 1/1 tests, `.\waf.bat build` passed 30/30 tests, and Windows runtime
+  passed 1/1 tests, `.\waf.bat build --alltests` passed 56/56 tests, and
+  Windows runtime
   smoke copied `build\engine\xash.dll` plus
   `build\filesystem\filesystem_stdio.dll` into `run-win32`, then ran
   `.\xash3d.exe -dev 2 -log +fs_path +quit` from `run-win32` with
@@ -1611,6 +1612,64 @@ commit, test command, document link, or manual verification note that proves it.
   The fresh smoke log `run-win32\engine.log` reached renderer initialization
   and stopped with reason `command` at May 10 2026 00:39:34 local time. The
   quick `+quit` smoke did not emit a first-frame timing marker.
+
+## Phase 46: Low-Risk Standalone Straggler Sweep
+
+- [ ] `ENG-STRAG-001` Audit current low-risk public/engine utility stragglers
+  against existing modern helpers and tests.
+  Evidence: `Documentation/codex/todo/low_risk_stragglers_todo.md`,
+  `Documentation/codex/modern/engine/standalone-stragglers-roadmap.md`.
+- [ ] `ENG-STRAG-002` Start with CRC32 table/constants by removing duplication
+  or routing public CRC lookup through the existing modern checksum helper.
+  Evidence:
+- [ ] `ENG-STRAG-003` Preserve public `CRC32_Init`, `CRC32_Final`,
+  `CRC32_ProcessByte`, `CRC32_ProcessBuffer`, and `CRC32_BlockSequence`
+  behavior.
+  Evidence:
+- [ ] `ENG-STRAG-004` Add or confirm tests for CRC known vectors,
+  byte-vs-buffer parity, empty buffer finalization, block sequence negative
+  sequence handling, payload clamp, and sequence wraparound.
+  Evidence:
+- [ ] `ENG-STRAG-005` Run focused CRC tests, modern checksum/hash tests,
+  `.\waf.bat build --alltests`, and a smoke test if public linkage changes
+  engine/runtime binaries.
+  Evidence:
+
+## Phase 47: Public CRT Micro-Seams
+
+- [ ] `ENG-CRT-001` Audit `public/crtlib.c` and `public/crtlib.h` for narrow
+  helper families with existing tests.
+  Evidence:
+- [ ] `ENG-CRT-002` Pick one parser or conversion helper family only after its
+  golden behavior is explicit.
+  Evidence:
+- [ ] `ENG-CRT-003` Keep public inline/header ABI stable while moving any
+  implementation behind modern utilities or compat bridges.
+  Evidence:
+- [ ] `ENG-CRT-004` Run focused public tests plus `.\waf.bat build --alltests`.
+  Evidence:
+
+## Phase 48: System User And Runtime Facades
+
+- [ ] `ENG-SYSUSER-001` Audit `Sys_GetCurrentUser`, `Sys_GetNativeObject`, and
+  small runtime/platform helpers left in `engine/common/system.c`.
+  Evidence:
+- [ ] `ENG-SYSUSER-002` Extract only a platform-selected helper that can be
+  verified on Windows without blocking POSIX validation.
+  Evidence:
+- [ ] `ENG-SYSUSER-003` Defer POSIX/Vita/Switch validation details to the 800
+  series when they cannot be tested locally.
+  Evidence:
+
+## Phase 49: Filesystem Bridge And Logging Follow-Up
+
+- [ ] `ENG-FSBRIDGE-001` Revisit `engine/common/filesystem_engine.c` after the
+  system console/backend phase to see whether any logging or mount bridge code
+  can move into modern helpers.
+  Evidence: `Documentation/codex/todo/engine_deferred_todo.md`.
+- [ ] `ENG-FSBRIDGE-002` Keep rendered in-game console routing out of scope
+  until a client/rendering console sink phase exists.
+  Evidence: `Documentation/codex/modern/engine/rendered-console-sink.md`.
 
 ## Phase 800: POSIX Console Backend Validation
 
@@ -1720,5 +1779,6 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-040 | Treat `public/crclib.h` as the legacy C ABI and `src/utilities` as the implementation home; route `COM_HashKey` through a compatibility export while leaving CRC32/MD5 C symbols in `public/crclib.c` until a dedicated performance pass. | `legacy/engine/hash-checksum-baseline.md`, `modern/engine/hash-checksum-migration-guide.md`, `src/utilities/compat/crclib_hash.cpp`, `src/utilities/hash.cpp`, `public/tests/test_crclib.c` |
 | 2026-05-09 | DEC-041 | Treat `public/crtlib.h` path helpers as public C ABI and route the non-inline path helper implementations through `src/utilities/path.*`, while deferring parser, formatting, and inline copy/compare helpers to narrower later passes. | `legacy/engine/string-path-baseline.md`, `modern/engine/string-path-migration-guide.md`, `src/utilities/compat/crtlib_path.cpp`, `src/utilities/path.cpp`, `public/tests/test_path.c` |
 | 2026-05-09 | DEC-042 | Defer broad memory-pool modernization to Phase 990 and promote network buffers to Phase 42, using golden byte vectors and narrow helper routing before any broad `MSG_*` rewrite. | `todo/engine_memory_todo.md`, `done/todo/engine_netbuffer_todo.md`, `legacy/engine/network-buffer-baseline.md`, `modern/engine/network-buffer-migration-guide.md` |
-| 2026-05-09 | DEC-043 | Use console/logging ownership as the next engine phase because it unlocks deferred filesystem logging cleanup, then use the launcher/platform lessons for a `system.c` facade audit. | `todo/engine_logging_todo.md`, `todo/engine_platform_todo.md`, `legacy/engine/common-audit.md` |
-| 2026-05-10 | DEC-045 | Consolidate engine command-line lookup behind a stateless modern view and C adapter, while leaving startup parsing in the launcher and legacy copying/numeric parsing in `system.c`. | `todo/engine_command_line_todo.md`, `modern/engine/command-line-facade-plan.md`, `src/engine/platform/command_line.cpp` |
+| 2026-05-09 | DEC-043 | Use console/logging ownership as the next engine phase because it unlocks deferred filesystem logging cleanup, then use the launcher/platform lessons for a `system.c` facade audit. | `done/todo/engine_logging_todo.md`, `done/todo/engine_platform_todo.md`, `legacy/engine/common-audit.md` |
+| 2026-05-10 | DEC-045 | Consolidate engine command-line lookup behind a stateless modern view and C adapter, while leaving startup parsing in the launcher and legacy copying/numeric parsing in `system.c`. | `done/todo/engine_command_line_todo.md`, `modern/engine/command-line-facade-plan.md`, `src/engine/platform/command_line.cpp` |
+| 2026-05-10 | DEC-046 | Put a low-risk standalone straggler sweep at the top of the next roadmap, with CRC32 table/constant consolidation as the first target and broader CRT/platform work queued behind it. | `todo/low_risk_stragglers_todo.md`, `modern/engine/standalone-stragglers-roadmap.md`, `public/crclib.c`, `src/utilities/checksum.cpp` |

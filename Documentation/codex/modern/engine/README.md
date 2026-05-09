@@ -28,5 +28,8 @@ Current implementation notes:
   primitive should grow behind the legacy `MSG_*` wire-format surface.
 - `string-path-migration-guide.md`: how public `crtlib` path helpers route
   through `src/utilities/path.*` while keeping C callers stable.
+- `standalone-stragglers-roadmap.md`: how to queue small, well-tested cleanup
+  slices such as CRC32 constants without turning them into broad subsystem
+  rewrites.
 - `system-platform-facade-plan.md`: how `Sys_*` stays as the legacy C facade
   while target-neutral or platform-selected helpers move behind it.
