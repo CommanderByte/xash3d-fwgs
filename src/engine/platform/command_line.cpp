@@ -52,6 +52,33 @@ const char *ChangeGameCensoredArgument()
 	return kCensoredArgument;
 }
 
+int FindCommandLineArgument(CommandLineView commandLine, const char *argument)
+{
+	if (!argument || commandLine.argc <= 1 || !commandLine.argv)
+		return 0;
+
+	for (int i = 1; i < commandLine.argc; ++i)
+	{
+		if (!commandLine.argv[i])
+			continue;
+
+		if (EqualsNoCase(argument, commandLine.argv[i]))
+			return i;
+	}
+
+	return 0;
+}
+
+const char *FindCommandLineValue(CommandLineView commandLine, const char *argument)
+{
+	const int argumentIndex = FindCommandLineArgument(commandLine, argument);
+
+	if (argumentIndex < 1 || argumentIndex + 1 >= commandLine.argc)
+		return nullptr;
+
+	return commandLine.argv[argumentIndex + 1];
+}
+
 bool ShouldCensorChangeGameArgument(const char *argument)
 {
 	for (const char *blocked : kBlockedChangeGameArguments)
@@ -78,6 +105,18 @@ const char *SanitizeChangeGameArgument(const char *argument, bool changeGame)
 extern "C" const char *Xash_ChangeGameCensoredArgument(void)
 {
 	return xash::engine::platform::ChangeGameCensoredArgument();
+}
+
+extern "C" int Xash_FindCommandLineArgument(int argc, const char **argv, const char *argument)
+{
+	const xash::engine::platform::CommandLineView commandLine{ argc, argv };
+	return xash::engine::platform::FindCommandLineArgument(commandLine, argument);
+}
+
+extern "C" const char *Xash_FindCommandLineValue(int argc, const char **argv, const char *argument)
+{
+	const xash::engine::platform::CommandLineView commandLine{ argc, argv };
+	return xash::engine::platform::FindCommandLineValue(commandLine, argument);
 }
 
 extern "C" int Xash_ShouldCensorChangeGameArgument(const char *argument)

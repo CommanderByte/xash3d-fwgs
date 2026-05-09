@@ -201,17 +201,7 @@ where the given parameter apears, or 0 if not present
 */
 int Sys_CheckParm( const char *parm )
 {
-	int	i;
-
-	for( i = 1; i < host.argc; i++ )
-	{
-		if( !host.argv[i] )
-			continue;
-
-		if( !Q_stricmp( parm, host.argv[i] ))
-			return i;
-	}
-	return 0;
+	return Xash_FindCommandLineArgument( host.argc, host.argv, parm );
 }
 
 /*
@@ -223,27 +213,30 @@ Returns the argument for specified parm
 */
 qboolean _Sys_GetParmFromCmdLine( const char *parm, char *out, size_t size )
 {
-	int	argc = Sys_CheckParm( parm );
+	const char *value = Xash_FindCommandLineValue( host.argc, host.argv, parm );
 
-	if( !argc || !out || !host.argv[argc + 1] )
+	if( !value || !out )
 		return false;
 
-	Q_strncpy( out, host.argv[argc+1], size );
+	Q_strncpy( out, value, size );
 
 	return true;
 }
 
 qboolean Sys_GetIntFromCmdLine( const char* argName, int *out )
 {
-	int argIndex = Sys_CheckParm( argName );
+	const char *value = Xash_FindCommandLineValue( host.argc, host.argv, argName );
 
-	if( argIndex < 1 || argIndex + 1 >= host.argc || !host.argv[argIndex + 1] )
+	if( !out )
+		return false;
+
+	if( !value )
 	{
 		*out = 0;
 		return false;
 	}
 
-	*out = Q_atoi( host.argv[argIndex + 1] );
+	*out = Q_atoi( value );
 	return true;
 }
 

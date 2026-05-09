@@ -37,6 +37,8 @@ Implemented files:
 
 ## Later Candidates
 
+- Phase 45 extends the command-line seam to `Sys_CheckParm`,
+  `Sys_GetParmFromCmdLine`, and `Sys_GetIntFromCmdLine`.
 - Username lookup can move behind platform-selected implementations after
   platform validation.
 - Win32 console print normalization can move behind a tested system-console

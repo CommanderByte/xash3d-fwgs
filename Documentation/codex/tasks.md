@@ -1581,6 +1581,37 @@ commit, test command, document link, or manual verification note that proves it.
   stopped with reason `command` at May 10 2026 00:14:26 local time. The quick
   `+quit` smoke did not emit a first-frame timing marker.
 
+## Phase 45: Command-Line Facade Consolidation
+
+- [x] `ENG-CMDLINE-001` Audit `Sys_CheckParm`, `_Sys_GetParmFromCmdLine`, and
+  `Sys_GetIntFromCmdLine` for target-neutral behavior.
+  Evidence: `Documentation/codex/todo/engine_command_line_todo.md`.
+- [x] `ENG-CMDLINE-002` Add modern command-line view, argument lookup, and value
+  lookup helpers.
+  Evidence: `src/include/engine/platform/command_line.hpp`,
+  `src/engine/platform/command_line.cpp`.
+- [x] `ENG-CMDLINE-003` Add C adapter functions for legacy C callers.
+  Evidence: `src/include/engine/platform/command_line_adapter.h`,
+  `src/engine/platform/command_line.cpp`.
+- [x] `ENG-CMDLINE-004` Route legacy command-line facades through the adapter
+  while preserving `Q_strncpy` and `Q_atoi` behavior in C.
+  Evidence: `engine/common/system.c`,
+  `Documentation/codex/modern/engine/command-line-facade-plan.md`.
+- [x] `ENG-CMDLINE-005` Add focused tests for lookup order, case-insensitive
+  matching, null entry handling, missing values, and C adapter parity.
+  Evidence: `tests/engine/platform_command_line.cpp`.
+- [x] `ENG-CMDLINE-006` Run focused tests, full tests, and Windows runtime
+  smoke, recording first-frame timing when available.
+  Evidence: `.\waf.bat build --targets=test_engine_platform_command_line`
+  passed 1/1 tests, `.\waf.bat build` passed 30/30 tests, and Windows runtime
+  smoke copied `build\engine\xash.dll` plus
+  `build\filesystem\filesystem_stdio.dll` into `run-win32`, then ran
+  `.\xash3d.exe -dev 2 -log +fs_path +quit` from `run-win32` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  The fresh smoke log `run-win32\engine.log` reached renderer initialization
+  and stopped with reason `command` at May 10 2026 00:39:34 local time. The
+  quick `+quit` smoke did not emit a first-frame timing marker.
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current
@@ -1690,3 +1721,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-041 | Treat `public/crtlib.h` path helpers as public C ABI and route the non-inline path helper implementations through `src/utilities/path.*`, while deferring parser, formatting, and inline copy/compare helpers to narrower later passes. | `legacy/engine/string-path-baseline.md`, `modern/engine/string-path-migration-guide.md`, `src/utilities/compat/crtlib_path.cpp`, `src/utilities/path.cpp`, `public/tests/test_path.c` |
 | 2026-05-09 | DEC-042 | Defer broad memory-pool modernization to Phase 990 and promote network buffers to Phase 42, using golden byte vectors and narrow helper routing before any broad `MSG_*` rewrite. | `todo/engine_memory_todo.md`, `done/todo/engine_netbuffer_todo.md`, `legacy/engine/network-buffer-baseline.md`, `modern/engine/network-buffer-migration-guide.md` |
 | 2026-05-09 | DEC-043 | Use console/logging ownership as the next engine phase because it unlocks deferred filesystem logging cleanup, then use the launcher/platform lessons for a `system.c` facade audit. | `todo/engine_logging_todo.md`, `todo/engine_platform_todo.md`, `legacy/engine/common-audit.md` |
+| 2026-05-10 | DEC-045 | Consolidate engine command-line lookup behind a stateless modern view and C adapter, while leaving startup parsing in the launcher and legacy copying/numeric parsing in `system.c`. | `todo/engine_command_line_todo.md`, `modern/engine/command-line-facade-plan.md`, `src/engine/platform/command_line.cpp` |
