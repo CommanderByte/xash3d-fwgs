@@ -23,3 +23,5 @@ Current files:
   writers for future `fs_registry` output
 - `search_path_backend.cpp`: shared backend interface defaults and type-name
   helpers
+- `valve_path_resolver.cpp`: target-neutral resolver for `VFileSystem009`
+  path IDs such as `GAME`, `GAMECONFIG`, and `GAMEDOWNLOAD`

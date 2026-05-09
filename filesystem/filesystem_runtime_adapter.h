@@ -40,6 +40,32 @@ typedef struct fs_runtime_rescan_plan_s
 	const char *language;
 } fs_runtime_rescan_plan_t;
 
+void FS_FilesystemState_Reset(void);
+void FS_FilesystemState_Configure(const char *rootDir, const char *baseDir,
+	const char *gameDir, const char *readOnlyDir, const char *language,
+	searchpath_t *searchPaths, searchpath_t *writePath,
+	qboolean directPathsEnabled);
+
+const char *FS_FilesystemState_RootDir(void);
+const char *FS_FilesystemState_BaseDir(void);
+const char *FS_FilesystemState_GameDir(void);
+const char *FS_FilesystemState_ReadOnlyDir(void);
+const char *FS_FilesystemState_Language(void);
+
+void FS_FilesystemState_SetRootDir(const char *value);
+void FS_FilesystemState_SetBaseDir(const char *value);
+void FS_FilesystemState_SetGameDir(const char *value);
+void FS_FilesystemState_SetReadOnlyDir(const char *value);
+void FS_FilesystemState_SetLanguage(const char *value);
+
+searchpath_t *FS_FilesystemState_SearchPaths(void);
+searchpath_t *FS_FilesystemState_WritePath(void);
+void FS_FilesystemState_SetSearchPaths(searchpath_t *value);
+void FS_FilesystemState_SetWritePath(searchpath_t *value);
+
+qboolean FS_FilesystemState_DirectPathsEnabled(void);
+void FS_FilesystemState_SetDirectPathsEnabled(qboolean enabled);
+
 void FS_FilesystemRuntime_PrependSearchPath(searchpath_t *path,
 	const fs_runtime_searchpath_ops_t *ops);
 fs_runtime_searchpath_clear_result_t
@@ -55,6 +81,9 @@ void FS_FilesystemRuntime_FreeFile(
 fs_runtime_rescan_plan_t FS_FilesystemRuntime_BeginRescan(
 	uint32_t flags, const char *language, uint32_t allowedMountFlags,
 	uint32_t localizationFlag);
+qboolean FS_FilesystemRuntime_IsValveGameDirectoryId(const char *id);
+const char *FS_FilesystemRuntime_ResolveValvePathId(char *buffer,
+	size_t size, const char *id);
 
 #ifdef __cplusplus
 }

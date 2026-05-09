@@ -18,6 +18,8 @@ Current headers:
   writer declarations for future `fs_registry` output
 - `search_path_backend.hpp`: internal search path metadata and backend
   interface shaped like legacy `searchpath_t` callbacks
+- `valve_path_resolver.hpp`: private target-neutral `VFileSystem009` path ID
+  resolver
 
 Keep these headers out of public SDK and legacy ABI surfaces. Legacy filesystem
 entry points should adapt to these types explicitly when integration begins.

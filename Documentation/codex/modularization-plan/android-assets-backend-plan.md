@@ -48,7 +48,7 @@ is available.
 
 `filesystem/wscript` glob-builds `filesystem/*.c` and `filesystem/*.cpp`.
 `src/wscript` glob-builds `src/filesystem/*.cpp` into
-`modern_filesystem_debug`.
+`modern_filesystem`.
 
 This means:
 

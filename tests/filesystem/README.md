@@ -76,6 +76,7 @@ structure.
 | PAK backend helpers | `tests/filesystem/pak_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, entry sorting, binary lookup, and directory parsing. |
 | Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
 | Search result builder | `tests/filesystem/search_result_builder.cpp` | existing | Built by `src/wscript`; covers target-neutral sort, duplicate compaction, and packed string copying. |
+| Valve path ID resolver | `tests/filesystem/valve_path_resolver.cpp` | existing | Built by `src/wscript`; covers `VFileSystem009` path ID classification and directory resolution. |
 | WAD backend helpers | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, load-file default behavior, WAD type mapping, sorted lump insertion, binary lump lookup, and lump-table parsing. |
 | ZIP backend helpers | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, entry sorting, binary lookup, central-directory parsing, and stored load behavior. |
 | Android assets backend helpers | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, hook forwarding, opaque asset find/search/open/load helpers, and desktop compileability without Android runtime dependencies. |

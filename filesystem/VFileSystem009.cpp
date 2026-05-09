@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "crtlib.h"
 #include "filesystem.h"
 #include "filesystem_internal.h"
+#include "filesystem_runtime_adapter.h"
 #include "VFileSystem009.h"
 #include "common/com_strings.h"
 
@@ -46,33 +47,12 @@ GNU General Public License for more details.
 
 static inline bool IsIdGamedir( const char *id )
 {
-	return !Q_strcmp( id, "GAME" ) ||
-		!Q_strcmp( id, "GAMECONFIG" ) ||
-		!Q_strcmp( id, "GAMEDOWNLOAD" );
+	return FS_FilesystemRuntime_IsValveGameDirectoryId( id ) ? true : false;
 }
 
 static inline const char *IdToDir( char *dir, size_t size, const char *id )
 {
-	if( !Q_strcmp( id, "GAME" ))
-		return GI->gamefolder;
-
-	if( !Q_strcmp( id, "GAMEDOWNLOAD" ))
-	{
-		Q_snprintf( dir, size, "%s" DEFAULT_DOWNLOADED_DIRECTORY_SUFFIX, GI->gamefolder );
-		return dir;
-	}
-
-	if( !Q_strcmp( id, "GAMECONFIG" ))
-		return fs_writepath->filename; // full path here so it's totally our write allowed directory
-
-	if( !Q_strcmp( id, "PLATFORM" ))
-		return "platform"; // stub
-
-	if( !Q_strcmp( id, "CONFIG" ))
-		return "platform/config"; // stub
-
-	// ROOT || BASE
-	return fs_rootdir; // give at least root directory
+	return FS_FilesystemRuntime_ResolveValvePathId( dir, size, id );
 }
 
 static inline void CopyAndFixSlashes( char *p, const char *in, size_t size )

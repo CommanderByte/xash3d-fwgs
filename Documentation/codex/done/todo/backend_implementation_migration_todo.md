@@ -25,15 +25,15 @@ objects.
   compileability.
 - [x] Introduce `FilesystemRuntime` as the owner of state, search paths,
   file-handle memory routing, and target-neutral rescan planning.
-- [ ] Route `VFileSystem009.cpp` through the modern runtime while preserving
+- [x] Route `VFileSystem009.cpp` through the modern runtime while preserving
   the public vtable and `CreateInterface` behavior.
-- [ ] Update build scripts so `src/filesystem` is the implementation source
+- [x] Update build scripts so `src/filesystem` is the implementation source
   tree and `filesystem/` only provides facades/adapters.
-- [ ] Move completed TODO and audit documents into `Documentation/codex/done/`
+- [x] Move completed TODO and audit documents into `Documentation/codex/done/`
   after the evidence is committed and reviewed.
-  Note: the first completed TODO archival pass moved fully complete checklist
-  files into `Documentation/codex/done/todo/`; keep this item open for future
-  implementation-body migration docs and audit notes.
+  Note: completed TODO checklists live in `Documentation/codex/done/todo/`;
+  completed backend audit notes live in
+  `Documentation/codex/done/audit/filesystem/`.
 
 ## Testing Rule
 

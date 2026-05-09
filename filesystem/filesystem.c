@@ -47,7 +47,6 @@ GNU General Public License for more details.
 #include "archive_registry_adapter.h"
 #include "file_handle_ops_adapter.h"
 #include "filesystem_runtime_adapter.h"
-#include "filesystem_state_adapter.h"
 #include "game_hierarchy_adapter.h"
 #include "library_locator_adapter.h"
 #include "path_policy_adapter.h"

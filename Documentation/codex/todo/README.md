@@ -11,9 +11,6 @@ implementation evidence is recorded.
 
 Active documents:
 
-- [backend_implementation_migration_todo.md](backend_implementation_migration_todo.md)
-  tracks the larger movement of implementation bodies from `filesystem/` to
-  `src/filesystem`.
 - [debugging_todo.md](debugging_todo.md) tracks remaining work for the modern
   debugging utility layer.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation

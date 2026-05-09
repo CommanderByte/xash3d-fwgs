@@ -1,7 +1,7 @@
 #include "filesystem_runtime_adapter.h"
-#include "filesystem_state_adapter.h"
 
 #include "filesystem/filesystem_runtime.hpp"
+#include "filesystem/valve_path_resolver.hpp"
 
 namespace
 {
@@ -287,6 +287,26 @@ fs_runtime_rescan_plan_t FS_FilesystemRuntime_BeginRescan(
 		plan.language
 	};
 	return cPlan;
+}
+
+qboolean FS_FilesystemRuntime_IsValveGameDirectoryId(const char *id)
+{
+	return xash::filesystem::ValvePathResolver::isGameDirectoryId(id)
+		? true : false;
+}
+
+const char *FS_FilesystemRuntime_ResolveValvePathId(char *buffer,
+	size_t size, const char *id)
+{
+	searchpath_t *writePath = g_filesystemRuntime.writePath();
+	xash::filesystem::ValvePathContext context = {
+		g_filesystemRuntime.state().rootDir(),
+		g_filesystemRuntime.state().gameDir(),
+		writePath ? writePath->filename : ""
+	};
+
+	return xash::filesystem::ValvePathResolver::resolveDirectory(buffer,
+		size, id, context);
 }
 
 }

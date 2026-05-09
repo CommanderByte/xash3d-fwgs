@@ -17,7 +17,7 @@ def build(bld):
 		source = bld.path.ant_glob('debugging/*.cpp'),
 		use = 'modern_debugging_includes werror')
 
-	bld.stlib(target = 'modern_filesystem_debug',
+	bld.stlib(target = 'modern_filesystem',
 		source = bld.path.ant_glob('filesystem/*.cpp'),
 		use = 'modern_debugging modern_debugging_includes sdk_includes werror')
 
@@ -37,6 +37,7 @@ def build(bld):
 			'filesystem_pak_backend': '../tests/filesystem/pak_backend.cpp',
 			'filesystem_registry_snapshot': '../tests/filesystem/registry_snapshot.cpp',
 			'filesystem_search_result_builder': '../tests/filesystem/search_result_builder.cpp',
+			'filesystem_valve_path_resolver': '../tests/filesystem/valve_path_resolver.cpp',
 			'filesystem_wad_backend': '../tests/filesystem/wad_backend.cpp',
 			'filesystem_zip_backend': '../tests/filesystem/zip_backend.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',
@@ -46,5 +47,5 @@ def build(bld):
 			bld.program(features = 'test',
 				source = tests[i],
 				target = 'test_%s' % i,
-				use = 'modern_filesystem_debug modern_debugging modern_debugging_includes sdk_includes werror PTHREAD',
+				use = 'modern_filesystem modern_debugging modern_debugging_includes sdk_includes werror PTHREAD',
 				install_path = None)
