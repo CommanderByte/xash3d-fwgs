@@ -14,6 +14,8 @@ subsystem-level notes.
   criteria, and early work items.
 - [filesystem-pilot.md](filesystem-pilot.md) is the first subsystem deep dive
   and proposed pilot plan.
+- [boundary-filesystem.md](boundary-filesystem.md) records the filesystem
+  compatibility boundaries that refactors must preserve.
 - [subsystem-template.md](subsystem-template.md) is the template for future
   subsystem plans.
 

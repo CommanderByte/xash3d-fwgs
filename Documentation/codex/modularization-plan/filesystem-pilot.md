@@ -22,6 +22,10 @@ Legacy architecture overview:
 
 - `Documentation/codex/legacy/filesystem/architecture.md`
 
+Compatibility boundary reference:
+
+- `Documentation/codex/modularization-plan/boundary-filesystem.md`
+
 Build target: `filesystem_stdio`, a shared library built from all
 `filesystem/*.c` and `filesystem/*.cpp` files through `filesystem/wscript`.
 

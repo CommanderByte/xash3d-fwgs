@@ -47,25 +47,25 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 1: Filesystem Boundary Documentation
 
-- [ ] `FS-DOC-001` Create `boundary-filesystem.md`.
-  Evidence:
-- [ ] `FS-DOC-002` Document `fs_api_t` fields and compatibility expectations.
-  Evidence:
-- [ ] `FS-DOC-003` Document `VFileSystem009` vtable expectations.
-  Evidence:
-- [ ] `FS-DOC-004` Document `searchpath_t` callback contracts.
-  Evidence:
-- [ ] `FS-DOC-005` Document `file_t` ownership and lifecycle rules.
-  Evidence:
-- [ ] `FS-DOC-006` Document `search_t` allocation/free ownership.
-  Evidence:
-- [ ] `FS-DOC-007` Document `FS_LoadFile` versus `FS_LoadFileMalloc`
+- [x] `FS-DOC-001` Create `boundary-filesystem.md`.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-002` Document `fs_api_t` fields and compatibility expectations.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-003` Document `VFileSystem009` vtable expectations.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-004` Document `searchpath_t` callback contracts.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-005` Document `file_t` ownership and lifecycle rules.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-006` Document `search_t` allocation/free ownership.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-007` Document `FS_LoadFile` versus `FS_LoadFileMalloc`
   allocator expectations.
-  Evidence:
-- [ ] `FS-DOC-008` Document `FS_FindLibrary` DLL lookup behavior.
-  Evidence:
-- [ ] `FS-DOC-009` Document direct path behavior and path rejection rules.
-  Evidence:
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-008` Document `FS_FindLibrary` DLL lookup behavior.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
+- [x] `FS-DOC-009` Document direct path behavior and path rejection rules.
+  Evidence: `Documentation/codex/modularization-plan/boundary-filesystem.md`.
 
 ## Phase 2: Filesystem Test Coverage
 
