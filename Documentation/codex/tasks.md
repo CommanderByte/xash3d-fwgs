@@ -618,11 +618,19 @@ commit, test command, document link, or manual verification note that proves it.
 
 - [x] `FS-FILE-001` Add focused TODO list for file handle migration.
   Evidence: `Documentation/codex/todo/file_handle_todo.md`.
-- [ ] `FS-FILE-002` Add focused tests for seek/read/write/decompression edge
+- [x] `FS-FILE-002` Add focused tests for seek/read/write/decompression edge
   cases before extraction.
-  Evidence:
-- [ ] `FS-FILE-003` Add first target-neutral helper around `file_t`
+  Evidence: `tests/filesystem/file-handle.c`; command
+  `.\waf.bat build --targets=test_file-handle`.
+- [x] `FS-FILE-003` Add first target-neutral helper around `file_t`
   operations.
+  Evidence: `src/include/filesystem/file_handle_ops.hpp`,
+  `src/filesystem/file_handle_ops.cpp`,
+  `tests/filesystem/file_handle_ops.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_file_handle_ops`.
+- [x] `FS-FILE-004` Document decompression and backup-handle ownership rules.
+  Evidence: `Documentation/codex/modern/filesystem/file-handle-ownership.md`.
+- [ ] `FS-FILE-005` Route tell/eof/seek cursor math through `FileHandleOps`.
   Evidence:
 
 ## Phase 16: Search Result Assembly

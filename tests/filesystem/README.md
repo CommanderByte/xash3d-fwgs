@@ -43,6 +43,7 @@ structure.
 | Write path directory creation | `tests/filesystem/caseinsensitive.c` | existing | Uses `FS_Open(..., "wb", true)`. |
 | Path rejection | `tests/filesystem/caseinsensitive.c` | existing | Covers `..`, absolute paths, colon paths. |
 | Direct path behavior | `tests/filesystem/directpath.c` | existing | Covers `../` strip behavior when direct paths are enabled and reset. |
+| File handle read/write/seek behavior | `tests/filesystem/file-handle.c` | existing | Covers write/flush/read, buffered seek/tell/eof, getc/ungetc/gets including CRLF return behavior, invalid seeks, zero-byte read quirk, and deflated archive seek/read. |
 | Loose file beats archive file | `tests/filesystem/archive-order.c` | existing | Uses generated PAK fixture. |
 | Archive mount idempotency | `tests/filesystem/archive-order.c` | existing | Direct `MountArchive_Fullpath` returns the same mounted archive for duplicate mount. |
 | Unsupported archive mount failure | `tests/filesystem/archive-order.c` | existing | Unsupported extension does not mount. |
@@ -61,6 +62,7 @@ structure.
 | Mount snapshot records and writers | `tests/filesystem/debug_snapshot.cpp` | existing | Built by `src/wscript`; covers modern internal debug snapshot output. |
 | Archive registry descriptors | `tests/filesystem/archive_registry.cpp` | existing | Built by `src/wscript`; covers default descriptor metadata and order. |
 | Directory backend skeleton | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
+| File handle cursor helpers | `tests/filesystem/file_handle_ops.cpp` | existing | Built by `src/wscript`; covers target-neutral tell/eof/seek math before routing legacy `file_t` calls. |
 | Game hierarchy builder | `tests/filesystem/game_hierarchy_builder.cpp` | existing | Built by `src/wscript`; freezes generated mount request order before legacy integration. |
 | Filesystem state scaffold | `tests/filesystem/filesystem_state.cpp` | existing | Built by `src/wscript`; covers target-neutral state storage before wiring into `filesystem.c`. |
 | Path policy scaffold | `tests/filesystem/path_policy.cpp` | existing | Built by `src/wscript`; freezes path rejection, direct-path prefix stripping, and write-mode detection. |

@@ -7,9 +7,9 @@ safer internal file-handle layer.
 
 ## Migration Order
 
-- [ ] Add test coverage for seek/tell/read/write edge cases before extraction.
-- [ ] Document decompression and backup-handle ownership rules.
-- [ ] Add target-neutral file handle operation helpers around `file_t`.
+- [x] Add test coverage for seek/tell/read/write edge cases before extraction.
+- [x] Document decompression and backup-handle ownership rules.
+- [x] Add target-neutral file handle operation helpers around `file_t`.
 - [ ] Route close, read, write, seek, tell, eof, flush, getc, and gets in
   small batches.
 - [ ] Consider a later RAII wrapper only behind legacy C entry points.

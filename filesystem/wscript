@@ -55,6 +55,7 @@ def build(bld):
 			'caseinsensitive' : '../tests/filesystem/caseinsensitive.c',
 			'directpath': '../tests/filesystem/directpath.c',
 			'dll-lookup': '../tests/filesystem/dll-lookup.c',
+			'file-handle': '../tests/filesystem/file-handle.c',
 			'hierarchy': '../tests/filesystem/hierarchy.c',
 			'no-init': '../tests/filesystem/no-init.c',
 			'pk3dir': '../tests/filesystem/pk3dir.c',
