@@ -16,6 +16,7 @@ GNU General Public License for more details.
 #include "common.h"
 #include "protocol.h"
 #include "net_buffer.h"
+#include "network_buffer_adapter.h"
 #include "xash3d_mathlib.h"
 
 static const uint32_t BitWriteMasks[32][32] =
@@ -842,20 +843,16 @@ char *MSG_ReadStringLine( sizebuf_t *sb )
 
 void MSG_ExciseBits( sizebuf_t *sb, int startbit, int bitstoremove )
 {
-	int	i, endbit = startbit + bitstoremove;
-	int	remaining_to_end = sb->nDataBits - endbit;
-	sizebuf_t	temp;
+	int newdatabits = NetworkBufferAdapter_ExciseBits( sb->pData, sb->nDataBits, startbit, bitstoremove );
 
-	MSG_StartWriting( &temp, sb->pData, MSG_GetMaxBytes( sb ), startbit, -1 );
-	MSG_SeekToBit( sb, endbit, SEEK_SET );
-
-	for( i = 0; i < remaining_to_end; i++ )
+	if( newdatabits < 0 )
 	{
-		MSG_WriteOneBit( &temp, MSG_ReadOneBit( sb ));
+		sb->bOverflow = true;
+		return;
 	}
 
+	sb->nDataBits = newdatabits;
 	MSG_SeekToBit( sb, startbit, SEEK_SET );
-	sb->nDataBits -= bitstoremove;
 }
 
 #ifdef XASH_ENGINE_TESTS
@@ -1003,12 +1000,41 @@ static void Test_Buffer_ExciseBits( void )
 	TASSERT_EQi( MSG_ReadUBitLong( &sb, 4 ), 0xa );
 }
 
+static void Test_Buffer_ModernExciseShadow( void )
+{
+	sizebuf_t sb;
+	char legacy[0x100];
+	char modern[0x100];
+	int modern_bits;
+
+	memcpy( legacy, g_testbuf, BitByte( g_testbuf_bits ));
+	memcpy( modern, g_testbuf, BitByte( g_testbuf_bits ));
+
+	MSG_StartWriting( &sb, legacy, 0, 0, g_testbuf_bits );
+	MSG_ExciseBits( &sb, 8, 28 );
+	modern_bits = NetworkBufferAdapter_ExciseBits( modern, g_testbuf_bits, 8, 28 );
+
+	TASSERT_EQi( modern_bits, MSG_GetMaxBits( &sb ));
+	TASSERT( !memcmp( modern, legacy, BitByte( MSG_GetMaxBits( &sb ))));
+
+	memcpy( legacy, g_testbuf, BitByte( g_testbuf_bits ));
+	memcpy( modern, g_testbuf, BitByte( g_testbuf_bits ));
+
+	MSG_StartWriting( &sb, legacy, 0, 0, g_testbuf_bits );
+	MSG_ExciseBits( &sb, 16, 32 );
+	modern_bits = NetworkBufferAdapter_ExciseBits( modern, g_testbuf_bits, 16, 32 );
+
+	TASSERT_EQi( modern_bits, MSG_GetMaxBits( &sb ));
+	TASSERT( !memcmp( modern, legacy, BitByte( MSG_GetMaxBits( &sb ))));
+}
+
 void Test_RunBuffer( void )
 {
 	TRUN( Test_Buffer_BitByte( ));
 	TRUN( Test_Buffer_Write( ));
 	TRUN( Test_Buffer_Read( ));
 	TRUN( Test_Buffer_ExciseBits( ));
+	TRUN( Test_Buffer_ModernExciseShadow( ));
 }
 
 #endif // XASH_ENGINE_TESTS

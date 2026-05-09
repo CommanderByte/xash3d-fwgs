@@ -86,6 +86,7 @@ def build(bld):
 			'engine_base_command_registry': '../tests/engine/base_command_registry.cpp',
 			'engine_command_buffer': '../tests/engine/command_buffer.cpp',
 			'engine_info_string': '../tests/engine/info_string.cpp',
+			'engine_network_buffer': '../tests/engine/network_buffer.cpp',
 			'filesystem_android_assets_backend': '../tests/filesystem/android_assets_backend.cpp',
 			'filesystem_archive_registry': '../tests/filesystem/archive_registry.cpp',
 			'filesystem_debug_snapshot': '../tests/filesystem/debug_snapshot.cpp',

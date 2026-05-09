@@ -6,6 +6,10 @@ Plan a cautious modernization path for engine memory pools and allocation
 helpers. This is intentionally later in the backlog because allocator mistakes
 have high blast radius and often fail far from the cause.
 
+Phase note: this work is deferred to Phase 990 until more subsystems have clear
+modern ownership boundaries. New C++ code should prefer RAII internally, but it
+must preserve legacy allocation families across C ABI boundaries.
+
 ## Scope
 
 Candidate areas:
@@ -25,7 +29,7 @@ Candidate areas:
 - Avoid replacing the allocator wholesale until test coverage and diagnostics
   are strong.
 
-## Phase 42 Tasks: Memory Pools And Allocation
+## Phase 990 Tasks: Memory Pools And Allocation
 
 - [ ] `ENG-MEM-001` Audit allocation families, ownership rules, pool lifecycle,
   debug reporting, shutdown behavior, and callers that depend on current

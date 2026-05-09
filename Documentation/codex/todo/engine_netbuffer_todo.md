@@ -24,29 +24,39 @@ Candidate files:
 - Compare legacy and modern readers/writers on deterministic byte streams.
 - Keep any modern types private until public ABI decisions are explicit.
 
-## Phase 43 Tasks: Network Buffer Primitive
+## Phase 42 Tasks: Network Buffer Primitive
 
-- [ ] `ENG-NETBUF-001` Audit read/write helpers, overflow behavior, bit order,
+- [x] `ENG-NETBUF-001` Audit read/write helpers, overflow behavior, bit order,
   endian behavior, string handling, coordinate/angle encoding, and caller
   expectations.
-  Evidence:
+  Evidence: `Documentation/codex/legacy/engine/network-buffer-baseline.md`.
 
-- [ ] `ENG-NETBUF-002` Add golden-vector tests for representative primitive
+- [x] `ENG-NETBUF-002` Add golden-vector tests for representative primitive
   reads/writes and overflow paths.
-  Evidence:
+  Evidence: `tests/engine/network_buffer.cpp` pins `BitByte`, byte/bit golden
+  writes, reads, signed round-trips, overflow quirks, and excise behavior.
 
-- [ ] `ENG-NETBUF-003` Add round-trip tests comparing legacy and modern
+- [x] `ENG-NETBUF-003` Add round-trip tests comparing legacy and modern
   behavior on deterministic streams.
-  Evidence:
+  Evidence: `engine/common/net_buffer.c` keeps the legacy `xash_tests` vectors
+  and adds `Test_Buffer_ModernExciseShadow` for deterministic modern/legacy
+  excise comparison.
 
-- [ ] `ENG-NETBUF-004` Add a modern buffer primitive behind private engine
+- [x] `ENG-NETBUF-004` Add a modern buffer primitive behind private engine
   headers, keeping C APIs unchanged.
-  Evidence:
+  Evidence: `src/include/engine/network/network_buffer.hpp` and
+  `src/engine/network/network_buffer.cpp`.
 
-- [ ] `ENG-NETBUF-005` Route one narrow helper group through the modern
+- [x] `ENG-NETBUF-005` Route one narrow helper group through the modern
   primitive only after golden-vector and round-trip tests pass.
-  Evidence:
+  Evidence: `MSG_ExciseBits` now routes through
+  `engine/common/network_buffer_adapter.cpp`; all other `MSG_Read*` and
+  `MSG_Write*` wire-format helpers remain legacy-owned.
 
-- [ ] `ENG-NETBUF-006` Run focused tests, full tests, and multiplayer/protocol
+- [x] `ENG-NETBUF-006` Run focused tests, full tests, and multiplayer/protocol
   smoke where practical.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_network_buffer`,
+  `.\waf.bat build --targets=xash_tests`, and `.\waf.bat build --alltests`
+  passed 53/53. Windows runtime smoke command
+  `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited 0, reached
+  `Time to first frame: 0.519 seconds`, and stopped with reason `command`.

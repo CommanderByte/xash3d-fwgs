@@ -1432,7 +1432,34 @@ commit, test command, document link, or manual verification note that proves it.
   0, reached `Time to first frame: 0.534 seconds`, and stopped with reason
   `command`.
 
-## Phase 42: Memory Pools And Allocation
+## Phase 42: Network Buffer Primitive
+
+- [x] `ENG-NETBUF-001` Audit `net_buffer.c/.h` read/write helpers, overflow
+  behavior, bit order, endian behavior, string handling, coordinate/angle
+  encoding, and caller expectations.
+  Evidence: `Documentation/codex/legacy/engine/network-buffer-baseline.md` and
+  `Documentation/codex/todo/engine_netbuffer_todo.md`.
+- [x] `ENG-NETBUF-002` Add golden-vector and round-trip tests comparing legacy
+  and modern behavior on deterministic byte streams.
+  Evidence: existing `xash_tests` vectors in `engine/common/net_buffer.c`,
+  added modern vectors in `tests/engine/network_buffer.cpp`, and
+  `Test_Buffer_ModernExciseShadow`.
+- [x] `ENG-NETBUF-003` Add a modern private buffer primitive and route one
+  narrow helper group only after compatibility tests pass.
+  Evidence: `src/include/engine/network/network_buffer.hpp`,
+  `src/engine/network/network_buffer.cpp`, and
+  `engine/common/network_buffer_adapter.cpp`; only `MSG_ExciseBits` is routed
+  in this phase.
+- [x] `ENG-NETBUF-004` Run focused tests, full tests, and multiplayer/protocol
+  smoke where practical.
+  Evidence: `.\waf.bat build --targets=test_engine_network_buffer`,
+  `.\waf.bat build --targets=xash_tests`, and `.\waf.bat build --alltests`
+  passed 53/53. `.\waf.bat install --destdir=C:\git\xash3d-fwgs\run-win32`
+  refreshed the runtime; `.\xash3d.exe -dev 2 -log +wait +wait +quit` exited
+  0, reached `Time to first frame: 0.519 seconds`, and stopped with reason
+  `command`.
+
+## Phase 990: Memory Pools And Allocation
 
 - [ ] `ENG-MEM-001` Audit `zone.c`, allocation families, ownership rules, pool
   lifecycle, debug reporting, and shutdown behavior.
@@ -1445,22 +1472,6 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence:
 - [ ] `ENG-MEM-004` Run focused tests, full tests, and extended runtime smoke
   after any allocator-path change.
-  Evidence:
-
-## Phase 43: Network Buffer Primitive
-
-- [ ] `ENG-NETBUF-001` Audit `net_buffer.c/.h` read/write helpers, overflow
-  behavior, bit order, endian behavior, string handling, and caller
-  expectations.
-  Evidence: `Documentation/codex/todo/engine_netbuffer_todo.md`.
-- [ ] `ENG-NETBUF-002` Add golden-vector and round-trip tests comparing legacy
-  and modern behavior on deterministic byte streams.
-  Evidence:
-- [ ] `ENG-NETBUF-003` Add a modern private buffer primitive and route one
-  narrow helper group only after compatibility tests pass.
-  Evidence:
-- [ ] `ENG-NETBUF-004` Run focused tests, full tests, and multiplayer/protocol
-  smoke where practical.
   Evidence:
 
 ## Phase 1000: Commit And Review Hygiene
@@ -1520,3 +1531,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-039 | Implement info strings as a direct low-level C++ replacement under `src/engine` while exporting the unchanged legacy `Info_*` C surface from `engine/common/infostring.cpp`. | `legacy/engine/info-string-baseline.md`, `modern/engine/info-string-migration-guide.md`, `src/engine/info_string.cpp`, `engine/common/infostring.cpp` |
 | 2026-05-09 | DEC-040 | Treat `public/crclib.h` as the legacy C ABI and `src/utilities` as the implementation home; route `COM_HashKey` through a compatibility export while leaving CRC32/MD5 C symbols in `public/crclib.c` until a dedicated performance pass. | `legacy/engine/hash-checksum-baseline.md`, `modern/engine/hash-checksum-migration-guide.md`, `src/utilities/compat/crclib_hash.cpp`, `src/utilities/hash.cpp`, `public/tests/test_crclib.c` |
 | 2026-05-09 | DEC-041 | Treat `public/crtlib.h` path helpers as public C ABI and route the non-inline path helper implementations through `src/utilities/path.*`, while deferring parser, formatting, and inline copy/compare helpers to narrower later passes. | `legacy/engine/string-path-baseline.md`, `modern/engine/string-path-migration-guide.md`, `src/utilities/compat/crtlib_path.cpp`, `src/utilities/path.cpp`, `public/tests/test_path.c` |
+| 2026-05-09 | DEC-042 | Defer broad memory-pool modernization to Phase 990 and promote network buffers to Phase 42, using golden byte vectors and narrow helper routing before any broad `MSG_*` rewrite. | `todo/engine_memory_todo.md`, `todo/engine_netbuffer_todo.md`, `legacy/engine/network-buffer-baseline.md`, `modern/engine/network-buffer-migration-guide.md` |
