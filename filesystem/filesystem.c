@@ -45,6 +45,7 @@ GNU General Public License for more details.
 #include "filesystem.h"
 #include "filesystem_internal.h"
 #include "archive_registry_adapter.h"
+#include "file_handle_ops_adapter.h"
 #include "filesystem_state_adapter.h"
 #include "game_hierarchy_adapter.h"
 #include "path_policy_adapter.h"
@@ -2780,28 +2781,13 @@ NOTE: it's not compatible with lseek!
 */
 int FS_Seek( file_t *file, fs_offset_t offset, int whence )
 {
-	// compute the file offset
-	switch( whence )
-	{
-	case SEEK_CUR:
-		offset += file->position - file->buff_len + file->buff_ind;
-		break;
-	case SEEK_SET:
-		break;
-	case SEEK_END:
-		offset += file->real_length;
-		break;
-	default:
-		return -1;
-	}
-
-	if( offset < 0 || offset > file->real_length )
+	if( !FS_FileHandleResolveSeek( file, offset, whence, &offset ))
 		return -1;
 
 	// if we have the data in our read buffer, we don't need to actually seek
-	if( file->position - file->buff_len <= offset && offset <= file->position )
+	if( FS_FileHandleCanSeekWithinBuffer( file, offset ))
 	{
-		file->buff_ind = offset + file->buff_len - file->position;
+		file->buff_ind = FS_FileHandleBufferIndexForTarget( file, offset );
 		return 0;
 	}
 
@@ -2873,8 +2859,7 @@ Give the current position in a file
 */
 fs_offset_t FS_Tell( const file_t *file )
 {
-	if( !file ) return 0;
-	return file->position - file->buff_len + file->buff_ind;
+	return FS_FileHandleTell( file );
 }
 
 /*
@@ -2886,8 +2871,7 @@ indicates at reached end of file
 */
 qboolean FS_Eof( const file_t *file )
 {
-	if( !file ) return true;
-	return (( file->position - file->buff_len + file->buff_ind ) == file->real_length ) ? true : false;
+	return FS_FileHandleEof( file );
 }
 
 /*

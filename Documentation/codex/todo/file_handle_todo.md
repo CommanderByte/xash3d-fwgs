@@ -12,6 +12,8 @@ safer internal file-handle layer.
 - [x] Add target-neutral file handle operation helpers around `file_t`.
 - [ ] Route close, read, write, seek, tell, eof, flush, getc, and gets in
   small batches.
+  Note: tell/eof/seek cursor math now routes through `FileHandleOps`; handle
+  lifetime, I/O, decompression, and line helpers remain legacy-owned.
 - [ ] Consider a later RAII wrapper only behind legacy C entry points.
 
 ## Boundaries
