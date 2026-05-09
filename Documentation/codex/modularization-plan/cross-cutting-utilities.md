@@ -241,6 +241,16 @@ Potential users:
 - serializer formats
 - asset/image loader descriptors
 
+Initial implementation:
+
+- `src/include/utilities/registry.hpp` provides `StaticRegistry`, a
+  fixed-capacity ordered registry template
+- duplicate handling is explicit: reject or replace
+- enumeration order is registration order
+- exact and ASCII case-insensitive C-string key comparators are available
+- filesystem archive metadata should instantiate this utility later, while
+  keeping mount-order policy outside the registry
+
 ## Thread-Readiness Plan
 
 Do not jump straight to broad multithreading. Prepare for it by making state
@@ -320,7 +330,7 @@ engine `LogSink` facade.
 3. Add debug snapshot structs for filesystem mounts.
 4. Add human formatter for mount snapshots.
 5. Add JSON writer for snapshot records.
-6. Add generic registry template.
+6. Add generic registry template. Done: `src/include/utilities/registry.hpp`.
 7. Wire filesystem archive metadata through the registry.
 8. Add optional external library dependency only when a facade needs it.
 9. Add lock/snapshot abstractions only when the first shared mutable state is

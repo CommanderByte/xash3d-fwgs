@@ -363,11 +363,11 @@ The smallest useful implementation should be:
 2. [x] test buffer sink
 3. [x] shared snapshot header human/JSON writers
 4. [x] shared streaming JSON writer object
-5. [ ] filesystem mount snapshot record
+5. [x] filesystem mount snapshot record
 6. [ ] capture function for existing search paths
-7. [ ] human formatter for mount snapshot
-8. [ ] JSON writer for mount snapshot
-9. [ ] tests for filesystem snapshot ordering and output
+7. [x] human formatter for mount snapshot
+8. [x] JSON writer for mount snapshot
+9. [x] tests for filesystem snapshot ordering and output
 
 That slice keeps the architecture honest without requiring a full logging or
 threading framework up front.

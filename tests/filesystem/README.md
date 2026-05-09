@@ -3,9 +3,10 @@
 This folder tracks filesystem behaviors that should be covered before and
 during the modular C++ migration.
 
-Compiled tests live in this folder and are built by `filesystem/wscript` when
-`--enable-tests` is set. The filesystem module still owns linking the tests
-because they need to run beside `filesystem_stdio`.
+Compiled legacy filesystem tests live in this folder and are built by
+`filesystem/wscript` when `--enable-tests` is set. Modern internal filesystem
+utility tests can also live here and be built by `src/wscript` when they do not
+need to run beside `filesystem_stdio`.
 
 ## Baselines
 
@@ -53,6 +54,10 @@ structure.
 | `rodir` overlay precedence | `tests/filesystem/rodir.c` | existing | Writable root beats rodir; rodir-only content remains visible. |
 | `VFileSystem009` compatibility behavior | `tests/filesystem/interface.cpp` | existing | Covers simple method behavior after lookup. |
 | `XashFileSystem004` copied table behavior | `tests/filesystem/interface.cpp` | existing | Confirms returned table refreshes after caller mutation. |
+| Mount snapshot records and writers | `tests/filesystem/debug_snapshot.cpp` | existing | Built by `src/wscript`; covers modern internal debug snapshot output. |
+| Archive registry descriptors | `tests/filesystem/archive_registry.cpp` | existing | Built by `src/wscript`; covers default descriptor metadata and order. |
+| Directory backend skeleton | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
+| Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
 | DLL lookup | missing | `tests/filesystem` | Focus on returned `fs_dllinfo_t`, not loading real DLLs. |
 
 ## First Unit Tests To Add

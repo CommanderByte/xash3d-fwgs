@@ -19,3 +19,5 @@ Planned subfolders:
 
 - `debugging/`: private contracts for shared debug snapshots, sinks,
   formatters, JSON writers, and trace helpers
+- `filesystem/`: private modern filesystem records and helper interfaces
+- `utilities/`: subsystem-neutral helpers such as the ordered registry

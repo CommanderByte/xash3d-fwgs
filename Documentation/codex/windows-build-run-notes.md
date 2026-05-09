@@ -113,6 +113,28 @@ LoadBackground: found steam background in game directory
 Stopped with reason "command"
 ```
 
+## Directory Backend Bridge Smoke
+
+After adding the first live directory backend bridge, refresh the local runtime
+filesystem DLL from the current build:
+
+```powershell
+Copy-Item .\build\filesystem\filesystem_stdio.dll .\run-win32\filesystem_stdio.dll -Force
+```
+
+Then run a noninteractive filesystem-path smoke:
+
+```powershell
+Push-Location .\run-win32
+$env:XASH3D_BASEDIR = 'C:\git\xash3d-fwgs\run-win32'
+$env:XASH3D_RODIR = 'C:\Program Files (x86)\Steam\steamapps\common\Half-Life'
+.\xash3d.exe -dev 2 -log +fs_path +quit
+Pop-Location
+```
+
+On 2026-05-09 this exited with code `0`, printed the expected Steam `valve`
+directory and WAD search paths, and stopped with reason `"command"`.
+
 ## Notes For Later
 
 - CMake was available through Visual Studio, but not on `PATH`.

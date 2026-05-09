@@ -1,0 +1,18 @@
+# Private Filesystem Headers
+
+This folder contains private C++ headers for modern filesystem internals.
+
+Current headers:
+
+- `archive_registry.hpp`: archive backend descriptor types and archive registry
+  typedef over the shared ordered registry utility
+- `debug_snapshot.hpp`: immutable filesystem mount snapshot records and writer
+  declarations for human and JSON diagnostic output
+- `directory_backend.hpp`: first private C++ directory backend skeleton
+- `registry_snapshot.hpp`: immutable archive registry snapshot records and
+  writer declarations for future `fs_registry` output
+- `search_path_backend.hpp`: internal search path metadata and backend
+  interface shaped like legacy `searchpath_t` callbacks
+
+Keep these headers out of public SDK and legacy ABI surfaces. Legacy filesystem
+entry points should adapt to these types explicitly when integration begins.

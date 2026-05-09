@@ -126,14 +126,22 @@ Canonical design references:
 
 ## Filesystem Pilot TODO
 
-- [ ] Add `FilesystemMountRecord`.
-- [ ] Add `FilesystemMountSnapshot`.
-- [ ] Decide initial snapshot ownership: caller-provided storage, arena, or
+- [x] Add `FilesystemMountRecord`.
+  Evidence: `src/include/filesystem/debug_snapshot.hpp`.
+- [x] Add `FilesystemMountSnapshot`.
+  Evidence: `src/include/filesystem/debug_snapshot.hpp`.
+- [x] Decide initial snapshot ownership: caller-provided storage, arena, or
   snapshot-owned vector-like buffer.
+  Decision: Use caller-provided record storage for the first slice so tests and
+  future capture adapters can avoid allocation policy decisions.
+  Evidence: `src/include/filesystem/debug_snapshot.hpp`.
 - [ ] Add filesystem mount capture adapter over existing `searchpath_t` state.
-- [ ] Add direct unit tests for mount snapshot ordering.
-- [ ] Add human formatter for filesystem mount snapshots.
-- [ ] Add JSON writer for filesystem mount snapshots.
+- [x] Add direct unit tests for mount snapshot ordering.
+  Evidence: `tests/filesystem/debug_snapshot.cpp`.
+- [x] Add human formatter for filesystem mount snapshots.
+  Evidence: `src/filesystem/debug_snapshot.cpp`.
+- [x] Add JSON writer for filesystem mount snapshots.
+  Evidence: `src/filesystem/debug_snapshot.cpp`.
 - [ ] Add command adapter for `fs_path_verbose` once console wiring is clear.
 - [ ] Add `FilesystemLookupStep` and `FilesystemLookupSnapshot`.
 - [ ] Add `fs_why <path>` capture and tests after mount snapshots are stable.

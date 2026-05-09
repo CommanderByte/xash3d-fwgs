@@ -623,12 +623,12 @@ Avoid:
    declarations.
 4. [x] `buffer_sink.hpp`: `FixedBufferDebugSink`.
 5. [x] `json_writer.hpp`: streaming JSON writer object.
-6. [ ] Filesystem `FilesystemMountRecord` and `FilesystemMountSnapshot`.
+6. [x] Filesystem `FilesystemMountRecord` and `FilesystemMountSnapshot`.
 7. [ ] Filesystem mount capture adapter using caller-provided storage.
 8. [x] Human snapshot header writer.
 9. [x] JSON snapshot header writer.
-10. [ ] Human mount snapshot writer.
-11. [ ] JSON mount snapshot writer.
+10. [x] Human mount snapshot writer.
+11. [x] JSON mount snapshot writer.
 12. [x] Trace category and event declarations.
 13. [x] Runtime `TraceGate`.
 14. [x] Logging facade declarations and dispatch.

@@ -35,6 +35,7 @@ GNU General Public License for more details.
 
 #include "port.h"
 #include "filesystem_internal.h"
+#include "dir_backend_adapter.h"
 #include "crtlib.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
@@ -51,6 +52,7 @@ typedef struct dir_s
 	string name;
 	int numentries;
 	struct dir_s *entries; // sorted
+	void *backend;
 } dir_t;
 
 static qboolean Platform_GetDirectoryCaseSensitivity( const char *dir )
@@ -119,6 +121,7 @@ static void FS_InitDirEntries( dir_t *dir, const stringlist_t *list )
 		Q_strncpy( entry->name, list->strings[i], sizeof( entry->name ));
 		entry->numentries = DIRENTRY_NOT_SCANNED;
 		entry->entries = NULL;
+		entry->backend = NULL;
 	}
 
 	qsort( dir->entries, dir->numentries, sizeof( dir->entries[0] ), FS_SortDirEntries );
@@ -384,18 +387,18 @@ qboolean FS_FixFileCase( dir_t *dir, const char *path, char *dst, const size_t l
 	return true;
 }
 
-static void FS_Close_DIR( searchpath_t *search )
+static void FS_Close_DIR_Legacy( searchpath_t *search )
 {
 	FS_FreeDirEntries( search->dir );
 	Mem_Free( search->dir );
 }
 
-static void FS_PrintInfo_DIR( searchpath_t *search, char *dst, size_t size )
+static void FS_PrintInfo_DIR_Legacy( searchpath_t *search, char *dst, size_t size )
 {
 	Q_strncpy( dst, search->filename, size );
 }
 
-static int FS_FindFile_DIR( searchpath_t *search, const char *path, char *fixedname, size_t len )
+static int FS_FindFile_DIR_Legacy( searchpath_t *search, const char *path, char *fixedname, size_t len )
 {
 	char netpath[MAX_SYSPATH];
 
@@ -413,7 +416,7 @@ static int FS_FindFile_DIR( searchpath_t *search, const char *path, char *fixedn
 	return -1;
 }
 
-static void FS_Search_DIR( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+static void FS_Search_DIR_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
 	string netpath, temp;
 	stringlist_t dirlist;
@@ -466,7 +469,7 @@ static void FS_Search_DIR( searchpath_t *search, stringlist_t *list, const char 
 	Mem_Free( basepath );
 }
 
-static int FS_FileTime_DIR( searchpath_t *search, const char *filename )
+static int FS_FileTime_DIR_Legacy( searchpath_t *search, const char *filename )
 {
 	char path[MAX_SYSPATH];
 
@@ -474,7 +477,7 @@ static int FS_FileTime_DIR( searchpath_t *search, const char *filename )
 	return FS_SysFileTime( path );
 }
 
-static file_t *FS_OpenFile_DIR( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+static file_t *FS_OpenFile_DIR_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
 	file_t *f;
 	char path[MAX_SYSPATH];
@@ -487,6 +490,95 @@ static file_t *FS_OpenFile_DIR( searchpath_t *search, const char *filename, cons
 	f->searchpath = search;
 
 	return f;
+}
+
+static void FS_Close_DIR_Hook( void *context )
+{
+	FS_Close_DIR_Legacy( (searchpath_t *)context );
+}
+
+static void FS_PrintInfo_DIR_Hook( void *context, char *dst, size_t size )
+{
+	FS_PrintInfo_DIR_Legacy( (searchpath_t *)context, dst, size );
+}
+
+static file_t *FS_OpenFile_DIR_Hook( void *context, const char *filename, const char *mode, int pack_ind )
+{
+	return FS_OpenFile_DIR_Legacy( (searchpath_t *)context, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_DIR_Hook( void *context, const char *filename )
+{
+	return FS_FileTime_DIR_Legacy( (searchpath_t *)context, filename );
+}
+
+static int FS_FindFile_DIR_Hook( void *context, const char *path, char *fixedname, size_t len )
+{
+	return FS_FindFile_DIR_Legacy( (searchpath_t *)context, path, fixedname, len );
+}
+
+static void FS_Search_DIR_Hook( void *context, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	FS_Search_DIR_Legacy( (searchpath_t *)context, list, pattern, caseinsensitive );
+}
+
+static void FS_Close_DIR( searchpath_t *search )
+{
+	if( search->dir && search->dir->backend )
+	{
+		void *backend = search->dir->backend;
+		FS_DirectoryBackendBridge_Close( backend );
+		FS_DestroyDirectoryBackendBridge( backend );
+		return;
+	}
+
+	FS_Close_DIR_Legacy( search );
+}
+
+static void FS_PrintInfo_DIR( searchpath_t *search, char *dst, size_t size )
+{
+	if( search->dir && search->dir->backend )
+	{
+		FS_DirectoryBackendBridge_PrintInfo( search->dir->backend, dst, size );
+		return;
+	}
+
+	FS_PrintInfo_DIR_Legacy( search, dst, size );
+}
+
+static int FS_FindFile_DIR( searchpath_t *search, const char *path, char *fixedname, size_t len )
+{
+	if( search->dir && search->dir->backend )
+		return FS_DirectoryBackendBridge_FindFile( search->dir->backend, path, fixedname, len );
+
+	return FS_FindFile_DIR_Legacy( search, path, fixedname, len );
+}
+
+static void FS_Search_DIR( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	if( search->dir && search->dir->backend )
+	{
+		FS_DirectoryBackendBridge_Search( search->dir->backend, list, pattern, caseinsensitive );
+		return;
+	}
+
+	FS_Search_DIR_Legacy( search, list, pattern, caseinsensitive );
+}
+
+static int FS_FileTime_DIR( searchpath_t *search, const char *filename )
+{
+	if( search->dir && search->dir->backend )
+		return FS_DirectoryBackendBridge_FileTime( search->dir->backend, filename );
+
+	return FS_FileTime_DIR_Legacy( search, filename );
+}
+
+static file_t *FS_OpenFile_DIR( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+{
+	if( search->dir && search->dir->backend )
+		return FS_DirectoryBackendBridge_OpenFile( search->dir->backend, filename, mode, pack_ind );
+
+	return FS_OpenFile_DIR_Legacy( search, filename, mode, pack_ind );
 }
 
 void FS_InitDirectorySearchpath( searchpath_t *search, const char *path, int flags )
@@ -510,7 +602,19 @@ void FS_InitDirectorySearchpath( searchpath_t *search, const char *path, int fla
 	// create cache root
 	search->dir = Mem_Malloc( fs_mempool, sizeof( dir_t ));
 	Q_strncpy( search->dir->name, search->filename, sizeof( search->dir->name ));
+	search->dir->backend = NULL;
 	FS_PopulateDirEntries( search->dir, path );
+	{
+		fs_directory_backend_hooks_t hooks;
+		hooks.context = search;
+		hooks.close = FS_Close_DIR_Hook;
+		hooks.printInfo = FS_PrintInfo_DIR_Hook;
+		hooks.openFile = FS_OpenFile_DIR_Hook;
+		hooks.fileTime = FS_FileTime_DIR_Hook;
+		hooks.findFile = FS_FindFile_DIR_Hook;
+		hooks.search = FS_Search_DIR_Hook;
+		search->dir->backend = FS_CreateDirectoryBackendBridge( search, &hooks );
+	}
 }
 
 searchpath_t *FS_AddDir_Fullpath( const char *path, int flags )

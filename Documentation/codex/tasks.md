@@ -214,8 +214,10 @@ commit, test command, document link, or manual verification note that proves it.
   `src/include/debugging/debug_sink.hpp`,
   `src/include/debugging/snapshot_writer.hpp`,
   `src/debugging/snapshot_writer.cpp`.
-- [ ] `MODERN-DEBUG-008` Implement first filesystem debug snapshot structs.
-  Evidence:
+- [x] `MODERN-DEBUG-008` Implement first filesystem debug snapshot structs.
+  Evidence: `src/include/filesystem/debug_snapshot.hpp`,
+  `src/filesystem/debug_snapshot.cpp`,
+  `tests/filesystem/debug_snapshot.cpp`; command `.\waf.bat build`.
 - [x] `MODERN-DEBUG-009` Add first synchronous debug sink for tests or console
   output.
   Evidence: `tests/debugging/debug_test_common.hpp`.
@@ -276,21 +278,64 @@ commit, test command, document link, or manual verification note that proves it.
   `Documentation/codex/modern/debugging/api-inventory.md`,
   `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
 
+## Phase 4B: Modern Shared Utilities
+
+- [x] `MODERN-UTIL-001` Add focused utility TODO list.
+  Evidence: `Documentation/codex/todo/utilities_todo.md`.
+- [x] `MODERN-UTIL-002` Add fixed-capacity ordered registry utility with
+  explicit duplicate-key behavior.
+  Evidence: `src/include/utilities/registry.hpp`,
+  `tests/utilities/registry.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-UTIL-003` Add exact and ASCII case-insensitive C-string key
+  comparators for registry users such as archive extension descriptors.
+  Evidence: `src/include/utilities/registry.hpp`,
+  `tests/utilities/registry.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-UTIL-004` Instantiate archive registry metadata over the generic
+  registry.
+  Evidence: `src/include/filesystem/archive_registry.hpp`,
+  `src/filesystem/archive_registry.cpp`,
+  `tests/filesystem/archive_registry.cpp`; command `.\waf.bat build`.
+- [x] `FS-REG-001` Add archive registry scaffold and descriptor types.
+  Evidence: `src/include/filesystem/archive_registry.hpp`,
+  `src/filesystem/archive_registry.cpp`,
+  `Documentation/codex/todo/archive_registry_todo.md`,
+  `tests/filesystem/archive_registry.cpp`; command `.\waf.bat build`.
+- [x] `FS-REG-002` Add default archive descriptors for PAK, PK3, PK3DIR, and
+  WAD without routing mounts through the registry yet.
+  Evidence: `src/filesystem/archive_registry.cpp`,
+  `tests/filesystem/archive_registry.cpp`; command `.\waf.bat build`.
+- [x] `FS-REG-003` Add filesystem registry snapshot records for `fs_registry`.
+  Evidence: `src/include/filesystem/registry_snapshot.hpp`,
+  `src/filesystem/registry_snapshot.cpp`,
+  `tests/filesystem/registry_snapshot.cpp`; command `.\waf.bat build`.
+
 ## Phase 5: Directory Backend Pilot
 
-- [ ] `FS-IMPL-001` Add private C++ directory backend design sketch.
-  Evidence:
-- [ ] `FS-IMPL-002` Introduce the smallest possible internal helper without
+- [x] `FS-IMPL-001` Add private C++ directory backend design sketch.
+  Evidence: `src/include/filesystem/search_path_backend.hpp`,
+  `src/include/filesystem/directory_backend.hpp`,
+  `Documentation/codex/todo/directory_backend_todo.md`.
+- [x] `FS-IMPL-002` Introduce the smallest possible internal helper without
   changing behavior.
-  Evidence:
-- [ ] `FS-IMPL-003` Keep `FS_AddDir_Fullpath`, `FS_InitDirectorySearchpath`,
+  Evidence: `src/filesystem/search_path_backend.cpp`,
+  `src/filesystem/directory_backend.cpp`,
+  `tests/filesystem/directory_backend.cpp`; command `.\waf.bat build`.
+- [x] `FS-IMPL-003` Keep `FS_AddDir_Fullpath`, `FS_InitDirectorySearchpath`,
   and `FS_FixFileCase` callable from C.
-  Evidence:
-- [ ] `FS-IMPL-004` Run filesystem unit tests after first helper extraction.
-  Evidence:
-- [ ] `FS-IMPL-005` Run Windows runtime smoke test after first helper
+  Evidence: `filesystem/dir.c`, `filesystem/dir_backend_adapter.h`,
+  `filesystem/dir_backend_adapter.cpp`; command `.\waf.bat build`.
+- [x] `FS-IMPL-004` Run filesystem unit tests after first helper extraction.
+  Evidence: command `.\waf.bat build` passed 15/15 tests, including legacy
+  filesystem tests.
+- [x] `FS-IMPL-005` Run Windows runtime smoke test after first helper
   extraction.
-  Evidence:
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from
+  `build/filesystem/filesystem_stdio.dll`, then ran
+  `.\xash3d.exe -dev 2 -log +fs_path +quit` from `run-win32` with
+  `XASH3D_BASEDIR=C:\git\xash3d-fwgs\run-win32` and
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  Exit code was `0`; `engine.log` printed the Steam `valve` directory and WAD
+  search paths and stopped with reason `"command"`.
 
 ## Phase 6: Commit And Review Hygiene
 
@@ -322,3 +367,5 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-012 | Use `.hpp` for private modern C++ debugging headers while leaving legacy C-compatible headers on their existing `.h` convention. | `src/include/debugging/README.md`, `todo/debugging_todo.md` |
 | 2026-05-09 | DEC-013 | Keep `DebugStatus` local to the debugging layer so release-oriented core code does not depend on debugging utilities. | `src/include/debugging/debug_types.hpp`, `todo/debugging_todo.md` |
 | 2026-05-09 | DEC-014 | Defer RapidJSON and use a small streaming JSON writer behind `IDebugSink` until larger snapshot serializers need a third-party JSON backend. | `src/include/debugging/json_writer.hpp`, `modern/debugging/api-inventory.md` |
+| 2026-05-09 | DEC-015 | Use a fixed-capacity ordered registry template for first shared registry work, keeping mount-order and filesystem policy outside the generic utility. | `src/include/utilities/registry.hpp`, `todo/utilities_todo.md` |
+| 2026-05-09 | DEC-016 | Store the first live directory backend bridge pointer inside the private `dir_t` root object instead of changing `searchpath_t` layout. | `filesystem/dir.c`, `todo/directory_backend_todo.md` |
