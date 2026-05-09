@@ -1493,15 +1493,28 @@ commit, test command, document link, or manual verification note that proves it.
   `.\waf.bat build --targets=test_engine_base_command_registry,test_engine_command_buffer,test_engine_info_string,test_engine_network_buffer,test_engine_platform_console_backend`,
   direct execution of `build\src\test_engine_platform_console_backend.exe`,
   and `.\waf.bat build` passed 24/24 executed tests.
-- [ ] `ENG-LOG-008` Wrap POSIX/Linux background console output/input behind a
-  platform console backend while preserving `Platform_Input()` semantics.
-  Evidence:
+- [x] `ENG-LOG-008` Add a POSIX/Linux-style background console backend wrapper
+  with injectable output/input and tests that preserve current `Platform_Input`
+  semantics: output is available after initialization, command reads require a
+  dedicated host configuration, disabled input returns no command, and missing
+  input/output capabilities are honored.
+  Evidence: `src/include/engine/console/platform_console_backend.hpp`,
+  `src/engine/console/platform_console_backend.cpp`,
+  `tests/engine/platform_console_backend.cpp`; commands
+  `.\waf.bat build --targets=test_engine_platform_console_backend`,
+  direct execution of `build\src\test_engine_platform_console_backend.exe`,
+  `.\waf.bat build --targets=test_engine_base_command_registry,test_engine_command_buffer,test_engine_info_string,test_engine_network_buffer,test_engine_platform_console_backend`,
+  and `.\waf.bat build` passed 24/24 executed tests.
 - [ ] `ENG-LOG-009` Wrap Win32 external console output/input/lifecycle behind
   a platform console backend while preserving the existing `Wcon_*` C surface.
   Evidence:
 - [ ] `ENG-LOG-010` Decide whether Android/iOS/Switch/Vita should use explicit
   output-only backends or remain direct `Sys_PrintStdout()` platform branches
   until the router phase.
+  Evidence:
+- [ ] `ENG-LOG-011` Route the legacy POSIX/Linux `Platform_Input()` and stdout
+  output path through the POSIX backend once a POSIX validation build is
+  available.
   Evidence:
 
 ## Phase 44: System Platform Facade Audit

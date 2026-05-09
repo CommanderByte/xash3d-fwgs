@@ -70,6 +70,45 @@ private:
 	PlatformConsoleConfig m_lastConfig;
 };
 
+class IPosixConsoleIo
+{
+public:
+	virtual ~IPosixConsoleIo() = default;
+
+	virtual void writeOutput(const char *text) = 0;
+	virtual const char *readCommand() = 0;
+};
+
+class PosixPlatformConsoleBackend : public IPlatformConsoleBackend
+{
+public:
+	explicit PosixPlatformConsoleBackend(IPosixConsoleIo &io,
+		PlatformConsoleCapabilities capabilities =
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::Output) |
+			PlatformConsoleCapabilityMask(PlatformConsoleCapability::Input));
+
+	PlatformConsoleCapabilities capabilities() const override;
+	void initialize(const PlatformConsoleConfig &config) override;
+	void shutdown() override;
+	void print(const char *text) override;
+	const char *readCommand() override;
+	void show(bool visible) override;
+	void disableInput() override;
+	void setStatus(const char *text) override;
+	void registerCommands() override;
+
+	bool initialized() const;
+	bool inputEnabled() const;
+	const PlatformConsoleConfig &lastConfig() const;
+
+private:
+	IPosixConsoleIo &m_io;
+	PlatformConsoleCapabilities m_capabilities;
+	bool m_initialized;
+	bool m_inputEnabled;
+	PlatformConsoleConfig m_lastConfig;
+};
+
 }
 }
 }

@@ -110,7 +110,8 @@ Initial implementation landed in:
 - `tests/engine/platform_console_backend.cpp`
 
 The implemented slice includes capability helpers, default config values,
-`IPlatformConsoleBackend`, and `NullPlatformConsoleBackend`. It does not route
+`IPlatformConsoleBackend`, `NullPlatformConsoleBackend`, and a
+`PosixPlatformConsoleBackend` with injectable output/input. It does not route
 legacy platform output/input yet.
 
 ## Backend Types
@@ -162,12 +163,15 @@ flowchart LR
 
 1. Add target-neutral backend capability/config types with unit tests.
 2. Add a `NullPlatformConsoleBackend` test double.
-3. Route `Platform_Input()` through the selected backend without changing host
+3. Add a POSIX-style backend with injectable I/O and tests for dedicated-only
+   command polling.
+4. Route `Platform_Input()` through the selected backend without changing host
    polling behavior.
-4. Wrap POSIX stdin/stdout behavior behind a POSIX backend.
-5. Wrap Win32 `Wcon_*` behavior behind a Win32 backend while preserving the C
+5. Wrap POSIX stdin/stdout behavior behind the POSIX backend in a POSIX
+   validation build.
+6. Wrap Win32 `Wcon_*` behavior behind a Win32 backend while preserving the C
    functions as adapters.
-6. Only after platform backends are stable, revisit `Sys_Print()` fanout and the
+7. Only after platform backends are stable, revisit `Sys_Print()` fanout and the
    higher-level console router.
 
 ## Compatibility Notes

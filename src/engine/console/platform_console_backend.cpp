@@ -84,6 +84,90 @@ const PlatformConsoleConfig &NullPlatformConsoleBackend::lastConfig() const
 	return m_lastConfig;
 }
 
+PosixPlatformConsoleBackend::PosixPlatformConsoleBackend(IPosixConsoleIo &io,
+	PlatformConsoleCapabilities capabilities)
+	: m_io(io)
+	, m_capabilities(capabilities)
+	, m_initialized(false)
+	, m_inputEnabled(false)
+	, m_lastConfig()
+{
+}
+
+PlatformConsoleCapabilities PosixPlatformConsoleBackend::capabilities() const
+{
+	return m_capabilities;
+}
+
+void PosixPlatformConsoleBackend::initialize(const PlatformConsoleConfig &config)
+{
+	m_lastConfig = config;
+	m_initialized = true;
+	m_inputEnabled = true;
+}
+
+void PosixPlatformConsoleBackend::shutdown()
+{
+	m_initialized = false;
+	m_inputEnabled = false;
+}
+
+void PosixPlatformConsoleBackend::print(const char *text)
+{
+	if (!m_initialized || !text ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::Output))
+	{
+		return;
+	}
+
+	m_io.writeOutput(text);
+}
+
+const char *PosixPlatformConsoleBackend::readCommand()
+{
+	if (!m_initialized || !m_inputEnabled || !m_lastConfig.dedicated ||
+		!PlatformConsoleHasCapability(m_capabilities, PlatformConsoleCapability::Input))
+	{
+		return nullptr;
+	}
+
+	return m_io.readCommand();
+}
+
+void PosixPlatformConsoleBackend::show(bool visible)
+{
+	(void)visible;
+}
+
+void PosixPlatformConsoleBackend::disableInput()
+{
+	m_inputEnabled = false;
+}
+
+void PosixPlatformConsoleBackend::setStatus(const char *text)
+{
+	(void)text;
+}
+
+void PosixPlatformConsoleBackend::registerCommands()
+{
+}
+
+bool PosixPlatformConsoleBackend::initialized() const
+{
+	return m_initialized;
+}
+
+bool PosixPlatformConsoleBackend::inputEnabled() const
+{
+	return m_inputEnabled;
+}
+
+const PlatformConsoleConfig &PosixPlatformConsoleBackend::lastConfig() const
+{
+	return m_lastConfig;
+}
+
 }
 }
 }
