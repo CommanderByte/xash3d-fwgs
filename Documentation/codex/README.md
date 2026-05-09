@@ -6,6 +6,16 @@ in upstream-facing user documentation yet.
 
 ## Current Documents
 
+- [tasks.md](tasks.md) is the living task list for the modularization effort,
+  including test work and audit notes.
+- [agent-instructions.md](agent-instructions.md) defines standing instructions
+  for Codex-driven modernization work in this fork.
+- [agent-profiles.md](agent-profiles.md) describes reusable working profiles
+  for documentation, testing, implementation, review, and release hygiene.
+- [filesystem-glossary.md](filesystem-glossary.md) defines recurring
+  filesystem terms used in the legacy and modernization docs.
+- [../../tests/README.md](../../tests/README.md) describes the root test
+  strategy and fixture policy for behavior-preserving modernization.
 - [codebase-map.md](codebase-map.md) maps the repository layout, build targets,
   major subsystems, and important source files.
 - [modular-cpp-rewrite-feasibility.md](modular-cpp-rewrite-feasibility.md)

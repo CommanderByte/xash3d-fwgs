@@ -9,6 +9,8 @@ boundaries before we start moving code.
 
 - [architecture.md](architecture.md) gives the current module overview,
   object/struct relationships, and key Mermaid sequence diagrams.
+- [windows-fs-path-baseline.md](windows-fs-path-baseline.md) captures the
+  known-good Windows `fs_path` output for later search-order comparisons.
 
 ## Scope
 
