@@ -640,7 +640,7 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 16: Search Result Assembly
 
 - [x] `FS-SEARCH-001` Add focused TODO list for search result migration.
-  Evidence: `Documentation/codex/todo/search_results_todo.md`.
+  Evidence: `Documentation/codex/done/todo/search_results_todo.md`.
 - [x] `FS-SEARCH-002` Add tests for result ordering and duplicate filtering.
   Evidence: `tests/filesystem/search-results.c`; command
   `.\waf.bat build --targets=test_search-results`.
@@ -883,7 +883,182 @@ commit, test command, document link, or manual verification note that proves it.
   `Documentation/codex/done/audit/filesystem/`; completed TODOs remain under
   `Documentation/codex/done/todo/`.
 
-## Phase 27: Commit And Review Hygiene
+## Phase 27: Export Dependency Audit And Trim Planning
+
+- [x] `FS-SURFACE-001` Verify the actual `filesystem_stdio` export set.
+  Evidence: `Documentation/codex/modern/filesystem/export-dependency-audit.md`;
+  built Windows DLL export table contains `CreateInterface` and `GetFSAPI`.
+- [x] `FS-SURFACE-002` Audit in-repo engine and utility dependencies on the
+  filesystem ABI.
+  Evidence: `Documentation/codex/modern/filesystem/export-dependency-audit.md`.
+- [x] `FS-SURFACE-003` Fix export-list metadata to match the supported
+  runtime loader contract.
+  Evidence: `filesystem/exports.txt` now lists both `CreateInterface` and
+  `GetFSAPI`.
+- [x] `FS-SURFACE-004` Identify trim candidates that do not require an ABI
+  break.
+  Evidence: `Documentation/codex/modern/filesystem/export-dependency-audit.md`.
+
+## Phase 28: Modern Handler Migration And Legacy Adapter Boundary
+
+- [x] `FS-HANDLER-001` Define the first `LegacyAdapter` boundary for
+  compatibility calls.
+  Evidence: `Documentation/codex/todo/modern_filesystem_handlers_todo.md`,
+  `filesystem/filesystem_facade_adapter.h`.
+- [x] `FS-HANDLER-002` Move `VFileSystem009.cpp` off
+  `filesystem_internal.h` through a narrow facade adapter.
+  Evidence: `filesystem/filesystem_facade_adapter.h`,
+  `filesystem/filesystem_facade_adapter.cpp`,
+  `filesystem/VFileSystem009.cpp`; `.\waf.bat build --targets=test_interface`,
+  `build\filesystem\test_interface.exe`, and `.\waf.bat build` passed on
+  2026-05-09.
+- [x] `FS-HANDLER-003` Extract `FS_Search` result assembly into a modern
+  handler while preserving public `search_t`.
+  Evidence: `filesystem/search_result_builder_adapter.cpp`,
+  `filesystem/search_result_builder_adapter.h`, `filesystem/filesystem.c`;
+  commands `.\waf.bat build --targets=test_search-results,test_filesystem_search_result_builder`,
+  direct `build\filesystem\test_search-results.exe`, and direct
+  `build\src\test_filesystem_search_result_builder.exe`,
+  `.\waf.bat build --targets=test_interface`, and direct
+  `build\filesystem\test_interface.exe` passed on
+  2026-05-09.
+- [x] `FS-HANDLER-004` Move file handle operation bodies behind modern
+  handlers while preserving public `file_t` opacity.
+  Evidence: `src/include/filesystem/file_handle_ops.hpp`,
+  `src/filesystem/file_handle_ops.cpp`,
+  `filesystem/file_handle_ops_adapter.h`,
+  `filesystem/file_handle_ops_adapter.cpp`, `filesystem/filesystem.c`,
+  `tests/filesystem/file_handle_ops.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive`
+  passed 6/6 tests on 2026-05-09; `.\waf.bat build` passed 25/25
+  tests.
+- [x] `FS-HANDLER-005` Move searchpath allocation and callback registration
+  toward runtime-owned mount handlers.
+  Evidence: `src/include/filesystem/filesystem_runtime.hpp`,
+  `src/filesystem/filesystem_runtime.cpp`,
+  `filesystem/filesystem_runtime_adapter.h`,
+  `filesystem/filesystem_runtime_adapter.cpp`,
+  `filesystem/searchpath_mount_adapter.h`,
+  `filesystem/searchpath_mount_adapter.cpp`, `filesystem/dir.c`,
+  `filesystem/pak.c`, `filesystem/wad.c`, `filesystem/zip.c`,
+  `filesystem/android.c`, `tests/filesystem/filesystem_runtime.cpp`;
+  command
+  `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive`
+  passed 6/6 tests on 2026-05-09; `.\waf.bat build` passed 25/25
+  tests.
+- [x] `FS-HANDLER-006` Split `filesystem_internal.h` into focused private
+  compatibility headers.
+  Evidence: `filesystem/filesystem_internal.h`,
+  `src/include/filesystem/compat/private/filesystem_private_types.h`,
+  `src/include/filesystem/compat/private/filesystem_private_globals.h`,
+  `src/include/filesystem/compat/private/filesystem_private_memory.h`,
+  `src/include/filesystem/compat/private/filesystem_private_api.h`; commands
+  `.\waf.bat build --targets=test_filesystem_runtime,test_filesystem_file_handle_ops,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive,test_interface`,
+  `.\waf.bat build`, direct `build\filesystem\test_interface.exe`,
+  direct `build\filesystem\test_file-handle.exe`, direct
+  `build\filesystem\test_archive-order.exe`, and direct
+  `build\src\test_filesystem_runtime.exe` passed on 2026-05-09.
+- [x] `FS-HANDLER-007` Create a gameinfo snapshot/query plan before moving
+  `FI.games`.
+  Evidence: `Documentation/codex/modern/filesystem/gameinfo-snapshot-plan.md`.
+
+## Phase 29: Filesystem Folder Decluttering And Compat Relocation
+
+- [x] `FS-DECLUTTER-001` Move compatibility adapter sources and headers out of
+  the legacy `filesystem/` folder.
+  Evidence: `Documentation/codex/done/todo/filesystem_decluttering_todo.md`,
+  `src/filesystem/compat/`, `src/include/filesystem/compat/`,
+  `filesystem/wscript`; `filesystem/` now contains 17 files; command
+  `.\waf.bat build --targets=test_interface,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive,test_filesystem_runtime`
+  passed on 2026-05-09; `.\waf.bat build`, direct
+  `build\filesystem\test_interface.exe`, direct
+  `build\filesystem\test_file-handle.exe`, direct
+  `build\filesystem\test_archive-order.exe`, direct
+  `build\filesystem\test_wad-archive.exe`, direct
+  `build\filesystem\test_zip-archive.exe`, direct
+  `build\src\test_filesystem_runtime.exe`, and direct
+  `build\src\test_filesystem_file_handle_ops.exe` passed.
+- [x] `FS-DECLUTTER-002` Move private compatibility headers out of
+  `filesystem/` once the remaining legacy `.c` bodies include narrower paths.
+  Evidence: private headers moved to
+  `src/include/filesystem/compat/private/`; `filesystem/` now contains 13
+  files; command
+  `.\waf.bat build --targets=test_interface,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive,test_filesystem_runtime`
+  passed on 2026-05-09; `.\waf.bat build`, direct
+  `build\filesystem\test_interface.exe`, direct
+  `build\filesystem\test_file-handle.exe`, direct
+  `build\filesystem\test_archive-order.exe`, direct
+  `build\filesystem\test_wad-archive.exe`, direct
+  `build\filesystem\test_zip-archive.exe`, direct
+  `build\src\test_filesystem_runtime.exe`, and direct
+  `build\src\test_filesystem_file_handle_ops.exe` passed.
+- [x] `FS-DECLUTTER-003` Split `filesystem.c` into export/runtime glue and
+  focused legacy compatibility bodies.
+  Evidence: `src/filesystem/compat/stringlist_legacy.cpp`,
+  `src/filesystem/compat/memory_legacy.cpp`, `filesystem/filesystem.c`;
+  command
+  `.\waf.bat build --targets=test_interface,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive,test_filesystem_runtime`
+  passed on 2026-05-09; `.\waf.bat build`, direct
+  `build\filesystem\test_interface.exe`, direct
+  `build\filesystem\test_file-handle.exe`, direct
+  `build\filesystem\test_archive-order.exe`, direct
+  `build\filesystem\test_wad-archive.exe`, direct
+  `build\filesystem\test_zip-archive.exe`, direct
+  `build\src\test_filesystem_runtime.exe`, and direct
+  `build\src\test_filesystem_file_handle_ops.exe` passed.
+- [x] `FS-DECLUTTER-004` Move `VFileSystem009.cpp` into a compatibility source
+  location while preserving `VFileSystem009.h` in the public legacy folder.
+  Evidence: `src/filesystem/compat/VFileSystem009.cpp`,
+  `filesystem/VFileSystem009.h`, `filesystem/wscript`; command
+  `.\waf.bat build --targets=test_interface,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive,test_filesystem_runtime`
+  passed on 2026-05-09; `.\waf.bat build`, direct
+  `build\filesystem\test_interface.exe`, direct
+  `build\filesystem\test_file-handle.exe`, direct
+  `build\filesystem\test_archive-order.exe`, direct
+  `build\filesystem\test_wad-archive.exe`, direct
+  `build\filesystem\test_zip-archive.exe`, direct
+  `build\src\test_filesystem_runtime.exe`, and direct
+  `build\src\test_filesystem_file_handle_ops.exe` passed.
+- [x] `FS-DECLUTTER-005` Reassess whether `dir.c`, `pak.c`, `wad.c`, `zip.c`,
+  and `android.c` can become smaller backend shims or move under compat.
+  Evidence: `src/filesystem/compat/dir.c`,
+  `src/filesystem/compat/pak.c`, `src/filesystem/compat/wad.c`,
+  `src/filesystem/compat/zip.c`, `src/filesystem/compat/android.c`,
+  `filesystem/wscript`; `filesystem/` now contains 7 files; command
+  `.\waf.bat build --targets=test_interface,test_file-handle,test_archive-order,test_wad-archive,test_zip-archive,test_filesystem_runtime`
+  passed on 2026-05-09; `.\waf.bat build`, direct
+  `build\filesystem\test_interface.exe`, direct
+  `build\filesystem\test_file-handle.exe`, direct
+  `build\filesystem\test_archive-order.exe`, direct
+  `build\filesystem\test_wad-archive.exe`, direct
+  `build\filesystem\test_zip-archive.exe`, direct
+  `build\src\test_filesystem_runtime.exe`, and direct
+  `build\src\test_filesystem_file_handle_ops.exe` passed.
+- [x] `FS-DECLUTTER-006` Update the folder migration map after each physical
+  move.
+  Evidence: `Documentation/codex/modern/filesystem/filesystem-folder-migration-map.md`,
+  `Documentation/codex/done/todo/filesystem_decluttering_todo.md`.
+
+## Phase 30: Filesystem Logging And Diagnostics Streamlining
+
+- [ ] `FS-LOG-001` Inventory filesystem logging and fatal-error call sites.
+  Evidence: `Documentation/codex/todo/filesystem_logging_todo.md`.
+- [ ] `FS-LOG-002` Define a filesystem logging facade backed by existing
+  engine callbacks.
+  Evidence:
+- [ ] `FS-LOG-003` Add structured log categories for filesystem runtime work.
+  Evidence:
+- [ ] `FS-LOG-004` Add tests for log capture where behavior depends on
+  diagnostics.
+  Evidence:
+- [ ] `FS-LOG-005` Route modern backend/handler code through the logging
+  facade.
+  Evidence:
+- [ ] `FS-LOG-006` Define release-build behavior for trace-heavy filesystem
+  diagnostics.
+  Evidence:
+
+## Phase 31: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push modernization commits to remote branch.
   Evidence:
@@ -924,3 +1099,5 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-023 | Preserve current path rejection semantics exactly in `PathPolicy`, including direct-path bypass after empty-path rejection and the single leading `../` strip quirk. | `src/include/filesystem/path_policy.hpp`, `tests/filesystem/path_policy.cpp`, `filesystem/filesystem.c` |
 | 2026-05-09 | DEC-024 | Treat `src/filesystem` as the long-term implementation home and shrink `filesystem/` toward stable facades plus temporary adapters. | `modern/filesystem/filesystem-folder-migration-map.md`, `done/todo/backend_implementation_migration_todo.md` |
 | 2026-05-09 | DEC-025 | Keep `VFileSystem009.h` frozen, and move compatibility logic behind private runtime adapter calls instead of exposing modern C++ types through the public vtable. | `filesystem/VFileSystem009.cpp`, `src/include/filesystem/valve_path_resolver.hpp`, `tests/filesystem/interface.cpp` |
+| 2026-05-09 | DEC-026 | Consolidate legacy compatibility toward a future `src/filesystem/legacy_adapter.cpp` boundary while keeping `filesystem/` as the temporary export/facade layer. | `todo/modern_filesystem_handlers_todo.md`, `modern/filesystem/export-dependency-audit.md` |
+| 2026-05-09 | DEC-027 | Treat filesystem logging as a migration blocker in its own right, because direct `Con_*` calls keep modern handlers coupled to engine globals. | `todo/filesystem_logging_todo.md` |

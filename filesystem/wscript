@@ -42,20 +42,13 @@ def build(bld):
 
 	facade_sources = [
 		'filesystem.c',
-		'VFileSystem009.cpp',
 	]
-	backend_adapter_sources = [
-		'android.c',
-		'dir.c',
-		'pak.c',
-		'wad.c',
-		'zip.c',
-	]
-	adapter_sources = bld.path.ant_glob('*_adapter.cpp')
+	compat_dir = bld.path.parent.find_node('src/filesystem/compat')
+	compat_sources = compat_dir.ant_glob('*.c') + compat_dir.ant_glob('*.cpp')
 
 	bld.shlib(target = 'filesystem_stdio',
 		features = 'seq',
-		source = facade_sources + backend_adapter_sources + adapter_sources,
+		source = facade_sources + compat_sources,
 		use = libs,
 		install_path = bld.env.LIBDIR)
 

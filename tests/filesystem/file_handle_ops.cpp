@@ -14,6 +14,7 @@ static bool TestLogicalPosition()
 	cursor.realLength = 20;
 
 	return FileHandleOps::logicalPosition(cursor) == 7 &&
+		FileHandleOps::length(cursor) == 20 &&
 		!FileHandleOps::isEof(cursor);
 }
 

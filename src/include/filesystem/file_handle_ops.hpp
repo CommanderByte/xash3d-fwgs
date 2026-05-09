@@ -34,6 +34,7 @@ class FileHandleOps
 {
 public:
 	static fs_offset_t logicalPosition(const FileHandleCursor &cursor);
+	static fs_offset_t length(const FileHandleCursor &cursor);
 	static bool isEof(const FileHandleCursor &cursor);
 	static bool canSeekWithinBuffer(
 		const FileHandleCursor &cursor,

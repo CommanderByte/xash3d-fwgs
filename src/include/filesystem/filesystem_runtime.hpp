@@ -36,6 +36,13 @@ struct FileHandleMemoryOps
 	void (*free)(void *context, file_t *file);
 };
 
+struct SearchPathMemoryOps
+{
+	void *context;
+	searchpath_t *(*alloc)(void *context, bool clear);
+	void (*free)(void *context, searchpath_t *path);
+};
+
 struct FilesystemRescanPlan
 {
 	uint32_t mountFlags;
@@ -69,6 +76,10 @@ public:
 	file_t *allocateFile(const FileHandleMemoryOps &ops,
 		bool clear = true) const;
 	void freeFile(const FileHandleMemoryOps &ops, file_t *file) const;
+	searchpath_t *allocateSearchPath(const SearchPathMemoryOps &ops,
+		bool clear = true) const;
+	void freeSearchPath(const SearchPathMemoryOps &ops,
+		searchpath_t *path) const;
 
 	FilesystemRescanPlan beginRescan(uint32_t flags,
 		const char *language, uint32_t allowedMountFlags,

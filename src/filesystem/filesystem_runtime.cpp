@@ -147,6 +147,22 @@ void FilesystemRuntime::freeFile(const FileHandleMemoryOps &ops,
 		ops.free(ops.context, file);
 }
 
+searchpath_t *FilesystemRuntime::allocateSearchPath(
+	const SearchPathMemoryOps &ops, bool clear) const
+{
+	if (!ops.alloc)
+		return NULL;
+
+	return ops.alloc(ops.context, clear);
+}
+
+void FilesystemRuntime::freeSearchPath(const SearchPathMemoryOps &ops,
+	searchpath_t *path) const
+{
+	if (path && ops.free)
+		ops.free(ops.context, path);
+}
+
 FilesystemRescanPlan FilesystemRuntime::beginRescan(uint32_t flags,
 	const char *language, uint32_t allowedMountFlags,
 	uint32_t localizationFlag)

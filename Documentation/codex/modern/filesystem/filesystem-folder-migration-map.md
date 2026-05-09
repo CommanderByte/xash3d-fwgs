@@ -9,8 +9,9 @@ The desired end state is:
 
 - `src/filesystem/` owns implementation.
 - `src/include/filesystem/` owns private modern contracts.
-- `filesystem/` contains only build/export glue and thin compatibility
-  adapters, then shrinks further when callers are ready.
+- `filesystem/` contains only public ABI headers, export metadata, build glue,
+  the compatibility umbrella, and `filesystem.c` until its exported runtime
+  facade can be split safely.
 - completed TODO and audit documents move into `Documentation/codex/done/`
   after their implementation evidence is committed.
 
@@ -20,18 +21,25 @@ The desired end state is:
 | --- | --- | --- |
 | `filesystem/filesystem.h` | Public C ABI facade. | Keep stable until a deliberate ABI version bump. |
 | `filesystem/VFileSystem009.h` | Public Valve-style C++ ABI facade. | Keep stable; do not expose modern types. |
-| `filesystem/VFileSystem009.cpp` | C++ facade implementation plus wrapper behavior. | Thin wrapper over modern runtime; keep ABI shape. |
+| `src/filesystem/compat/VFileSystem009.cpp` | C++ facade implementation plus wrapper behavior. | Thin wrapper over modern runtime; keep ABI shape. |
 | `filesystem/fscallback.h` | Legacy callback convenience header. | Keep until callback users migrate or compatibility facade changes. |
-| `filesystem/filesystem_internal.h` | Large private legacy internals header. | Split/shrink into focused adapter headers. |
+| `filesystem/filesystem_internal.h` | Compatibility umbrella for legacy filesystem private headers. | Keep only for large legacy `.c` bodies until they finish shrinking. |
+| `src/include/filesystem/compat/private/filesystem_private_types.h` | Private legacy layouts for `file_t`, `searchpath_t`, `stringlist_t`, and backend type enums. | Keep private; modern code should prefer target-neutral contracts. |
+| `src/include/filesystem/compat/private/filesystem_private_globals.h` | Private declarations for legacy global filesystem state. | Shrink as globals move behind `FilesystemRuntime`/query APIs. |
+| `src/include/filesystem/compat/private/filesystem_private_memory.h` | Private memory and engine callback macros. | Replace with logging/memory facades as Phase 30 progresses. |
+| `src/include/filesystem/compat/private/filesystem_private_api.h` | Private declarations for legacy `FS_*` entry points used by adapters. | Shrink toward `src/filesystem/legacy_adapter.cpp`. |
 | `filesystem/filesystem.c` | Runtime orchestration, globals, file handles, search paths, API table. | Shrink into C facade and runtime adapter over `FilesystemRuntime`. |
-| `filesystem/dir.c` | Directory cache/search/case-fix implementation. | Move behavior into `DirectoryBackend`; leave adapter only. |
-| `filesystem/pak.c` | PAK parsing/search/open implementation. | Move behavior into `PakBackend`; leave adapter only. |
-| `filesystem/wad.c` | WAD parsing/lump lookup/load implementation. | Move behavior into `WadBackend`; leave adapter only. |
-| `filesystem/zip.c` | ZIP/PK3 parsing/search/open/deflate setup. | Move behavior into `ZipBackend`; leave adapter only. |
-| `filesystem/android.c` | Android asset implementation under platform guard. | Move behavior into `AndroidAssetsBackend`; leave platform adapter only. |
-| `filesystem/*_adapter.cpp/.h` | Bridge modern helpers/backends to legacy C callbacks. | Keep while legacy facades exist; remove when no longer needed. |
+| `src/filesystem/compat/*.cpp` | DLL-only compatibility adapters for modern helpers/backends and legacy callbacks. | Shrink toward one explicit legacy adapter boundary as legacy `.c` bodies disappear. |
+| `src/filesystem/compat/stringlist_legacy.cpp` | Legacy stringlist and directory-listing helper bodies moved out of `filesystem.c`. | Replace with safer target-neutral listing/query helpers later. |
+| `src/filesystem/compat/memory_legacy.cpp` | Legacy memory wrapper bodies moved out of `filesystem.c`. | Replace with explicit memory facade once engine allocation policy is isolated. |
+| `src/include/filesystem/compat/*.h` | Private compatibility adapter declarations used by the filesystem DLL. | Keep private; do not expose through public ABI headers. |
+| `src/filesystem/compat/dir.c` | Directory cache/search/case-fix compatibility body. | Shrink further as `DirectoryBackend` owns more platform behavior. |
+| `src/filesystem/compat/pak.c` | PAK compatibility body. | Shrink further as `PakBackend` owns more archive ownership behavior. |
+| `src/filesystem/compat/wad.c` | WAD compatibility body. | Shrink further as `WadBackend` owns more archive ownership behavior. |
+| `src/filesystem/compat/zip.c` | ZIP/PK3 compatibility body. | Shrink further as `ZipBackend` owns more archive ownership behavior. |
+| `src/filesystem/compat/android.c` | Android asset compatibility body under platform guard. | Keep JNI/platform calls isolated while target-neutral Android assets backend grows. |
 | `filesystem/exports.txt` | Export list. | Keep until build/export model changes. |
-| `filesystem/wscript` | Legacy DLL build target. | Gradually change source list toward modern implementation plus facades. |
+| `filesystem/wscript` | Filesystem DLL build target. | Compile legacy bodies plus DLL-only compat sources from `src/filesystem/compat`. |
 
 ## Migration Principles
 

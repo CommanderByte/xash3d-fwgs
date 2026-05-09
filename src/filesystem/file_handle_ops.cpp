@@ -10,6 +10,11 @@ fs_offset_t FileHandleOps::logicalPosition(const FileHandleCursor &cursor)
 	return cursor.position - cursor.bufferLength + cursor.bufferIndex;
 }
 
+fs_offset_t FileHandleOps::length(const FileHandleCursor &cursor)
+{
+	return cursor.realLength;
+}
+
 bool FileHandleOps::isEof(const FileHandleCursor &cursor)
 {
 	return logicalPosition(cursor) == cursor.realLength;

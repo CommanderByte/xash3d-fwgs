@@ -30,8 +30,6 @@ GNU General Public License for more details.
 #include "utflib.h"
 #elif XASH_DOS4GW
 #include <direct.h>
-#else
-#include <dirent.h>
 #endif
 #include <stdio.h>
 #include <stdarg.h>
@@ -44,13 +42,13 @@ GNU General Public License for more details.
 #include "crclib.h"
 #include "filesystem.h"
 #include "filesystem_internal.h"
-#include "archive_registry_adapter.h"
-#include "file_handle_ops_adapter.h"
-#include "filesystem_runtime_adapter.h"
-#include "game_hierarchy_adapter.h"
-#include "library_locator_adapter.h"
-#include "path_policy_adapter.h"
-#include "search_result_builder_adapter.h"
+#include "filesystem/compat/archive_registry_adapter.h"
+#include "filesystem/compat/file_handle_ops_adapter.h"
+#include "filesystem/compat/filesystem_runtime_adapter.h"
+#include "filesystem/compat/game_hierarchy_adapter.h"
+#include "filesystem/compat/library_locator_adapter.h"
+#include "filesystem/compat/path_policy_adapter.h"
+#include "filesystem/compat/search_result_builder_adapter.h"
 #include "xash3d_mathlib.h"
 #include "common/com_strings.h"
 #include "common/protocol.h"
@@ -368,154 +366,6 @@ static void FS_BackupFileName( file_t *file, const char *path, uint options ) {}
 
 static void FS_InitMemory( void );
 static void FS_Purge( file_t* file );
-
-void _Mem_Free( void *data, const char *filename, int fileline )
-{
-	g_engfuncs._Mem_Free( data, filename, fileline );
-}
-
-void *_Mem_Alloc( poolhandle_t poolptr, size_t size, qboolean clear, const char *filename, int fileline )
-{
-	return g_engfuncs._Mem_Alloc( poolptr, size, clear, filename, fileline );
-}
-
-/*
-=============================================================================
-
-FILEMATCH COMMON SYSTEM
-
-=============================================================================
-*/
-void stringlistinit( stringlist_t *list )
-{
-	memset( list, 0, sizeof( *list ));
-}
-
-void stringlistfreecontents( stringlist_t *list )
-{
-	int	i;
-
-	for( i = 0; i < list->numstrings; i++ )
-	{
-		if( list->strings[i] )
-			Mem_Free( list->strings[i] );
-		list->strings[i] = NULL;
-	}
-
-	if( list->strings )
-		Mem_Free( list->strings );
-
-	list->numstrings = 0;
-	list->maxstrings = 0;
-	list->strings = NULL;
-}
-
-void stringlistappend( stringlist_t *list, const char *text )
-{
-	size_t	textlen;
-
-	if( !Q_strcmp( text, "." ) || !Q_strcmp( text, ".." ))
-		return; // ignore the virtual directories
-
-	if( list->numstrings >= list->maxstrings )
-	{
-		list->maxstrings += 4096;
-		list->strings = Mem_Realloc( fs_mempool, list->strings, list->maxstrings * sizeof( *list->strings ));
-	}
-
-	textlen = Q_strlen( text ) + 1;
-	list->strings[list->numstrings] = Mem_Calloc( fs_mempool, textlen );
-	memcpy( list->strings[list->numstrings], text, textlen );
-	list->numstrings++;
-}
-
-void stringlistsort( stringlist_t *list )
-{
-	char	*temp;
-	int	i, j;
-
-	// this is a selection sort (finds the best entry for each slot)
-	for( i = 0; i < list->numstrings - 1; i++ )
-	{
-		for( j = i + 1; j < list->numstrings; j++ )
-		{
-			if( Q_strcmp( list->strings[i], list->strings[j] ) > 0 )
-			{
-				temp = list->strings[i];
-				list->strings[i] = list->strings[j];
-				list->strings[j] = temp;
-			}
-		}
-	}
-}
-
-#if XASH_DOS4GW
-// convert names to lowercase because dos doesn't care, but pattern matching code often does
-static void listlowercase( stringlist_t *list )
-{
-	char	*c;
-	int	i;
-
-	for( i = 0; i < list->numstrings; i++ )
-	{
-		for( c = list->strings[i]; *c; c++ )
-			*c = Q_tolower( *c );
-	}
-}
-#endif
-
-void listdirectory( stringlist_t *list, const char *path, qboolean dirs_only )
-{
-#if XASH_WIN32
-	char pattern[4096];
-	struct _finddata_t n_file;
-	intptr_t hFile;
-
-	Q_snprintf( pattern, sizeof( pattern ), "%s/*", path );
-
-	// ask for the directory listing handle
-	hFile = _findfirst( pattern, &n_file );
-	if( hFile == -1 ) return;
-
-	// start a new chain with the the first name
-	stringlistappend( list, n_file.name );
-	// iterate through the directory
-	while( _findnext( hFile, &n_file ) == 0 )
-	{
-		if( dirs_only && !FBitSet( n_file.attrib, _A_SUBDIR ))
-			continue;
-
-		stringlistappend( list, n_file.name );
-	}
-	_findclose( hFile );
-#else
-	DIR *dir;
-	struct dirent *entry;
-
-	dir = opendir( path );
-
-	if( !dir )
-		return;
-
-	// iterate through the directory
-	while(( entry = readdir( dir )))
-	{
-#if HAVE_DIRENT_D_TYPE
-		if( dirs_only && entry->d_type != DT_DIR && entry->d_type != DT_LNK && entry->d_type != DT_UNKNOWN )
-			continue;
-#endif
-
-		stringlistappend( list, entry->d_name );
-	}
-
-	closedir( dir );
-#endif
-
-#if XASH_DOS4GW
-	// convert names to lowercase because 8.3 always in CAPS
-	listlowercase( list );
-#endif
-}
 
 /*
 =============================================================================
@@ -2745,12 +2595,7 @@ Get the next character of a file
 */
 int FS_Getc( file_t *file )
 {
-	char	c;
-
-	if( FS_Read( file, &c, 1 ) != 1 )
-		return EOF;
-
-	return c;
+	return FS_FileHandleGetc( file, FS_Read );
 }
 
 /*
@@ -2762,12 +2607,7 @@ Put a character back into the read buffer (only supports one character!)
 */
 int FS_UnGetc( file_t *file, char c )
 {
-	// If there's already a character waiting to be read
-	if( file->ungetc != EOF )
-		return EOF;
-
-	file->ungetc = c;
-	return c;
+	return FS_FileHandleUnGetc( file, c );
 }
 
 /*
@@ -2779,30 +2619,7 @@ Same as fgets
 */
 int FS_Gets( file_t *file, char *string, size_t bufsize )
 {
-	int	c, end = 0;
-
-	while( 1 )
-	{
-		c = FS_Getc( file );
-
-		if( c == '\r' || c == '\n' || c < 0 )
-			break;
-
-		if( end < bufsize - 1 )
-			string[end++] = c;
-	}
-	string[end] = 0;
-
-	// remove \n following \r
-	if( c == '\r' )
-	{
-		c = FS_Getc( file );
-
-		if( c != '\n' )
-			FS_UnGetc( file, c );
-	}
-
-	return c;
+	return FS_FileHandleGets( file, string, bufsize, FS_Read );
 }
 
 /*
@@ -3219,8 +3036,7 @@ return size of file in bytes
 */
 fs_offset_t FS_FileLength( const file_t *f )
 {
-	if( !f ) return 0;
-	return f->real_length;
+	return FS_FileHandleLength( f );
 }
 
 /*
@@ -3376,8 +3192,7 @@ search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 {
 	search_t *search = NULL;
 	searchpath_t *searchpath;
-	int numfiles;
-	size_t numchars;
+	size_t searchbytes;
 	stringlist_t resultlist;
 
 	if( pattern[0] == '.' || pattern[0] == ':' || pattern[0] == '/' || pattern[0] == '\\' )
@@ -3396,14 +3211,14 @@ search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 
 	if( resultlist.numstrings )
 	{
-		FS_SearchResult_Sort( &resultlist );
-		numfiles = resultlist.numstrings;
-		numchars = FS_SearchResult_PackedStringBytes( &resultlist );
-		search = Mem_Calloc( fs_mempool, sizeof(search_t) + numchars + numfiles * sizeof( char* ));
-		search->filenames = (char **)((char *)search + sizeof( search_t ));
-		search->filenamesbuffer = (char *)((char *)search + sizeof( search_t ) + numfiles * sizeof( char* ));
-		search->numfilenames = (int)numfiles;
-		FS_SearchResult_CopyPacked( &resultlist, search );
+		FS_SearchResult_Prepare( &resultlist );
+		searchbytes = FS_SearchResult_AllocationBytes( &resultlist );
+
+		if( searchbytes )
+		{
+			search = Mem_Calloc( fs_mempool, searchbytes );
+			FS_SearchResult_Init( &resultlist, search );
+		}
 	}
 
 	stringlistfreecontents( &resultlist );

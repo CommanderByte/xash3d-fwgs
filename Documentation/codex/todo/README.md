@@ -15,5 +15,8 @@ Active documents:
   debugging utility layer.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
-- [search_results_todo.md](search_results_todo.md) tracks `FS_Search` and
-  `search_t` result assembly migration.
+- [filesystem_logging_todo.md](filesystem_logging_todo.md) tracks filesystem
+  console-output and structured logging migration.
+- [modern_filesystem_handlers_todo.md](modern_filesystem_handlers_todo.md)
+  tracks migration of legacy-facing behavior into modern handlers and a future
+  `src/filesystem/legacy_adapter.cpp` boundary.

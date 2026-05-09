@@ -11,6 +11,8 @@ migration phases and decisions.
 
 - [debugging/](debugging/README.md) contains detailed architecture notes for
   the modern shared debugging utility layer.
+- [filesystem/](filesystem/) contains filesystem modernization audits,
+  ownership boundaries, and compatibility notes.
 - [thread-safe-debugging-utilities.md](thread-safe-debugging-utilities.md)
   describes the shared debugging, snapshot, serialization, and trace utility
   model intended for the rewrite.

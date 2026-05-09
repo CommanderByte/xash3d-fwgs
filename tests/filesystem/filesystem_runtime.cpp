@@ -200,6 +200,48 @@ static bool TestFileHandleMemory()
 		state.freeCalls == 1;
 }
 
+struct SearchPathMemoryState
+{
+	int allocCalls;
+	int freeCalls;
+	searchpath_t *path;
+};
+
+static searchpath_t *TestAllocSearchPath(void *context, bool clear)
+{
+	SearchPathMemoryState *state =
+		static_cast<SearchPathMemoryState *>(context);
+	state->allocCalls++;
+	return clear ? state->path : NULL;
+}
+
+static void TestFreeSearchPath(void *context, searchpath_t *path)
+{
+	SearchPathMemoryState *state =
+		static_cast<SearchPathMemoryState *>(context);
+	if (path == state->path)
+		state->freeCalls++;
+}
+
+static bool TestSearchPathMemory()
+{
+	FilesystemRuntime runtime;
+	SearchPathMemoryState state = {};
+	state.path = reinterpret_cast<searchpath_t *>(&state);
+	SearchPathMemoryOps ops = {
+		&state,
+		TestAllocSearchPath,
+		TestFreeSearchPath
+	};
+
+	searchpath_t *path = runtime.allocateSearchPath(ops);
+	runtime.freeSearchPath(ops, path);
+
+	return path == state.path &&
+		state.allocCalls == 1 &&
+		state.freeCalls == 1;
+}
+
 static bool TestBeginRescanPlan()
 {
 	FilesystemRuntime runtime;
@@ -228,6 +270,7 @@ int main()
 		!TestClearDropsUnmountedWritePath() ||
 		!TestMissingSearchPathCallbacksAreNoop() ||
 		!TestFileHandleMemory() ||
+		!TestSearchPathMemory() ||
 		!TestBeginRescanPlan())
 	{
 		return EXIT_FAILURE;
