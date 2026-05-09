@@ -732,18 +732,30 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 21: PAK Implementation Body Migration
 
-- [ ] `FS-PAK-IMPL-001` Audit `filesystem/pak.c` responsibilities and expand
+- [x] `FS-PAK-IMPL-001` Audit `filesystem/pak.c` responsibilities and expand
   tests for uncovered PAK parsing/search/open behavior.
-  Evidence:
-- [ ] `FS-PAK-IMPL-002` Move PAK parsing and file table lookup into
+  Evidence: `Documentation/codex/modern/filesystem/pak-implementation-audit.md`,
+  `tests/filesystem/archive-order.c`.
+- [x] `FS-PAK-IMPL-002` Move PAK parsing and file table lookup into
   `src/filesystem/pak_backend.cpp`.
-  Evidence:
-- [ ] `FS-PAK-IMPL-003` Move PAK open/search behavior into
+  Evidence: `src/filesystem/pak_backend.cpp`,
+  `filesystem/pak_backend_adapter.cpp`, `filesystem/pak.c`;
+  `.\waf.bat build --targets=test_filesystem_pak_backend,test_archive-order`
+  passed on 2026-05-09.
+- [x] `FS-PAK-IMPL-003` Move PAK open/search behavior into
   `src/filesystem/pak_backend.cpp` while preserving the C callback adapter.
-  Evidence:
-- [ ] `FS-PAK-IMPL-004` Shrink `filesystem/pak.c` to adapter-only or document
+  Evidence: `src/filesystem/pak_backend.cpp`,
+  `filesystem/pak_backend_adapter.cpp`, `filesystem/pak.c`;
+  `.\waf.bat build --targets=test_filesystem_pak_backend,test_archive-order`
+  passed on 2026-05-09.
+- [x] `FS-PAK-IMPL-004` Shrink `filesystem/pak.c` to adapter-only or document
   remaining blockers.
-  Evidence:
+  Evidence: `filesystem/pak.c` now delegates PAK parsing, entry lookup, search,
+  open orchestration, and packed-entry open through
+  `filesystem/pak_backend_adapter.cpp`; remaining `pack_t`,
+  `FS_AddPak_Fullpath`, and `FS_CheckForQuakePak` ownership blockers are
+  documented in
+  `Documentation/codex/modern/filesystem/pak-implementation-audit.md`.
 
 ## Phase 22: ZIP/PK3 Implementation Body Migration
 

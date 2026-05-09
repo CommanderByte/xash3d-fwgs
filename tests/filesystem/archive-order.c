@@ -31,12 +31,14 @@ static qboolean WritePakFixture( const char *path )
 {
 	static const char packed_same[] = "packed same";
 	static const char packed_only[] = "packed only";
+	static const char packed_nested[] = "packed nested";
 	test_pak_header_t header;
-	test_pak_file_t entries[2];
+	test_pak_file_t entries[3];
 	FILE *file;
 	int data_offset = sizeof( header );
 	int second_offset = data_offset + (int)sizeof( packed_same ) - 1;
-	int dir_offset = second_offset + (int)sizeof( packed_only ) - 1;
+	int third_offset = second_offset + (int)sizeof( packed_only ) - 1;
+	int dir_offset = third_offset + (int)sizeof( packed_nested ) - 1;
 
 	memset( &header, 0, sizeof( header ));
 	memset( entries, 0, sizeof( entries ));
@@ -53,6 +55,10 @@ static qboolean WritePakFixture( const char *path )
 	entries[1].filepos = second_offset;
 	entries[1].filelen = sizeof( packed_only ) - 1;
 
+	strncpy( entries[2].name, "folder/Nested.TXT", sizeof( entries[2].name ) - 1 );
+	entries[2].filepos = third_offset;
+	entries[2].filelen = sizeof( packed_nested ) - 1;
+
 	file = fopen( path, "wb" );
 	if( !file )
 		return false;
@@ -60,6 +66,7 @@ static qboolean WritePakFixture( const char *path )
 	if( fwrite( &header, 1, sizeof( header ), file ) != sizeof( header ) ||
 		fwrite( packed_same, 1, sizeof( packed_same ) - 1, file ) != sizeof( packed_same ) - 1 ||
 		fwrite( packed_only, 1, sizeof( packed_only ) - 1, file ) != sizeof( packed_only ) - 1 ||
+		fwrite( packed_nested, 1, sizeof( packed_nested ) - 1, file ) != sizeof( packed_nested ) - 1 ||
 		fwrite( entries, 1, sizeof( entries ), file ) != sizeof( entries ))
 	{
 		fclose( file );
@@ -67,6 +74,30 @@ static qboolean WritePakFixture( const char *path )
 	}
 
 	fclose( file );
+	return true;
+}
+
+static qboolean ExpectSearchResult( const search_t *search, int index, const char *expected )
+{
+	if( !search )
+	{
+		printf( "missing search result for %s\n", expected );
+		return false;
+	}
+
+	if( index >= search->numfilenames )
+	{
+		printf( "missing search index %d for %s\n", index, expected );
+		return false;
+	}
+
+	if( strcmp( search->filenames[index], expected ))
+	{
+		printf( "search result %d mismatch: got %s expected %s\n",
+			index, search->filenames[index], expected );
+		return false;
+	}
+
 	return true;
 }
 
@@ -92,6 +123,37 @@ static qboolean CheckLoadedText( const char *path, const char *expected )
 	return true;
 }
 
+static qboolean CheckDirectPakSearchResults( void )
+{
+	search_t *search = g_fs.Search( "*.txt", true, true );
+	search_t *nested_search;
+
+	if( !search )
+		return false;
+
+	if( search->numfilenames != 2 )
+	{
+		printf( "expected 2 direct pak search results, got %d\n", search->numfilenames );
+		return false;
+	}
+
+	if( !ExpectSearchResult( search, 0, "onlypak.txt" ) ||
+		!ExpectSearchResult( search, 1, "same.txt" ))
+		return false;
+
+	nested_search = g_fs.Search( "folder/*.txt", true, true );
+	if( !nested_search )
+		return false;
+
+	if( nested_search->numfilenames != 1 )
+	{
+		printf( "expected 1 nested pak search result, got %d\n", nested_search->numfilenames );
+		return false;
+	}
+
+	return ExpectSearchResult( nested_search, 0, "folder/Nested.TXT" );
+}
+
 static qboolean TestPakAndLoosePrecedence( void )
 {
 	static const char loose_same[] = "loose same";
@@ -114,6 +176,9 @@ static qboolean TestPakAndLoosePrecedence( void )
 		return false;
 
 	if( !CheckLoadedText( "onlypak.txt", "packed only" ))
+		return false;
+
+	if( !CheckLoadedText( "FOLDER/nested.txt", "packed nested" ))
 		return false;
 
 	return true;
@@ -145,6 +210,12 @@ static qboolean TestDirectPakMount( void )
 	}
 
 	if( !CheckLoadedText( "onlypak.txt", "packed only" ))
+		return false;
+
+	if( !CheckLoadedText( "ONLYPAK.TXT", "packed only" ))
+		return false;
+
+	if( !CheckDirectPakSearchResults() )
 		return false;
 
 	if( g_fs.MountArchive_Fullpath( "unsupported.vpk", FS_GAMEDIR_PATH ))

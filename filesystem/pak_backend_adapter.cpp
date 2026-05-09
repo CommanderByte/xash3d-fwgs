@@ -100,6 +100,138 @@ struct PakBackendBridge
 	PakBackend backend;
 };
 
+xash::filesystem::PakArchiveView MakeArchiveView(
+	const fs_pak_archive_view_t *archive)
+{
+	xash::filesystem::PakArchiveView view = {
+		archive ? archive->source : NULL,
+		archive ? archive->handle : NULL,
+		archive ? archive->fileCount : 0,
+		reinterpret_cast<xash::filesystem::PakFileEntry *>(
+			archive ? archive->files : NULL)
+	};
+	return view;
+}
+
+file_t *OpenSystem(void *context, const char *filename, const char *mode)
+{
+	const fs_pak_open_runtime_t *runtime =
+		static_cast<const fs_pak_open_runtime_t *>(context);
+
+	if (!runtime || !runtime->openSystem)
+		return NULL;
+
+	return runtime->openSystem(runtime->context, filename, mode);
+}
+
+int CloseFile(void *context, file_t *file)
+{
+	const fs_pak_open_runtime_t *runtime =
+		static_cast<const fs_pak_open_runtime_t *>(context);
+
+	if (!runtime || !runtime->close)
+		return -1;
+
+	return runtime->close(runtime->context, file);
+}
+
+fs_offset_t ReadFile(void *context, file_t *file, void *buffer, size_t size)
+{
+	const fs_pak_open_runtime_t *runtime =
+		static_cast<const fs_pak_open_runtime_t *>(context);
+
+	if (!runtime || !runtime->read)
+		return -1;
+
+	return runtime->read(runtime->context, file, buffer, size);
+}
+
+int SeekFile(void *context, file_t *file, fs_offset_t offset, int whence)
+{
+	const fs_pak_open_runtime_t *runtime =
+		static_cast<const fs_pak_open_runtime_t *>(context);
+
+	if (!runtime || !runtime->seek)
+		return -1;
+
+	return runtime->seek(runtime->context, file, offset, whence);
+}
+
+void *AllocMemory(void *context, size_t size, bool clear)
+{
+	const fs_pak_open_runtime_t *runtime =
+		static_cast<const fs_pak_open_runtime_t *>(context);
+
+	if (!runtime || !runtime->alloc)
+		return NULL;
+
+	return runtime->alloc(runtime->context, size, clear ? 1 : 0);
+}
+
+void FreeMemory(void *context, void *memory)
+{
+	const fs_pak_open_runtime_t *runtime =
+		static_cast<const fs_pak_open_runtime_t *>(context);
+
+	if (runtime && runtime->free)
+		runtime->free(runtime->context, memory);
+}
+
+bool SearchMatchPattern(void *context, const char *text, const char *pattern,
+	bool caseInsensitive)
+{
+	const fs_pak_search_runtime_t *runtime =
+		static_cast<const fs_pak_search_runtime_t *>(context);
+
+	if (!runtime || !runtime->matchPattern)
+		return false;
+
+	return runtime->matchPattern(runtime->context, text, pattern,
+		caseInsensitive ? 1 : 0) != 0;
+}
+
+int SearchStringCount(void *context, stringlist_t *list)
+{
+	const fs_pak_search_runtime_t *runtime =
+		static_cast<const fs_pak_search_runtime_t *>(context);
+
+	if (!runtime || !runtime->stringCount)
+		return 0;
+
+	return runtime->stringCount(runtime->context, list);
+}
+
+const char *SearchStringAt(void *context, stringlist_t *list, int index)
+{
+	const fs_pak_search_runtime_t *runtime =
+		static_cast<const fs_pak_search_runtime_t *>(context);
+
+	if (!runtime || !runtime->stringAt)
+		return NULL;
+
+	return runtime->stringAt(runtime->context, list, index);
+}
+
+void SearchAppend(void *context, stringlist_t *list, const char *text)
+{
+	const fs_pak_search_runtime_t *runtime =
+		static_cast<const fs_pak_search_runtime_t *>(context);
+
+	if (runtime && runtime->append)
+		runtime->append(runtime->context, list, text);
+}
+
+file_t *OpenHandle(void *context, file_t *package, int offset, int length)
+{
+	const fs_pak_open_file_runtime_t *runtime =
+		static_cast<const fs_pak_open_file_runtime_t *>(context);
+
+	if (!runtime || !runtime->openHandle)
+		return NULL;
+
+	return runtime->openHandle(runtime->context, package, offset, length);
+}
+
 PakBackend *BackendFromHandle(void *backend)
 {
 	PakBackendBridge *bridge = static_cast<PakBackendBridge *>(backend);
@@ -175,6 +307,83 @@ void FS_PakBackendBridge_Search(void *backend, stringlist_t *list,
 {
 	if (PakBackend *pakBackend = BackendFromHandle(backend))
 		pakBackend->search(list, pattern, caseInsensitive != 0);
+}
+
+int FS_PakBackend_OpenArchive(const fs_pak_open_runtime_t *runtime,
+	const char *filename, fs_pak_open_result_t *result)
+{
+	if (!runtime || !result)
+		return static_cast<int>(xash::filesystem::PakLoadStatus::CouldNotOpen);
+
+	xash::filesystem::PakOpenRuntime cppRuntime = {
+		const_cast<fs_pak_open_runtime_t *>(runtime),
+		OpenSystem,
+		CloseFile,
+		ReadFile,
+		SeekFile,
+		AllocMemory,
+		FreeMemory
+	};
+	xash::filesystem::PakOpenResult cppResult;
+	const xash::filesystem::PakLoadStatus status =
+		xash::filesystem::OpenPakArchive(cppRuntime, filename, &cppResult);
+
+	result->handle = cppResult.handle;
+	result->fileCount = cppResult.fileCount;
+	result->files = reinterpret_cast<fs_pak_file_entry_t *>(cppResult.files);
+
+	return static_cast<int>(status);
+}
+
+void FS_PakBackend_SortEntries(fs_pak_file_entry_t *files, int fileCount)
+{
+	xash::filesystem::SortPakEntries(
+		reinterpret_cast<xash::filesystem::PakFileEntry *>(files), fileCount);
+}
+
+int FS_PakBackend_FindFileInArchive(const fs_pak_archive_view_t *archive,
+	const char *path, char *fixedName, size_t fixedNameSize)
+{
+	if (!archive)
+		return -1;
+
+	return xash::filesystem::FindFileInPakArchive(
+		MakeArchiveView(archive), path, fixedName, fixedNameSize);
+}
+
+void FS_PakBackend_SearchArchive(const fs_pak_archive_view_t *archive,
+	const fs_pak_search_runtime_t *runtime, stringlist_t *list,
+	const char *pattern, int caseInsensitive)
+{
+	if (!archive || !runtime)
+		return;
+
+	xash::filesystem::PakSearchRuntime cppRuntime = {
+		const_cast<fs_pak_search_runtime_t *>(runtime),
+		SearchMatchPattern,
+		SearchStringCount,
+		SearchStringAt,
+		SearchAppend
+	};
+
+	xash::filesystem::SearchPakArchive(
+		MakeArchiveView(archive), cppRuntime, list, pattern,
+		caseInsensitive != 0);
+}
+
+file_t *FS_PakBackend_OpenEntry(const fs_pak_archive_view_t *archive,
+	const fs_pak_open_file_runtime_t *runtime, int index)
+{
+	if (!archive || !runtime)
+		return NULL;
+
+	xash::filesystem::PakOpenFileRuntime cppRuntime = {
+		const_cast<fs_pak_open_file_runtime_t *>(runtime),
+		OpenHandle
+	};
+
+	return xash::filesystem::OpenPakEntry(
+		MakeArchiveView(archive), cppRuntime, index);
 }
 
 }

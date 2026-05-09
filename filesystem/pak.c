@@ -38,25 +38,6 @@ PAK FILES
 The .pak files are just a linear collapse of a directory tree
 ========================================================================
 */
-// header
-#define IDPACKV1HEADER	(('K'<<24)+('C'<<16)+('A'<<8)+'P')	// little-endian "PACK"
-
-#define MAX_FILES_IN_PACK	65536 // pak
-
-typedef struct
-{
-	int		ident;
-	int		dirofs;
-	int		dirlen;
-} dpackheader_t;
-
-typedef struct
-{
-	char		name[56];		// total 64 bytes
-	int		filepos;
-	int		filelen;
-} dpackfile_t;
-
 // PAK errors
 #define PAK_LOAD_OK			0
 #define PAK_LOAD_COULDNT_OPEN		1
@@ -71,20 +52,102 @@ struct pack_s
 	file_t *handle;
 	int		numfiles;
 	void *backend;
-	dpackfile_t files[]; // flexible
+	fs_pak_file_entry_t files[]; // flexible
 };
 
-/*
-====================
-FS_SortPak
-
-====================
-*/
-static int FS_SortPak( const void *_a, const void *_b )
+static file_t *PAK_OpenSystemFile( void *context, const char *filename, const char *mode )
 {
-	const dpackfile_t *a = _a, *b = _b;
+	(void)context;
 
-	return Q_stricmp( a->name, b->name );
+	return FS_SysOpen( filename, mode );
+}
+
+static int PAK_CloseFile( void *context, file_t *file )
+{
+	(void)context;
+
+	return FS_Close( file );
+}
+
+static fs_offset_t PAK_ReadFile( void *context, file_t *file, void *buffer, size_t size )
+{
+	(void)context;
+
+	return FS_Read( file, buffer, size );
+}
+
+static int PAK_SeekFile( void *context, file_t *file, fs_offset_t offset, int whence )
+{
+	(void)context;
+
+	return FS_Seek( file, offset, whence );
+}
+
+static void *PAK_Alloc( void *context, size_t size, int clear )
+{
+	(void)context;
+
+	if( clear )
+		return Mem_Calloc( fs_mempool, size );
+
+	return Mem_Malloc( fs_mempool, size );
+}
+
+static void PAK_Free( void *context, void *memory )
+{
+	(void)context;
+
+	Mem_Free( memory );
+}
+
+static fs_pak_archive_view_t PAK_MakeArchiveView( searchpath_t *search )
+{
+	fs_pak_archive_view_t archive;
+
+	archive.source = search->filename;
+	archive.handle = search->pack ? search->pack->handle : NULL;
+	archive.fileCount = search->pack ? search->pack->numfiles : 0;
+	archive.files = search->pack ? search->pack->files : NULL;
+
+	return archive;
+}
+
+static int PAK_SearchMatchPattern( void *context, const char *text, const char *pattern, int caseinsensitive )
+{
+	(void)context;
+
+	return matchpattern( text, pattern, caseinsensitive );
+}
+
+static int PAK_SearchStringCount( void *context, stringlist_t *list )
+{
+	(void)context;
+
+	return list ? list->numstrings : 0;
+}
+
+static const char *PAK_SearchStringAt( void *context, stringlist_t *list, int index )
+{
+	(void)context;
+
+	if( !list || index < 0 || index >= list->numstrings )
+		return NULL;
+
+	return list->strings[index];
+}
+
+static void PAK_SearchAppend( void *context, stringlist_t *list, const char *text )
+{
+	(void)context;
+
+	stringlistappend( list, text );
+}
+
+static file_t *PAK_OpenHandle( void *context, file_t *package, int offset, int length )
+{
+	searchpath_t *search = (searchpath_t *)context;
+
+	return FS_OpenHandle( search, package->handle, offset, length );
 }
 
 /*
@@ -99,99 +162,59 @@ of the list so they override previous pack files.
 */
 static pack_t *FS_LoadPackPAK( const char *packfile, int *error )
 {
-	dpackheader_t header;
-	file_t *packhandle;
-	int         numpackfiles;
-	pack_t      *pack;
-	fs_size_t     c;
-	int i;
+	fs_pak_open_runtime_t runtime;
+	fs_pak_open_result_t result;
+	pack_t *pack;
+	int status;
 
-	// TODO: use FS_Open to allow PK3 to be included into other archives
-	// Currently, it doesn't work with rodir due to FS_FindFile logic
-	// when it will use FS_Open, check that FS_CheckForQuakePak correctly
-	// detects Quake gamedirs in RoDir
-	packhandle = FS_SysOpen( packfile, "rb" );
+	memset( &runtime, 0, sizeof( runtime ));
+	runtime.openSystem = PAK_OpenSystemFile;
+	runtime.close = PAK_CloseFile;
+	runtime.read = PAK_ReadFile;
+	runtime.seek = PAK_SeekFile;
+	runtime.alloc = PAK_Alloc;
+	runtime.free = PAK_Free;
 
-	if( packhandle == NULL )
-	{
+	memset( &result, 0, sizeof( result ));
+	status = FS_PakBackend_OpenArchive( &runtime, packfile, &result );
+
+	if( status == PAK_LOAD_COULDNT_OPEN )
 		Con_Reportf( "%s couldn't open: %s\n", packfile, strerror( errno ));
-		if( error ) *error = PAK_LOAD_COULDNT_OPEN;
-		return NULL;
-	}
-
-	c = FS_Read( packhandle, (void *)&header, sizeof( header ));
-
-	if( c != sizeof( header ) || header.ident != LittleLong( IDPACKV1HEADER ))
-	{
+	else if( status == PAK_LOAD_BAD_HEADER )
 		Con_Reportf( "%s is not a packfile. Ignored.\n", packfile );
-		if( error ) *error = PAK_LOAD_BAD_HEADER;
-		FS_Close( packhandle );
-		return NULL;
-	}
-
-	header.ident = LittleLong( header.ident );
-	header.dirofs = LittleLong( header.dirofs );
-	header.dirlen = LittleLong( header.dirlen );
-
-	if( header.dirlen % sizeof( dpackfile_t ))
-	{
+	else if( status == PAK_LOAD_BAD_FOLDERS )
 		Con_Reportf( S_ERROR "%s has an invalid directory size. Ignored.\n", packfile );
-		if( error ) *error = PAK_LOAD_BAD_FOLDERS;
-		FS_Close( packhandle );
-		return NULL;
-	}
-
-	numpackfiles = header.dirlen / sizeof( dpackfile_t );
-
-	if( numpackfiles > MAX_FILES_IN_PACK )
-	{
-		Con_Reportf( S_ERROR "%s has too many files ( %i ). Ignored.\n", packfile, numpackfiles );
-		if( error ) *error = PAK_LOAD_TOO_MANY_FILES;
-		FS_Close( packhandle );
-		return NULL;
-	}
-
-	if( numpackfiles <= 0 )
-	{
+	else if( status == PAK_LOAD_TOO_MANY_FILES )
+		Con_Reportf( S_ERROR "%s has too many files. Ignored.\n", packfile );
+	else if( status == PAK_LOAD_NO_FILES )
 		Con_Reportf( "%s has no files. Ignored.\n", packfile );
-		if( error ) *error = PAK_LOAD_NO_FILES;
-		FS_Close( packhandle );
-		return NULL;
-	}
-
-	pack = (pack_t *)Mem_Calloc( fs_mempool, sizeof( pack_t ) + sizeof( dpackfile_t ) * numpackfiles );
-	FS_Seek( packhandle, header.dirofs, SEEK_SET );
-
-	if( header.dirlen != FS_Read( packhandle, (void *)pack->files, header.dirlen ))
-	{
+	else if( status == PAK_LOAD_CORRUPTED )
 		Con_Reportf( "%s is an incomplete PAK, not loading\n", packfile );
-		if( error )
-			*error = PAK_LOAD_CORRUPTED;
-		FS_Close( packhandle );
-		Mem_Free( pack );
+
+	if( error )
+		*error = status;
+
+	if( status != PAK_LOAD_OK )
+		return NULL;
+
+	pack = (pack_t *)Mem_Calloc( fs_mempool, sizeof( pack_t ) + sizeof( fs_pak_file_entry_t ) * result.fileCount );
+	if( !pack )
+	{
+		FS_Close( result.handle );
+		Mem_Free( result.files );
 		return NULL;
 	}
 
-	for( i = 0; i < numpackfiles; i++ )
-	{
-		pack->files[i].filepos = LittleLong( pack->files[i].filepos );
-		pack->files[i].filelen = LittleLong( pack->files[i].filelen );
-	}
-
-	// TODO: validate directory?
-
-	pack->handle = packhandle;
-	pack->numfiles = numpackfiles;
-	qsort( pack->files, pack->numfiles, sizeof( pack->files[0] ), FS_SortPak );
+	pack->handle = result.handle;
+	pack->numfiles = result.fileCount;
+	memcpy( pack->files, result.files, sizeof( fs_pak_file_entry_t ) * result.fileCount );
+	Mem_Free( result.files );
 
 #ifdef XASH_REDUCE_FD
 	// will reopen when needed
 	close( pack->handle );
 	pack->handle = -1;
 #endif
-
-	if( error )
-		*error = PAK_LOAD_OK;
 
 	return pack;
 }
@@ -205,11 +228,17 @@ Open a packed file using its package file descriptor
 */
 static file_t *FS_OpenFile_PAK_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
-	dpackfile_t	*pfile;
+	fs_pak_archive_view_t archive = PAK_MakeArchiveView( search );
+	fs_pak_open_file_runtime_t runtime;
 
-	pfile = &search->pack->files[pack_ind];
+	(void)filename;
+	(void)mode;
 
-	return FS_OpenHandle( search, search->pack->handle->handle, pfile->filepos, pfile->filelen );
+	memset( &runtime, 0, sizeof( runtime ));
+	runtime.context = search;
+	runtime.openHandle = PAK_OpenHandle;
+
+	return FS_PakBackend_OpenEntry( &archive, &runtime, pack_ind );
 }
 
 /*
@@ -220,33 +249,9 @@ FS_FindFile_PAK
 */
 static int FS_FindFile_PAK_Legacy( searchpath_t *search, const char *path, char *fixedname, size_t len )
 {
-	int	left, right, middle;
+	fs_pak_archive_view_t archive = PAK_MakeArchiveView( search );
 
-	// look for the file (binary search)
-	left = 0;
-	right = search->pack->numfiles - 1;
-	while( left <= right )
-	{
-		int	diff;
-
-		middle = (left + right) / 2;
-		diff = Q_stricmp( search->pack->files[middle].name, path );
-
-		// Found it
-		if( !diff )
-		{
-			if( fixedname )
-				Q_strncpy( fixedname, search->pack->files[middle].name, len );
-			return middle;
-		}
-
-		// if we're too far in the list
-		if( diff > 0 )
-			right = middle - 1;
-		else left = middle + 1;
-	}
-
-	return -1;
+	return FS_PakBackend_FindFileInArchive( &archive, path, fixedname, len );
 }
 
 /*
@@ -257,42 +262,16 @@ FS_Search_PAK
 */
 static void FS_Search_PAK_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
-	string temp;
-	const char *slash, *backslash, *colon, *separator;
-	int j, i;
+	fs_pak_archive_view_t archive = PAK_MakeArchiveView( search );
+	fs_pak_search_runtime_t runtime;
 
-	for( i = 0; i < search->pack->numfiles; i++ )
-	{
-		Q_strncpy( temp, search->pack->files[i].name, sizeof( temp ));
-		while( temp[0] )
-		{
-			if( matchpattern( temp, pattern, true ))
-			{
-				for( j = 0; j < list->numstrings; j++ )
-				{
-					if( !Q_strcmp( list->strings[j], temp ))
-						break;
-				}
+	memset( &runtime, 0, sizeof( runtime ));
+	runtime.matchPattern = PAK_SearchMatchPattern;
+	runtime.stringCount = PAK_SearchStringCount;
+	runtime.stringAt = PAK_SearchStringAt;
+	runtime.append = PAK_SearchAppend;
 
-				if( j == list->numstrings )
-					stringlistappend( list, temp );
-			}
-
-			// strip off one path element at a time until empty
-			// this way directories are added to the listing if they match the pattern
-			slash = Q_strrchr( temp, '/' );
-			backslash = Q_strrchr( temp, '\\' );
-			colon = Q_strrchr( temp, ':' );
-			separator = temp;
-			if( separator < slash )
-				separator = slash;
-			if( separator < backslash )
-				separator = backslash;
-			if( separator < colon )
-				separator = colon;
-			*((char *)separator) = 0;
-		}
-	}
+	FS_PakBackend_SearchArchive( &archive, &runtime, list, pattern, caseinsensitive );
 }
 
 /*
