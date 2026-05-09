@@ -64,12 +64,21 @@ static bool TestRejectsInvalidOutput()
 		!LibraryLocator::normalizeShortPath(config, nullptr, sizeof(output));
 }
 
+static bool TestEncryptionExtensionGate()
+{
+	return LibraryLocator::shouldCheckEncryption("dlls/hl.dll", "dll") &&
+		LibraryLocator::shouldCheckEncryption("dlls/hl.DLL", ".dll") &&
+		!LibraryLocator::shouldCheckEncryption("cl_dlls/client.so", "dll") &&
+		!LibraryLocator::shouldCheckEncryption("dlls/noext", "dll");
+}
+
 int main()
 {
 	if (!TestShortPathNormalization() ||
 		!TestRelativeGamePrefix() ||
 		!TestRelativeNormalization() ||
-		!TestRejectsInvalidOutput())
+		!TestRejectsInvalidOutput() ||
+		!TestEncryptionExtensionGate())
 	{
 		return EXIT_FAILURE;
 	}

@@ -26,12 +26,18 @@ public:
 	static size_t stripRelativeGamePrefix(
 		const char *path,
 		const char *gameFolder);
+	static bool shouldCheckEncryption(
+		const char *shortPath,
+		const char *libraryExtension);
 
 private:
 	static bool startsWithDotDot(const char *path);
 	static bool isSlash(char value);
 	static char toLower(char value);
 	static bool hasExtension(const char *path);
+	static bool extensionEquals(
+		const char *path,
+		const char *extension);
 	static bool appendDefaultExtension(
 		char *output,
 		size_t outputSize,

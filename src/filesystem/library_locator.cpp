@@ -73,6 +73,13 @@ size_t LibraryLocator::stripRelativeGamePrefix(
 	return i + 1;
 }
 
+bool LibraryLocator::shouldCheckEncryption(
+	const char *shortPath,
+	const char *libraryExtension)
+{
+	return extensionEquals(shortPath, libraryExtension);
+}
+
 bool LibraryLocator::startsWithDotDot(const char *path)
 {
 	return path != nullptr && path[0] == '.' && path[1] == '.';
@@ -108,6 +115,43 @@ bool LibraryLocator::hasExtension(const char *path)
 	}
 
 	return lastDot != nullptr && (lastSlash == nullptr || lastDot > lastSlash);
+}
+
+bool LibraryLocator::extensionEquals(
+	const char *path,
+	const char *extension)
+{
+	if (StringEmpty(path) || StringEmpty(extension))
+		return false;
+
+	const char *lastSlash = nullptr;
+	const char *lastDot = nullptr;
+
+	for (const char *cursor = path; *cursor != '\0'; ++cursor)
+	{
+		if (isSlash(*cursor))
+			lastSlash = cursor;
+		else if (*cursor == '.')
+			lastDot = cursor;
+	}
+
+	if (lastDot == nullptr || (lastSlash != nullptr && lastDot < lastSlash))
+		return false;
+
+	if (extension[0] == '.')
+		++extension;
+
+	++lastDot;
+	while (*lastDot != '\0' && *extension != '\0')
+	{
+		if (toLower(*lastDot) != toLower(*extension))
+			return false;
+
+		++lastDot;
+		++extension;
+	}
+
+	return *lastDot == '\0' && *extension == '\0';
 }
 
 bool LibraryLocator::appendDefaultExtension(

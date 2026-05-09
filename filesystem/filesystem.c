@@ -48,6 +48,7 @@ GNU General Public License for more details.
 #include "file_handle_ops_adapter.h"
 #include "filesystem_state_adapter.h"
 #include "game_hierarchy_adapter.h"
+#include "library_locator_adapter.h"
 #include "path_policy_adapter.h"
 #include "search_result_builder_adapter.h"
 #include "xash3d_mathlib.h"
@@ -1489,7 +1490,7 @@ static qboolean FS_CheckForCrypt( const char *dllname )
 	int	key;
 
 	// this encryption is specific to DLLs
-	if( Q_stricmp( COM_FileExtension( dllname ), "dll" ))
+	if( !FS_LibraryLocator_ShouldCheckEncryption( dllname ))
 		return false;
 
 	f = FS_Open( dllname, "rb", false );
@@ -1500,26 +1501,6 @@ static qboolean FS_CheckForCrypt( const char *dllname )
 	FS_Close( f );
 
 	return ( key == LittleLong( 0x12345678 )) ? true : false;
-}
-
-static int FS_StripIdiotRelativePath( const char *dllname, const char *gamefolder )
-{
-	string idiot_relpath;
-	int len;
-
-	if(( len = Q_snprintf( idiot_relpath, sizeof( idiot_relpath ), "../%s/", gamefolder )) >= 4 )
-	{
-		if( !Q_strnicmp( dllname, idiot_relpath, len ))
-			return len;
-
-		// try backslashes
-		idiot_relpath[1] = '\\';
-		idiot_relpath[len - 1] = '\\';
-		if( !Q_strnicmp( dllname, idiot_relpath, len ))
-			return len;
-	}
-
-	return 0;
 }
 
 /*
@@ -1533,7 +1514,7 @@ static qboolean FS_FindLibrary( const char *dllname, qboolean directpath, fs_dll
 {
 	string fixedname;
 	searchpath_t	*search;
-	int index, start = 0, len;
+	int index;
 
 	// check for bad exports
 	if( COM_StringEmptyOrNULL( dllname ))
@@ -1541,20 +1522,11 @@ static qboolean FS_FindLibrary( const char *dllname, qboolean directpath, fs_dll
 
 	FS_AllowDirectPaths( directpath );
 
-	// HACKHACK remove relative path to game folder
-	if( !Q_strnicmp( dllname, "..", 2 ))
+	if( !FS_LibraryLocator_NormalizeShortPath( dllname, dllInfo->shortPath, sizeof( dllInfo->shortPath )))
 	{
-		// some modders put relative path to themselves???
-		len = FS_StripIdiotRelativePath( dllname, GI->gamefolder );
-
-		if( len == 0 ) // or put relative path to Half-Life game libs
-			len = FS_StripIdiotRelativePath( dllname, "valve" );
-		start += len;
+		FS_AllowDirectPaths( false );
+		return false;
 	}
-
-	Q_strnlwr( &dllname[start], dllInfo->shortPath, sizeof( dllInfo->shortPath )); // always in lower case (why?)
-	COM_FixSlashes( dllInfo->shortPath ); // replace all backward slashes
-	COM_DefaultExtension( dllInfo->shortPath, "."OS_LIB_EXT, sizeof( dllInfo->shortPath ));	// apply ext if forget
 
 	search = FS_FindFile( dllInfo->shortPath, &index, fixedname, sizeof( fixedname ), false );
 

@@ -9,8 +9,8 @@ policy from `filesystem.c`.
 
 - [x] Expand tests for direct-path library lookup and relative path quirks.
 - [x] Add target-neutral library short-path normalization helper.
-- [ ] Route encrypted library detection through a small helper.
-- [ ] Route `FS_FindLibrary` through `LibraryLocator`.
+- [x] Route encrypted library detection through a small helper.
+- [x] Route `FS_FindLibrary` through `LibraryLocator`.
 
 ## Boundaries
 
