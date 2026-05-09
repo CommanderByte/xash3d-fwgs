@@ -187,6 +187,95 @@ commit, test command, document link, or manual verification note that proves it.
   remains separate and is generated from the same debug snapshots.
   Evidence: `Documentation/codex/modularization-plan/filesystem-debug-utilities.md`.
 
+## Phase 4A: Modern Shared Debug Utilities
+
+- [x] `MODERN-DEBUG-001` Create `Documentation/codex/modern/` for intended
+  modern internals, separate from legacy architecture notes.
+  Evidence: `Documentation/codex/modern/README.md`.
+- [x] `MODERN-DEBUG-002` Define the thread-safe debug snapshot capture model.
+  Evidence: `Documentation/codex/modern/thread-safe-debugging-utilities.md`.
+- [x] `MODERN-DEBUG-003` Define human and JSON output flow from shared
+  snapshots.
+  Evidence: `Documentation/codex/modern/thread-safe-debugging-utilities.md`.
+- [x] `MODERN-DEBUG-004` Define async trace queue and overflow policy
+  requirements.
+  Evidence: `Documentation/codex/modern/thread-safe-debugging-utilities.md`.
+- [x] `MODERN-DEBUG-005` Create reserved source and private include folders
+  for the modern debugging utility layer.
+  Evidence: `src/debugging/README.md`, `src/include/debugging/README.md`.
+- [x] `MODERN-DEBUG-006` Draft detailed modern debugging utility architecture.
+  Evidence: `Documentation/codex/modern/debugging/architecture.md`.
+- [x] `MODERN-DEBUG-007` Define proposed debugging namespaces, classes,
+  structs, and first implementation order.
+  Evidence: `Documentation/codex/modern/debugging/api-inventory.md`.
+- [x] `MODERN-DEBUG-007A` Implement initial shared debug status, sink, and
+  snapshot writer contracts.
+  Evidence: `src/include/debugging/debug_types.hpp`,
+  `src/include/debugging/debug_sink.hpp`,
+  `src/include/debugging/snapshot_writer.hpp`,
+  `src/debugging/snapshot_writer.cpp`.
+- [ ] `MODERN-DEBUG-008` Implement first filesystem debug snapshot structs.
+  Evidence:
+- [x] `MODERN-DEBUG-009` Add first synchronous debug sink for tests or console
+  output.
+  Evidence: `tests/debugging/debug_test_common.hpp`.
+- [x] `MODERN-DEBUG-010` Add tests for shared debug sink, JSON escaping, and
+  snapshot header formatting.
+  Evidence: `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-011` Add focused debugging TODO list cross-checked against
+  the modern architecture and API inventory.
+  Evidence: `Documentation/codex/todo/debugging_todo.md`.
+- [x] `MODERN-DEBUG-012` Normalize spacing in the new debugging C++ source and
+  test files.
+  Evidence: `src/include/debugging/`, `src/debugging/`, `tests/debugging/`.
+- [x] `MODERN-DEBUG-013` Rename private modern C++ debugging headers to `.hpp`.
+  Evidence: `src/include/debugging/*.hpp`,
+  `tests/debugging/debug_test_common.hpp`.
+- [x] `MODERN-DEBUG-014` Decide `DebugStatus` remains local to the debugging
+  utility layer rather than aliasing a future release/core status type.
+  Evidence: `src/include/debugging/debug_types.hpp`,
+  `Documentation/codex/todo/debugging_todo.md`.
+- [x] `MODERN-DEBUG-015` Add missing writer test coverage for sink failures,
+  large JSON string chunking, and null JSON input.
+  Evidence: `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-016` Add initial trace types and runtime trace gate.
+  Evidence: `src/include/debugging/trace.hpp`, `src/debugging/trace.cpp`,
+  `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-017` Add shared fixed-buffer debug sink for no-allocation
+  output capture.
+  Evidence: `src/include/debugging/buffer_sink.hpp`,
+  `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-018` Document compile-time trace gating policy before
+  adding trace macros or async trace producers.
+  Evidence: `Documentation/codex/modern/debugging/trace-gating-policy.md`.
+- [x] `MODERN-DEBUG-019` Add initial logging facade with levels, categories,
+  records, sink interface, gate, and logger dispatch.
+  Evidence: `src/include/debugging/logging.hpp`, `src/debugging/logging.cpp`,
+  `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-020` Add bounded trace queue with explicit overflow
+  policies and tests.
+  Evidence: `src/include/debugging/trace.hpp`, `src/debugging/trace.cpp`,
+  `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-021` Document `{fmt}` as the preferred future human
+  formatting backend, deferred until real producers need typed formatting.
+  Evidence: `Documentation/codex/modern/debugging/formatting-policy.md`.
+- [x] `MODERN-DEBUG-022` Verify and harden current shared debugging utility
+  multithreading behavior.
+  Evidence: `src/include/debugging/trace.hpp`,
+  `src/include/debugging/logging.hpp`, `src/debugging/trace.cpp`,
+  `src/debugging/logging.cpp`,
+  `Documentation/codex/modern/debugging/thread-safety-audit.md`,
+  `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+- [x] `MODERN-DEBUG-023` Add shared streaming JSON writer object before
+  filesystem snapshot serializers.
+  Decision: Use a small `IDebugSink`-backed writer now and defer RapidJSON
+  until JSON parsing, DOM mutation, or deeper schema complexity justifies the
+  dependency.
+  Evidence: `src/include/debugging/json_writer.hpp`,
+  `src/debugging/json_writer.cpp`,
+  `Documentation/codex/modern/debugging/api-inventory.md`,
+  `tests/debugging/debugging.cpp`; command `.\waf.bat build`.
+
 ## Phase 5: Directory Backend Pilot
 
 - [ ] `FS-IMPL-001` Add private C++ directory backend design sketch.
@@ -226,3 +315,10 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-005 | Use debug snapshots with human formatters and JSON serializers for filesystem diagnostics. | `modularization-plan/filesystem-debug-utilities.md` |
 | 2026-05-09 | DEC-006 | Keep reusable modernization utilities behind private facades, and do not expose third-party utility types through public ABI boundaries. | `modularization-plan/cross-cutting-utilities.md`, `src/include/README.md` |
 | 2026-05-09 | DEC-007 | Prepare for threading with explicit ownership, immutable snapshots, short lock windows, and bounded async queues before broad multithreaded behavior changes. | `modularization-plan/cross-cutting-utilities.md` |
+| 2026-05-09 | DEC-008 | Put intended modern utility contracts under `Documentation/codex/modern/`, leaving `legacy/` for current architecture descriptions. | `modern/README.md` |
+| 2026-05-09 | DEC-009 | Debug commands must capture immutable snapshots before formatting or serializing output, so future thread-safety does not depend on printing while holding runtime locks. | `modern/thread-safe-debugging-utilities.md` |
+| 2026-05-09 | DEC-010 | Reserve `src/debugging/` and `src/include/debugging/` for the modern debugging utility layer, but do not wire them into the build until the first tested implementation slice exists. | `src/debugging/README.md`, `src/include/debugging/README.md`, `modern/debugging/architecture.md` |
+| 2026-05-09 | DEC-011 | Use `xash::debugging` for shared modern debugging contracts and `xash::filesystem::debugging` for filesystem pilot records until they prove reusable. | `modern/debugging/api-inventory.md` |
+| 2026-05-09 | DEC-012 | Use `.hpp` for private modern C++ debugging headers while leaving legacy C-compatible headers on their existing `.h` convention. | `src/include/debugging/README.md`, `todo/debugging_todo.md` |
+| 2026-05-09 | DEC-013 | Keep `DebugStatus` local to the debugging layer so release-oriented core code does not depend on debugging utilities. | `src/include/debugging/debug_types.hpp`, `todo/debugging_todo.md` |
+| 2026-05-09 | DEC-014 | Defer RapidJSON and use a small streaming JSON writer behind `IDebugSink` until larger snapshot serializers need a third-party JSON backend. | `src/include/debugging/json_writer.hpp`, `modern/debugging/api-inventory.md` |

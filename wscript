@@ -81,6 +81,7 @@ class RefDll:
 SUBDIRS = [
 	# always configured and built
 	Subproject('public'),
+	Subproject('src'),
 	Subproject('filesystem'),
 	Subproject('stub/server'),
 	Subproject('3rdparty/libbacktrace'),

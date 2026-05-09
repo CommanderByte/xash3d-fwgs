@@ -18,6 +18,8 @@ Initial policy:
 Planned subfolders:
 
 - `include/`: private reusable C++ headers for new internals
+- `debugging/`: future shared debugging, snapshot, serialization, and trace
+  utility implementation units
 - `filesystem/`: future filesystem implementation units after the pilot
 
 See also:

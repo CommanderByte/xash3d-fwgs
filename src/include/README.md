@@ -9,7 +9,13 @@ Initial candidates:
 
 - status/result helpers
 - debug snapshot and serializer helpers
+- debugging sink, formatter, and trace helper interfaces
 - generic registry helpers
 - small platform-neutral utility wrappers
 - logging facade declarations
 - thread/synchronization facades
+
+Planned subfolders:
+
+- `debugging/`: private contracts for shared debug snapshots, sinks,
+  formatters, JSON writers, and trace helpers

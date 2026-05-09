@@ -6,14 +6,13 @@ test strategy across the fork.
 The current build system already has module-local Waf tests, especially:
 
 - `public/tests`
-- `filesystem/tests`
+- `tests/debugging`, built by `src/wscript`
+- `tests/filesystem`, built by `filesystem/wscript`
 
-For now, new compiled filesystem tests should continue to live in
-`filesystem/tests` so they work with the existing `--enable-tests` Waf flow.
-This root folder should hold cross-cutting test documentation, shared fixture
-plans, baseline captures, and future harness notes. If we later add a root test
-subproject, this folder can become build-integrated without moving the behavior
-inventory.
+For now, compiled tests should live under `tests/<area>/` and be build-wired
+by the module that owns the code under test. This keeps linking rules local
+while allowing the root `tests/` folder to hold cross-cutting fixtures,
+behavior inventories, and future harness notes.
 
 ## Goals
 
@@ -41,8 +40,9 @@ programs when `bld.env.TESTS` is true.
 | Category | Location | Purpose |
 | --- | --- | --- |
 | Public utility unit tests | `public/tests` | Exercise low-level string, parsing, math, and helper behavior. |
-| Filesystem unit tests | `filesystem/tests` | Exercise `filesystem_stdio` through public module APIs. |
-| Behavior inventory | `tests/*` | Describe quirks that need coverage before modernization. |
+| Debugging utility unit tests | `tests/debugging` | Exercise shared modern debugging helpers through `src/wscript`. |
+| Filesystem unit tests | `tests/filesystem` | Exercise `filesystem_stdio` through public module APIs. |
+| Behavior inventory | `tests/*` | Describe and test quirks that need coverage before modernization. |
 | Runtime smoke tests | `Documentation/codex/*` | Verify engine launch with real assets where needed. |
 
 ## Fixture Policy

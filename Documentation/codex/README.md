@@ -27,6 +27,10 @@ in upstream-facing user documentation yet.
   plan for migrating internals toward a more modular C++ architecture.
 - [legacy/filesystem/](legacy/filesystem/README.md) documents the current
   filesystem architecture with Mermaid diagrams.
+- [modern/](modern/README.md) documents intended modernized internal
+  architecture and shared utility contracts for the rewrite.
+- [todo/](todo/README.md) contains focused implementation checklists derived
+  from the modernization docs.
 
 ## Repository At A Glance
 

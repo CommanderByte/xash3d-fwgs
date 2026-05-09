@@ -60,9 +60,9 @@ Recommendation:
    and diagnostics immediately.
 3. For runtime logging, evaluate `spdlog` only behind `LogSink` so console and
    platform behavior remain ours.
-4. For debug JSON, prefer a small JSON writer or RapidJSON first. Add
-   simdjson only when we have high-volume parsing, not merely because it is
-   fast.
+4. For debug JSON, use the small `IDebugSink`-backed writer first. Revisit
+   RapidJSON when generated schemas become complex enough to justify a
+   dependency, and add simdjson only when we have high-volume parsing.
 5. Do not select Glaze or `magic_enum` until the project has a firm C++17/C++20
    baseline.
 
@@ -338,4 +338,3 @@ Before adding any new third-party utility dependency:
 - has a facade in `src/include` or a private subsystem wrapper
 - has a small test or sample build path
 - has a clear reason not to use existing project utilities
-
