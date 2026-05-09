@@ -370,7 +370,50 @@ commit, test command, document link, or manual verification note that proves it.
   install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` showed WAD and
   PK3 mounts, printed search paths, and stopped with reason `"command"`.
 
-## Phase 7: Commit And Review Hygiene
+## Phase 7: Backend And Policy Migration Prep
+
+- [x] `FS-BACKEND-001` Add migration TODO for PAK backend.
+  Evidence: `Documentation/codex/todo/pak_backend_todo.md`.
+- [x] `FS-BACKEND-002` Add migration TODO for WAD backend.
+  Evidence: `Documentation/codex/todo/wad_backend_todo.md`.
+- [x] `FS-BACKEND-003` Add migration TODO for ZIP/PK3 backend.
+  Evidence: `Documentation/codex/todo/zip_backend_todo.md`.
+- [x] `FS-BACKEND-004` Add migration TODO for Android assets backend.
+  Evidence: `Documentation/codex/todo/android_assets_backend_todo.md`.
+- [x] `FS-BACKEND-005` Add tests for archive mount idempotency and unsupported
+  archive failure.
+  Evidence: `tests/filesystem/archive-order.c`; command
+  `.\waf.bat build --targets=test_archive-order,test_pk3dir`.
+- [x] `FS-BACKEND-006` Add `pk3dir` behavior tests.
+  Evidence: `tests/filesystem/pk3dir.c`; command
+  `.\waf.bat build --targets=test_archive-order,test_pk3dir`.
+- [x] `FS-STATE-001` Document current `filesystem.c` global state ownership.
+  Evidence: `Documentation/codex/modularization-plan/filesystem-state-ownership.md`.
+- [x] `FS-POLICY-001` Document path policy extraction candidates.
+  Evidence: `Documentation/codex/modularization-plan/path-policy-candidates.md`.
+- [x] `FS-HIER-001` Add hierarchy coverage for falldir, custom/downloaded,
+  HD, LV, addon, and localization mounts.
+  Evidence: `tests/filesystem/hierarchy.c`; command
+  `.\waf.bat build --targets=test_hierarchy,test_dll-lookup`.
+- [x] `FS-DLL-001` Add `FS_FindLibrary` behavior tests before DLL lookup
+  refactors.
+  Evidence: `tests/filesystem/dll-lookup.c`; command
+  `.\waf.bat build --targets=test_hierarchy,test_dll-lookup`.
+- [x] `FS-BACKEND-007` Run filesystem unit tests after Phase 7 coverage work.
+  Evidence: command `.\waf.bat build` passed; explicit follow-up commands
+  `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_pk3dir.exe`,
+  `.\build\filesystem\test_hierarchy.exe`, and
+  `.\build\filesystem\test_dll-lookup.exe` passed.
+- [x] `FS-BACKEND-008` Run Windows runtime smoke test after Phase 7 coverage
+  work.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` showed directory,
+  WAD, and PK3 mounts, printed search paths, and stopped with reason
+  `"command"`.
+
+## Phase 8: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push documentation commits to remote branch.
   Evidence:

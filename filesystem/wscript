@@ -54,8 +54,10 @@ def build(bld):
 			'interface' : '../tests/filesystem/interface.cpp',
 			'caseinsensitive' : '../tests/filesystem/caseinsensitive.c',
 			'directpath': '../tests/filesystem/directpath.c',
+			'dll-lookup': '../tests/filesystem/dll-lookup.c',
 			'hierarchy': '../tests/filesystem/hierarchy.c',
 			'no-init': '../tests/filesystem/no-init.c',
+			'pk3dir': '../tests/filesystem/pk3dir.c',
 			'rodir': '../tests/filesystem/rodir.c',
 			'wad-archive': '../tests/filesystem/wad-archive.c',
 			'zip-archive': '../tests/filesystem/zip-archive.c'

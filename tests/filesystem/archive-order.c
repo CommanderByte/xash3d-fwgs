@@ -121,20 +121,37 @@ static qboolean TestPakAndLoosePrecedence( void )
 
 static qboolean TestDirectPakMount( void )
 {
+	void *first_mount;
+	void *second_mount;
+
 	if( !WritePakFixture( "direct.PAK" ))
 	{
 		printf( "failed to write direct pak fixture\n" );
 		return false;
 	}
 
-	if( !g_fs.MountArchive_Fullpath( "direct.PAK", FS_GAMEDIR_PATH ))
+	first_mount = g_fs.MountArchive_Fullpath( "direct.PAK", FS_GAMEDIR_PATH );
+	if( !first_mount )
 	{
 		printf( "failed to mount direct pak fixture\n" );
 		return false;
 	}
 
+	second_mount = g_fs.MountArchive_Fullpath( "direct.PAK", FS_GAMEDIR_PATH );
+	if( second_mount != first_mount )
+	{
+		printf( "direct pak mount was not idempotent\n" );
+		return false;
+	}
+
 	if( !CheckLoadedText( "onlypak.txt", "packed only" ))
 		return false;
+
+	if( g_fs.MountArchive_Fullpath( "unsupported.vpk", FS_GAMEDIR_PATH ))
+	{
+		printf( "unsupported archive unexpectedly mounted\n" );
+		return false;
+	}
 
 	g_fs.ClearSearchPath();
 	FS_TestRemoveFile( "direct.PAK" );

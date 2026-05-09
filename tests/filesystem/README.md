@@ -44,9 +44,13 @@ structure.
 | Path rejection | `tests/filesystem/caseinsensitive.c` | existing | Covers `..`, absolute paths, colon paths. |
 | Direct path behavior | `tests/filesystem/directpath.c` | existing | Covers `../` strip behavior when direct paths are enabled and reset. |
 | Loose file beats archive file | `tests/filesystem/archive-order.c` | existing | Uses generated PAK fixture. |
+| Archive mount idempotency | `tests/filesystem/archive-order.c` | existing | Direct `MountArchive_Fullpath` returns the same mounted archive for duplicate mount. |
+| Unsupported archive mount failure | `tests/filesystem/archive-order.c` | existing | Unsupported extension does not mount. |
 | Gamefolder beats basedir | `tests/filesystem/hierarchy.c` | existing | Generated `valve` plus `mod` fixture. |
 | `gamedironly` filtering | `tests/filesystem/hierarchy.c` | existing | Confirms base-only content is hidden when requested. |
+| Falldir/custom/downloaded/HD/LV/addon/localization hierarchy | `tests/filesystem/hierarchy.c` | existing | Freezes high-risk game hierarchy mount behavior before extraction. |
 | PAK open/search | `tests/filesystem/archive-order.c` | existing | Generated PAK contains archive-only file. |
+| PK3 directory mount behavior | `tests/filesystem/pk3dir.c` | existing | Covers `.pk3dir` directory mounts and loose-file precedence. |
 | ZIP stored file | `tests/filesystem/zip-archive.c` | existing | Generated PK3 fixture with manual ZIP records. |
 | ZIP deflated file | `tests/filesystem/zip-archive.c` | existing | Uses miniz raw deflate data inside generated PK3. |
 | WAD lump lookup | `tests/filesystem/wad-archive.c` | existing | Generated WAD3 fixture with a script lump. |
@@ -58,13 +62,13 @@ structure.
 | Archive registry descriptors | `tests/filesystem/archive_registry.cpp` | existing | Built by `src/wscript`; covers default descriptor metadata and order. |
 | Directory backend skeleton | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
 | Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
-| DLL lookup | missing | `tests/filesystem` | Focus on returned `fs_dllinfo_t`, not loading real DLLs. |
+| DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, not loading real DLLs. |
 
 ## First Unit Tests To Add
 
-1. DLL lookup through `FS_FindLibrary`.
-2. Archive edge cases: duplicate names, unsupported compression, unsupported extensions.
-3. Search result ordering and `FindFirst`/`FindNext` behavior through `VFileSystem009`.
+1. Search result ordering and `FindFirst`/`FindNext` behavior through `VFileSystem009`.
+2. Additional archive edge cases: duplicate names across multiple archives and unsupported compression.
+3. Expanded DLL lookup cases for direct path mode and archived libraries.
 
 These give the directory backend pilot a safety net before any C++ adapter work.
 
