@@ -56,6 +56,7 @@ structure.
 | Search result ordering and duplicates | `tests/filesystem/search-results.c` | existing | Covers sorted `FS_Search` output, current duplicate filtering, and `gamedironly` filtering. |
 | ZIP stored file | `tests/filesystem/zip-archive.c` | existing | Generated PK3 fixture with manual ZIP records. |
 | ZIP deflated file | `tests/filesystem/zip-archive.c` | existing | Uses miniz raw deflate data inside generated PK3. |
+| ZIP lookup/search quirks | `tests/filesystem/zip-archive.c` | existing | Covers case-insensitive lookup, nested entry lookup, non-recursive root search, and explicit nested search. |
 | WAD lump lookup | `tests/filesystem/wad-archive.c` | existing | Generated WAD3 fixture with a script lump. |
 | WADs mounted from archives | `tests/filesystem/wad-archive.c` | existing | Generated PAK fixture containing a WAD3 file. |
 | WAD lookup quirks | `tests/filesystem/wad-archive.c` | existing | Covers WAD-name-restricted lookup, case-insensitive lookup, extensionless lookup, and unknown-extension rejection. |
@@ -75,7 +76,7 @@ structure.
 | Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
 | Search result builder | `tests/filesystem/search_result_builder.cpp` | existing | Built by `src/wscript`; covers target-neutral sort, duplicate compaction, and packed string copying. |
 | WAD backend helpers | `tests/filesystem/wad_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, load-file default behavior, WAD type mapping, sorted lump insertion, binary lump lookup, and lump-table parsing. |
-| ZIP backend skeleton | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and load-file default behavior. |
+| ZIP backend helpers | `tests/filesystem/zip_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, entry sorting, binary lookup, central-directory parsing, and stored load behavior. |
 | Android assets backend skeleton | `tests/filesystem/android_assets_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata, safe inert defaults, and hook forwarding without Android runtime dependencies. |
 | DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, direct-path lookup, and historical relative path quirks, not loading real DLLs. |
 

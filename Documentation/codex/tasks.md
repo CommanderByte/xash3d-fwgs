@@ -759,21 +759,32 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 22: ZIP/PK3 Implementation Body Migration
 
-- [ ] `FS-ZIP-IMPL-001` Audit `filesystem/zip.c` responsibilities, including
+- [x] `FS-ZIP-IMPL-001` Audit `filesystem/zip.c` responsibilities, including
   central directory parsing, unsupported compression, and deflated handles.
-  Evidence:
-- [ ] `FS-ZIP-IMPL-002` Expand ZIP/PK3 tests for uncovered edge cases before
+  Evidence: `Documentation/codex/modern/filesystem/zip-implementation-audit.md`.
+- [x] `FS-ZIP-IMPL-002` Expand ZIP/PK3 tests for uncovered edge cases before
   moving parser code.
-  Evidence:
-- [ ] `FS-ZIP-IMPL-003` Move ZIP/PK3 parsing and lookup into
+  Evidence: `tests/filesystem/zip-archive.c`,
+  `tests/filesystem/zip_backend.cpp`.
+- [x] `FS-ZIP-IMPL-003` Move ZIP/PK3 parsing and lookup into
   `src/filesystem/zip_backend.cpp`.
-  Evidence:
-- [ ] `FS-ZIP-IMPL-004` Move stored/deflated open/search setup into
+  Evidence: `src/filesystem/zip_backend.cpp`,
+  `filesystem/zip_backend_adapter.cpp`, `filesystem/zip.c`;
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`
+  passed on 2026-05-09.
+- [x] `FS-ZIP-IMPL-004` Move stored/deflated open/search setup into
   `src/filesystem/zip_backend.cpp` while preserving file-handle behavior.
-  Evidence:
-- [ ] `FS-ZIP-IMPL-005` Shrink `filesystem/zip.c` to adapter-only or document
+  Evidence: `src/filesystem/zip_backend.cpp`,
+  `filesystem/zip_backend_adapter.cpp`, `filesystem/zip.c`;
+  `.\waf.bat build --targets=test_filesystem_zip_backend,test_zip-archive`
+  passed on 2026-05-09.
+- [x] `FS-ZIP-IMPL-005` Shrink `filesystem/zip.c` to adapter-only or document
   remaining blockers.
-  Evidence:
+  Evidence: `filesystem/zip.c` now delegates ZIP parsing, lookup, search, open
+  orchestration, open-entry policy, and load-file behavior through
+  `filesystem/zip_backend_adapter.cpp`; remaining `zip_t` and
+  `FS_AddZip_Fullpath` ownership blockers are documented in
+  `Documentation/codex/modern/filesystem/zip-implementation-audit.md`.
 
 ## Phase 23: Directory Implementation Body Migration
 

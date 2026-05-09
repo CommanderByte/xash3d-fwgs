@@ -117,7 +117,8 @@ static qboolean WriteZipFixture( const char *path )
 		"deflated zip payload deflated zip payload deflated zip payload "
 		"deflated zip payload deflated zip payload";
 	static const char unsupported_data[] = "unsupported zip payload";
-	zip_entry_t entries[3];
+	static const char nested_data[] = "nested zip payload";
+	zip_entry_t entries[4];
 	void *deflated_payload;
 	size_t deflated_size = 0;
 	uint32_t central_offset;
@@ -158,6 +159,13 @@ static qboolean WriteZipFixture( const char *path )
 	entries[2].compressed_size = sizeof( unsupported_data ) - 1;
 	entries[2].uncompressed_size = sizeof( unsupported_data ) - 1;
 
+	entries[3].name = "folder/Nested.TXT";
+	entries[3].data = nested_data;
+	entries[3].method = ZIP_METHOD_STORED;
+	entries[3].crc32 = (uint32_t)mz_crc32( MZ_CRC32_INIT, (const unsigned char *)nested_data, sizeof( nested_data ) - 1 );
+	entries[3].compressed_size = sizeof( nested_data ) - 1;
+	entries[3].uncompressed_size = sizeof( nested_data ) - 1;
+
 	file = fopen( path, "wb" );
 	if( !file )
 	{
@@ -167,7 +175,8 @@ static qboolean WriteZipFixture( const char *path )
 
 	if( !WriteZipLocalEntry( file, &entries[0] ) ||
 		!WriteZipLocalEntry( file, &entries[1] ) ||
-		!WriteZipLocalEntry( file, &entries[2] ))
+		!WriteZipLocalEntry( file, &entries[2] ) ||
+		!WriteZipLocalEntry( file, &entries[3] ))
 	{
 		printf( "failed to write zip local entries\n" );
 		ok = false;
@@ -180,7 +189,8 @@ static qboolean WriteZipFixture( const char *path )
 
 	if( ok && ( !WriteZipCentralEntry( file, &entries[0] ) ||
 		!WriteZipCentralEntry( file, &entries[1] ) ||
-		!WriteZipCentralEntry( file, &entries[2] )))
+		!WriteZipCentralEntry( file, &entries[2] ) ||
+		!WriteZipCentralEntry( file, &entries[3] )))
 	{
 		printf( "failed to write zip central directory\n" );
 		ok = false;
@@ -194,8 +204,8 @@ static qboolean WriteZipFixture( const char *path )
 	if( ok && ( !WriteU32( file, ZIP_EOCD_HEADER ) ||
 		!WriteU16( file, 0 ) ||
 		!WriteU16( file, 0 ) ||
-		!WriteU16( file, 3 ) ||
-		!WriteU16( file, 3 ) ||
+		!WriteU16( file, 4 ) ||
+		!WriteU16( file, 4 ) ||
 		!WriteU32( file, central_size ) ||
 		!WriteU32( file, central_offset ) ||
 		!WriteU16( file, 0 )))
@@ -209,6 +219,62 @@ static qboolean WriteZipFixture( const char *path )
 
 	free( deflated_payload );
 	return ok;
+}
+
+static qboolean ExpectSearchResult( const search_t *search, int index, const char *expected )
+{
+	if( !search )
+	{
+		printf( "missing search result for %s\n", expected );
+		return false;
+	}
+
+	if( index >= search->numfilenames )
+	{
+		printf( "missing search index %d for %s\n", index, expected );
+		return false;
+	}
+
+	if( strcmp( search->filenames[index], expected ))
+	{
+		printf( "search result %d mismatch: got %s expected %s\n",
+			index, search->filenames[index], expected );
+		return false;
+	}
+
+	return true;
+}
+
+static qboolean CheckZipSearchResults( void )
+{
+	search_t *root_search = g_fs.Search( "*.txt", true, true );
+	search_t *nested_search;
+
+	if( !root_search )
+		return false;
+
+	if( root_search->numfilenames != 3 )
+	{
+		printf( "expected 3 root zip search results, got %d\n", root_search->numfilenames );
+		return false;
+	}
+
+	if( !ExpectSearchResult( root_search, 0, "deflated.txt" ) ||
+		!ExpectSearchResult( root_search, 1, "stored.txt" ) ||
+		!ExpectSearchResult( root_search, 2, "unsupported.txt" ))
+		return false;
+
+	nested_search = g_fs.Search( "folder/*.txt", true, true );
+	if( !nested_search )
+		return false;
+
+	if( nested_search->numfilenames != 1 )
+	{
+		printf( "expected 1 nested zip search result, got %d\n", nested_search->numfilenames );
+		return false;
+	}
+
+	return ExpectSearchResult( nested_search, 0, "folder/Nested.TXT" );
 }
 
 static qboolean CheckLoadedText( const char *path, const char *expected )
@@ -254,6 +320,12 @@ static qboolean TestZipArchiveLoads( void )
 	if( !CheckLoadedText( "stored.txt", "stored zip payload" ))
 		return false;
 
+	if( !CheckLoadedText( "STORED.TXT", "stored zip payload" ))
+		return false;
+
+	if( !CheckLoadedText( "FOLDER/nested.txt", "nested zip payload" ))
+		return false;
+
 	if( !CheckLoadedText( "deflated.txt",
 		"deflated zip payload deflated zip payload deflated zip payload "
 		"deflated zip payload deflated zip payload" ))
@@ -265,7 +337,7 @@ static qboolean TestZipArchiveLoads( void )
 		return false;
 	}
 
-	return true;
+	return CheckZipSearchResults();
 }
 
 static void CleanupFixture( const char *root )
