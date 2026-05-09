@@ -34,12 +34,12 @@ helpers should stay free of filesystem policy.
   case-insensitive extension lookup.
   Decision: Use case-insensitive C-string keys for extension descriptors.
   Evidence: `src/include/filesystem/archive_registry.hpp`,
-  `Documentation/codex/todo/archive_registry_todo.md`.
+  `Documentation/codex/done/todo/archive_registry_todo.md`.
 - [x] Preserve legacy archive scan order outside the generic registry.
   Decision: Archive descriptors carry `scanPriority`; the generic registry only
   preserves registration order.
   Evidence: `src/filesystem/archive_registry.cpp`,
-  `Documentation/codex/todo/archive_registry_todo.md`.
+  `Documentation/codex/done/todo/archive_registry_todo.md`.
 - [x] Add filesystem registry snapshot records after archive metadata exists.
   Evidence: `src/include/filesystem/registry_snapshot.hpp`,
   `src/filesystem/registry_snapshot.cpp`.

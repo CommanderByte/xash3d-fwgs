@@ -31,6 +31,9 @@ objects.
   tree and `filesystem/` only provides facades/adapters.
 - [ ] Move completed TODO and audit documents into `Documentation/codex/done/`
   after the evidence is committed and reviewed.
+  Note: the first completed TODO archival pass moved fully complete checklist
+  files into `Documentation/codex/done/todo/`; keep this item open for future
+  implementation-body migration docs and audit notes.
 
 ## Testing Rule
 

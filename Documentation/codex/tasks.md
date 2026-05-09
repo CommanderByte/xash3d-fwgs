@@ -281,7 +281,7 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 4B: Modern Shared Utilities
 
 - [x] `MODERN-UTIL-001` Add focused utility TODO list.
-  Evidence: `Documentation/codex/todo/utilities_todo.md`.
+  Evidence: `Documentation/codex/done/todo/utilities_todo.md`.
 - [x] `MODERN-UTIL-002` Add fixed-capacity ordered registry utility with
   explicit duplicate-key behavior.
   Evidence: `src/include/utilities/registry.hpp`,
@@ -298,7 +298,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-REG-001` Add archive registry scaffold and descriptor types.
   Evidence: `src/include/filesystem/archive_registry.hpp`,
   `src/filesystem/archive_registry.cpp`,
-  `Documentation/codex/todo/archive_registry_todo.md`,
+  `Documentation/codex/done/todo/archive_registry_todo.md`,
   `tests/filesystem/archive_registry.cpp`; command `.\waf.bat build`.
 - [x] `FS-REG-002` Add default archive descriptors for PAK, PK3, PK3DIR, and
   WAD without routing mounts through the registry yet.
@@ -314,7 +314,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `FS-IMPL-001` Add private C++ directory backend design sketch.
   Evidence: `src/include/filesystem/search_path_backend.hpp`,
   `src/include/filesystem/directory_backend.hpp`,
-  `Documentation/codex/todo/directory_backend_todo.md`.
+  `Documentation/codex/done/todo/directory_backend_todo.md`.
 - [x] `FS-IMPL-002` Introduce the smallest possible internal helper without
   changing behavior.
   Evidence: `src/filesystem/search_path_backend.cpp`,
@@ -373,13 +373,13 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 7: Backend And Policy Migration Prep
 
 - [x] `FS-BACKEND-001` Add migration TODO for PAK backend.
-  Evidence: `Documentation/codex/todo/pak_backend_todo.md`.
+  Evidence: `Documentation/codex/done/todo/pak_backend_todo.md`.
 - [x] `FS-BACKEND-002` Add migration TODO for WAD backend.
-  Evidence: `Documentation/codex/todo/wad_backend_todo.md`.
+  Evidence: `Documentation/codex/done/todo/wad_backend_todo.md`.
 - [x] `FS-BACKEND-003` Add migration TODO for ZIP/PK3 backend.
-  Evidence: `Documentation/codex/todo/zip_backend_todo.md`.
+  Evidence: `Documentation/codex/done/todo/zip_backend_todo.md`.
 - [x] `FS-BACKEND-004` Add migration TODO for Android assets backend.
-  Evidence: `Documentation/codex/todo/android_assets_backend_todo.md`.
+  Evidence: `Documentation/codex/done/todo/android_assets_backend_todo.md`.
 - [x] `FS-BACKEND-005` Add tests for archive mount idempotency and unsupported
   archive failure.
   Evidence: `tests/filesystem/archive-order.c`; command
@@ -539,7 +539,7 @@ commit, test command, document link, or manual verification note that proves it.
 
 - [x] `FS-STATE-002` Add focused TODO list for `filesystem.c` state
   migration.
-  Evidence: `Documentation/codex/todo/filesystem_state_todo.md`.
+  Evidence: `Documentation/codex/done/todo/filesystem_state_todo.md`.
 - [x] `FS-STATE-003` Add target-neutral `FilesystemState` scaffold and tests.
   Evidence: `src/include/filesystem/filesystem_state.hpp`,
   `src/filesystem/filesystem_state.cpp`,
@@ -572,7 +572,7 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 13: Path Policy Extraction
 
 - [x] `FS-PATH-001` Add focused TODO list for path policy migration.
-  Evidence: `Documentation/codex/todo/path_policy_todo.md`.
+  Evidence: `Documentation/codex/done/todo/path_policy_todo.md`.
 - [x] `FS-PATH-002` Add target-neutral path rejection helper and tests.
   Evidence: `src/include/filesystem/path_policy.hpp`,
   `src/filesystem/path_policy.cpp`, `tests/filesystem/path_policy.cpp`.
@@ -600,7 +600,7 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 14: Game Hierarchy Builder
 
 - [x] `FS-HIER-002` Add focused TODO list for game hierarchy migration.
-  Evidence: `Documentation/codex/todo/game_hierarchy_todo.md`.
+  Evidence: `Documentation/codex/done/todo/game_hierarchy_todo.md`.
 - [x] `FS-HIER-003` Add mount request record type and tests.
   Evidence: `src/include/filesystem/game_hierarchy_builder.hpp`,
   `tests/filesystem/game_hierarchy_builder.cpp`.
@@ -656,7 +656,7 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 17: Library Locator
 
 - [x] `FS-LIB-001` Add focused TODO list for library locator migration.
-  Evidence: `Documentation/codex/todo/library_locator_todo.md`.
+  Evidence: `Documentation/codex/done/todo/library_locator_todo.md`.
 - [x] `FS-LIB-002` Expand library lookup tests for direct-path and relative
   path quirks.
   Evidence: `tests/filesystem/dll-lookup.c`; command
@@ -674,7 +674,7 @@ commit, test command, document link, or manual verification note that proves it.
 ## Phase 18: Compatibility Facades
 
 - [x] `FS-COMPAT-001` Add focused TODO list for legacy compatibility facades.
-  Evidence: `Documentation/codex/todo/compatibility_facades_todo.md`.
+  Evidence: `Documentation/codex/done/todo/compatibility_facades_todo.md`.
 - [x] `FS-COMPAT-002` Add ABI drift checklist before larger rewires.
   Evidence: `Documentation/codex/modern/filesystem/abi-drift-checklist.md`.
 - [x] `FS-COMPAT-003` Add wrapper-only tests when internal helpers touch
@@ -688,9 +688,11 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence: `Documentation/codex/modern/filesystem/filesystem-folder-migration-map.md`.
 - [x] `FS-MAP-002` Add implementation-body migration TODO list.
   Evidence: `Documentation/codex/todo/backend_implementation_migration_todo.md`.
-- [ ] `FS-MAP-003` Add `Documentation/codex/done/` archival policy before
+- [x] `FS-MAP-003` Add `Documentation/codex/done/` archival policy before
   moving completed TODO or audit files.
-  Evidence:
+  Evidence: `Documentation/codex/done/README.md`,
+  `Documentation/codex/done/todo/README.md`; completed TODO files moved from
+  `Documentation/codex/todo/` to `Documentation/codex/done/todo/`.
 
 ## Phase 20: WAD Implementation Body Migration
 
@@ -831,13 +833,13 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-012 | Use `.hpp` for private modern C++ debugging headers while leaving legacy C-compatible headers on their existing `.h` convention. | `src/include/debugging/README.md`, `todo/debugging_todo.md` |
 | 2026-05-09 | DEC-013 | Keep `DebugStatus` local to the debugging layer so release-oriented core code does not depend on debugging utilities. | `src/include/debugging/debug_types.hpp`, `todo/debugging_todo.md` |
 | 2026-05-09 | DEC-014 | Defer RapidJSON and use a small streaming JSON writer behind `IDebugSink` until larger snapshot serializers need a third-party JSON backend. | `src/include/debugging/json_writer.hpp`, `modern/debugging/api-inventory.md` |
-| 2026-05-09 | DEC-015 | Use a fixed-capacity ordered registry template for first shared registry work, keeping mount-order and filesystem policy outside the generic utility. | `src/include/utilities/registry.hpp`, `todo/utilities_todo.md` |
-| 2026-05-09 | DEC-016 | Store the first live directory backend bridge pointer inside the private `dir_t` root object instead of changing `searchpath_t` layout. | `filesystem/dir.c`, `todo/directory_backend_todo.md` |
-| 2026-05-09 | DEC-017 | Keep legacy archive factory function pointers in `filesystem.c` during first registry integration, and expose modern archive descriptor metadata through a small C adapter. | `filesystem/archive_registry_adapter.h`, `filesystem/filesystem.c`, `todo/archive_registry_todo.md` |
+| 2026-05-09 | DEC-015 | Use a fixed-capacity ordered registry template for first shared registry work, keeping mount-order and filesystem policy outside the generic utility. | `src/include/utilities/registry.hpp`, `done/todo/utilities_todo.md` |
+| 2026-05-09 | DEC-016 | Store the first live directory backend bridge pointer inside the private `dir_t` root object instead of changing `searchpath_t` layout. | `filesystem/dir.c`, `done/todo/directory_backend_todo.md` |
+| 2026-05-09 | DEC-017 | Keep legacy archive factory function pointers in `filesystem.c` during first registry integration, and expose modern archive descriptor metadata through a small C adapter. | `filesystem/archive_registry_adapter.h`, `filesystem/filesystem.c`, `done/todo/archive_registry_todo.md` |
 | 2026-05-09 | DEC-018 | Use the same behavior-neutral bridge pattern for the first PAK backend pilot: private C++ backend object, C adapter, legacy callback implementation retained behind hooks. | `src/include/filesystem/pak_backend.hpp`, `filesystem/pak_backend_adapter.h`, `filesystem/pak.c` |
 | 2026-05-09 | DEC-019 | Use the PAK bridge pattern for WAD while explicitly forwarding `pfnLoadFile`, because WAD lump loading is the primary read path. | `src/include/filesystem/wad_backend.hpp`, `filesystem/wad_backend_adapter.h`, `filesystem/wad.c` |
 | 2026-05-09 | DEC-020 | Use the same bridge pattern for ZIP/PK3 while explicitly preserving stored/deflated load paths and unsupported compression failure behavior. | `src/include/filesystem/zip_backend.hpp`, `filesystem/zip_backend_adapter.h`, `filesystem/zip.c`, `tests/filesystem/zip-archive.c` |
-| 2026-05-09 | DEC-021 | Keep Android runtime code behind `XASH_ANDROID`, but allow the target-neutral `AndroidAssetsBackend` class and adapter declarations to compile on desktop when they avoid Android headers and APIs. | `modularization-plan/android-assets-backend-plan.md`, `todo/android_assets_backend_todo.md` |
-| 2026-05-09 | DEC-022 | Start `filesystem.c` migration with a target-neutral `FilesystemState` scaffold and tests before routing legacy globals through it. | `todo/filesystem_state_todo.md`, `src/include/filesystem/filesystem_state.hpp`, `tests/filesystem/filesystem_state.cpp` |
+| 2026-05-09 | DEC-021 | Keep Android runtime code behind `XASH_ANDROID`, but allow the target-neutral `AndroidAssetsBackend` class and adapter declarations to compile on desktop when they avoid Android headers and APIs. | `modularization-plan/android-assets-backend-plan.md`, `done/todo/android_assets_backend_todo.md` |
+| 2026-05-09 | DEC-022 | Start `filesystem.c` migration with a target-neutral `FilesystemState` scaffold and tests before routing legacy globals through it. | `done/todo/filesystem_state_todo.md`, `src/include/filesystem/filesystem_state.hpp`, `tests/filesystem/filesystem_state.cpp` |
 | 2026-05-09 | DEC-023 | Preserve current path rejection semantics exactly in `PathPolicy`, including direct-path bypass after empty-path rejection and the single leading `../` strip quirk. | `src/include/filesystem/path_policy.hpp`, `tests/filesystem/path_policy.cpp`, `filesystem/filesystem.c` |
 | 2026-05-09 | DEC-024 | Treat `src/filesystem` as the long-term implementation home and shrink `filesystem/` toward stable facades plus temporary adapters. | `modern/filesystem/filesystem-folder-migration-map.md`, `todo/backend_implementation_migration_todo.md` |
