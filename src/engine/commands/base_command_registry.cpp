@@ -1,5 +1,7 @@
 #include "engine/commands/base_command_registry.hpp"
 
+#include "utilities/hash.hpp"
+
 #include <limits>
 
 namespace xash
@@ -220,16 +222,7 @@ bool BaseCommandRegistry::validName(const char *name)
 
 size_t BaseCommandRegistry::bucketIndex(const char *name) const
 {
-	size_t hashKey = 5381;
-
-	while (*name)
-	{
-		const unsigned char value = static_cast<unsigned char>(toLower(*name));
-		hashKey = (hashKey << 5) + hashKey + (value & 0xDF);
-		++name;
-	}
-
-	return hashKey & (kBucketCount - 1);
+	return xash::utilities::LegacyHashKey(name, static_cast<uint32_t>(kBucketCount));
 }
 
 }

@@ -23,23 +23,39 @@ Candidate helpers:
 
 ## Phase 39 Tasks: Hash And Checksum Helpers
 
-- [ ] `ENG-HASH-001` Audit hash/checksum helpers, callers, hash-size
+- [x] `ENG-HASH-001` Audit hash/checksum helpers, callers, hash-size
   assumptions, and compatibility-sensitive outputs.
-  Evidence:
+  Evidence: `Documentation/codex/legacy/engine/hash-checksum-baseline.md`
+  documents `public/crclib.*`, `COM_HashKey` callers, CRC32/MD5 behavior, and
+  filesystem file-hashing boundaries.
 
-- [ ] `ENG-HASH-002` Add tests for `COM_HashKey` case folding, power-of-two
+- [x] `ENG-HASH-002` Add tests for `COM_HashKey` case folding, power-of-two
   sizing assumptions, empty strings, mixed punctuation, and known output
   vectors.
-  Evidence:
+  Evidence: `public/tests/test_crclib.c` exercises the public C symbol;
+  `tests/utilities/hash.cpp` exercises the modern C++ utility.
 
-- [ ] `ENG-HASH-003` Add tests for selected CRC/checksum helpers before
+- [x] `ENG-HASH-003` Add tests for selected CRC/checksum helpers before
   touching implementation.
-  Evidence:
+  Evidence: `public/tests/test_crclib.c` covers CRC32 buffer/byte paths,
+  `CRC32_BlockSequence`, and MD5 known vectors; `tests/utilities/hash.cpp`
+  covers the modern CRC32 mirror.
 
-- [ ] `ENG-HASH-004` Add modern implementation helpers under `src/engine` or
+- [x] `ENG-HASH-004` Add modern implementation helpers under `src/engine` or
   `src/utilities` only if they remain private to existing C APIs.
-  Evidence:
+  Evidence: `src/include/utilities/hash.hpp`, `src/utilities/hash.cpp`,
+  `src/include/utilities/checksum.hpp`, and `src/utilities/checksum.cpp`.
 
-- [ ] `ENG-HASH-005` Replace the implementation behind the existing C symbols
+- [x] `ENG-HASH-005` Replace the implementation behind the existing C symbols
   when focused tests and `.\waf.bat build --alltests` pass.
-  Evidence:
+  Evidence: `COM_HashKey` is now exported from
+  `src/utilities/compat/crclib_hash.cpp` and delegates to
+  `xash::utilities::LegacyHashKey`; `public/crclib.c` keeps CRC32/MD5 while
+  their behavior is pinned. Focused tests passed:
+  `.\waf.bat build --targets=test_crclib`,
+  `.\waf.bat build --targets=test_utilities_hash`, and
+  `.\waf.bat build --targets=test_engine_base_command_registry`.
+  `.\waf.bat build --alltests` passed 49/49. Runtime smoke copied rebuilt
+  `xash3d.exe`, `xash.dll`, `filesystem_stdio.dll`, and `ref_gl.dll` to
+  `run-win32`, reached `Time to first frame: 0.589 seconds`, and stopped with
+  reason `command`.

@@ -1364,15 +1364,25 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 39: Hash And Checksum Helpers
 
-- [ ] `ENG-HASH-001` Audit hash/checksum helpers such as `COM_HashKey`, their
+- [x] `ENG-HASH-001` Audit hash/checksum helpers such as `COM_HashKey`, their
   callers, and known-output compatibility requirements.
-  Evidence: `Documentation/codex/todo/engine_hash_todo.md`.
-- [ ] `ENG-HASH-002` Add tests for hash/checksum vectors, case folding,
+  Evidence: `Documentation/codex/legacy/engine/hash-checksum-baseline.md` and
+  `Documentation/codex/todo/engine_hash_todo.md`.
+- [x] `ENG-HASH-002` Add tests for hash/checksum vectors, case folding,
   hash-size assumptions, and edge inputs.
-  Evidence:
-- [ ] `ENG-HASH-003` Replace one narrow implementation group behind existing C
+  Evidence: `public/tests/test_crclib.c` covers public `crclib` hash, CRC32,
+  block-sequence, and MD5 vectors; `tests/utilities/hash.cpp` covers modern
+  hash/checksum helpers.
+- [x] `ENG-HASH-003` Replace one narrow implementation group behind existing C
   symbols after focused tests and full tests pass.
-  Evidence:
+  Evidence: `COM_HashKey` now routes through
+  `src/utilities/compat/crclib_hash.cpp` to `src/utilities/hash.cpp`;
+  `BaseCommandRegistry` uses the same utility. Focused tests passed:
+  `.\waf.bat build --targets=test_crclib`,
+  `.\waf.bat build --targets=test_utilities_hash`, and
+  `.\waf.bat build --targets=test_engine_base_command_registry`;
+  `.\waf.bat build --alltests` passed 49/49; Windows smoke reached
+  `Time to first frame: 0.589 seconds` and stopped with reason `command`.
 
 ## Phase 40: String And Path Utilities
 
@@ -1488,3 +1498,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-037 | Route legacy `BaseCmd_*` through a private C adapter backed by `BaseCommandRegistry`, keeping `base_cmd.h` and public command/cvar surfaces unchanged. | `engine/common/base_cmd_adapter.cpp`, `engine/common/base_cmd.c`, `modern/engine/basecmd-migration-guide.md` |
 | 2026-05-09 | DEC-038 | Use six ordered low-level engine candidates for the next rewrite-style migrations: info strings, hash/checksum helpers, string/path utilities, command buffer, memory pools, and network buffers. | `todo/engine_infostring_todo.md`, `todo/engine_hash_todo.md`, `todo/engine_string_path_todo.md`, `todo/engine_command_buffer_todo.md`, `todo/engine_memory_todo.md`, `todo/engine_netbuffer_todo.md` |
 | 2026-05-09 | DEC-039 | Implement info strings as a direct low-level C++ replacement under `src/engine` while exporting the unchanged legacy `Info_*` C surface from `engine/common/infostring.cpp`. | `legacy/engine/info-string-baseline.md`, `modern/engine/info-string-migration-guide.md`, `src/engine/info_string.cpp`, `engine/common/infostring.cpp` |
+| 2026-05-09 | DEC-040 | Treat `public/crclib.h` as the legacy C ABI and `src/utilities` as the implementation home; route `COM_HashKey` through a compatibility export while leaving CRC32/MD5 C symbols in `public/crclib.c` until a dedicated performance pass. | `legacy/engine/hash-checksum-baseline.md`, `modern/engine/hash-checksum-migration-guide.md`, `src/utilities/compat/crclib_hash.cpp`, `src/utilities/hash.cpp`, `public/tests/test_crclib.c` |

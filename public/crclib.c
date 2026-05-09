@@ -435,24 +435,3 @@ char *MD5_Print( byte hash[16] )
 
 	return szReturn;
 }
-
-/*
-=================
-COM_HashKey
-
-returns hash key for string
-=================
-*/
-uint COM_HashKey( const char *string, uint hashSize )
-{
-	uint hashKey = 5381;
-	unsigned char i;
-
-	while(( i = *string++ ))
-	{
-		i = Q_tolower( i );
-		hashKey = ( hashKey << 5 ) + hashKey + ( i & 0xDF );
-	}
-
-	return hashKey & ( hashSize - 1 );
-}

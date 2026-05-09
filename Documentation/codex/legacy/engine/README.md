@@ -9,5 +9,7 @@ It focuses on real ownership, coupling, global state, and migration risk.
   `engine/common/`.
 - [command-cvar-baseline.md](command-cvar-baseline.md) documents the current
   command/cvar ownership, lifecycle, tests, and migration seams.
+- [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
+  `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated
   `Info_*` compatibility rules, quirks, and test coverage.

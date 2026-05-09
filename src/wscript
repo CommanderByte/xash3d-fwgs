@@ -25,6 +25,12 @@ def build(bld):
 		source = bld.path.ant_glob('debugging/*.cpp'),
 		use = 'modern_debugging_includes werror')
 
+	bld.stlib(target = 'modern_utilities',
+		source = bld.path.ant_glob('utilities/*.cpp'),
+		includes = 'include',
+		use = 'werror',
+		export_includes = 'include')
+
 	launcher_sources = bld.path.ant_glob('launcher/*.cpp')
 
 	if bld.env.DEST_OS == 'win32':
@@ -51,7 +57,7 @@ def build(bld):
 
 	bld.stlib(target = 'modern_engine',
 		source = bld.path.ant_glob('engine/**/*.cpp'),
-		use = 'modern_debugging_includes werror',
+		use = 'modern_utilities modern_debugging_includes werror',
 		export_includes = 'include')
 
 	if bld.env.LAUNCHER:
@@ -98,6 +104,7 @@ def build(bld):
 			'launcher_application': '../tests/launcher/application.cpp',
 			'launcher_engine_library': '../tests/launcher/engine_library.cpp',
 			'launcher_launch_settings': '../tests/launcher/launch_settings.cpp',
+			'utilities_hash': '../tests/utilities/hash.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',
 		}
 
@@ -105,5 +112,5 @@ def build(bld):
 			bld.program(features = 'test',
 				source = tests[i],
 				target = 'test_%s' % i,
-				use = 'modern_filesystem modern_launcher modern_engine modern_debugging modern_debugging_includes sdk_includes werror PTHREAD DL',
+				use = 'modern_filesystem modern_launcher modern_engine modern_utilities modern_debugging modern_debugging_includes sdk_includes werror PTHREAD DL',
 				install_path = None)

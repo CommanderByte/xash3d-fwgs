@@ -144,9 +144,13 @@ def build(bld):
 		target = 'build_vcs',
 		defines = ['XASH_BUILD_COMMIT=\"%s\"' % bld.env.GIT_VERSION, 'XASH_BUILD_BRANCH=\"%s\"' % bld.env.GIT_BRANCH, 'XASH_BUILD_COMMIT_DATE=\"%s\"' % bld.env.GIT_COMMIT_DATE])
 
-	bld.stlib(source = bld.path.ant_glob('*.c', excl='build_vcs.c'),
+	public_sources = bld.path.ant_glob('*.c', excl='build_vcs.c')
+	public_sources += ['../src/utilities/compat/crclib_hash.cpp']
+
+	bld.stlib(source = public_sources,
 		target = 'public',
-		use = 'sdk_includes werror')
+		includes = '../src/include',
+		use = 'sdk_includes modern_utilities werror')
 
 	if bld.env.TESTS:
 		tests = {
@@ -156,6 +160,7 @@ def build(bld):
 			'fileext': 'tests/test_fileext.c',
 			'efp': 'tests/test_efp.c',
 			'atoi': 'tests/test_atoi.c',
+			'crclib': 'tests/test_crclib.c',
 			'parsefile': 'tests/test_parsefile.c',
 			'atlas': 'tests/test_atlas.c',
 			'swapstruct': 'tests/test_swapstruct.c',
