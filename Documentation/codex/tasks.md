@@ -413,7 +413,35 @@ commit, test command, document link, or manual verification note that proves it.
   WAD, and PK3 mounts, printed search paths, and stopped with reason
   `"command"`.
 
-## Phase 8: Commit And Review Hygiene
+## Phase 8: PAK Backend Pilot
+
+- [x] `FS-PAK-001` Add private `PakBackend` skeleton mirroring
+  `ISearchPathBackend`.
+  Evidence: `src/include/filesystem/pak_backend.hpp`,
+  `src/filesystem/pak_backend.cpp`,
+  `tests/filesystem/pak_backend.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_pak_backend,test_archive-order,test_wad-archive`.
+- [x] `FS-PAK-002` Add C adapter bridge for legacy PAK callbacks.
+  Evidence: `filesystem/pak_backend_adapter.h`,
+  `filesystem/pak_backend_adapter.cpp`; command
+  `.\waf.bat build --targets=test_filesystem_pak_backend,test_archive-order,test_wad-archive`.
+- [x] `FS-PAK-003` Forward PAK print, close, open, file time, find, and search
+  callbacks through the bridge.
+  Evidence: `filesystem/pak.c`; command
+  `.\waf.bat build --targets=test_filesystem_pak_backend,test_archive-order,test_wad-archive`.
+- [x] `FS-PAK-004` Run filesystem unit tests after PAK bridge.
+  Evidence: command `.\waf.bat build` passed 15/15 selected tests; explicit
+  follow-up commands `.\build\src\test_filesystem_pak_backend.exe`,
+  `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_wad-archive.exe`, and
+  `.\build\filesystem\test_no-init.exe` passed.
+- [x] `FS-PAK-005` Run Windows runtime smoke test after PAK bridge.
+  Evidence: refreshed `run-win32/filesystem_stdio.dll` from the current build
+  and ran `.\xash3d.exe -dev 2 -log +fs_path +quit` with the Steam Half-Life
+  install as `XASH3D_RODIR`. Exit code was `0`; `engine.log` printed search
+  paths and stopped with reason `"command"`.
+
+## Phase 9: Commit And Review Hygiene
 
 - [ ] `REVIEW-001` Push documentation commits to remote branch.
   Evidence:
@@ -446,3 +474,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-015 | Use a fixed-capacity ordered registry template for first shared registry work, keeping mount-order and filesystem policy outside the generic utility. | `src/include/utilities/registry.hpp`, `todo/utilities_todo.md` |
 | 2026-05-09 | DEC-016 | Store the first live directory backend bridge pointer inside the private `dir_t` root object instead of changing `searchpath_t` layout. | `filesystem/dir.c`, `todo/directory_backend_todo.md` |
 | 2026-05-09 | DEC-017 | Keep legacy archive factory function pointers in `filesystem.c` during first registry integration, and expose modern archive descriptor metadata through a small C adapter. | `filesystem/archive_registry_adapter.h`, `filesystem/filesystem.c`, `todo/archive_registry_todo.md` |
+| 2026-05-09 | DEC-018 | Use the same behavior-neutral bridge pattern for the first PAK backend pilot: private C++ backend object, C adapter, legacy callback implementation retained behind hooks. | `src/include/filesystem/pak_backend.hpp`, `filesystem/pak_backend_adapter.h`, `filesystem/pak.c` |

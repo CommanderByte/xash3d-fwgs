@@ -27,6 +27,7 @@ GNU General Public License for more details.
 #include <stddef.h>
 #include "port.h"
 #include "filesystem_internal.h"
+#include "pak_backend_adapter.h"
 #include "crtlib.h"
 #include "common/com_strings.h"
 
@@ -69,6 +70,7 @@ struct pack_s
 {
 	file_t *handle;
 	int		numfiles;
+	void *backend;
 	dpackfile_t files[]; // flexible
 };
 
@@ -201,7 +203,7 @@ FS_OpenPackedFile
 Open a packed file using its package file descriptor
 ===========
 */
-static file_t *FS_OpenFile_PAK( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+static file_t *FS_OpenFile_PAK_Legacy( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
 {
 	dpackfile_t	*pfile;
 
@@ -216,7 +218,7 @@ FS_FindFile_PAK
 
 ===========
 */
-static int FS_FindFile_PAK( searchpath_t *search, const char *path, char *fixedname, size_t len )
+static int FS_FindFile_PAK_Legacy( searchpath_t *search, const char *path, char *fixedname, size_t len )
 {
 	int	left, right, middle;
 
@@ -253,7 +255,7 @@ FS_Search_PAK
 
 ===========
 */
-static void FS_Search_PAK( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+static void FS_Search_PAK_Legacy( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
 {
 	string temp;
 	const char *slash, *backslash, *colon, *separator;
@@ -299,7 +301,7 @@ FS_FileTime_PAK
 
 ===========
 */
-static int FS_FileTime_PAK( searchpath_t *search, const char *filename )
+static int FS_FileTime_PAK_Legacy( searchpath_t *search, const char *filename )
 {
 	return search->pack->handle->filetime;
 }
@@ -310,7 +312,7 @@ FS_PrintInfo_PAK
 
 ===========
 */
-static void FS_PrintInfo_PAK( searchpath_t *search, char *dst, size_t size )
+static void FS_PrintInfo_PAK_Legacy( searchpath_t *search, char *dst, size_t size )
 {
 	if( search->pack->handle->searchpath )
 		Q_snprintf( dst, size, "%s (%i files)" S_CYAN " from %s" S_DEFAULT, search->filename, search->pack->numfiles, search->pack->handle->searchpath->filename );
@@ -323,11 +325,101 @@ FS_Close_PAK
 
 ===========
 */
-static void FS_Close_PAK( searchpath_t *search )
+static void FS_Close_PAK_Legacy( searchpath_t *search )
 {
 	if( search->pack->handle != NULL )
 		FS_Close( search->pack->handle );
 	Mem_Free( search->pack );
+}
+
+static void FS_Close_PAK_Hook( void *context )
+{
+	FS_Close_PAK_Legacy( (searchpath_t *)context );
+}
+
+static void FS_PrintInfo_PAK_Hook( void *context, char *dst, size_t size )
+{
+	FS_PrintInfo_PAK_Legacy( (searchpath_t *)context, dst, size );
+}
+
+static file_t *FS_OpenFile_PAK_Hook( void *context, const char *filename, const char *mode, int pack_ind )
+{
+	return FS_OpenFile_PAK_Legacy( (searchpath_t *)context, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_PAK_Hook( void *context, const char *filename )
+{
+	return FS_FileTime_PAK_Legacy( (searchpath_t *)context, filename );
+}
+
+static int FS_FindFile_PAK_Hook( void *context, const char *path, char *fixedname, size_t len )
+{
+	return FS_FindFile_PAK_Legacy( (searchpath_t *)context, path, fixedname, len );
+}
+
+static void FS_Search_PAK_Hook( void *context, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	FS_Search_PAK_Legacy( (searchpath_t *)context, list, pattern, caseinsensitive );
+}
+
+static void FS_Close_PAK( searchpath_t *search )
+{
+	if( search->pack && search->pack->backend )
+	{
+		void *backend = search->pack->backend;
+		search->pack->backend = NULL;
+		FS_PakBackendBridge_Close( backend );
+		FS_DestroyPakBackendBridge( backend );
+		return;
+	}
+
+	FS_Close_PAK_Legacy( search );
+}
+
+static void FS_PrintInfo_PAK( searchpath_t *search, char *dst, size_t size )
+{
+	if( search->pack && search->pack->backend )
+	{
+		FS_PakBackendBridge_PrintInfo( search->pack->backend, dst, size );
+		return;
+	}
+
+	FS_PrintInfo_PAK_Legacy( search, dst, size );
+}
+
+static file_t *FS_OpenFile_PAK( searchpath_t *search, const char *filename, const char *mode, int pack_ind )
+{
+	if( search->pack && search->pack->backend )
+		return FS_PakBackendBridge_OpenFile( search->pack->backend, filename, mode, pack_ind );
+
+	return FS_OpenFile_PAK_Legacy( search, filename, mode, pack_ind );
+}
+
+static int FS_FileTime_PAK( searchpath_t *search, const char *filename )
+{
+	if( search->pack && search->pack->backend )
+		return FS_PakBackendBridge_FileTime( search->pack->backend, filename );
+
+	return FS_FileTime_PAK_Legacy( search, filename );
+}
+
+static int FS_FindFile_PAK( searchpath_t *search, const char *path, char *fixedname, size_t len )
+{
+	if( search->pack && search->pack->backend )
+		return FS_PakBackendBridge_FindFile( search->pack->backend, path, fixedname, len );
+
+	return FS_FindFile_PAK_Legacy( search, path, fixedname, len );
+}
+
+static void FS_Search_PAK( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	if( search->pack && search->pack->backend )
+	{
+		FS_PakBackendBridge_Search( search->pack->backend, list, pattern, caseinsensitive );
+		return;
+	}
+
+	FS_Search_PAK_Legacy( search, list, pattern, caseinsensitive );
 }
 
 
@@ -372,6 +464,18 @@ searchpath_t *FS_AddPak_Fullpath( const char *pakfile, int flags )
 	search->pfnFileTime = FS_FileTime_PAK;
 	search->pfnFindFile = FS_FindFile_PAK;
 	search->pfnSearch = FS_Search_PAK;
+
+	{
+		fs_pak_backend_hooks_t hooks;
+		hooks.context = search;
+		hooks.close = FS_Close_PAK_Hook;
+		hooks.printInfo = FS_PrintInfo_PAK_Hook;
+		hooks.openFile = FS_OpenFile_PAK_Hook;
+		hooks.fileTime = FS_FileTime_PAK_Hook;
+		hooks.findFile = FS_FindFile_PAK_Hook;
+		hooks.search = FS_Search_PAK_Hook;
+		search->pack->backend = FS_CreatePakBackendBridge( search, &hooks );
+	}
 
 	Con_Reportf( "Adding PAK: %s (%i files)\n", pakfile, pak->numfiles );
 

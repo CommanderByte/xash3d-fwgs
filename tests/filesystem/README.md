@@ -61,6 +61,7 @@ structure.
 | Mount snapshot records and writers | `tests/filesystem/debug_snapshot.cpp` | existing | Built by `src/wscript`; covers modern internal debug snapshot output. |
 | Archive registry descriptors | `tests/filesystem/archive_registry.cpp` | existing | Built by `src/wscript`; covers default descriptor metadata and order. |
 | Directory backend skeleton | `tests/filesystem/directory_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
+| PAK backend skeleton | `tests/filesystem/pak_backend.cpp` | existing | Built by `src/wscript`; covers private backend metadata and safe inert defaults. |
 | Registry snapshot records and writers | `tests/filesystem/registry_snapshot.cpp` | existing | Built by `src/wscript`; covers future `fs_registry` output records. |
 | DLL lookup | `tests/filesystem/dll-lookup.c` | existing | Focuses on returned `fs_dllinfo_t`, not loading real DLLs. |
 

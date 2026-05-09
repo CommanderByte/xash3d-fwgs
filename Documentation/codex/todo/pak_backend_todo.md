@@ -17,14 +17,29 @@ callbacks and public filesystem ABI.
 
 ## Migration Order
 
-- [ ] Freeze direct `MountArchive_Fullpath` PAK behavior with tests.
-- [ ] Add a `PakBackend` skeleton mirroring `ISearchPathBackend`.
-- [ ] Add a C adapter beside `pak.c`, similar to the directory backend bridge.
-- [ ] Forward one callback at a time through the adapter.
-- [ ] Keep `FS_AddPak_Fullpath` callable from C.
-- [ ] Keep PAK directory allocation and `pack_t` ownership legacy-compatible
+- [x] Freeze direct `MountArchive_Fullpath` PAK behavior with tests.
+  Evidence: `tests/filesystem/archive-order.c`.
+- [x] Add a `PakBackend` skeleton mirroring `ISearchPathBackend`.
+  Evidence: `src/include/filesystem/pak_backend.hpp`,
+  `src/filesystem/pak_backend.cpp`, `tests/filesystem/pak_backend.cpp`.
+- [x] Add a C adapter beside `pak.c`, similar to the directory backend bridge.
+  Evidence: `filesystem/pak_backend_adapter.h`,
+  `filesystem/pak_backend_adapter.cpp`.
+- [x] Forward one callback at a time through the adapter.
+  Evidence: `filesystem/pak.c`; command
+  `.\waf.bat build --targets=test_filesystem_pak_backend,test_archive-order,test_wad-archive`.
+- [x] Keep `FS_AddPak_Fullpath` callable from C.
+  Evidence: `tests/filesystem/archive-order.c`.
+- [x] Keep PAK directory allocation and `pack_t` ownership legacy-compatible
   until all tests pass.
-- [ ] Run archive, no-init, and Windows smoke tests after callback forwarding.
+  Evidence: `pack_t` still owns the loaded PAK directory and now stores only an
+  opaque backend bridge pointer.
+- [x] Run archive, no-init, and Windows smoke tests after callback forwarding.
+  Evidence: `.\waf.bat build`,
+  `.\build\src\test_filesystem_pak_backend.exe`,
+  `.\build\filesystem\test_archive-order.exe`,
+  `.\build\filesystem\test_wad-archive.exe`,
+  `.\build\filesystem\test_no-init.exe`, and Windows `+fs_path +quit` smoke.
 
 ## Boundaries
 
