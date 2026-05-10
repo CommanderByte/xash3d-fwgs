@@ -141,6 +141,13 @@ encoding. The helper should consume a snapshot of checkable resource indexes and
 produce the same small-delta or absolute-index encoding, while legacy code owns
 client flags, cvar checks, `resource_t`, and message destination state.
 
+Phase 67 implementation note: the consistency-list encoder now lives in
+`src/engine/server/server_consistency_list.cpp`, with the legacy bridge in
+`engine/server/server_consistency_list_adapter.cpp`. The helper writes only the
+enable/entry/terminator bits for index snapshots and reports whether
+`FCL_FORCE_UNMODIFIED` should be set; legacy code still owns cvars, client
+flags, `resource_t`, and the destination message.
+
 ### Phase 68: Consistency Resource Policy
 
 Audit and extract the pure parts of `SV_TransferConsistencyInfo()` and

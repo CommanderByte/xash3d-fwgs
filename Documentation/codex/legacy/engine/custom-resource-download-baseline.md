@@ -256,6 +256,26 @@ client's reliable netchan message:
 The message does not include `rguc_reserved`; model consistency metadata is
 owned by the server resource-list and consistency-list paths.
 
+## Consistency List Serialization
+
+`SV_SendConsistencyList()` appends the server consistency-check request list to
+the resource-list payload. Legacy ownership is split:
+
+- `svs.maxclients == 1`, disabled `mp_consistency`, zero
+  `sv.num_consistency`, or `FCL_HLTV_PROXY` disables the list, clears
+  `FCL_FORCE_UNMODIFIED`, and writes one stop bit (`0`).
+- enabled lists set `FCL_FORCE_UNMODIFIED`, write one enable bit (`1`), then
+  one entry per `sv.resources[i]` with `RES_CHECKFILE`.
+- each entry begins with an entry-present bit (`1`).
+- if `i - lastcheck <= 31`, the entry writes a delta selector bit (`1`) and a
+  5-bit delta.
+- if `i - lastcheck > 31`, the entry writes an absolute selector bit (`0`) and
+  the 12-bit resource index (`MAX_MODEL_BITS`).
+- the list ends with an entry-present stop bit (`0`).
+
+`sv.num_consistency` is an enable gate, but the actual transmitted indexes are
+derived from the `RES_CHECKFILE` flags in `sv.resources[]`.
+
 ## HPAK And Temp Files
 
 The server-side custom resource path depends on `engine/common/hpak.c`, but HPAK

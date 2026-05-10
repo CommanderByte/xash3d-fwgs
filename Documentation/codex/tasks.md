@@ -2191,18 +2191,29 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 67: Consistency List Serialization Helper
 
-- [ ] `ENG-CONSLIST-001` Baseline `SV_SendConsistencyList()` enable/disable
+- [x] `ENG-CONSLIST-001` Baseline `SV_SendConsistencyList()` enable/disable
   conditions, delta encoding, and list terminator behavior.
-  Evidence:
-- [ ] `ENG-CONSLIST-002` Implement a target-neutral consistency-list encoder
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-CONSLIST-002` Implement a target-neutral consistency-list encoder
   for resource-index snapshots.
-  Evidence:
-- [ ] `ENG-CONSLIST-003` Add golden tests for empty lists, HLTV/single-player
+  Evidence: `src/include/engine/server/server_consistency_list.hpp`,
+  `src/engine/server/server_consistency_list.cpp`.
+- [x] `ENG-CONSLIST-003` Add golden tests for empty lists, HLTV/single-player
   suppression, small deltas, large deltas, and terminators.
-  Evidence:
-- [ ] `ENG-CONSLIST-004` Route consistency-list serialization through the
+  Evidence: `tests/engine/server_consistency_list.cpp`.
+- [x] `ENG-CONSLIST-004` Route consistency-list serialization through the
   helper while keeping client flags and `resource_t` ownership in legacy code.
-  Evidence:
+  Evidence: `engine/server/server_consistency_list_adapter.h`,
+  `engine/server/server_consistency_list_adapter.cpp`,
+  `engine/server/sv_custom.c`.
+- [x] `ENG-CONSLIST-005` Run focused tests, full tests, runtime smoke, and
+  record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_consistency_list`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 78/78 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.421 seconds before stopping with reason `command` at May 10 2026
+  17:45 local time.
 
 ## Phase 68: Consistency Resource Policy
 

@@ -345,10 +345,33 @@ the main phase tracker until they are selected.
   frame in 0.408 seconds before stopping with reason `command` at May 10 2026
   17:40 local time.
 
+## Phase 67: Consistency List Serialization Helper
+
+- [x] Baseline `SV_SendConsistencyList()` enable/disable conditions, delta
+  encoding, absolute-index fallback, and terminator behavior.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] Implement a target-neutral consistency-list encoder for resource-index
+  snapshots.
+  Evidence: `src/include/engine/server/server_consistency_list.hpp`,
+  `src/engine/server/server_consistency_list.cpp`.
+- [x] Add golden tests for disabled paths, enabled empty lists, small deltas,
+  large deltas, reader roundtrip, and overflow.
+  Evidence: `tests/engine/server_consistency_list.cpp`.
+- [x] Route `SV_SendConsistencyList()` through the helper while keeping client
+  flags, cvars, `resource_t`, and message destination ownership legacy.
+  Evidence: `engine/server/server_consistency_list_adapter.h`,
+  `engine/server/server_consistency_list_adapter.cpp`,
+  `engine/server/sv_custom.c`.
+- [x] Run focused tests, full tests, runtime smoke, and record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_consistency_list`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 78/78, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.421 seconds before stopping with reason `command` at May 10 2026
+  17:45 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 67: consistency list serialization helper after customization
-  message payloads are routed.
 - [ ] Phase 68: consistency resource policy helper after consistency-list
   encoding is documented.
 - [ ] Server event logging service after console/log sink ownership is clearer.

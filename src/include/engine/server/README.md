@@ -20,6 +20,8 @@ Current helpers:
   checks, resource matching, and size summaries.
 - `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
   decisions built from resource snapshots and adapter-supplied sidecar probes.
+- `server_consistency_list.hpp`: consistency-list enable and resource-index
+  serialization for server resource checks.
 - `server_customization_message.hpp`: propagated customization payload
   serialization for `svc_customization`.
 - `server_resource_message.hpp`: resource-list row serialization using modern

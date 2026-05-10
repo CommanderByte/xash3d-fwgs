@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_consistency_list_adapter.h"
 #include "server_customization_message_adapter.h"
 #include "server_resource_message_adapter.h"
 #include "server_upload_queue_adapter.h"
@@ -251,44 +252,28 @@ void SV_TransferConsistencyInfo( void )
 
 static void SV_SendConsistencyList( sv_client_t *cl, sizebuf_t *msg )
 {
-	int	i, lastcheck;
-	int	delta;
+	sv_consistency_list_write_result_t result;
 
-	if( svs.maxclients == 1 || !sv_consistency.value || !sv.num_consistency || FBitSet( cl->flags, FCL_HLTV_PROXY ))
-	{
+	result = SV_ConsistencyList_Write(
+		sv.resources,
+		sv.num_resources,
+		sv.num_consistency,
+		svs.maxclients,
+		sv_consistency.value != 0.0f,
+		FBitSet( cl->flags, FCL_HLTV_PROXY ),
+		msg->bOverflow,
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit );
+
+	if( result.force_unmodified )
+		SetBits( cl->flags, FCL_FORCE_UNMODIFIED );
+	else
 		ClearBits( cl->flags, FCL_FORCE_UNMODIFIED );
-		MSG_WriteOneBit( msg, 0 );
-		return;
-	}
 
-	SetBits( cl->flags, FCL_FORCE_UNMODIFIED );
-	MSG_WriteOneBit( msg, 1 );
-	lastcheck = 0;
-
-	for( i = 0; i < sv.num_resources; i++ )
-	{
-		if( !FBitSet( sv.resources[i].ucFlags, RES_CHECKFILE ))
-			continue;
-
-		delta = i - lastcheck;
-		MSG_WriteOneBit( msg, 1 );
-
-		if( delta > 31 )
-		{
-			MSG_WriteOneBit( msg, 0 );
-			MSG_WriteUBitLong( msg, i, MAX_MODEL_BITS );
-		}
-		else
-		{
-			MSG_WriteOneBit( msg, 1 );
-			MSG_WriteUBitLong( msg, delta, 5 );
-		}
-
-		lastcheck = i;
-	}
-
-	// write end of the list
-	MSG_WriteOneBit( msg, 0 );
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
 }
 
 static qboolean SV_CustomResourceDataExists( resource_t *pResource )

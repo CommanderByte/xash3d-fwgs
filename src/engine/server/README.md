@@ -20,6 +20,8 @@ Current helpers:
   name checks, matching, and size-summary helpers.
 - `server_download_policy.cpp`: target-neutral server download allow/reject,
   precache, model sidecar, and custom logo lookup decisions.
+- `server_consistency_list.cpp`: target-neutral consistency-list enable and
+  resource-index serialization.
 - `server_customization_message.cpp`: target-neutral propagated customization
   payload serialization for `svc_customization`.
 - `server_resource_message.cpp`: target-neutral resource-list row

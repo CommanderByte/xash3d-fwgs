@@ -39,6 +39,9 @@ Current implementation notes:
 - `server_download_policy.hpp` / `server_download_policy.cpp`: Phase 63's
   implemented `SV_DownloadFile_f()` policy helper; legacy code still owns
   filesystem probes, HPAK reads, fail responses, and netchan fragments.
+- `server_consistency_list.hpp` / `server_consistency_list.cpp`: Phase 67's
+  implemented consistency-list encoder; legacy code still owns cvars, client
+  flags, `resource_t`, and the destination message.
 - `server_customization_message.hpp` / `server_customization_message.cpp`:
   Phase 66's implemented customization payload encoder; legacy code still owns
   `svc_customization`, client netchan routing, and customization propagation.
