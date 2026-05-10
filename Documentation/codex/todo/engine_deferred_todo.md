@@ -13,9 +13,12 @@ These are not the immediate next phase unless selected in `tasks.md`.
   `Documentation/codex/done/todo/engine_logging_todo.md`.
 - `ENG-SYS-*` is now promoted to Phase 44 and tracked in
   `Documentation/codex/done/todo/engine_platform_todo.md`.
+- `ENG-FSBRIDGE-001` is now promoted to Phase 50 and tracked in
+  `Documentation/codex/tasks.md`.
 
 ## Deferred Candidates
 
-- [ ] `ENG-FSBRIDGE-001` Revisit `filesystem_engine.c` adapter cleanup after
-  console/logging policy exists.
-  Evidence:
+- [ ] Future filesystem logging callback routing still waits for a real
+  console router/sink phase.
+  Evidence: `Documentation/codex/legacy/engine/filesystem-bridge-audit.md`,
+  `Documentation/codex/modern/engine/filesystem-bridge-migration-guide.md`.

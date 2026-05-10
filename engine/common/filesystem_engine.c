@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include <errno.h>
 #include "common.h"
 #include "library.h"
+#include "engine/filesystem/mount_flags_adapter.h"
 #include "platform/platform.h"
 
 #if XASH_WIN32
@@ -42,6 +43,15 @@ fs_globals_t *FI;
 
 static pfnCreateInterface_t fs_pfnCreateInterface;
 static HINSTANCE fs_hInstance;
+
+STATIC_ASSERT( (uint32_t)FS_MOUNT_HD == (uint32_t)XASH_ENGINE_FS_MOUNT_HD,
+	"high definition mount flag must match engine bridge" );
+STATIC_ASSERT( (uint32_t)FS_MOUNT_LV == (uint32_t)XASH_ENGINE_FS_MOUNT_LV,
+	"low violence mount flag must match engine bridge" );
+STATIC_ASSERT( (uint32_t)FS_MOUNT_ADDON == (uint32_t)XASH_ENGINE_FS_MOUNT_ADDON,
+	"addon mount flag must match engine bridge" );
+STATIC_ASSERT( (uint32_t)FS_MOUNT_L10N == (uint32_t)XASH_ENGINE_FS_MOUNT_L10N,
+	"localization mount flag must match engine bridge" );
 
 search_t *FS_Search( const char *pattern, int caseinsensitive, int gamedironly )
 {
@@ -87,15 +97,11 @@ void *FS_GetNativeObject( const char *obj )
 
 static uint32_t FS_MountFlags( void )
 {
-	uint32_t flags = 0;
-
-	// FIXME: VFS shouldn't care about this, allow engine to mount gamedirs
-	if( fs_mount_lv.value ) SetBits( flags, FS_MOUNT_LV );
-	if( fs_mount_hd.value ) SetBits( flags, FS_MOUNT_HD );
-	if( fs_mount_addon.value ) SetBits( flags, FS_MOUNT_ADDON );
-	if( fs_mount_l10n.value ) SetBits( flags, FS_MOUNT_L10N );
-
-	return flags;
+	return Xash_BuildFilesystemMountFlags(
+		fs_mount_hd.value != 0.0f,
+		fs_mount_lv.value != 0.0f,
+		fs_mount_addon.value != 0.0f,
+		fs_mount_l10n.value != 0.0f );
 }
 
 void FS_Rescan_f( void )

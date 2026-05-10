@@ -1761,13 +1761,27 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 50: Filesystem Bridge And Logging Follow-Up
 
-- [ ] `ENG-FSBRIDGE-001` Revisit `engine/common/filesystem_engine.c` after the
+- [x] `ENG-FSBRIDGE-001` Revisit `engine/common/filesystem_engine.c` after the
   system console/backend phase to see whether any logging or mount bridge code
   can move into modern helpers.
-  Evidence: `Documentation/codex/todo/engine_deferred_todo.md`.
-- [ ] `ENG-FSBRIDGE-002` Keep rendered in-game console routing out of scope
+  Evidence: `Documentation/codex/legacy/engine/filesystem-bridge-audit.md`,
+  `Documentation/codex/modern/engine/filesystem-bridge-migration-guide.md`,
+  `src/include/engine/filesystem/mount_flags.hpp`,
+  `src/include/engine/filesystem/mount_flags_adapter.h`,
+  `src/engine/filesystem/mount_flags.cpp`,
+  `src/engine/filesystem/mount_flags_adapter.cpp`,
+  `engine/common/filesystem_engine.c`,
+  `tests/engine/filesystem_mount_flags.cpp`;
+  `.\waf.bat build --targets=test_engine_filesystem_mount_flags` passed 1/1
+  focused tests; `.\waf.bat build --alltests` passed 64/64 on 2026-05-10.
+- [x] `ENG-FSBRIDGE-002` Keep rendered in-game console routing out of scope
   until a client/rendering console sink phase exists.
-  Evidence: `Documentation/codex/modern/engine/rendered-console-sink.md`.
+  Evidence: `Documentation/codex/modern/engine/rendered-console-sink.md`,
+  `Documentation/codex/modern/engine/filesystem-bridge-migration-guide.md`;
+  Windows `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`
+  smoke reached renderer initialization, logged time to first frame as 1.755
+  seconds, and stopped with reason `command` at May 10 2026 13:28:25 local
+  time.
 
 ## Phase 800: POSIX Console Backend Validation
 
@@ -1905,3 +1919,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-10 | DEC-050 | Move remaining MD5 and low-risk CRT text helper bodies into `src/utilities` with C compatibility exports, preserving public headers while adding bounded memory-line copy behavior for `Q_memfgets`. | `src/utilities/md5.cpp`, `src/utilities/text.cpp`, `src/utilities/compat/crclib_md5.cpp`, `src/utilities/compat/crtlib_text.cpp`, `public/tests/test_crclib.c`, `public/tests/test_strings.c` |
 | 2026-05-10 | DEC-051 | Finish the public-folder sweep by moving atlas and pure build-number logic behind `src/utilities` while keeping UTF helpers in public until their new focused baseline can guide a later migration. | `done/todo/public_folder_sweep_todo.md`, `src/utilities/atlas.cpp`, `src/utilities/build_number.cpp`, `src/utilities/compat/atlas_adapter.cpp`, `src/utilities/compat/build_number_adapter.cpp`, `public/tests/test_utflib.c` |
 | 2026-05-10 | DEC-052 | Route only the Windows-verifiable `Sys_GetCurrentUser` branch through a modern platform adapter, preserving POSIX/Vita/Android legacy behavior until non-Windows runtime validation exists. | `legacy/engine/system-user-runtime-audit.md`, `modern/engine/system-user-runtime-facade-plan.md`, `src/engine/platform/current_user.cpp`, `src/engine/platform/current_user_adapter.cpp`, `todo/non_windows_system_runtime_todo.md` |
+| 2026-05-10 | DEC-053 | Extract only pure filesystem bridge mount flag policy into `src/engine/filesystem`, while keeping `fs_interface_t` logging callbacks and rendered-console routing at the legacy boundary until an engine router/sink phase exists. | `legacy/engine/filesystem-bridge-audit.md`, `modern/engine/filesystem-bridge-migration-guide.md`, `src/engine/filesystem/mount_flags.cpp`, `engine/common/filesystem_engine.c`, `deferred/todo/filesystem_logging_todo.md` |

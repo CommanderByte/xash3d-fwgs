@@ -1,6 +1,7 @@
 # Filesystem Logging TODO
 
-Status: deferred until the engine console/logging subsystem is audited.
+Status: revisited in Phase 50; still deferred until the engine console/logging
+subsystem has a real router/sink layer, not only platform console backends.
 
 ## Purpose
 
@@ -19,6 +20,10 @@ The console and fatal-error paths are engine-owned behavior. A filesystem-only
 logging facade would likely duplicate or constrain the eventual engine console
 design. Resume this TODO after the engine console/common layer has an ownership
 map and a preferred logging/error policy.
+
+Phase 50 confirmed that `fs_interface_t` should remain the compatibility
+surface for now. The bridge can later replace the callback implementations with
+router-backed adapters without changing the filesystem DLL ABI.
 
 ## Deferred Tasks
 

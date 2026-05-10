@@ -85,6 +85,7 @@ def build(bld):
 			'debugging': '../tests/debugging/debugging.cpp',
 			'engine_base_command_registry': '../tests/engine/base_command_registry.cpp',
 			'engine_command_buffer': '../tests/engine/command_buffer.cpp',
+			'engine_filesystem_mount_flags': '../tests/engine/filesystem_mount_flags.cpp',
 			'engine_info_string': '../tests/engine/info_string.cpp',
 			'engine_network_buffer': '../tests/engine/network_buffer.cpp',
 			'engine_platform_console_backend': '../tests/engine/platform_console_backend.cpp',

@@ -34,7 +34,7 @@ pointer. Public CRC loops do not recompute the polynomial per byte.
    helpers, only after golden tests are explicit.
 3. Phase 48: platform user/runtime helper extraction, starting with
    `Sys_GetCurrentUser` if Windows behavior is easy to verify.
-4. Phase 49: filesystem engine bridge and logging follow-up, now that the
+4. Phase 50: filesystem engine bridge and logging follow-up, now that the
    system console phase exists.
 
 ## Not Yet
