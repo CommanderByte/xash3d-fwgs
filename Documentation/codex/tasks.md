@@ -3034,20 +3034,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 97: Game DLL Changelevel And Save/Restore Bridge Policy
 
-- [ ] `ENG-GAMEDLL-CHANGE-001` Baseline `pfnChangeLevel()`,
+- [x] `ENG-GAMEDLL-CHANGE-001` Baseline `pfnChangeLevel()`,
   `SV_QueueChangeLevel()`, `SV_WriteEntityPatch()`, and save/restore game
   callback sequencing.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-CHANGE-002` Add tests for duplicate changelevel
+  Evidence: `Documentation/codex/modern/engine/game-dll-changelevel-save-boundary.md`.
+- [x] `ENG-GAMEDLL-CHANGE-002` Add tests for duplicate changelevel
   suppression, landmark truncation, invalid level names, and save patch
   planning.
-  Evidence:
-- [ ] `ENG-GAMEDLL-CHANGE-003` Keep runtime save/load streams and game DLL
+  Evidence: `tests/engine/game_dll_changelevel_policy.cpp`.
+- [x] `ENG-GAMEDLL-CHANGE-003` Keep runtime save/load streams and game DLL
   field serialization legacy-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-CHANGE-004` Run focused tests, full tests, and smoke
+  Evidence: `src/include/engine/server/game_dll_changelevel_policy.hpp`,
+  `src/engine/server/game_dll_changelevel_policy.cpp`, and no live
+  route-through in `engine/server/sv_game.c` or `engine/server/sv_save.c`.
+- [x] `ENG-GAMEDLL-CHANGE-004` Run focused tests, full tests, and smoke
   timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_changelevel_policy -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 105/105, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.502 seconds and
+  stopped with reason `command`.
 
 ## Phase 98: Game DLL Visibility And Trace Boundary
 

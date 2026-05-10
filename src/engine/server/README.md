@@ -9,6 +9,9 @@ code until a later compatibility phase changes those boundaries.
 
 Current helpers:
 
+- `game_dll_changelevel_policy.cpp`: target-neutral game DLL changelevel
+  request, smooth/classic queue, landmark truncation, early-loop rejection, and
+  entity-patch write plans.
 - `game_dll_enginefuncs.cpp`: target-neutral metadata lookup for the stable
   `enginefuncs_t` game DLL callback table.
 - `game_dll_entity_lifecycle.cpp`: target-neutral entity index, bugcompat

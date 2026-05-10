@@ -186,12 +186,17 @@ phase.
 
 ## Phase 97: Changelevel And Save/Restore Bridge Policy
 
-- [ ] Baseline `pfnChangeLevel()`, `SV_QueueChangeLevel()`,
+- [x] Baseline `pfnChangeLevel()`, `SV_QueueChangeLevel()`,
   `SV_WriteEntityPatch()`, and game callback sequencing in save/restore.
-- [ ] Add tests for duplicate changelevel suppression, landmark truncation,
+  Evidence: `Documentation/codex/modern/engine/game-dll-changelevel-save-boundary.md`.
+- [x] Add tests for duplicate changelevel suppression, landmark truncation,
   invalid level names, and save patch planning.
-- [ ] Keep runtime save/load streams and game DLL field serialization
+  Evidence: `tests/engine/game_dll_changelevel_policy.cpp`.
+- [x] Keep runtime save/load streams and game DLL field serialization
   legacy-owned.
+  Evidence: Phase 97 adds no live route-through; `engine/server/sv_game.c` and
+  `engine/server/sv_save.c` still own changelevel execution, save files,
+  entity tables, token tables, and game DLL serializer callbacks.
 
 ## Phase 98: Visibility And Trace Callback Boundary
 
