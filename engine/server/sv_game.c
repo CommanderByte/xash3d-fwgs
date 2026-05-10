@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include "ref_common.h" // decals
 #include "game_dll_message_session_adapter.h"
 #include "game_dll_output_policy_adapter.h"
+#include "game_dll_payload_policy_adapter.h"
 #include "game_dll_resource_policy_adapter.h"
 #include "game_dll_user_message_registry_adapter.h"
 #include "server_multicast_policy_adapter.h"
@@ -1915,7 +1916,8 @@ static void GAME_EXPORT pfnMakeStatic( edict_t *ent )
 {
 	entity_state_t	*state;
 
-	if( !SV_IsValidEdict( ent ))
+	if( SV_GameDllPayload_BuildMakeStaticAction( SV_IsValidEdict( ent )) ==
+		SV_GAMEDLL_MAKE_STATIC_IGNORE_INVALID_ENTITY )
 		return;
 
 	// fill the entity state
@@ -2144,8 +2146,7 @@ SV_StartSound
 */
 void GAME_EXPORT SV_StartSound( edict_t *ent, int chan, const char *sample, float vol, float attn, int flags, int pitch )
 {
-	qboolean	filter = false;
-	int	msg_dest;
+	sv_gamedll_sound_route_t route;
 	vec3_t	origin;
 
 	if( !SV_IsValidEdict( ent ))
@@ -2154,23 +2155,14 @@ void GAME_EXPORT SV_StartSound( edict_t *ent, int chan, const char *sample, floa
 	VectorAverage( ent->v.mins, ent->v.maxs, origin );
 	VectorAdd( origin, ent->v.origin, origin );
 
-	if( FBitSet( flags, SND_SPAWNING ))
-		msg_dest = MSG_INIT;
-	else if( chan == CHAN_STATIC )
-		msg_dest = MSG_ALL;
-	else if( FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ))
-		msg_dest = MSG_ALL;
-	else msg_dest = (svs.maxclients <= 1 ) ? MSG_ALL : MSG_PAS_R;
-
-	// always sending stop sound command
-	if( FBitSet( flags, SND_STOP ))
-		msg_dest = MSG_ALL;
-
-	if( FBitSet( flags, SND_FILTER_CLIENT ))
-		filter = true;
+	route = SV_GameDllPayload_BuildStartSoundRoute(
+		flags,
+		chan,
+		svs.maxclients,
+		FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ));
 
 	if( SV_BuildSoundMsg( &sv.multicast, ent, chan, sample, vol * 255, attn, flags, pitch, origin ))
-		SV_Multicast( msg_dest, origin, NULL, false, filter );
+		SV_Multicast( route.destination, origin, NULL, false, route.filter_client );
 }
 
 /*
@@ -2181,21 +2173,12 @@ pfnEmitAmbientSound
 */
 static void GAME_EXPORT pfnEmitAmbientSound( edict_t *ent, float *pos, const char *sample, float vol, float attn, int flags, int pitch )
 {
-	int	msg_dest;
+	sv_gamedll_ambient_sound_plan_t plan;
 
-	if( sv.state == ss_loading )
-		SetBits( flags, SND_SPAWNING );
+	plan = SV_GameDllPayload_BuildAmbientSoundPlan( sv.state == ss_loading, flags );
 
-	if( FBitSet( flags, SND_SPAWNING ))
-		msg_dest = MSG_INIT;
-	else msg_dest = MSG_ALL;
-
-	// always sending stop sound command
-	if( FBitSet( flags, SND_STOP ))
-		msg_dest = MSG_ALL;
-
-	if( SV_BuildSoundMsg( &sv.multicast, ent, CHAN_STATIC, sample, vol * 255, attn, flags, pitch, pos ))
-		SV_Multicast( msg_dest, pos, NULL, false, false );
+	if( SV_BuildSoundMsg( &sv.multicast, ent, CHAN_STATIC, sample, vol * 255, attn, plan.flags, pitch, pos ))
+		SV_Multicast( plan.destination, pos, NULL, false, false );
 }
 
 /*
@@ -2516,21 +2499,30 @@ Make sure the event gets sent to all clients
 */
 static void GAME_EXPORT pfnParticleEffect( const float *org, const float *dir, float color, float count )
 {
-	int	v;
+	sv_gamedll_particle_plan_t plan;
+	int	bytes_left = MSG_GetNumBytesLeft( &sv.datagram );
 
-	if( MSG_GetNumBytesLeft( &sv.datagram ) < 16 )
+	if( !SV_GameDllPayload_ParticleHasWritableBuffer( bytes_left ))
+		return;
+
+	plan = SV_GameDllPayload_BuildParticlePlan(
+		bytes_left,
+		dir[0],
+		dir[1],
+		dir[2],
+		count,
+		color );
+
+	if( !plan.should_write )
 		return;
 
 	MSG_BeginServerCmd( &sv.datagram, svc_particle );
 	MSG_WriteVec3Coord( &sv.datagram, org );
-	v = bound( -128, dir[0] * 16.0f, 127 );
-	MSG_WriteChar( &sv.datagram, v );
-	v = bound( -128, dir[1] * 16.0f, 127 );
-	MSG_WriteChar( &sv.datagram, v );
-	v = bound( -128, dir[2] * 16.0f, 127 );
-	MSG_WriteChar( &sv.datagram, v );
-	MSG_WriteByte( &sv.datagram, count );
-	MSG_WriteByte( &sv.datagram, color );
+	MSG_WriteChar( &sv.datagram, plan.direction_x );
+	MSG_WriteChar( &sv.datagram, plan.direction_y );
+	MSG_WriteChar( &sv.datagram, plan.direction_z );
+	MSG_WriteByte( &sv.datagram, plan.count );
+	MSG_WriteByte( &sv.datagram, plan.color );
 	MSG_WriteByte( &sv.datagram, 0 ); // z-vel
 }
 
@@ -2542,19 +2534,19 @@ pfnLightStyle
 */
 static void GAME_EXPORT pfnLightStyle( int style, const char* val )
 {
-	if( style < 0 )
-		style = 0;
+	sv_gamedll_lightstyle_plan_t plan;
 
-	if( style >= MAX_LIGHTSTYLES )
+	plan = SV_GameDllPayload_BuildLightStylePlan( style, MAX_LIGHTSTYLES, sv.loadgame );
+	if( plan.action == SV_GAMEDLL_LIGHTSTYLE_FATAL_STYLE_OVERFLOW )
 	{
-		Host_Error( "%s: style: %i >= %d", __func__, style, MAX_LIGHTSTYLES );
+		Host_Error( "%s: style: %i >= %d", __func__, plan.style, MAX_LIGHTSTYLES );
 		return;
 	}
 
-	if( sv.loadgame )
+	if( plan.action == SV_GAMEDLL_LIGHTSTYLE_SKIP_LOADGAME )
 		return; // don't let the world overwrite our restored styles
 
-	SV_SetLightStyle( style, val, 0.0f ); // set correct style
+	SV_SetLightStyle( plan.style, val, 0.0f ); // set correct style
 }
 
 /*
@@ -3859,7 +3851,10 @@ pfnStaticDecal
 */
 static void GAME_EXPORT pfnStaticDecal( const float *origin, int decalIndex, int entityIndex, int modelIndex )
 {
-	SV_CreateDecal( &sv.signon, origin, decalIndex, entityIndex, modelIndex, FDECAL_PERMANENT, 1.0f );
+	sv_gamedll_static_decal_plan_t plan =
+		SV_GameDllPayload_BuildStaticDecalPlan( FDECAL_PERMANENT );
+
+	SV_CreateDecal( &sv.signon, origin, decalIndex, entityIndex, modelIndex, plan.flags, plan.scale );
 }
 
 /*

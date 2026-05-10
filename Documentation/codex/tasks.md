@@ -2904,22 +2904,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 92: Game DLL Sound, Decal, And Static Payload Bridge
 
-- [ ] `ENG-GAMEDLL-PAYLOAD-001` Baseline game-DLL-facing sound, ambient sound,
+- [x] `ENG-GAMEDLL-PAYLOAD-001` Baseline game-DLL-facing sound, ambient sound,
   static decal, static entity, particle, and lightstyle callback behavior.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-PAYLOAD-002` Reuse completed server sound/static/decal
+  Evidence: `Documentation/codex/modern/engine/game-dll-payload-policy.md`.
+- [x] `ENG-GAMEDLL-PAYLOAD-002` Reuse completed server sound/static/decal
   payload helpers where the callback boundary matches.
-  Evidence:
-- [ ] `ENG-GAMEDLL-PAYLOAD-003` Add tests for callback input validation,
+  Evidence: `src/include/engine/server/server_sound_message.hpp`,
+  `src/include/engine/server/server_static_messages.hpp`, and
+  `src/include/engine/server/game_dll_payload_policy.hpp`.
+- [x] `ENG-GAMEDLL-PAYLOAD-003` Add tests for callback input validation,
   optional fields, invalid sample/model cases, lightstyle loading no-ops, and
   payload output.
-  Evidence:
-- [ ] `ENG-GAMEDLL-PAYLOAD-004` Route safe payload pieces while keeping
+  Evidence: `tests/engine/game_dll_payload_policy.cpp`,
+  `tests/engine/server_sound_message.cpp`, and
+  `tests/engine/server_static_messages.cpp`.
+- [x] `ENG-GAMEDLL-PAYLOAD-004` Route safe payload pieces while keeping
   multicast, signon, and resource-index ownership in adapters.
-  Evidence:
-- [ ] `ENG-GAMEDLL-PAYLOAD-005` Run focused tests, full tests, and smoke
+  Evidence: `engine/server/game_dll_payload_policy_adapter.cpp` and
+  `engine/server/sv_game.c`.
+- [x] `ENG-GAMEDLL-PAYLOAD-005` Run focused tests, full tests, and smoke
   timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_payload_policy -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 100/100, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.494 seconds and
+  stopped with reason `command`.
 
 ## Phase 93: Game DLL Client Info-Key And Query Callback Policy
 

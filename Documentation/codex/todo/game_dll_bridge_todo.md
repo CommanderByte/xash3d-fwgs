@@ -126,12 +126,12 @@ phase.
 
 ## Phase 92: Game DLL Sound, Decal, And Static Payload Bridge
 
-- [ ] Reuse completed server sound/static/decal helpers where possible.
-- [ ] Baseline the game-DLL-facing callback inputs and legacy validation
+- [x] Reuse completed server sound/static/decal helpers where possible.
+- [x] Baseline the game-DLL-facing callback inputs and legacy validation
   behavior.
-- [ ] Add tests for ambient sound, static decal, static entity, particle, and
+- [x] Add tests for ambient sound, static decal, static entity, particle, and
   lightstyle callback plans.
-- [ ] Keep multicast, signon, and resource-index ownership in legacy adapters.
+- [x] Keep multicast, signon, and resource-index ownership in legacy adapters.
 
 ## Phase 93: Client Info-Key And Query Callback Policy
 
