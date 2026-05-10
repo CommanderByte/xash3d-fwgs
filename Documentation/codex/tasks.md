@@ -2821,22 +2821,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 89: Game DLL User Message Registry Policy
 
-- [ ] `ENG-GAMEDLL-USERMSG-001` Baseline `pfnRegUserMsg()` duplicate,
+- [x] `ENG-GAMEDLL-USERMSG-001` Baseline `pfnRegUserMsg()` duplicate,
   invalid-name, invalid-size, capacity, and active-server resend behavior.
   Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-USERMSG-002` Implement a target-neutral user-message
+- [x] `ENG-GAMEDLL-USERMSG-002` Implement a target-neutral user-message
   registration policy helper.
-  Evidence:
-- [ ] `ENG-GAMEDLL-USERMSG-003` Add tests for duplicate names, fixed and
+  Evidence: `src/include/engine/server/game_dll_user_message_registry.hpp`
+  and `src/engine/server/game_dll_user_message_registry.cpp`.
+- [x] `ENG-GAMEDLL-USERMSG-003` Add tests for duplicate names, fixed and
   variable sizes, too-long names, message count exhaustion, and active resend
   planning.
-  Evidence:
-- [ ] `ENG-GAMEDLL-USERMSG-004` Route safe policy decisions while keeping
+  Evidence: `tests/engine/game_dll_user_message_registry.cpp`.
+- [x] `ENG-GAMEDLL-USERMSG-004` Route safe policy decisions while keeping
   `svgame.msg` mutation and multicast registration writes adapter-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-USERMSG-005` Run focused tests, full tests, and smoke
+  Evidence: `engine/server/game_dll_user_message_registry_adapter.cpp` and
+  `engine/server/sv_game.c` route validation, duplicate detection, size
+  clamping, slot selection, message number planning, and active resend planning
+  through the modern helper while keeping table writes and multicast calls in
+  legacy code.
+- [x] `ENG-GAMEDLL-USERMSG-005` Run focused tests, full tests, and smoke
   timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_user_message_registry -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 97/97, and `run-win32\xash3d.exe -dev 2 -log +fs_path
+  +wait +wait +quit` reached first frame in 0.492 seconds and stopped with
+  reason `command`.
 
 ## Phase 90: Game DLL Text, Command, And Alert Output Policy
 

@@ -13,6 +13,9 @@ Current helpers:
   `enginefuncs_t` game DLL callback table.
 - `game_dll_message_session.cpp`: mockable game DLL message-session state
   machine for payload accounting and low-risk compatibility decisions.
+- `game_dll_user_message_registry.cpp`: mockable game DLL user-message
+  registration policy for validation, duplicate handling, and active-server
+  resend planning.
 - `save_restore_format.cpp`: read-only save/restore file-format fixture
   parsing for headers, token tables, field sections, `.HL3` entity patches,
   packed short fields, and bundled save files.

@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
 #include "game_dll_message_session_adapter.h"
+#include "game_dll_user_message_registry_adapter.h"
 #include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
 #include "server_sound_message_adapter.h"
@@ -3563,34 +3564,51 @@ pfnRegUserMsg
 static int GAME_EXPORT pfnRegUserMsg( const char *pszName, int iSize )
 {
 	int	i;
+	sv_gamedll_user_message_slot_t slots[MAX_USER_MESSAGES];
+	sv_gamedll_user_message_registration_plan_t plan;
 
-	if( COM_StringEmptyOrNULL( pszName ))
+	for( i = 0; i < MAX_USER_MESSAGES; i++ )
+	{
+		slots[i].name = svgame.msg[i].name;
+		slots[i].number = svgame.msg[i].number;
+		slots[i].size = svgame.msg[i].size;
+	}
+
+	plan = SV_GameDllUserMessage_BuildRegistrationPlan(
+		slots,
+		MAX_USER_MESSAGES,
+		pszName,
+		iSize,
+		sizeof( svgame.msg[0].name ),
+		sv.state == ss_active );
+
+	if( plan.action == SV_GAMEDLL_USERMSG_ACTION_REJECT )
+	{
+		switch( plan.reject_reason )
+		{
+		case SV_GAMEDLL_USERMSG_REJECT_EMPTY_NAME:
+			break;
+		case SV_GAMEDLL_USERMSG_REJECT_NAME_TOO_LONG:
+			Con_Printf( S_ERROR "%s: too long name %s\n", __func__, pszName );
+			break;
+		case SV_GAMEDLL_USERMSG_REJECT_SIZE_TOO_LARGE:
+			Con_Printf( S_ERROR "%s: %s has too big size %i\n", __func__, pszName, iSize );
+			break;
+		case SV_GAMEDLL_USERMSG_REJECT_CAPACITY_EXCEEDED:
+			Con_Printf( S_ERROR "%s: user messages limit exceeded\n", __func__ );
+			break;
+		default:
+			break;
+		}
+
 		return svc_bad;
-
-	if( Q_strlen( pszName ) >= sizeof( svgame.msg[0].name ))
-	{
-		Con_Printf( S_ERROR "%s: too long name %s\n", __func__, pszName );
-		return svc_bad; // force error
 	}
 
-	if( iSize > MAX_USERMSG_LENGTH )
-	{
-		Con_Printf( S_ERROR "%s: %s has too big size %i\n", __func__, pszName, iSize );
-		return svc_bad; // force error
-	}
+	if( plan.action == SV_GAMEDLL_USERMSG_ACTION_RETURN_EXISTING )
+		return plan.message_number;
 
-	// make sure what size inrange
-	iSize = bound( -1, iSize, MAX_USERMSG_LENGTH );
-
-	// message 0 is reserved for svc_bad
-	for( i = 1; i < MAX_USER_MESSAGES && svgame.msg[i].name[0]; i++ )
-	{
-		// see if already registered
-		if( !Q_strcmp( svgame.msg[i].name, pszName ))
-			return svgame.msg[i].number;
-	}
-
-	if( i == MAX_USER_MESSAGES )
+	i = plan.slot_index;
+	if( i < 1 || i >= MAX_USER_MESSAGES )
 	{
 		Con_Printf( S_ERROR "%s: user messages limit exceeded\n", __func__ );
 		return svc_bad;
@@ -3598,10 +3616,10 @@ static int GAME_EXPORT pfnRegUserMsg( const char *pszName, int iSize )
 
 	// register new message
 	Q_strncpy( svgame.msg[i].name, pszName, sizeof( svgame.msg[i].name ));
-	svgame.msg[i].number = svc_lastmsg + i;
-	svgame.msg[i].size = iSize;
+	svgame.msg[i].number = plan.message_number;
+	svgame.msg[i].size = plan.stored_size;
 
-	if( sv.state == ss_active )
+	if( plan.resend_registration )
 	{
 		// tell the client about new user message
 		SV_SendUserReg( &sv.multicast, &svgame.msg[i] );

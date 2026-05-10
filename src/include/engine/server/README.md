@@ -14,6 +14,9 @@ Current helpers:
 - `game_dll_message_session.hpp`: target-neutral model for game DLL
   message begin/write/end state, payload accounting, rewrite admission, and
   destination bounds.
+- `game_dll_user_message_registry.hpp`: target-neutral policy for game DLL
+  user-message registration, duplicate lookup, size validation, and resend
+  planning.
 - `save_restore_format.hpp`: read-only save/restore binary fixture parser
   contracts for headers, sections, entity patches, packed short fields, and
   bundled file entries.

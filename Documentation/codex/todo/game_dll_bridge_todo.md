@@ -64,13 +64,25 @@ phase.
 
 ## Phase 89: User Message Registry Policy
 
-- [ ] Baseline `pfnRegUserMsg()` duplicate, invalid-name, invalid-size, and
+- [x] Baseline `pfnRegUserMsg()` duplicate, invalid-name, invalid-size, and
   active-server resend behavior.
-- [ ] Implement a target-neutral registry policy that can be tested without
+  Evidence: `pfnRegUserMsg()` returns `svc_bad` for null/empty names, names
+  that do not fit the 32-byte legacy slot, sizes above `MAX_USERMSG_LENGTH`,
+  and a full table. Sizes below `-1` clamp to `-1`; duplicate names return the
+  existing message number; new messages use slot `i`, number `svc_lastmsg + i`,
+  and trigger `SV_SendUserReg()` plus `MSG_ALL` multicast only while the server
+  is active.
+- [x] Implement a target-neutral registry policy that can be tested without
   live `svgame.msg` mutation.
-- [ ] Add tests for duplicate names, fixed/variable sizes, max-name length,
+  Evidence: `src/include/engine/server/game_dll_user_message_registry.hpp`
+  and `src/engine/server/game_dll_user_message_registry.cpp`.
+- [x] Add tests for duplicate names, fixed/variable sizes, max-name length,
   max-message count, and active resend planning.
-- [ ] Keep actual message IDs and multicast writes adapter-owned.
+  Evidence: `tests/engine/game_dll_user_message_registry.cpp`.
+- [x] Keep actual message IDs and multicast writes adapter-owned.
+  Evidence: `engine/server/game_dll_user_message_registry_adapter.cpp`
+  returns a policy plan; `sv_game.c` still mutates `svgame.msg`, calls
+  `SV_SendUserReg()`, and calls `SV_Multicast()`.
 
 ## Phase 90: Game DLL Text, Command, And Alert Output Policy
 
