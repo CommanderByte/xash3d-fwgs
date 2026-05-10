@@ -297,9 +297,32 @@ the main phase tracker until they are selected.
   frame in 0.410 seconds before stopping with reason `command` at May 10 2026
   17:06 local time.
 
+## Phase 65: Resource Message Serialization Helper
+
+- [x] Baseline `SV_SendResource()` and `SV_SendResources()` row and wrapper
+  ownership.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] Implement a target-neutral resource-row encoder on top of modern
+  `NetworkBitBuffer`.
+  Evidence: `src/include/engine/server/server_resource_message.hpp`,
+  `src/engine/server/server_resource_message.cpp`.
+- [x] Add golden tests for plain rows, custom hashes, reserved payloads, signed
+  sizes, and overflow.
+  Evidence: `tests/engine/server_resource_message.cpp`.
+- [x] Route `SV_SendResource()` through the helper while keeping server command
+  bytes, resource-location messages, counts, consistency records, and netchan
+  delivery legacy-owned.
+  Evidence: `engine/server/server_resource_message_adapter.h`,
+  `engine/server/server_resource_message_adapter.cpp`, `engine/server/sv_custom.c`.
+- [x] Run focused tests, full tests, runtime smoke, and record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_resource_message`
+  passed 1/1, `.\waf.bat build --alltests` passed 76/76, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.404 seconds before stopping with reason `command` at May 10 2026
+  17:18 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 65: resource message serialization helper using golden row tests.
 - [ ] Phase 66: consistency resource policy helper after resource message
   encoding is documented.
 - [ ] Server event logging service after console/log sink ownership is clearer.

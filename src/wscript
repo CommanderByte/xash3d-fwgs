@@ -96,6 +96,7 @@ def build(bld):
 			'engine_platform_command_line': '../tests/engine/platform_command_line.cpp',
 			'engine_platform_current_user': '../tests/engine/platform_current_user.cpp',
 			'engine_resource_identity': '../tests/engine/resource_identity.cpp',
+			'engine_server_resource_message': '../tests/engine/server_resource_message.cpp',
 			'engine_server_download_policy': '../tests/engine/server_download_policy.cpp',
 			'engine_server_upload_queue': '../tests/engine/server_upload_queue.cpp',
 			'engine_server_filter': '../tests/engine/server_filter.cpp',

@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_resource_message_adapter.h"
 #include "server_upload_queue_adapter.h"
 
 static void SV_CreateCustomizationList( sv_client_t *cl )
@@ -527,23 +528,20 @@ void SV_BatchUploadRequest( sv_client_t *cl )
 
 void SV_SendResource( resource_t *pResource, sizebuf_t *msg )
 {
-	static byte	nullrguc[sizeof( pResource->rguc_reserved )];
+	sv_resource_message_write_result_t result;
 
-	MSG_WriteUBitLong( msg, pResource->type, 4 );
-	MSG_WriteString( msg, pResource->szFileName );
-	MSG_WriteUBitLong( msg, pResource->nIndex, MAX_MODEL_BITS );
-	MSG_WriteSBitLong( msg, pResource->nDownloadSize, 24 ); // prevent to download a very big files?
-	MSG_WriteUBitLong( msg, pResource->ucFlags & ( RES_FATALIFMISSING|RES_WASMISSING ), 3 );
+	if( msg->bOverflow )
+		return;
 
-	if( FBitSet( pResource->ucFlags, RES_CUSTOM ))
-		MSG_WriteBytes( msg, pResource->rgucMD5_hash, sizeof( pResource->rgucMD5_hash ));
+	result = SV_ResourceMessage_WriteResource(
+		pResource,
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit );
 
-	if( memcmp( nullrguc, pResource->rguc_reserved, sizeof( nullrguc )))
-	{
-		MSG_WriteOneBit( msg, 1 );
-		MSG_WriteBytes( msg, pResource->rguc_reserved, sizeof( pResource->rguc_reserved ));
-	}
-	else MSG_WriteOneBit( msg, 0 );
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
 }
 
 void SV_SendResources( sv_client_t *cl, sizebuf_t *msg )

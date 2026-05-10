@@ -207,6 +207,37 @@ missing custom decals it builds `!MD5<hash>` and calls `SV_CheckFile()`.
 `pfnPlayerCustomization()` callback, propagates customizations to other spawned
 clients, and marks upload state complete.
 
+## Resource Message Serialization
+
+`SV_SendResources()` writes the server-side resource list into the reliable
+startup/resource message stream:
+
+1. starts `svc_resourcerequest`;
+2. writes `svs.spawncount`;
+3. writes a reserved long zero;
+4. optionally writes `svc_resourcelocation` and `sv_downloadurl` when the URL
+   is non-empty and shorter than 256 characters;
+5. starts `svc_resourcelist`;
+6. writes `sv.num_resources` with `MAX_RESOURCE_BITS` (`13`) bits;
+7. writes each resource row with `SV_SendResource()`;
+8. appends the consistency list with `SV_SendConsistencyList()`.
+
+`SV_SendResource()` row wire layout:
+
+| Field | Encoding |
+| --- | --- |
+| `type` | unsigned 4 bits. |
+| `szFileName` | null-terminated string bytes. |
+| `nIndex` | unsigned `MAX_MODEL_BITS` (`12`) bits. |
+| `nDownloadSize` | signed 24 bits using legacy `MSG_WriteSBitLong()` sign-last encoding. |
+| `ucFlags` | unsigned 3 bits, masked to `RES_FATALIFMISSING | RES_WASMISSING`. |
+| `rgucMD5_hash` | 16 raw bytes, only when `RES_CUSTOM` is set in the original flags. |
+| reserved-present bit | one bit; true when `rguc_reserved[32]` is not all zero. |
+| `rguc_reserved` | 32 raw bytes, only when the reserved-present bit is true. |
+
+The row writer does not write the surrounding server command byte, resource
+count, resource-location URL, consistency records, or netchan fragments.
+
 ## HPAK And Temp Files
 
 The server-side custom resource path depends on `engine/common/hpak.c`, but HPAK

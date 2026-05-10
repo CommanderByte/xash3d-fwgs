@@ -113,6 +113,13 @@ Baseline and then isolate the stable `SV_SendResource()` resource-row encoding.
 This can reuse existing modern network-buffer primitives, but the adapter should
 continue to own `MSG_BeginServerCmd()` and `Netchan_CreateFragments()`.
 
+Phase 65 implementation note: the row encoder now lives in
+`src/engine/server/server_resource_message.cpp`, with the legacy bridge in
+`engine/server/server_resource_message_adapter.cpp`. The helper writes only one
+resource row into a caller-provided bit buffer; legacy code still owns
+`svc_resourcerequest`, `svc_resourcelocation`, `svc_resourcelist`,
+`sv.num_resources`, consistency-list serialization, and netchan delivery.
+
 ### Phase 66: Consistency Resource Policy
 
 Audit and extract the pure parts of `SV_TransferConsistencyInfo()` and

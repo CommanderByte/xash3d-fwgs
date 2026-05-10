@@ -2137,20 +2137,29 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 65: Resource Message Serialization Helper
 
-- [ ] `ENG-RESMSG-001` Baseline `SV_SendResource()` and `SV_SendResources()`
+- [x] `ENG-RESMSG-001` Baseline `SV_SendResource()` and `SV_SendResources()`
   wire output, including custom hash bytes, reserved data bit, and resource
   count limits.
-  Evidence:
-- [ ] `ENG-RESMSG-002` Implement a target-neutral resource-row encoder that can
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-RESMSG-002` Implement a target-neutral resource-row encoder that can
   write into modern network-buffer primitives or caller-provided byte sinks.
-  Evidence:
-- [ ] `ENG-RESMSG-003` Add golden tests for resource rows with and without
+  Evidence: `src/include/engine/server/server_resource_message.hpp`,
+  `src/engine/server/server_resource_message.cpp`.
+- [x] `ENG-RESMSG-003` Add golden tests for resource rows with and without
   custom hashes and reserved consistency payloads.
-  Evidence:
-- [ ] `ENG-RESMSG-004` Route row encoding through the helper while keeping
+  Evidence: `tests/engine/server_resource_message.cpp`.
+- [x] `ENG-RESMSG-004` Route row encoding through the helper while keeping
   `MSG_BeginServerCmd()`, resource-location messages, and netchan fragments
   legacy-owned.
-  Evidence:
+  Evidence: `engine/server/server_resource_message_adapter.h`,
+  `engine/server/server_resource_message_adapter.cpp`, `engine/server/sv_custom.c`.
+- [x] `ENG-RESMSG-005` Run focused tests, full tests, runtime smoke, and record
+  timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_resource_message`
+  passed 1/1, `.\waf.bat build --alltests` passed 76/76 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.404 seconds before stopping with reason `command` at May 10 2026
+  17:18 local time.
 
 ## Phase 66: Consistency Resource Policy
 
