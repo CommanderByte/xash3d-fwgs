@@ -36,6 +36,36 @@ Do not change these without an explicit design task and review:
 - Preserve notes about rejected approaches when they explain a decision.
 - Prefer small commits with a clear behavior or documentation boundary.
 
+## Automation Helpers
+
+Prefer the local scripts for repeated phase mechanics:
+
+- `scripts/scaffold-modern-helper.ps1`: create modern helper header/source,
+  focused test, optional C adapter, and Waf test/adapter wiring.
+- `scripts/new-phase.ps1`: insert a standard phase skeleton into
+  `Documentation/codex/tasks.md` and optionally append to a TODO file.
+- `scripts/phase-status.ps1`: summarize open phase items and missing evidence.
+- `scripts/append-phase-evidence.ps1`: append a task evidence line and
+  optionally mark the task done.
+- `scripts/doc-todo-rollup.ps1`: count open/done checkbox items across active
+  task and TODO documents.
+- `scripts/legacy-modernization-scan.ps1`: compare a legacy tree with a modern
+  tree and list likely unmigrated files by basename.
+- `scripts/precommit-phase.ps1`: run `git diff --check` and optional phase
+  validation before a manual commit.
+- `scripts/refresh-runtime-binaries.ps1`: copy current build outputs into
+  `run-win32` without running the full validation harness.
+- `scripts/runtime-diagnose.ps1`: inspect runtime DLL freshness, stale
+  `xash3d.exe` processes, `XASH3D_RODIR`, `gfx.wad`, and the latest smoke log.
+- `scripts/run-phase-validation.ps1`: run focused validation, build `xash`,
+  run full tests, refresh runtime DLLs, run the `+wait +wait` smoke, and print
+  a copy-pasteable evidence line.
+
+Use the scripts as helpers, not as a substitute for judgment. Bugs, crashes,
+ABI questions, and compatibility surprises still require a focused deep dive.
+Do not use `-AllowSmokeNonZeroExit` as green evidence; it is for investigating
+known post-first-frame shutdown flakes only.
+
 ## Filesystem Modernization Rules
 
 - Treat `searchpath_t` as the legacy adapter while modernizing internals.
