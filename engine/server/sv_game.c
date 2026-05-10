@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
 #include "server_service_messages_adapter.h"
+#include "server_sound_message_adapter.h"
 #include "server_text_messages_adapter.h"
 
 // GameAPI functions declarations
@@ -51,6 +52,13 @@ static void SV_WriteClientStuffTextMessage( sizebuf_t *msg, const char *command_
 		command_text );
 
 	SV_ApplyTextMessageWriteResult( msg, result );
+}
+
+static void SV_ApplySoundMessageWriteResult( sizebuf_t *msg, sv_sound_message_write_result_t result )
+{
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
 }
 
 // fatpvs stuff
@@ -1980,7 +1988,8 @@ int SV_BuildSoundMsg( sizebuf_t *msg, edict_t *ent, int chan, const char *sample
 {
 	int	entityIndex;
 	int	sound_idx;
-	qboolean	spawn;
+	sv_sound_message_plan_t plan;
+	sv_sound_message_write_result_t result;
 
 	if( vol < 0 || vol > 255 )
 	{
@@ -2033,8 +2042,7 @@ int SV_BuildSoundMsg( sizebuf_t *msg, edict_t *ent, int chan, const char *sample
 		// '*' is special symbol to handle stream sounds
 		// (CHAN_VOICE but cannot be overriden)
 		// originally handled on client side
-		if( *sample == '*' )
-			chan = CHAN_STREAM;
+		chan = SV_SoundMessage_BuildChannel( chan, sample );
 
 		// precache_sound can be used twice: cache sounds when loading
 		// and return sound index when server is active
@@ -2047,33 +2055,33 @@ int SV_BuildSoundMsg( sizebuf_t *msg, edict_t *ent, int chan, const char *sample
 		}
 	}
 
-	spawn = FBitSet( flags, SND_RESTORE_POSITION ) ? false : true;
-
 	if( SV_IsValidEdict( ent ))
 		entityIndex = NUM_FOR_EDICT( ent );
 	else entityIndex = 0; // assume world
 
-	if( vol != 255 ) SetBits( flags, SND_VOLUME );
-	if( attn != ATTN_NONE ) SetBits( flags, SND_ATTENUATION );
-	if( pitch != PITCH_NORM ) SetBits( flags, SND_PITCH );
+	plan = SV_SoundMessage_BuildPlan( flags, vol, attn, pitch );
 
-	// not sending (because this is out of range)
-	ClearBits( flags, SND_RESTORE_POSITION );
-	ClearBits( flags, SND_FILTER_CLIENT );
-	ClearBits( flags, SND_SPAWNING );
+	MSG_BeginServerCmd( msg, plan.command );
+	if( msg->bOverflow )
+		return 1;
 
-	if( spawn ) MSG_BeginServerCmd( msg, svc_sound );
-	else MSG_BeginServerCmd( msg, svc_restoresound );
-	MSG_WriteUBitLong( msg, flags, MAX_SND_FLAGS_BITS );
-	MSG_WriteUBitLong( msg, sound_idx, MAX_SOUND_BITS );
-	MSG_WriteUBitLong( msg, chan, MAX_SND_CHAN_BITS );
+	result = SV_SoundMessage_WritePayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		plan.flags,
+		sound_idx,
+		chan,
+		vol,
+		attn,
+		pitch,
+		entityIndex,
+		pos[0],
+		pos[1],
+		pos[2],
+		FBitSet( host.features, ENGINE_WRITE_LARGE_COORD ));
 
-	if( FBitSet( flags, SND_VOLUME )) MSG_WriteByte( msg, vol );
-	if( FBitSet( flags, SND_ATTENUATION )) MSG_WriteByte( msg, Q_min( attn * 64, 255 ));
-	if( FBitSet( flags, SND_PITCH )) MSG_WriteByte( msg, pitch );
-
-	MSG_WriteUBitLong( msg, entityIndex, MAX_ENTITY_BITS );
-	MSG_WriteVec3Coord( msg, pos );
+	SV_ApplySoundMessageWriteResult( msg, result );
 
 	return 1;
 }

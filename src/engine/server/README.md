@@ -45,6 +45,8 @@ Current helpers:
 - `server_service_messages.cpp`: target-neutral payload serialization for
   compact service messages such as file-transfer failure, reconnect, set-view,
   set-pause, and voice-init.
+- `server_sound_message.cpp`: target-neutral `svc_sound` / `svc_restoresound`
+  command planning and bit-packed payload serialization.
 - `server_text_messages.cpp`: target-neutral payload serialization for
   `svc_print` and `svc_stufftext` NUL-terminated text messages.
 - `server_voice_relay.cpp`: target-neutral voice relay gates, recipient

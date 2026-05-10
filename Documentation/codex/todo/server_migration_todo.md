@@ -537,13 +537,13 @@ without moving command dispatch, formatting, or client iteration yet.
 Goal: isolate `SV_BuildSoundMsg()` before touching broader audio or multicast
 ownership.
 
-- [ ] Baseline spawn/restore sound commands, optional fields, entity/channel
+- [x] Baseline spawn/restore sound commands, optional fields, entity/channel
   encoding, origin handling, and invalid sample checks.
-- [ ] Implement target-neutral sound-message planning and payload helpers.
-- [ ] Add golden tests for minimal and flagged sound messages.
-- [ ] Route `SV_BuildSoundMsg()` while keeping resource indexes and multicast
+- [x] Implement target-neutral sound-message planning and payload helpers.
+- [x] Add golden tests for minimal and flagged sound messages.
+- [x] Route `SV_BuildSoundMsg()` while keeping resource indexes and multicast
   ownership legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 77: Decal And Static Entity Messages
 

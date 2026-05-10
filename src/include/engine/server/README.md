@@ -43,6 +43,9 @@ Current helpers:
   digest bytes.
 - `server_service_messages.hpp`: compact service-message payload writers for
   file-transfer failure, reconnect, set-view, set-pause, and voice-init.
+- `server_sound_message.hpp`: `svc_sound` / `svc_restoresound` constants,
+  network flag planning, stream-channel handling, and bit-packed payload
+  writers.
 - `server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
   and NUL-terminated text payload writers.
 - `server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and

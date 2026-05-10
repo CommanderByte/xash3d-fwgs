@@ -2450,24 +2450,33 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 76: Server Sound Message Builder
 
-- [ ] `ENG-SOUNDMSG-001` Baseline `SV_BuildSoundMsg()` and callers for spawn
+- [x] `ENG-SOUNDMSG-001` Baseline `SV_BuildSoundMsg()` and callers for spawn
   versus restore sound commands, optional volume/attenuation/pitch fields,
   entity/channel encoding, origin handling, and bounds checks.
-  Evidence:
-- [ ] `ENG-SOUNDMSG-002` Implement target-neutral sound-message flag planning
+  Evidence: `Documentation/codex/legacy/engine/server-sound-message-baseline.md`.
+- [x] `ENG-SOUNDMSG-002` Implement target-neutral sound-message flag planning
   and payload serialization.
-  Evidence:
-- [ ] `ENG-SOUNDMSG-003` Add golden tests for minimal sounds, flagged optional
+  Evidence: `src/include/engine/server/server_sound_message.hpp`,
+  `src/engine/server/server_sound_message.cpp`,
+  `engine/server/server_sound_message_adapter.h`, and
+  `engine/server/server_sound_message_adapter.cpp`.
+- [x] `ENG-SOUNDMSG-003` Add golden tests for minimal sounds, flagged optional
   fields, restore-sound payloads, large coordinates, invalid sample indexes,
   and overflow handling.
-  Evidence:
-- [ ] `ENG-SOUNDMSG-004` Route `SV_BuildSoundMsg()` through the helper while
+  Evidence: `tests/engine/server_sound_message.cpp`.
+- [x] `ENG-SOUNDMSG-004` Route `SV_BuildSoundMsg()` through the helper while
   keeping entity lookup, model/sound indexes, game DLL callbacks, and multicast
   destination ownership legacy-owned.
-  Evidence:
-- [ ] `ENG-SOUNDMSG-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/sv_game.c` keeps sample parsing, `SV_SoundIndex()`,
+  entity-index resolution, caller diagnostics, save/restore extra data, and
+  multicast routing legacy-owned while using the helper for command planning and
+  bit-packed payload serialization.
+- [x] `ENG-SOUNDMSG-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_sound_message` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 87/87, runtime smoke first
+  frame 0.478 seconds, stop reason `command`.
 
 ## Phase 77: Decal And Static Entity Messages
 
