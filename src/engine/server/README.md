@@ -9,6 +9,10 @@ code until a later compatibility phase changes those boundaries.
 
 Current helpers:
 
+- `game_dll_enginefuncs.cpp`: target-neutral metadata lookup for the stable
+  `enginefuncs_t` game DLL callback table.
+- `game_dll_message_session.cpp`: mockable game DLL message-session state
+  machine for payload accounting and low-risk compatibility decisions.
 - `save_restore_format.cpp`: read-only save/restore file-format fixture
   parsing for headers, token tables, field sections, `.HL3` entity patches,
   packed short fields, and bundled save files.

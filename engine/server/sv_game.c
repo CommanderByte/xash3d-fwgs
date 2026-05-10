@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
+#include "game_dll_message_session_adapter.h"
 #include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
 #include "server_sound_message_adapter.h"
@@ -2552,17 +2553,9 @@ int GAME_EXPORT pfnDecalIndex( const char *m )
 
 static int SV_CanRewriteMessage( int msg_num )
 {
-	// feature is disabled
-	if( !FBitSet( host.bugcomp, BUGCOMP_MESSAGE_REWRITE_FACILITY_FLAG ))
-		return 0;
-
-	switch( msg_num )
-	{
-	case svc_goldsrc_spawnstaticsound:
-		return svc_sound;
-	}
-
-	return 0;
+	return SV_GameDllMessageSession_CanRewriteMessage(
+		FBitSet( host.bugcomp, BUGCOMP_MESSAGE_REWRITE_FACILITY_FLAG ),
+		msg_num );
 }
 
 static qboolean SV_RewriteMessage( void )
@@ -2805,7 +2798,8 @@ static void GAME_EXPORT pfnMessageEnd( void )
 	}
 
 	if( !VectorIsNull( svgame.msg_org )) org = svgame.msg_org;
-	svgame.msg_dest = bound( MSG_BROADCAST, svgame.msg_dest, MSG_SPEC );
+	svgame.msg_dest =
+		SV_GameDllMessageSession_BoundDestination( svgame.msg_dest );
 
 	SV_Multicast( svgame.msg_dest, org, svgame.msg_ent, true, false );
 
@@ -2820,10 +2814,10 @@ pfnWriteByte
 */
 static void GAME_EXPORT pfnWriteByte( int iValue )
 {
-	if( iValue == -1 ) iValue = 0xFF; // convert char to byte
+	iValue = SV_GameDllMessageSession_NormalizeByte( iValue );
 	MSG_WriteByte( &sv.multicast, (byte)iValue );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %i )\n", __func__, iValue );
-	svgame.msg_realsize++;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_BYTE );
 }
 
 /*
@@ -2836,7 +2830,7 @@ static void GAME_EXPORT pfnWriteChar( int iValue )
 {
 	MSG_WriteChar( &sv.multicast, (signed char)iValue );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %i )\n", __func__, iValue );
-	svgame.msg_realsize++;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_CHAR );
 }
 
 /*
@@ -2849,7 +2843,7 @@ static void GAME_EXPORT pfnWriteShort( int iValue )
 {
 	MSG_WriteShort( &sv.multicast, (short)iValue );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %i )\n", __func__, iValue );
-	svgame.msg_realsize += 2;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_SHORT );
 }
 
 /*
@@ -2862,7 +2856,7 @@ static void GAME_EXPORT pfnWriteLong( int iValue )
 {
 	MSG_WriteLong( &sv.multicast, iValue );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %i )\n", __func__, iValue );
-	svgame.msg_realsize += 4;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_LONG );
 }
 
 /*
@@ -2878,7 +2872,7 @@ static void GAME_EXPORT pfnWriteAngle( float flValue )
 
 	MSG_WriteChar( &sv.multicast, iAngle );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %f )\n", __func__, flValue );
-	svgame.msg_realsize += 1;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_ANGLE );
 }
 
 /*
@@ -2891,7 +2885,7 @@ static void GAME_EXPORT pfnWriteCoord( float flValue )
 {
 	MSG_WriteCoord( &sv.multicast, flValue );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %f )\n", __func__, flValue );
-	svgame.msg_realsize += 2;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_COORD );
 }
 
 /*
@@ -2906,7 +2900,7 @@ static void GAME_EXPORT pfnWriteString( const char *src )
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %s )\n", __func__, src );
 
 	// NOTE: some messages with constant string length can be marked as known sized
-	svgame.msg_realsize += Q_strlen( src ) + 1;
+	svgame.msg_realsize += SV_GameDllMessageSession_StringPayloadBytes( src );
 }
 
 /*
@@ -2917,11 +2911,11 @@ pfnWriteEntity
 */
 static void GAME_EXPORT pfnWriteEntity( int iValue )
 {
-	if( iValue < 0 || iValue >= svgame.numEntities )
+	if( !SV_GameDllMessageSession_IsEntityIndexValid( iValue, svgame.numEntities ))
 		Host_Error( "%s: invalid entnumber %i\n", __func__, iValue );
 	MSG_WriteShort( &sv.multicast, (short)iValue );
 	if( svgame.msg_trace ) Con_Printf( "\t^3%s( %i )\n", __func__, iValue );
-	svgame.msg_realsize += 2;
+	svgame.msg_realsize += SV_GameDllMessageSession_FixedWritePayloadBytes( SV_GAMEDLL_MESSAGE_WRITE_ENTITY );
 }
 
 /*

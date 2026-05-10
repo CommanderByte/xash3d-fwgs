@@ -8,6 +8,12 @@ filesystem module, or platform-specific types.
 
 Current helpers:
 
+- `game_dll_enginefuncs.hpp`: metadata for the stable `enginefuncs_t` game DLL
+  callback table, including slot order, domains, adapter owners, and migration
+  readiness.
+- `game_dll_message_session.hpp`: target-neutral model for game DLL
+  message begin/write/end state, payload accounting, rewrite admission, and
+  destination bounds.
 - `save_restore_format.hpp`: read-only save/restore binary fixture parser
   contracts for headers, sections, entity patches, packed short fields, and
   bundled file entries.

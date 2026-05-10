@@ -2771,40 +2771,53 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 87: Game DLL Enginefuncs Metadata
 
-- [ ] `ENG-GAMEDLL-META-001` Build a complete table-slot inventory for
+- [x] `ENG-GAMEDLL-META-001` Build a complete table-slot inventory for
   `enginefuncs_t`, including callback name, domain, adapter owner, and
   route-readiness category.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-META-002` Add target-neutral metadata under
+  Evidence: `src/include/engine/server/game_dll_enginefuncs.hpp`.
+- [x] `ENG-GAMEDLL-META-002` Add target-neutral metadata under
   `src/engine/server` without changing `engine/eiface.h` or `gEngfuncs`.
-  Evidence:
-- [ ] `ENG-GAMEDLL-META-003` Add tests or compile-time checks that metadata
+  Evidence: `src/engine/server/game_dll_enginefuncs.cpp`; no legacy ABI files
+  changed.
+- [x] `ENG-GAMEDLL-META-003` Add tests or compile-time checks that metadata
   coverage stays complete and intentionally ordered.
-  Evidence:
-- [ ] `ENG-GAMEDLL-META-004` Run focused tests, full tests, and `+wait +wait`
+  Evidence: `tests/engine/game_dll_enginefuncs.cpp` compares all 159 metadata
+  entries against real `enginefuncs_t` field offsets from `engine/eiface.h`.
+- [x] `ENG-GAMEDLL-META-004` Run focused tests, full tests, and `+wait +wait`
   smoke timing if any code is routed.
-  Evidence:
+  Evidence: focused `.\waf.bat build --targets=test_engine_game_dll_enginefuncs`
+  passed 1/1; `.\waf.bat build --alltests` passed 95/95. No runtime smoke was
+  needed because this phase adds metadata only and does not route live code.
 
 ## Phase 88: Game DLL Message Session Facade
 
-- [ ] `ENG-GAMEDLL-MSG-001` Baseline `pfnMessageBegin()`,
+- [x] `ENG-GAMEDLL-MSG-001` Baseline `pfnMessageBegin()`,
   `pfnMessageEnd()`, write primitives, size accounting, overflow clearing, and
   rewrite rules.
   Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-MSG-002` Implement a mockable message-session state machine
+- [x] `ENG-GAMEDLL-MSG-002` Implement a mockable message-session state machine
   for begin/write/end validation and byte counting.
-  Evidence:
-- [ ] `ENG-GAMEDLL-MSG-003` Add tests for malformed sequences, fixed-size
+  Evidence: `src/include/engine/server/game_dll_message_session.hpp` and
+  `src/engine/server/game_dll_message_session.cpp`.
+- [x] `ENG-GAMEDLL-MSG-003` Add tests for malformed sequences, fixed-size
   mismatch, variable-size patching, `pfnWriteByte(-1)`, entity bounds, null
   string accounting, empty finale/cutscene null strings, and rewrite
   admission.
-  Evidence:
-- [ ] `ENG-GAMEDLL-MSG-004` Route only the smallest safe state/accounting
+  Evidence: `tests/engine/game_dll_message_session.cpp`.
+- [x] `ENG-GAMEDLL-MSG-004` Route only the smallest safe state/accounting
   decisions while keeping `sv.multicast` and `SV_Multicast()` legacy-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-MSG-005` Run focused tests, full tests, and `+wait +wait`
+  Evidence: `engine/server/game_dll_message_session_adapter.cpp` and
+  `engine/server/sv_game.c` route byte normalization, payload byte accounting,
+  string byte accounting, entity index validation, destination clamping, and
+  rewrite admission through the modern helper.
+- [x] `ENG-GAMEDLL-MSG-005` Run focused tests, full tests, and `+wait +wait`
   smoke timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_message_session -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 96/96, and `run-win32\xash3d.exe -dev 2 -log +fs_path
+  +wait +wait +quit` reached first frame in 0.502 seconds and stopped with
+  reason `command`.
 
 ## Phase 89: Game DLL User Message Registry Policy
 

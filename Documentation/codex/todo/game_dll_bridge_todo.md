@@ -27,22 +27,40 @@ phase.
 
 ## Phase 87: Enginefuncs Metadata
 
-- [ ] Build a table-slot inventory for `enginefuncs_t`.
-- [ ] Categorize every callback by subsystem, adapter owner, and migration
+- [x] Build a table-slot inventory for `enginefuncs_t`.
+  Evidence: `src/include/engine/server/game_dll_enginefuncs.hpp`.
+- [x] Categorize every callback by subsystem, adapter owner, and migration
   readiness.
-- [ ] Add tests or compile-time checks that table metadata remains complete.
-- [ ] Keep the concrete `gEngfuncs` table and `engine/eiface.h` ABI unchanged.
+  Evidence: `src/include/engine/server/game_dll_enginefuncs.hpp`.
+- [x] Add tests or compile-time checks that table metadata remains complete.
+  Evidence: `tests/engine/game_dll_enginefuncs.cpp`.
+- [x] Keep the concrete `gEngfuncs` table and `engine/eiface.h` ABI unchanged.
+  Evidence: Phase 87 touched only modern metadata/test/build/doc files.
 
 ## Phase 88: Message Session Facade
 
-- [ ] Baseline `pfnMessageBegin()`, `pfnMessageEnd()`, write primitives, and
+- [x] Baseline `pfnMessageBegin()`, `pfnMessageEnd()`, write primitives, and
   rewrite rules in enough detail for golden tests.
-- [ ] Implement a target-neutral message-session state machine that writes to
+  Evidence: `sv_game.c` currently keeps one active message at a time, clamps
+  message numbers to `svc_bad..255`, treats `svc_temp_entity` and variable
+  user messages as size-prefixed payloads, clears `sv.multicast` on overflow
+  or size mismatch, maps `pfnWriteByte(-1)` to `0xff`, counts null strings as
+  one byte, appends an empty string to empty `svc_finale`/`svc_cutscene`, and
+  can rewrite GoldSrc `svc_spawnstaticsound` to `svc_sound` when the bug
+  compatibility flag is enabled.
+- [x] Implement a target-neutral message-session state machine that writes to
   mock buffers.
-- [ ] Add tests for double begin, end without begin, fixed-size mismatch,
+  Evidence: `src/include/engine/server/game_dll_message_session.hpp` and
+  `src/engine/server/game_dll_message_session.cpp`.
+- [x] Add tests for double begin, end without begin, fixed-size mismatch,
   variable-size patching, overflow clearing, `pfnWriteByte(-1)`, string null
   accounting, and rewrite admission.
-- [ ] Route only the smallest safe validation and size-accounting decisions.
+  Evidence: `tests/engine/game_dll_message_session.cpp`.
+- [x] Route only the smallest safe validation and size-accounting decisions.
+  Evidence: `engine/server/game_dll_message_session_adapter.cpp` routes byte
+  normalization, fixed write byte counts, string byte counts, entity index
+  validation, destination clamping, and rewrite admission while leaving
+  `sv.multicast` writes and `SV_Multicast()` in `sv_game.c`.
 
 ## Phase 89: User Message Registry Policy
 
