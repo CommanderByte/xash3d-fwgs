@@ -11,6 +11,9 @@ Current helpers:
 - `game_dll_enginefuncs.hpp`: metadata for the stable `enginefuncs_t` game DLL
   callback table, including slot order, domains, adapter owners, and migration
   readiness.
+- `game_dll_load_policy.hpp`: fake-symbol game DLL load/unload decision
+  contracts for required exports, API fallback, optional interfaces, and
+  cleanup planning.
 - `game_dll_message_session.hpp`: target-neutral model for game DLL
   message begin/write/end state, payload accounting, rewrite admission, and
   destination bounds.

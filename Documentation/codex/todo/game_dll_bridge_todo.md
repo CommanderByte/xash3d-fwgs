@@ -229,12 +229,16 @@ phase.
 
 ## Phase 100: DLL Load/Unload Facade Plan
 
-- [ ] Baseline missing-export, version mismatch, fallback API, physics API,
+- [x] Baseline missing-export, version mismatch, fallback API, physics API,
   command/cvar unlink, string pool, and memory-pool cleanup paths.
-- [ ] Implement a pure load-plan helper against fake symbol tables only.
-- [ ] Keep `COM_LoadLibrary()`, `COM_UnloadLibrary()`, real symbol lookup,
+- [x] Implement a pure load-plan helper against fake symbol tables only.
+- [x] Keep `COM_LoadLibrary()`, `COM_UnloadLibrary()`, real symbol lookup,
   `GiveFnptrsToDll()`, edict allocation, and callback table publication in
   legacy code until the final bridge phase.
+- [x] Run focused tests, full tests, and smoke timing.
+  Evidence: Phase 100 validation passed with
+  `test_engine_game_dll_load_policy`, `xash`, 108/108 tests, and a 0.507s
+  first-frame smoke.
 
 ## Phase 101: Game DLL Bridge Manual Validation
 

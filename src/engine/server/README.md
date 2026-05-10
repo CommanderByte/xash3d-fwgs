@@ -19,6 +19,9 @@ Current helpers:
 - `game_dll_entity_parse.cpp`: target-neutral map entity parse and spawn
   plans for key-value filtering, deferred key handling, `angle` rewrite,
   custom entity fallback metadata, physics load overrides, and spawn rejection.
+- `game_dll_load_policy.cpp`: target-neutral fake-symbol game DLL load/unload
+  plans for required exports, entity API fallback, optional extension tables,
+  physics API admission, and cleanup intent.
 - `game_dll_string_pool_compat.cpp`: fixture-safe game DLL string-pool
   compatibility model for escape processing, duplicate handling, static and
   dynamic arena accounting, overflow rewind behavior, and make-string

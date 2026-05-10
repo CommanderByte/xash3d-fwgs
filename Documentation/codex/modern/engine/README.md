@@ -43,6 +43,10 @@ Current implementation notes:
   key-value parsing, `angle` rewrite, custom entity fallback, and spawn
   rejection decisions without moving live `pfnKeyValue()`/`pfnSpawn()`
   ordering out of `sv_game.c`.
+- `game-dll-load-unload-boundary.md`: how Phase 100 models fake-symbol DLL
+  load/unload decisions, API fallback, optional interface behavior, and
+  cleanup intent while keeping real library lifetime and ABI publication
+  legacy-owned.
 - `game-dll-movement-fake-client-boundary.md`: how Phase 99 models
   movement callback admission, yaw/pitch stepping, walkmove routing,
   maxspeed clamping, and fake-client command snapshots while leaving

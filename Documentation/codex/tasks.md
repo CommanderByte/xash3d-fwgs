@@ -3104,19 +3104,29 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 100: Game DLL Load/Unload Facade Plan
 
-- [ ] `ENG-GAMEDLL-LOAD-001` Baseline missing-export, version mismatch,
+- [x] `ENG-GAMEDLL-LOAD-001` Baseline missing-export, version mismatch,
   fallback API, physics API, command/cvar unlink, string pool, and memory-pool
   cleanup paths.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-LOAD-002` Implement a fake-symbol load-plan helper without
+  Evidence: `Documentation/codex/modern/engine/game-dll-load-unload-boundary.md`.
+- [x] `ENG-GAMEDLL-LOAD-002` Implement a fake-symbol load-plan helper without
   moving real library lifetime.
-  Evidence:
-- [ ] `ENG-GAMEDLL-LOAD-003` Add tests for required export failures,
+  Evidence: `src/include/engine/server/game_dll_load_policy.hpp` and
+  `src/engine/server/game_dll_load_policy.cpp`.
+- [x] `ENG-GAMEDLL-LOAD-003` Add tests for required export failures,
   optional extension mismatch, API fallback, and cleanup planning.
-  Evidence:
-- [ ] `ENG-GAMEDLL-LOAD-004` Keep real DLL load/unload, `GiveFnptrsToDll()`,
+  Evidence: `tests/engine/game_dll_load_policy.cpp`.
+- [x] `ENG-GAMEDLL-LOAD-004` Keep real DLL load/unload, `GiveFnptrsToDll()`,
   edict allocation, and callback table publication legacy-owned.
-  Evidence:
+  Evidence: Phase 100 adds no live route-through; `engine/server/sv_game.c`,
+  `engine/server/sv_init.c`, and `engine/server/sv_phys.c` still own real
+  library lifetime, callback table publication, edict allocation, physics API
+  probing, command/cvar unlinking, and memory/string-pool cleanup.
+- [x] `ENG-GAMEDLL-LOAD-005` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_load_policy -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 108/108;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.507 seconds and stopped with reason `command`.
 
 ## Phase 101: Game DLL Bridge Manual Validation
 
