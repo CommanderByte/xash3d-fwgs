@@ -2303,24 +2303,30 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 71: Server Reslist File Policy
 
-- [ ] `ENG-RESLIST-001` Baseline `.res` and `reslist.txt` parsing decisions:
+- [x] `ENG-RESLIST-001` Baseline `.res` and `reslist.txt` parsing decisions:
   safe-download filtering, slash normalization, sound classification, generic
   fallback, and console reporting.
-  Evidence:
-- [ ] `ENG-RESLIST-002` Implement a target-neutral reslist token classifier
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`
+  Server Reslist File Policy section.
+- [x] `ENG-RESLIST-002` Implement a target-neutral reslist token classifier
   that returns normalized path, resource type, and index route intent.
-  Evidence:
-- [ ] `ENG-RESLIST-003` Add tests for empty tokens, unsafe paths, Windows slash
+  Evidence: `src/include/engine/server/server_reslist_policy.hpp` and
+  `src/engine/server/server_reslist_policy.cpp`.
+- [x] `ENG-RESLIST-003` Add tests for empty tokens, unsafe paths, Windows slash
   input, supported sound formats, unsupported sound paths, and generic
   fallback.
-  Evidence:
-- [ ] `ENG-RESLIST-004` Route `SV_ReadResourceList()` decisions through the
+  Evidence: `tests/engine/server_reslist_policy.cpp`.
+- [x] `ENG-RESLIST-004` Route `SV_ReadResourceList()` decisions through the
   helper while keeping file loading, `COM_ParseFile()`, console output,
   `SV_SoundIndex()`, and `SV_GenericIndex()` legacy-owned.
-  Evidence:
-- [ ] `ENG-RESLIST-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/server_reslist_policy_adapter.h`,
+  `engine/server/server_reslist_policy_adapter.cpp`, and `engine/server/sv_init.c`.
+- [x] `ENG-RESLIST-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_reslist_policy` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 82/82, runtime smoke first
+  frame 0.492 seconds, stop reason `command`.
 
 ## Phase 72: Client Userinfo Update Message
 

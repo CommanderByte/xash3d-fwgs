@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "voice.h"
 #include "pm_local.h"
 #include "server_hot_resource_adapter.h"
+#include "server_reslist_policy_adapter.h"
 #include "server_resource_catalog_adapter.h"
 
 #if XASH_LOW_MEMORY != 2
@@ -280,14 +281,6 @@ int GAME_EXPORT SV_GenericIndex( const char *filename )
 	return i;
 }
 
-static resourcetype_t SV_DetermineResourceType( const char *filename )
-{
-	if( !Q_strncmp( filename, DEFAULT_SOUNDPATH, sizeof( DEFAULT_SOUNDPATH ) - 1 ) && Sound_SupportedFileFormat( COM_FileExtension( filename )))
-		return t_sound;
-	else
-		return t_generic;
-}
-
 static const char *SV_GetResourceTypeName( resourcetype_t restype )
 {
 	switch( restype )
@@ -308,7 +301,7 @@ static void SV_ReadResourceList( const char *filename )
 	string token;
 	byte *afile;
 	char *pfile;
-	resourcetype_t restype;
+	sv_reslist_decision_t decision;
 
 	afile = FS_LoadFile( filename, NULL, false );
 	if( !afile ) return;
@@ -320,24 +313,21 @@ static void SV_ReadResourceList( const char *filename )
 
 	while(( pfile = COM_ParseFile( pfile, token, sizeof( token ))) != NULL )
 	{
-		if( !COM_IsSafeFileToDownload( token ))
+		decision = SV_ReslistPolicy_ClassifyToken( token );
+		if( !decision.should_index )
 			continue;
 
-		COM_FixSlashes( token );
-		restype = SV_DetermineResourceType( token );
-		Con_DPrintf( "  %s (%s)\n", token, SV_GetResourceTypeName( restype ));
-		switch( restype )
+		Con_DPrintf( "  %s (%s)\n", decision.normalized_path, SV_GetResourceTypeName( decision.type ));
+		switch( decision.route )
 		{
-			// TODO do we need to handle other resource types specifically too?
-			case t_sound:
-			{
-				const char *filepath = token;
-				filepath += sizeof( DEFAULT_SOUNDPATH ) - 1; // skip "sound/" part
-				SV_SoundIndex( filepath );
+			case SV_RESLIST_ROUTE_SOUND_INDEX:
+				SV_SoundIndex( decision.index_path );
 				break;
-			}
+			case SV_RESLIST_ROUTE_GENERIC_INDEX:
+				SV_GenericIndex( decision.index_path );
+				break;
+			case SV_RESLIST_ROUTE_SKIP:
 			default:
-				SV_GenericIndex( token );
 				break;
 		}
 	}

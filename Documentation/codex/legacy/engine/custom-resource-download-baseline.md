@@ -262,6 +262,28 @@ The helper boundary should therefore decide skip/probe/announce metadata only.
 Filesystem probing, reliable datagram ownership, `sv.resources[]` mutation, and
 `SV_SendResource()` delivery remain legacy-owned.
 
+## Server Reslist File Policy
+
+`SV_ReadResourceList()` loads a map-specific `.res` file or global
+`reslist.txt`, then parses it token by token with `COM_ParseFile()`.
+File loading, tokenization, debug console output, and final precache mutation
+remain legacy-owned.
+
+Per-token legacy behavior is:
+
+1. unsafe names are skipped before slash normalization;
+2. backslashes are therefore rejected by `COM_IsSafeFileToDownload()`;
+3. duplicate forward slashes are collapsed later by `COM_FixSlashes()`;
+4. paths beginning exactly with lowercase `sound/` are sound candidates;
+5. a sound candidate becomes `t_sound` only when `Sound_SupportedFileFormat()`
+   accepts the extension;
+6. sound index registration strips the leading `sound/` prefix;
+7. every other accepted token is registered as generic with its normalized path.
+
+The sound-prefix check is case-sensitive because the legacy code uses
+`Q_strncmp()` against `DEFAULT_SOUNDPATH` after normalization. For example,
+`Sound/foo.wav` remains a generic resource even when `.wav` is supported.
+
 ## Resource Message Serialization
 
 `SV_SendResources()` writes the server-side resource list into the reliable
