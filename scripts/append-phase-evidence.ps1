@@ -67,15 +67,25 @@ if ($MarkDone) {
 }
 
 $insertIndex = $taskIndex + 1
+$blankEvidenceIndex = -1
 while ($insertIndex -lt $lines.Count) {
     if ($lines[$insertIndex] -match '^- \[[ xX]\] `' -or $lines[$insertIndex] -match '^## ') {
         break
     }
 
+    if ($blankEvidenceIndex -lt 0 -and $lines[$insertIndex].Trim() -eq "Evidence:") {
+        $blankEvidenceIndex = $insertIndex
+    }
+
     $insertIndex++
 }
 
-$lines.Insert($insertIndex, $evidenceLine)
+if ($blankEvidenceIndex -ge 0) {
+    $lines[$blankEvidenceIndex] = $evidenceLine
+} else {
+    $lines.Insert($insertIndex, $evidenceLine)
+}
+
 Write-Utf8NoBom -Path $resolvedPath -Lines $lines.ToArray()
 
 if ($MarkDone) {

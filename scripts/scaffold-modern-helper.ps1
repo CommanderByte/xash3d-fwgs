@@ -30,7 +30,9 @@ function To-Identifier {
 
 function To-IncludeGuard {
     param([string]$Path)
-    return ("XASH_{0}" -f ((Normalize-RepoPath $Path) -replace "[^A-Za-z0-9]+", "_")).ToUpperInvariant()
+    $normalizedPath = Normalize-RepoPath $Path
+    $normalizedPath = $normalizedPath -replace "^src/include/", ""
+    return ("XASH_{0}" -f ($normalizedPath -replace "[^A-Za-z0-9]+", "_")).ToUpperInvariant()
 }
 
 function Get-NamespaceParts {
@@ -43,8 +45,9 @@ function Get-NamespaceParts {
         return @($NamespaceValue -split "::" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     }
 
+    $normalizedModule = Normalize-RepoPath $ModuleValue
     $parts = @("xash")
-    $parts += @(Normalize-RepoPath $ModuleValue -split "/" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $parts += @($normalizedModule -split "/" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     return $parts
 }
 

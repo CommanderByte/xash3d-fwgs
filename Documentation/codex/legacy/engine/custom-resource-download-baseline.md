@@ -242,6 +242,26 @@ resource rows. The index of the first sentence entry is preserved.
 `SV_AddResource()` is still the hard legacy boundary for `sv.resources[]`
 mutation and `MAX_RESOURCES` overflow handling.
 
+## Hot Resource Announcement
+
+`SV_SendSingleResource()` handles late precache announcements after startup
+resource-list construction has already finished. It skips empty names, probes
+the download size with legacy filesystem calls, appends one `resource_t` to
+`sv.resources[]`, starts a `svc_resource` server command in
+`sv.reliable_datagram`, and serializes that row through `SV_SendResource()`.
+
+Legacy size behavior is type-specific:
+
+- model names beginning with `*` are inline model references and keep size zero;
+- other model names probe the model path directly;
+- sound names probe `sound/<name>` but keep the resource name unprefixed;
+- generic, event script, and other resource types probe the resource name
+  directly.
+
+The helper boundary should therefore decide skip/probe/announce metadata only.
+Filesystem probing, reliable datagram ownership, `sv.resources[]` mutation, and
+`SV_SendResource()` delivery remain legacy-owned.
+
 ## Resource Message Serialization
 
 `SV_SendResources()` writes the server-side resource list into the reliable

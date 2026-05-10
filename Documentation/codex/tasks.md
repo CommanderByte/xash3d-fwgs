@@ -2278,22 +2278,28 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 70: Hot Resource Announcement
 
-- [ ] `ENG-HOTRES-001` Baseline `SV_SendSingleResource()` name, size, type,
+- [x] `ENG-HOTRES-001` Baseline `SV_SendSingleResource()` name, size, type,
   flag, and `svc_resource` behavior.
-  Evidence:
-- [ ] `ENG-HOTRES-002` Implement a target-neutral hot-resource announcement
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`
+  Hot Resource Announcement section.
+- [x] `ENG-HOTRES-002` Implement a target-neutral hot-resource announcement
   planner that consumes adapter-provided type, index, flags, and file size.
-  Evidence:
-- [ ] `ENG-HOTRES-003` Add tests for model wildcard resources, sound path
+  Evidence: `src/include/engine/server/server_hot_resource.hpp` and
+  `src/engine/server/server_hot_resource.cpp`.
+- [x] `ENG-HOTRES-003` Add tests for model wildcard resources, sound path
   prefixing, generic resources, empty names, and signed size preservation.
-  Evidence:
-- [ ] `ENG-HOTRES-004` Route `SV_SendSingleResource()` through the helper while
+  Evidence: `tests/engine/server_hot_resource.cpp`.
+- [x] `ENG-HOTRES-004` Route `SV_SendSingleResource()` through the helper while
   keeping `FS_FileSize()`, reliable datagram ownership, and final
   `SV_SendResource()` delivery legacy-owned.
-  Evidence:
-- [ ] `ENG-HOTRES-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/server_hot_resource_adapter.h`,
+  `engine/server/server_hot_resource_adapter.cpp`, and `engine/server/sv_init.c`.
+- [x] `ENG-HOTRES-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_hot_resource` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 81/81, runtime smoke first
+  frame 0.550 seconds, stop reason `command`.
 
 ## Phase 71: Server Reslist File Policy
 

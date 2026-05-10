@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "library.h"
 #include "voice.h"
 #include "pm_local.h"
+#include "server_hot_resource_adapter.h"
 #include "server_resource_catalog_adapter.h"
 
 #if XASH_LOW_MEMORY != 2
@@ -79,25 +80,22 @@ hot precache on a flying
 static void SV_SendSingleResource( const char *name, resourcetype_t type, int index, byte flags )
 {
 	resource_t	*pResource = &sv.resources[sv.num_resources];
+	sv_hot_resource_file_size_query_t query;
+	sv_hot_resource_entry_t entry;
 	int		nSize = 0;
 
-	if( COM_StringEmptyOrNULL( name ))
+	query = SV_HotResource_BuildFileSizeQuery( name, type );
+	if( !query.should_announce )
 		return;
 
-	switch( type )
-	{
-	case t_model:
-		nSize = ( name[0] != '*' ) ? FS_FileSize( name, false ) : 0;
-		break;
-	case t_sound:
-		nSize = FS_FileSize( va( DEFAULT_SOUNDPATH "%s", name ), false );
-		break;
-	default:
-		nSize = FS_FileSize( name, false );
-		break;
-	}
+	if( query.needs_file_size )
+		nSize = FS_FileSize( query.file_size_path, false );
 
-	SV_AddResource( type, name, nSize, flags, index );
+	entry = SV_HotResource_BuildAnnouncement( name, type, index, flags, nSize );
+	if( !entry.should_announce )
+		return;
+
+	SV_AddResource( entry.type, entry.name, entry.download_size, entry.flags, entry.index );
 	MSG_BeginServerCmd( &sv.reliable_datagram, svc_resource );
 	SV_SendResource( pResource, &sv.reliable_datagram );
 }

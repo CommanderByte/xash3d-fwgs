@@ -65,6 +65,8 @@ Use the scripts as helpers, not as a substitute for judgment. Bugs, crashes,
 ABI questions, and compatibility surprises still require a focused deep dive.
 Do not use `-AllowSmokeNonZeroExit` as green evidence; it is for investigating
 known post-first-frame shutdown flakes only.
+Do not run helpers that mutate the same document, such as
+`append-phase-evidence.ps1`, in parallel.
 
 ## Filesystem Modernization Rules
 
