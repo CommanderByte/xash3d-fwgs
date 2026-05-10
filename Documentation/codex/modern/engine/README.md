@@ -99,6 +99,10 @@ Current implementation notes:
 - `server-challenge-window-policy.md`: how Phase 102 routes challenge
   time-window calculation through a target-neutral helper while keeping
   address hashing, salts, packets, and rejection effects legacy-owned.
+- `server-lifecycle-limits-policy.md`: how Phase 103 routes server maxclient,
+  update-backup, packet-entity capacity, game-entity count, and spawn settling
+  calculations through target-neutral helpers while keeping allocation and
+  activation side effects legacy-owned.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

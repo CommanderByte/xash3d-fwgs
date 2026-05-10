@@ -219,6 +219,7 @@ def build(bld):
 		'server/netapi_info_adapter.cpp',
 		'server/server_hot_resource_adapter.cpp',
 		'server/server_reslist_policy_adapter.cpp',
+		'server/server_lifecycle_limits_adapter.cpp',
 		'server/server_userinfo_message_adapter.cpp',
 		'server/server_service_messages_adapter.cpp',
 		'server/server_voice_relay_adapter.cpp',

@@ -85,6 +85,9 @@ Current helpers:
   compatibility classification metadata for later route-through decisions.
 - `server_challenge_policy.cpp`: target-neutral server challenge-window
   calculation and current/previous acceptance pair helpers.
+- `server_lifecycle_limits.cpp`: target-neutral maxclient, update-backup,
+  packet-entity capacity, game-entity count, and spawn settling policy
+  calculations.
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
   serialization for client slot, user ID, active bit, sanitized userinfo, and
   hashed CD key digest bytes.

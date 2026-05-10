@@ -3184,15 +3184,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 103: Server Lifecycle Limits Policy
 
-- [ ] `ENG-SVLIFE-001` Baseline maxclient bounds,
+- [x] `ENG-SVLIFE-001` Baseline maxclient bounds,
   singleplayer/multiplayer update-backup selection, `SV_SPAWN_TIME`, and
   client entity count calculation.
-  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
-- [ ] `ENG-SVLIFE-002` Add pure helpers and tests for lifecycle limits.
   Evidence:
-- [ ] `ENG-SVLIFE-003` Keep spawn, activate/deactivate, baselines, and entity
+  `Documentation/codex/modern/engine/server-lifecycle-limits-policy.md`,
+  `Documentation/codex/todo/server_constants_todo.md`.
+- [x] `ENG-SVLIFE-002` Add pure helpers and tests for lifecycle limits.
+  Evidence: `src/include/engine/server/server_lifecycle_limits.hpp`,
+  `src/engine/server/server_lifecycle_limits.cpp`,
+  `tests/engine/server_lifecycle_limits.cpp`.
+- [x] `ENG-SVLIFE-003` Route safe lifecycle calculations through a tiny C
+  adapter.
+  Evidence: `engine/server/server_lifecycle_limits_adapter.h`,
+  `engine/server/server_lifecycle_limits_adapter.cpp`,
+  `engine/server/sv_init.c`.
+- [x] `ENG-SVLIFE-004` Keep spawn, activate/deactivate, baselines, and entity
   allocation legacy-owned.
   Evidence:
+  `Documentation/codex/modern/engine/server-lifecycle-limits-policy.md`.
+- [x] `ENG-SVLIFE-005` Run focused tests and full validation after the
+  lifecycle-limits route-through.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_lifecycle_limits -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 111/111;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.518 seconds and stopped with reason `command`.
 
 ## Phase 104: Server Movement Constraint Constants
 

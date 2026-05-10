@@ -53,11 +53,25 @@ before route-through work touches live server ownership.
 
 ## Phase 103: Server Lifecycle Limits Policy
 
-- [ ] Baseline maxclient bounds, singleplayer/multiplayer update-backup
+- [x] Baseline maxclient bounds, singleplayer/multiplayer update-backup
   selection, `SV_SPAWN_TIME`, and client entity count calculation.
-- [ ] Add pure helpers and tests for those lifecycle limits.
-- [ ] Keep spawn, activate/deactivate, baselines, and entity allocation
+  Evidence: `Documentation/codex/modern/engine/server-lifecycle-limits-policy.md`.
+- [x] Add pure helpers and tests for those lifecycle limits.
+  Evidence: `src/include/engine/server/server_lifecycle_limits.hpp`,
+  `src/engine/server/server_lifecycle_limits.cpp`,
+  `tests/engine/server_lifecycle_limits.cpp`.
+- [x] Route safe lifecycle calculations through the legacy adapter.
+  Evidence: `engine/server/server_lifecycle_limits_adapter.h`,
+  `engine/server/server_lifecycle_limits_adapter.cpp`,
+  `engine/server/sv_init.c`.
+- [x] Keep spawn, activate/deactivate, baselines, and entity allocation
   legacy-owned.
+  Evidence: cvars, shutdown, `Z_Realloc()`, `NET_Config()`, activation,
+  baselines, and resource setup remain in `engine/server/sv_init.c`.
+- [x] Run focused tests and full validation after the route-through.
+  Evidence: Phase 103 validation passed with
+  `test_engine_server_lifecycle_limits`, `xash`, 111/111 tests, and a 0.518s
+  first-frame smoke.
 
 ## Phase 104: Server Movement Constraint Constants
 

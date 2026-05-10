@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #include "pm_local.h"
 #include "game_dll_resource_policy_adapter.h"
 #include "server_hot_resource_adapter.h"
+#include "server_lifecycle_limits_adapter.h"
 #include "server_reslist_policy_adapter.h"
 #include "server_resource_catalog_adapter.h"
 #include "server_service_messages_adapter.h"
@@ -613,13 +614,13 @@ void SV_ActivateServer( int runPhysics )
 
 	if( runPhysics )
 	{
-		numFrames = (svs.maxclients <= 1) ? 2 : 8;
-		sv.frametime = SV_SPAWN_TIME;
+		numFrames = SV_Lifecycle_SpawnSettlingFrameCount( true, svs.maxclients );
+		sv.frametime = SV_Lifecycle_SpawnSettlingFrameTime( true );
 	}
 	else
 	{
-		sv.frametime = 0.001;
-		numFrames = 1;
+		sv.frametime = SV_Lifecycle_SpawnSettlingFrameTime( false );
+		numFrames = SV_Lifecycle_SpawnSettlingFrameCount( false, svs.maxclients );
 	}
 
 	// run some frames to allow everything to settle
@@ -813,9 +814,7 @@ static void SV_SetupClients( void )
 	svs.maxclients = (int)sv_maxclients.value;
 
 	// dedicated servers are can't be single player and are usually DM
-	if( Host_IsDedicated() )
-		svs.maxclients = bound( 4, svs.maxclients, MAX_CLIENTS );
-	else svs.maxclients = bound( 1, svs.maxclients, MAX_CLIENTS );
+	svs.maxclients = SV_Lifecycle_ClampMaxClients( svs.maxclients, Host_IsDedicated() );
 
 	if( svs.maxclients == 1 )
 		Cvar_SetValue( "deathmatch", 0.0f );
@@ -827,17 +826,17 @@ static void SV_SetupClients( void )
 	// feedback for cvar
 	Cvar_FullSet( "maxplayers", va( "%d", svs.maxclients ), FCVAR_LATCH );
 #if XASH_LOW_MEMORY != 2
-	SV_UPDATE_BACKUP = ( svs.maxclients == 1 ) ? SINGLEPLAYER_BACKUP : MULTIPLAYER_BACKUP;
+	SV_UPDATE_BACKUP = SV_Lifecycle_SelectUpdateBackup( svs.maxclients );
 #endif
 
 	svs.clients = Z_Realloc( svs.clients, sizeof( sv_client_t ) * svs.maxclients );
-	svs.num_client_entities = svs.maxclients * SV_UPDATE_BACKUP * NUM_PACKET_ENTITIES;
+	svs.num_client_entities = SV_Lifecycle_DefaultClientEntityCount( svs.maxclients, SV_UPDATE_BACKUP );
 	svs.packet_entities = Z_Realloc( svs.packet_entities, sizeof( entity_state_t ) * svs.num_client_entities );
 	Con_Reportf( "%s alloced by server packet entities\n", Q_memprint( sizeof( entity_state_t ) * svs.num_client_entities ));
 
 	// init network stuff
-	NET_Config(( svs.maxclients > 1 ), true );
-	svgame.numEntities = svs.maxclients + 1; // clients + world
+	NET_Config( SV_Lifecycle_UsesMultiplayerRules( svs.maxclients ), true );
+	svgame.numEntities = SV_Lifecycle_GameEntityCount( svs.maxclients ); // clients + world
 	ClearBits( sv_maxclients.flags, FCVAR_CHANGED );
 }
 

@@ -70,6 +70,8 @@ Current helpers:
   mirrored as typed modern values with compatibility-role metadata.
 - `server_challenge_policy.hpp`: challenge-window calculation and accepted
   current/previous window pair contracts.
+- `server_lifecycle_limits.hpp`: maxclient, update-backup, packet-entity
+  capacity, game-entity count, and spawn settling policy contracts.
 - `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
   for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
   digest bytes.
