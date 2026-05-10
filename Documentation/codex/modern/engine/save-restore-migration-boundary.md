@@ -16,6 +16,10 @@ patches, landmark offsets, and bundled `HL?` files.
 - Parse token tables without mutating engine state.
 - Parse synthetic field sections by token name.
 - Parse bundled `.sav` file entries.
+- Parse `.HL3` entity patch fixtures and report invalid entity indexes without
+  touching live entity tables.
+- Parse packed `FIELD_CHARACTER[sizeof(short)]` values used for `viewentity`
+  and related legacy short-storage compatibility fields.
 - Generate tiny fixtures in tests to pin down offsets and malformed inputs.
 
 ## Not Safe Yet
@@ -30,8 +34,8 @@ patches, landmark offsets, and bundled `HL?` files.
 ## Proposed Migration Path
 
 1. Keep `save_restore_format` as a read-only fixture parser.
-2. Add malformed fixture coverage for `HL3` entity patch indexes before touching
-   patch restore behavior.
+2. Use the Phase 84 malformed `HL3` entity patch coverage as the target
+   behavior before touching patch restore behavior.
 3. Add real-save snapshot tests once we can safely generate minimal saves from
    a controlled test map or synthetic game DLL fixture.
 4. Move pure policies next, such as save eligibility and save-slot naming.

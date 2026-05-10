@@ -20,6 +20,7 @@ constexpr int kSaveRestoreClientVersion = 0x0067;
 constexpr int kSaveRestoreHeapSize = 0x400000;
 constexpr int kSaveRestoreHashStrings = 0x0FFF;
 constexpr int kSaveRestoreBundledNameBytes = 260;
+constexpr std::size_t kSaveRestorePackedShortBytes = 2;
 
 enum class SaveRestoreBlockKind
 {
@@ -38,7 +39,8 @@ enum class SaveRestoreParseStatus
 	InvalidCount = 4,
 	MissingTerminator = 5,
 	InvalidTokenIndex = 6,
-	InvalidFieldSection = 7
+	InvalidFieldSection = 7,
+	InvalidEntityPatchIndex = 8
 };
 
 struct SaveRestoreBlockHeader
@@ -87,6 +89,21 @@ struct SaveRestoreBundledFile
 	std::size_t nextOffset;
 };
 
+struct SaveRestoreEntityPatch
+{
+	SaveRestoreParseStatus status;
+	int patchCount;
+	std::vector<int> removedEntityIndexes;
+	std::vector<int> invalidEntityIndexes;
+	std::size_t consumedBytes;
+};
+
+struct SaveRestorePackedShort
+{
+	SaveRestoreParseStatus status;
+	std::int16_t value;
+};
+
 SaveRestoreBlockHeader ParseSaveRestoreBlockHeader(
 	const std::uint8_t *data,
 	std::size_t size);
@@ -107,6 +124,15 @@ SaveRestoreBundledFile ParseSaveRestoreBundledFile(
 	const std::uint8_t *data,
 	std::size_t size,
 	std::size_t offset);
+
+SaveRestoreEntityPatch ParseSaveRestoreEntityPatch(
+	const std::uint8_t *data,
+	std::size_t size,
+	int tableCount);
+
+SaveRestorePackedShort ParseSaveRestorePackedShort(
+	const std::uint8_t *data,
+	std::size_t size);
 
 }
 }

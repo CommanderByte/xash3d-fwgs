@@ -26,6 +26,9 @@ Current implementation notes:
 - `custom-resource-download-boundary.md`: how custom resource identity,
   download policy, upload queues, resource messages, and consistency checks
   should be split after the Phase 61 audit.
+- `game-dll-bridge-boundary.md`: how `sv_game.c` should split into modern
+  internals while preserving the game DLL ABI, callback table order, edict
+  ownership, and message/session compatibility.
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.

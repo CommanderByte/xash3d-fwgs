@@ -11,6 +11,10 @@ namespace server
 namespace
 {
 
+static_assert(
+	sizeof(short) == kSaveRestorePackedShortBytes,
+	"Legacy save/restore viewentity fields assume a 16-bit short");
+
 bool CanRead(std::size_t size, std::size_t offset, std::size_t count)
 {
 	return offset <= size && count <= size - offset;
@@ -280,6 +284,76 @@ SaveRestoreBundledFile ParseSaveRestoreBundledFile(
 
 	file.status = SaveRestoreParseStatus::Ok;
 	return file;
+}
+
+SaveRestoreEntityPatch ParseSaveRestoreEntityPatch(
+	const std::uint8_t *data,
+	std::size_t size,
+	int tableCount)
+{
+	SaveRestoreEntityPatch patch = {};
+
+	if (!data || !CanRead(size, 0, 4))
+	{
+		patch.status = SaveRestoreParseStatus::Truncated;
+		return patch;
+	}
+
+	patch.patchCount = ReadI32(data, 0);
+	if (patch.patchCount < 0 || tableCount < 0)
+	{
+		patch.status = SaveRestoreParseStatus::InvalidCount;
+		return patch;
+	}
+
+	const std::size_t bytesNeeded =
+		4 + static_cast<std::size_t>(patch.patchCount) * 4;
+	if (bytesNeeded < 4 || !CanRead(size, 0, bytesNeeded))
+	{
+		patch.status = SaveRestoreParseStatus::Truncated;
+		return patch;
+	}
+
+	std::size_t offset = 4;
+	for (int i = 0; i < patch.patchCount; ++i)
+	{
+		const int entityIndex = ReadI32(data, offset);
+		offset += 4;
+
+		if (entityIndex < 0 || entityIndex >= tableCount)
+		{
+			patch.invalidEntityIndexes.push_back(entityIndex);
+			continue;
+		}
+
+		patch.removedEntityIndexes.push_back(entityIndex);
+	}
+
+	patch.consumedBytes = offset;
+	patch.status = patch.invalidEntityIndexes.empty()
+		? SaveRestoreParseStatus::Ok
+		: SaveRestoreParseStatus::InvalidEntityPatchIndex;
+	return patch;
+}
+
+SaveRestorePackedShort ParseSaveRestorePackedShort(
+	const std::uint8_t *data,
+	std::size_t size)
+{
+	SaveRestorePackedShort value = {};
+
+	if (!data || !CanRead(size, 0, kSaveRestorePackedShortBytes))
+	{
+		value.status = SaveRestoreParseStatus::Truncated;
+		return value;
+	}
+
+	const std::uint16_t raw = ReadU16(data, 0);
+	value.value = raw <= 0x7FFF
+		? static_cast<std::int16_t>(raw)
+		: static_cast<std::int16_t>(static_cast<int>(raw) - 0x10000);
+	value.status = SaveRestoreParseStatus::Ok;
+	return value;
 }
 
 }

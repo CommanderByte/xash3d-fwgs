@@ -373,6 +373,68 @@ static bool TestMalformedFieldSectionsAndBundle()
 			0).status == SaveRestoreParseStatus::Truncated;
 }
 
+static bool TestEntityPatchReportsInvalidIndexes()
+{
+	Bytes patch;
+	AppendI32(patch, 4);
+	AppendI32(patch, 0);
+	AppendI32(patch, 3);
+	AppendI32(patch, -1);
+	AppendI32(patch, 2);
+
+	const SaveRestoreEntityPatch parsed =
+		ParseSaveRestoreEntityPatch(patch.data(), patch.size(), 3);
+
+	Bytes truncated;
+	AppendI32(truncated, 2);
+	AppendI32(truncated, 0);
+
+	Bytes negativeCount;
+	AppendI32(negativeCount, -1);
+
+	return parsed.status == SaveRestoreParseStatus::InvalidEntityPatchIndex &&
+		parsed.patchCount == 4 &&
+		parsed.consumedBytes == patch.size() &&
+		parsed.removedEntityIndexes.size() == 2 &&
+		parsed.removedEntityIndexes[0] == 0 &&
+		parsed.removedEntityIndexes[1] == 2 &&
+		parsed.invalidEntityIndexes.size() == 2 &&
+		parsed.invalidEntityIndexes[0] == 3 &&
+		parsed.invalidEntityIndexes[1] == -1 &&
+		ParseSaveRestoreEntityPatch(
+			truncated.data(),
+			truncated.size(),
+			3).status == SaveRestoreParseStatus::Truncated &&
+		ParseSaveRestoreEntityPatch(
+			negativeCount.data(),
+			negativeCount.size(),
+			3).status == SaveRestoreParseStatus::InvalidCount;
+}
+
+static bool TestPackedViewEntityShort()
+{
+	const std::uint8_t positive[] = { 0x34, 0x12 };
+	const std::uint8_t negative[] = { 0xFF, 0xFF };
+	const std::uint8_t truncated[] = { 0x01 };
+
+	static_assert(
+		sizeof(short) == kSaveRestorePackedShortBytes,
+		"SAVE_CLIENT.viewentity is serialized as FIELD_CHARACTER[sizeof(short)]");
+
+	const SaveRestorePackedShort parsedPositive =
+		ParseSaveRestorePackedShort(positive, sizeof(positive));
+	const SaveRestorePackedShort parsedNegative =
+		ParseSaveRestorePackedShort(negative, sizeof(negative));
+
+	return parsedPositive.status == SaveRestoreParseStatus::Ok &&
+		parsedPositive.value == 0x1234 &&
+		parsedNegative.status == SaveRestoreParseStatus::Ok &&
+		parsedNegative.value == static_cast<std::int16_t>(-1) &&
+		ParseSaveRestorePackedShort(
+			truncated,
+			sizeof(truncated)).status == SaveRestoreParseStatus::Truncated;
+}
+
 }
 
 int main()
@@ -382,7 +444,9 @@ int main()
 		!TestClientSaveHeaderVersion() ||
 		!TestBundledFileEntry() ||
 		!TestMalformedBlocks() ||
-		!TestMalformedFieldSectionsAndBundle())
+		!TestMalformedFieldSectionsAndBundle() ||
+		!TestEntityPatchReportsInvalidIndexes() ||
+		!TestPackedViewEntityShort())
 	{
 		return EXIT_FAILURE;
 	}

@@ -65,6 +65,11 @@ Disk layout:
 The code stores `viewentity` as a character array of `sizeof(short)` instead of
 `FIELD_SHORT` because some HLU SDK based mods reject short fields.
 
+Phase 84 adds an explicit modern fixture guard for this assumption:
+`sizeof(short)` must be two bytes, and the fixture parser treats the stored
+bytes as the legacy packed 16-bit `viewentity` value. Runtime loading still
+uses the original `SAVE_CLIENT` structure and game DLL field callbacks.
+
 ## Entity Patch File: `save/<map>.HL3`
 
 `HL3` is a small removed-entity patch file.
@@ -78,6 +83,11 @@ Disk layout:
 The reader does not perform explicit bounds checking before marking table
 entries, so generated compatibility fixtures should include malformed index
 coverage before this code is modernized.
+
+Phase 84 adds read-only parser coverage that reports negative and out-of-range
+indexes as malformed instead of applying them. This documents the safe target
+behavior for a later runtime migration; the legacy `EntityPatchRead()` path is
+not routed through the modern parser yet.
 
 ## Outer Save File: `save/<slot>.sav`
 
@@ -131,6 +141,11 @@ engine consumes it as a sequence of sections:
 Known section names written by `sv_save.c` include `GameHeader`, `Save Header`,
 `ADJACENCY`, `LIGHTSTYLE`, `ETABLE`, `ClientHeader`, `DECALLIST`,
 `STATICENTITY`, and `SOUNDLIST`.
+
+`LIGHTSTYLE` serialization is non-empty only. `SaveGameSlot()` first counts
+lightstyles whose pattern begins with a non-NUL byte, writes that value as
+`SAVE_HEADER.lightStyleCount`, and then emits exactly those non-empty
+`LIGHTSTYLE` sections. Empty style slots are neither counted nor written.
 
 ## Compatibility Notes
 

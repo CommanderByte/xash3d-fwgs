@@ -27,6 +27,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [custom-resource-download-baseline.md](custom-resource-download-baseline.md)
   documents server custom-resource, HPAK, upload, and download decision
   behavior for Phase 61.
+- [game-dll-bridge-baseline.md](game-dll-bridge-baseline.md) documents
+  `sv_game.c` game DLL loading, callback tables, message state, edict/string
+  ownership, and ABI boundaries before Phase 86 migration planning.
 - [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated

@@ -2670,24 +2670,81 @@ commit, test command, document link, or manual verification note that proves it.
   passed: focused test 1/1, `xash` build, alltests 93/93, runtime smoke first
   frame 0.713 seconds, stop reason `command`.
 
-## Phase 84: Game DLL Bridge Boundary Audit
+## Phase 84: Save/Restore Fixture Hardening
 
-- [ ] `ENG-GAMEDLL-001` Audit the `sv_game.c` enginefuncs table, exported game
+- [x] `ENG-SAVEHARD-001` Add sidequest-driven coverage for save/restore
+  assumptions that are risky to migrate blindly, especially `.HL3` entity
+  patch indexes and packed `viewentity` storage.
+  Evidence: `tests/engine/save_restore_format.cpp` now covers invalid `.HL3`
+  entity patch indexes and packed `viewentity` short parsing.
+- [x] `ENG-SAVEHARD-002` Add a tiny parser or fixture helper for malformed
+  entity patch records without routing runtime `sv_save.c` behavior yet.
+  Evidence: `ParseSaveRestoreEntityPatch()` in
+  `src/engine/server/save_restore_format.cpp`.
+- [x] `ENG-SAVEHARD-003` Add an explicit guard or test for the 16-bit
+  `viewentity` save-field assumption.
+  Evidence: `static_assert(sizeof(short) == kSaveRestorePackedShortBytes)` in
+  `src/engine/server/save_restore_format.cpp` and
+  `tests/engine/save_restore_format.cpp`.
+- [x] `ENG-SAVEHARD-004` Update the save/restore baseline to record
+  non-empty-only lightstyle serialization and any fixture-hardening findings.
+  Evidence:
+  `Documentation/codex/legacy/engine/save-restore-format-baseline.md` and
+  `Documentation/codex/modern/engine/save-restore-migration-boundary.md`.
+- [x] `ENG-SAVEHARD-005` Run focused save/restore tests, full tests, runtime
+  smoke with `+wait +wait`, and record first-frame timing.
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_save_restore_format` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 93/93, runtime smoke first
+  frame 0.510 seconds, stop reason `command`.
+
+## Phase 85: Client Rate And Userinfo Policy
+
+- [ ] `ENG-CLIENTPOL-001` Baseline `SV_ShouldUpdateUserinfo()`,
+  `SV_CheckUpdateRate()`, `SV_CheckRate()`, and the low-risk policy portions of
+  `SV_UserinfoChanged()`.
+  Evidence:
+- [ ] `ENG-CLIENTPOL-002` Implement target-neutral helpers for update-info
+  throttling, client rate validation, and compatible userinfo-derived flags
+  that can be fed by legacy snapshots.
+  Evidence:
+- [ ] `ENG-CLIENTPOL-003` Add tests for update intervals, clamped rates,
+  missing or malformed userinfo values, and prediction/local-weapons related
+  decisions.
+  Evidence:
+- [ ] `ENG-CLIENTPOL-004` Route only the smallest safe legacy decisions
+  through adapters while keeping cvars, info-string mutation, hashing, logging,
+  and client state ownership legacy-owned.
+  Evidence:
+- [ ] `ENG-CLIENTPOL-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 86: Game DLL Bridge Boundary Audit
+
+- [x] `ENG-GAMEDLL-001` Audit the `sv_game.c` enginefuncs table, exported game
   callbacks, entity allocation, string pool, private data ownership, and ABI
   constraints.
   Evidence:
-- [ ] `ENG-GAMEDLL-002` Group enginefunc callbacks into planned modern modules
+  `Documentation/codex/legacy/engine/game-dll-bridge-baseline.md`.
+- [x] `ENG-GAMEDLL-002` Group enginefunc callbacks into planned modern modules
   such as resources, tracing, messaging, entity lifecycle, cvars, and logging.
   Evidence:
-- [ ] `ENG-GAMEDLL-003` Add adapter-boundary tests for C-compatible callback
-  shims that can be exercised without a real game DLL.
+  `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
+- [x] `ENG-GAMEDLL-003` Identify adapter-boundary tests for C-compatible
+  callback shims that can be exercised without a real game DLL.
   Evidence:
-- [ ] `ENG-GAMEDLL-004` Produce a migration order that avoids changing the
+  `Documentation/codex/modern/engine/game-dll-bridge-boundary.md` test
+  strategy.
+- [x] `ENG-GAMEDLL-004` Produce a migration order that avoids changing the
   game DLL ABI while allowing internals to move toward `src/engine`.
   Evidence:
-- [ ] `ENG-GAMEDLL-005` Run documentation validation and any focused adapter
+  `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
+- [x] `ENG-GAMEDLL-005` Run documentation validation and any focused adapter
   tests added by the audit.
-  Evidence:
+  Evidence: `git diff --check` passed. No focused adapter tests were added in
+  this audit-only phase; the test candidates are documented for the follow-up
+  bridge slices.
 
 ## Phase 800: POSIX Console Backend Validation
 

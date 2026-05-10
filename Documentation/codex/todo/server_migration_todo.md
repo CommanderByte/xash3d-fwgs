@@ -633,16 +633,56 @@ Goal: stop treating save/restore as a black box before attempting migration.
 - [x] Decide the safe modernization boundary.
 - [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
-## Phase 84: Game DLL Bridge Boundary Audit
+## Phase 84: Save/Restore Fixture Hardening
+
+Goal: close the small save/restore fixture gaps found after Phase 83 without
+moving runtime save/load ownership out of `sv_save.c`.
+
+- [x] Add sidequest-driven coverage for `.HL3` entity patch indexes and packed
+  `viewentity` storage.
+- [x] Add a tiny malformed entity-patch parser or fixture helper that can flag
+  invalid indexes without mutating runtime behavior.
+- [x] Add an explicit guard or test for the 16-bit `viewentity` assumption.
+- [x] Update the save/restore baseline with non-empty-only lightstyle
+  serialization and fixture-hardening findings.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: Phase validation passed with focused target
+  `test_engine_save_restore_format`, alltests 93/93, and runtime smoke first
+  frame 0.510 seconds.
+
+## Phase 85: Client Rate And Userinfo Policy
+
+Goal: extract another narrow `sv_client.c` policy slice before the Game DLL
+audit, keeping info-string mutation and live client state legacy-owned.
+
+- [ ] Baseline `SV_ShouldUpdateUserinfo()`, `SV_CheckUpdateRate()`,
+  `SV_CheckRate()`, and the low-risk policy portions of
+  `SV_UserinfoChanged()`.
+- [ ] Implement target-neutral helpers for update-info throttling, rate
+  validation, and compatible userinfo-derived flags from legacy snapshots.
+- [ ] Add tests for update intervals, clamped rates, missing or malformed
+  userinfo values, and prediction/local-weapons related decisions.
+- [ ] Route only the smallest safe legacy decisions through adapters while
+  keeping cvars, info-string mutation, hashing, logging, and client state
+  ownership legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 86: Game DLL Bridge Boundary Audit
 
 Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 
-- [ ] Audit enginefuncs, exported callbacks, entity allocation, string pool,
+- [x] Audit enginefuncs, exported callbacks, entity allocation, string pool,
   private data ownership, and ABI constraints.
-- [ ] Group callbacks into planned modern modules.
-- [ ] Add adapter-boundary tests that do not need a real game DLL.
-- [ ] Produce a migration order that preserves ABI while moving internals.
-- [ ] Run documentation validation and focused adapter tests.
+  Evidence: `Documentation/codex/legacy/engine/game-dll-bridge-baseline.md`.
+- [x] Group callbacks into planned modern modules.
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
+- [x] Identify adapter-boundary tests that do not need a real game DLL.
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
+- [x] Produce a migration order that preserves ABI while moving internals.
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
+- [x] Run documentation validation and focused adapter tests.
+  Evidence: `git diff --check` passed. No focused adapter tests were added in
+  this audit-only phase.
 
 ## Deferred Server Items
 
