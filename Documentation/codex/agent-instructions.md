@@ -55,6 +55,9 @@ Prefer the local scripts for repeated phase mechanics:
   validation before a manual commit.
 - `scripts/refresh-runtime-binaries.ps1`: copy current build outputs into
   `run-win32` without running the full validation harness.
+- `scripts/run-game.ps1`: refresh runtime DLLs by default, set
+  `XASH3D_BASEDIR`/`XASH3D_RODIR`, and launch `run-win32\xash3d.exe` without
+  `+quit` for manual new-game checks.
 - `scripts/runtime-diagnose.ps1`: inspect runtime DLL freshness, stale
   `xash3d.exe` processes, `XASH3D_RODIR`, `gfx.wad`, and the latest smoke log.
 - `scripts/run-phase-validation.ps1`: run focused validation, build `xash`,
