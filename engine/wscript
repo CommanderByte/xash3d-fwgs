@@ -199,6 +199,7 @@ def build(bld):
 		'server/connection_response_adapter.cpp',
 		'server/game_dll_message_session_adapter.cpp',
 		'server/game_dll_output_policy_adapter.cpp',
+		'server/game_dll_resource_policy_adapter.cpp',
 		'server/game_dll_user_message_registry_adapter.cpp',
 		'server/server_filter_adapter.cpp',
 		'server/server_consistency_list_adapter.cpp',

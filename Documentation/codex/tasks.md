@@ -2879,21 +2879,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 91: Game DLL Resource And Precache Callback Policy
 
-- [ ] `ENG-GAMEDLL-RES-001` Baseline model, sound, generic, decal, and event
+- [x] `ENG-GAMEDLL-RES-001` Baseline model, sound, generic, decal, and event
   precache callbacks.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-RES-002` Extract optional-resource admission, slash
+  Evidence: `Documentation/codex/modern/engine/game-dll-resource-policy.md`.
+- [x] `ENG-GAMEDLL-RES-002` Extract optional-resource admission, slash
   normalization, case-insensitive lookup, and error-plan decisions.
-  Evidence:
-- [ ] `ENG-GAMEDLL-RES-003` Add tests for null or empty names, leading `!`,
+  Evidence: `src/include/engine/server/game_dll_resource_policy.hpp` and
+  `src/engine/server/game_dll_resource_policy.cpp`.
+- [x] `ENG-GAMEDLL-RES-003` Add tests for null or empty names, leading `!`,
   leading slash/backslash, duplicate lookup, missing optional resources, and
   bounds failures.
-  Evidence:
-- [ ] `ENG-GAMEDLL-RES-004` Route safe policy decisions while keeping resource
+  Evidence: `tests/engine/game_dll_resource_policy.cpp`.
+- [x] `ENG-GAMEDLL-RES-004` Route safe policy decisions while keeping resource
   tables, model loads, filesystem probes, and fatal errors adapter-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-RES-005` Run focused tests, full tests, and smoke timing.
-  Evidence:
+  Evidence: `engine/server/game_dll_resource_policy_adapter.cpp`,
+  `engine/server/sv_game.c`, and `engine/server/sv_init.c`.
+- [x] `ENG-GAMEDLL-RES-005` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_resource_policy -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 99/99, and `run-win32\xash3d.exe -dev 2 -log +fs_path
+  +wait +wait +quit` reached first frame in 0.495 seconds and stopped with
+  reason `command`.
 
 ## Phase 92: Game DLL Sound, Decal, And Static Payload Bridge
 

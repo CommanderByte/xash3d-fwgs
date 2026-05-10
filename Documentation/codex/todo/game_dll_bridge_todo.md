@@ -115,13 +115,13 @@ phase.
 
 ## Phase 91: Resource And Precache Callback Policy
 
-- [ ] Baseline model, sound, generic, decal, and event precache callback
+- [x] Baseline model, sound, generic, decal, and event precache callback
   behavior.
-- [ ] Extract optional-resource admission, slash normalization, case-insensitive
+- [x] Extract optional-resource admission, slash normalization, case-insensitive
   lookup, and error-plan decisions.
-- [ ] Add tests for null/empty names, leading `!`, leading slashes, duplicate
+- [x] Add tests for null/empty names, leading `!`, leading slashes, duplicate
   lookup, missing optional resources, and bounds failures.
-- [ ] Keep actual resource tables, model loads, filesystem probes, and fatal
+- [x] Keep actual resource tables, model loads, filesystem probes, and fatal
   errors adapter-owned.
 
 ## Phase 92: Game DLL Sound, Decal, And Static Payload Bridge

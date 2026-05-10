@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include "ref_common.h" // decals
 #include "game_dll_message_session_adapter.h"
 #include "game_dll_output_policy_adapter.h"
+#include "game_dll_resource_policy_adapter.h"
 #include "game_dll_user_message_registry_adapter.h"
 #include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
@@ -265,6 +266,7 @@ void GAME_EXPORT SV_SetModel( edict_t *ent, const char *modelname )
 {
 	char	name[MAX_QPATH];
 	model_t	*mod;
+	sv_gamedll_resource_name_decision_t decision;
 	int	i = 1;
 
 	if( !SV_IsValidEdict( ent ))
@@ -279,11 +281,10 @@ void GAME_EXPORT SV_SetModel( edict_t *ent, const char *modelname )
 		return;
 	}
 
-	if( *modelname == '\\' || *modelname == '/' )
-		modelname++;
-
-	Q_strncpy( name, modelname, sizeof( name ));
-	COM_FixSlashes( name );
+	decision = SV_GameDllResource_BuildNameDecision( modelname, SV_GAMEDLL_RESOURCE_MODEL_LOOKUP, sizeof( name ));
+	if( decision.action != SV_GAMEDLL_RESOURCE_USE_NAME )
+		return;
+	Q_strncpy( name, decision.normalized_name, sizeof( name ));
 
 	i = SV_ModelIndex( name );
 	if( i == 0 )
@@ -1364,28 +1365,28 @@ pfnPrecacheModel
 */
 static int GAME_EXPORT pfnPrecacheModel( const char *s )
 {
-	qboolean	optional = false;
+	sv_gamedll_resource_name_decision_t decision;
 	int	i;
+	int	load_action;
 
-	if( COM_StringEmptyOrNULL( s ))
+	decision = SV_GameDllResource_BuildNameDecision( s, SV_GAMEDLL_RESOURCE_MODEL_PRECACHE, MAX_QPATH );
+	if( decision.action == SV_GAMEDLL_RESOURCE_REJECT_EMPTY )
 	{
 		// GoldSrc does Host_Error here, we are returning world as that's safe and doesn't break existing Xash games
 		Con_Printf( S_WARN "%s: NULL pointer or empty string as model name, returning world...\n", __func__ );
 		return 0;
 	}
 
-	if( *s == '!' )
-	{
-		optional = true;
-		s++;
-	}
+	if(( i = SV_ModelIndex( decision.normalized_name )) == 0 )
+		return 0;
 
-	if(( i = SV_ModelIndex( s )) == 0 )
+	load_action = SV_GameDllResource_BuildModelPrecacheLoadAction( decision.optional, i );
+	if( load_action == SV_GAMEDLL_MODEL_PRECACHE_RETURN_ZERO )
 		return 0;
 
 	sv.models[i] = Mod_ForName( sv.model_precache[i], false, true );
 
-	if( !optional )
+	if( load_action == SV_GAMEDLL_MODEL_PRECACHE_LOAD_FATAL_IF_MISSING )
 		SetBits( sv.model_precache_flags[i], RES_FATALIFMISSING );
 
 	return i;
@@ -1399,19 +1400,19 @@ pfnModelIndex
 */
 static int GAME_EXPORT pfnModelIndex( const char *m )
 {
+	sv_gamedll_resource_name_decision_t decision;
 	char	name[MAX_QPATH];
 	int	i;
 
-	if( COM_StringEmptyOrNULL( m ))
+	decision = SV_GameDllResource_BuildNameDecision( m, SV_GAMEDLL_RESOURCE_MODEL_LOOKUP, sizeof( name ));
+	if( decision.action != SV_GAMEDLL_RESOURCE_USE_NAME )
 		return 0;
 
-	if( *m == '\\' || *m == '/' ) m++;
-	Q_strncpy( name, m, sizeof( name ));
-	COM_FixSlashes( name );
+	Q_strncpy( name, decision.normalized_name, sizeof( name ));
 
 	for( i = 1; i < MAX_MODELS && sv.model_precache[i][0]; i++ )
 	{
-		if( !Q_stricmp( sv.model_precache[i], name ))
+		if( SV_GameDllResource_NamesEqual( sv.model_precache[i], name ))
 			return i;
 	}
 
@@ -2565,14 +2566,16 @@ register decal name on client
 */
 int GAME_EXPORT pfnDecalIndex( const char *m )
 {
+	sv_gamedll_resource_name_decision_t decision;
 	int	i;
 
-	if( COM_StringEmptyOrNULL( m ))
+	decision = SV_GameDllResource_BuildNameDecision( m, SV_GAMEDLL_RESOURCE_DECAL_LOOKUP, 0 );
+	if( decision.action != SV_GAMEDLL_RESOURCE_USE_NAME )
 		return -1;
 
 	for( i = 1; i < MAX_DECALS && host.draw_decals[i][0]; i++ )
 	{
-		if( !Q_stricmp( host.draw_decals[i], m ))
+		if( SV_GameDllResource_NamesEqual( host.draw_decals[i], m ))
 			return i;
 	}
 

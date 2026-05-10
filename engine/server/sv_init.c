@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "library.h"
 #include "voice.h"
 #include "pm_local.h"
+#include "game_dll_resource_policy_adapter.h"
 #include "server_hot_resource_adapter.h"
 #include "server_reslist_policy_adapter.h"
 #include "server_resource_catalog_adapter.h"
@@ -111,24 +112,23 @@ register unique model for a server and client
 */
 int SV_ModelIndex( const char *filename )
 {
+	sv_gamedll_resource_name_decision_t decision;
 	char	name[MAX_QPATH];
 	int	i;
 
-	if( COM_StringEmptyOrNULL( filename ))
+	decision = SV_GameDllResource_BuildNameDecision( filename, SV_GAMEDLL_RESOURCE_MODEL_LOOKUP, sizeof( name ));
+	if( decision.action != SV_GAMEDLL_RESOURCE_USE_NAME )
 		return 0;
 
-	if( *filename == '\\' || *filename == '/' )
-		filename++;
-	Q_strncpy( name, filename, sizeof( name ));
-	COM_FixSlashes( name );
+	Q_strncpy( name, decision.normalized_name, sizeof( name ));
 
 	for( i = 1; i < MAX_MODELS && sv.model_precache[i][0]; i++ )
 	{
-		if( !Q_stricmp( sv.model_precache[i], name ))
+		if( SV_GameDllResource_NamesEqual( sv.model_precache[i], name ))
 			return i;
 	}
 
-	if( i == MAX_MODELS )
+	if( SV_GameDllResource_BuildSlotAction( i, MAX_MODELS ) == SV_GAMEDLL_RESOURCE_SLOT_FATAL_LIMIT_EXCEEDED )
 	{
 		Host_Error( "MAX_MODELS limit exceeded (%d)\n", MAX_MODELS );
 		return 0;
@@ -156,30 +156,29 @@ register unique sound for client
 */
 int GAME_EXPORT SV_SoundIndex( const char *filename )
 {
+	sv_gamedll_resource_name_decision_t decision;
 	char	name[MAX_QPATH];
 	int	i;
 
-	if( COM_StringEmptyOrNULL( filename ))
+	decision = SV_GameDllResource_BuildNameDecision( filename, SV_GAMEDLL_RESOURCE_SOUND_PRECACHE, sizeof( name ));
+	if( decision.action == SV_GAMEDLL_RESOURCE_REJECT_EMPTY )
 		return 0;
 
-	if( filename[0] == '!' )
+	if( decision.action == SV_GAMEDLL_RESOURCE_REJECT_SENTENCE_NAME )
 	{
 		Con_Printf( S_WARN "'%s' do not precache sentence names!\n", filename );
 		return 0;
 	}
 
-	if( *filename == '\\' || *filename == '/' )
-		filename++;
-	Q_strncpy( name, filename, sizeof( name ));
-	COM_FixSlashes( name );
+	Q_strncpy( name, decision.normalized_name, sizeof( name ));
 
 	for( i = 1; i < MAX_SOUNDS && sv.sound_precache[i][0]; i++ )
 	{
-		if( !Q_stricmp( sv.sound_precache[i], name ))
+		if( SV_GameDllResource_NamesEqual( sv.sound_precache[i], name ))
 			return i;
 	}
 
-	if( i == MAX_SOUNDS )
+	if( SV_GameDllResource_BuildSlotAction( i, MAX_SOUNDS ) == SV_GAMEDLL_RESOURCE_SLOT_FATAL_LIMIT_EXCEEDED )
 	{
 		Host_Error( "MAX_SOUNDS limit exceeded (%d)\n", MAX_SOUNDS );
 		return 0;
@@ -207,22 +206,23 @@ register network event for a server and client
 */
 int SV_EventIndex( const char *filename )
 {
+	sv_gamedll_resource_name_decision_t decision;
 	char	name[MAX_QPATH];
 	int	i;
 
-	if( COM_StringEmptyOrNULL( filename ))
+	decision = SV_GameDllResource_BuildNameDecision( filename, SV_GAMEDLL_RESOURCE_EVENT_PRECACHE, sizeof( name ));
+	if( decision.action != SV_GAMEDLL_RESOURCE_USE_NAME )
 		return 0;
 
-	Q_strncpy( name, filename, sizeof( name ));
-	COM_FixSlashes( name );
+	Q_strncpy( name, decision.normalized_name, sizeof( name ));
 
 	for( i = 1; i < MAX_EVENTS && sv.event_precache[i][0]; i++ )
 	{
-		if( !Q_stricmp( sv.event_precache[i], name ))
+		if( SV_GameDllResource_NamesEqual( sv.event_precache[i], name ))
 			return i;
 	}
 
-	if( i == MAX_EVENTS )
+	if( SV_GameDllResource_BuildSlotAction( i, MAX_EVENTS ) == SV_GAMEDLL_RESOURCE_SLOT_FATAL_LIMIT_EXCEEDED )
 	{
 		Host_Error( "MAX_EVENTS limit exceeded (%d)\n", MAX_EVENTS );
 		return 0;
@@ -249,22 +249,23 @@ register generic resourse for a server and client
 */
 int GAME_EXPORT SV_GenericIndex( const char *filename )
 {
+	sv_gamedll_resource_name_decision_t decision;
 	char	name[MAX_QPATH];
 	int	i;
 
-	if( COM_StringEmptyOrNULL( filename ))
+	decision = SV_GameDllResource_BuildNameDecision( filename, SV_GAMEDLL_RESOURCE_GENERIC_PRECACHE, sizeof( name ));
+	if( decision.action != SV_GAMEDLL_RESOURCE_USE_NAME )
 		return 0;
 
-	Q_strncpy( name, filename, sizeof( name ));
-	COM_FixSlashes( name );
+	Q_strncpy( name, decision.normalized_name, sizeof( name ));
 
 	for( i = 1; i < MAX_CUSTOM && sv.files_precache[i][0]; i++ )
 	{
-		if( !Q_stricmp( sv.files_precache[i], name ))
+		if( SV_GameDllResource_NamesEqual( sv.files_precache[i], name ))
 			return i;
 	}
 
-	if( i == MAX_CUSTOM )
+	if( SV_GameDllResource_BuildSlotAction( i, MAX_CUSTOM ) == SV_GAMEDLL_RESOURCE_SLOT_FATAL_LIMIT_EXCEEDED )
 	{
 		Host_Error( "MAX_CUSTOM limit exceeded (%d)\n", MAX_CUSTOM );
 		return 0;
