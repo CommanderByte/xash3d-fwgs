@@ -18,6 +18,10 @@ Modern C++ internals may sit behind it, but must not change the exported C
 tables, function pointer order, structure layouts, calling conventions, or
 legacy quirks without a dedicated ABI phase.
 
+This baseline is the high-level map. The deeper callback-by-callback inventory
+for the same phase lives in
+[`game-dll-callback-inventory.md`](game-dll-callback-inventory.md).
+
 ## ABI Participants
 
 | Surface | Location | Direction | Ownership |
@@ -180,3 +184,8 @@ Do not migrate this bridge by moving `sv_game.c` wholesale. The safer route is:
 3. route individual callbacks through adapters only after focused tests exist;
 4. leave loading/unloading, edict layout, `globalvars_t`, and callback table
    ordering stable until an explicit ABI compatibility phase.
+
+The first implementation lane should start with enginefunc metadata and the
+game-DLL message session. It should stop before DLL lifetime, real edict
+allocation, `globalvars_t::pStringBase`, movement, trace, visibility, and
+runtime save/restore callback ordering.

@@ -2538,25 +2538,33 @@ commit, test command, document link, or manual verification note that proves it.
   passed: focused test 1/1, `xash` build, alltests 89/89, runtime smoke first
   frame 0.501 seconds, stop reason `command`.
 
-## Phase 79: Game DLL User Message Bridge
+## Phase 79: Superseded Game DLL User Message Bridge Placeholder
 
-- [ ] `ENG-USERMSG-001` Baseline `pfnMessageBegin()`, `pfnMessageEnd()`,
+Note: This was an early placeholder created before the Phase 86 bridge audit.
+It is now superseded by the post-audit lane: Phase 87 covers
+`enginefuncs_t` metadata, Phase 88 covers the message session facade, and
+Phase 89 covers user-message registry policy.
+
+- [x] `ENG-USERMSG-001` Baseline `pfnMessageBegin()`, `pfnMessageEnd()`,
   `pfnWriteByte/Char/Short/Long/Angle/Coord/String/Entity()`, and
   `SV_RewriteMessage()` behavior.
-  Evidence:
-- [ ] `ENG-USERMSG-002` Implement a modern message-session facade that models
+  Evidence: superseded by `ENG-GAMEDLL-MSG-001` in Phase 88.
+- [x] `ENG-USERMSG-002` Implement a modern message-session facade that models
   destination, message id, origin, entity target, rewrite eligibility, and
   payload writes without exposing STL through the ABI.
-  Evidence:
-- [ ] `ENG-USERMSG-003` Add tests for write primitives, bounds, rewriteable
+  Evidence: superseded by `ENG-GAMEDLL-MSG-002` in Phase 88.
+- [x] `ENG-USERMSG-003` Add tests for write primitives, bounds, rewriteable
   messages, usermessage headers, and malformed begin/end sequences.
-  Evidence:
-- [ ] `ENG-USERMSG-004` Route low-risk payload decisions through the facade
+  Evidence: superseded by `ENG-GAMEDLL-MSG-003` and
+  `ENG-GAMEDLL-USERMSG-003` in Phases 88 and 89.
+- [x] `ENG-USERMSG-004` Route low-risk payload decisions through the facade
   while keeping the enginefuncs ABI and `sv.multicast` storage legacy-owned.
-  Evidence:
-- [ ] `ENG-USERMSG-005` Run focused tests, full tests, runtime smoke with
+  Evidence: superseded by `ENG-GAMEDLL-MSG-004` and
+  `ENG-GAMEDLL-USERMSG-004` in Phases 88 and 89.
+- [x] `ENG-USERMSG-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: superseded by `ENG-GAMEDLL-MSG-005`,
+  `ENG-GAMEDLL-USERMSG-005`, and Phase 101 validation tasks.
 
 ## Phase 80: Server Command Lifecycle Policy
 
@@ -2751,6 +2759,269 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence: `git diff --check` passed. No focused adapter tests were added in
   this audit-only phase; the test candidates are documented for the follow-up
   bridge slices.
+- [x] `ENG-GAMEDLL-006` Deepen the audit with callback-domain inventory,
+  cross-file game DLL caller mapping, compatibility quirks, and route-risk
+  ranking.
+  Evidence:
+  `Documentation/codex/legacy/engine/game-dll-callback-inventory.md`.
+- [x] `ENG-GAMEDLL-007` Establish a bounded post-audit phase lane with a clear
+  start/end scope for game DLL bridge work.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md` and
+  `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
+
+## Phase 87: Game DLL Enginefuncs Metadata
+
+- [ ] `ENG-GAMEDLL-META-001` Build a complete table-slot inventory for
+  `enginefuncs_t`, including callback name, domain, adapter owner, and
+  route-readiness category.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-META-002` Add target-neutral metadata under
+  `src/engine/server` without changing `engine/eiface.h` or `gEngfuncs`.
+  Evidence:
+- [ ] `ENG-GAMEDLL-META-003` Add tests or compile-time checks that metadata
+  coverage stays complete and intentionally ordered.
+  Evidence:
+- [ ] `ENG-GAMEDLL-META-004` Run focused tests, full tests, and `+wait +wait`
+  smoke timing if any code is routed.
+  Evidence:
+
+## Phase 88: Game DLL Message Session Facade
+
+- [ ] `ENG-GAMEDLL-MSG-001` Baseline `pfnMessageBegin()`,
+  `pfnMessageEnd()`, write primitives, size accounting, overflow clearing, and
+  rewrite rules.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-MSG-002` Implement a mockable message-session state machine
+  for begin/write/end validation and byte counting.
+  Evidence:
+- [ ] `ENG-GAMEDLL-MSG-003` Add tests for malformed sequences, fixed-size
+  mismatch, variable-size patching, `pfnWriteByte(-1)`, entity bounds, null
+  string accounting, empty finale/cutscene null strings, and rewrite
+  admission.
+  Evidence:
+- [ ] `ENG-GAMEDLL-MSG-004` Route only the smallest safe state/accounting
+  decisions while keeping `sv.multicast` and `SV_Multicast()` legacy-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-MSG-005` Run focused tests, full tests, and `+wait +wait`
+  smoke timing.
+  Evidence:
+
+## Phase 89: Game DLL User Message Registry Policy
+
+- [ ] `ENG-GAMEDLL-USERMSG-001` Baseline `pfnRegUserMsg()` duplicate,
+  invalid-name, invalid-size, capacity, and active-server resend behavior.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-USERMSG-002` Implement a target-neutral user-message
+  registration policy helper.
+  Evidence:
+- [ ] `ENG-GAMEDLL-USERMSG-003` Add tests for duplicate names, fixed and
+  variable sizes, too-long names, message count exhaustion, and active resend
+  planning.
+  Evidence:
+- [ ] `ENG-GAMEDLL-USERMSG-004` Route safe policy decisions while keeping
+  `svgame.msg` mutation and multicast registration writes adapter-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-USERMSG-005` Run focused tests, full tests, and smoke
+  timing.
+  Evidence:
+
+## Phase 90: Game DLL Text, Command, And Alert Output Policy
+
+- [ ] `ENG-GAMEDLL-OUTPUT-001` Baseline `pfnServerCommand()`,
+  `pfnClientCommand()`, `pfnClientPrintf()`, `pfnServerPrint()`,
+  `pfnAlertMessage()`, and `pfnEndSection()`.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-OUTPUT-002` Extract command validation and
+  output-classification helpers where they can stay target-neutral.
+  Evidence:
+- [ ] `ENG-GAMEDLL-OUTPUT-003` Add tests for fake-client skips, invalid
+  commands, developer verbosity, multiplayer `at_logged`, and aiconsole
+  suppression.
+  Evidence:
+- [ ] `ENG-GAMEDLL-OUTPUT-004` Route safe decisions while keeping command
+  queues, command execution, console sinks, and log files legacy-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-OUTPUT-005` Run focused tests, full tests, and smoke
+  timing.
+  Evidence:
+
+## Phase 91: Game DLL Resource And Precache Callback Policy
+
+- [ ] `ENG-GAMEDLL-RES-001` Baseline model, sound, generic, decal, and event
+  precache callbacks.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-RES-002` Extract optional-resource admission, slash
+  normalization, case-insensitive lookup, and error-plan decisions.
+  Evidence:
+- [ ] `ENG-GAMEDLL-RES-003` Add tests for null or empty names, leading `!`,
+  leading slash/backslash, duplicate lookup, missing optional resources, and
+  bounds failures.
+  Evidence:
+- [ ] `ENG-GAMEDLL-RES-004` Route safe policy decisions while keeping resource
+  tables, model loads, filesystem probes, and fatal errors adapter-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-RES-005` Run focused tests, full tests, and smoke timing.
+  Evidence:
+
+## Phase 92: Game DLL Sound, Decal, And Static Payload Bridge
+
+- [ ] `ENG-GAMEDLL-PAYLOAD-001` Baseline game-DLL-facing sound, ambient sound,
+  static decal, static entity, particle, and lightstyle callback behavior.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-PAYLOAD-002` Reuse completed server sound/static/decal
+  payload helpers where the callback boundary matches.
+  Evidence:
+- [ ] `ENG-GAMEDLL-PAYLOAD-003` Add tests for callback input validation,
+  optional fields, invalid sample/model cases, lightstyle loading no-ops, and
+  payload output.
+  Evidence:
+- [ ] `ENG-GAMEDLL-PAYLOAD-004` Route safe payload pieces while keeping
+  multicast, signon, and resource-index ownership in adapters.
+  Evidence:
+- [ ] `ENG-GAMEDLL-PAYLOAD-005` Run focused tests, full tests, and smoke
+  timing.
+  Evidence:
+
+## Phase 93: Game DLL Client Info-Key And Query Callback Policy
+
+- [ ] `ENG-GAMEDLL-INFO-001` Baseline info-key buffers, client key-value
+  mutation, physics info strings, auth/user ID callbacks, stats, cvar query
+  callbacks, and game-dir compatibility.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-INFO-002` Extract safe admission and fallback-result
+  policies.
+  Evidence:
+- [ ] `ENG-GAMEDLL-INFO-003` Add tests for local/serverinfo selection,
+  unchanged key-values, resend-flag decisions, bad-player query results,
+  invalid cvar names, and full-path game-dir fallback.
+  Evidence:
+- [ ] `ENG-GAMEDLL-INFO-004` Route safe decisions while keeping `Info_*`
+  mutation and live client fields adapter-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-INFO-005` Run focused tests, full tests, and smoke timing.
+  Evidence:
+
+## Phase 94: Game DLL String Pool Compatibility Fixtures
+
+- [ ] `ENG-GAMEDLL-STR-001` Baseline string processing, allocation modes,
+  deduplication, invalid handles, overflow reset, statistics, and physics
+  string overrides.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-STR-002` Add fixtures for empty strings, newline/carriage
+  return/tab normalization, duplicate-on/off behavior, invalid handles, and
+  overflow paths.
+  Evidence:
+- [ ] `ENG-GAMEDLL-STR-003` Extract pure policy only after fixtures prove the
+  numeric `string_t` compatibility model.
+  Evidence:
+- [ ] `ENG-GAMEDLL-STR-004` Keep `globalvars_t::pStringBase`, 64-bit near-DLL
+  storage, and physics overrides legacy-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-STR-005` Run focused tests, full tests, and smoke timing.
+  Evidence:
+
+## Phase 95: Game DLL Entity Handle And Private Data Policy
+
+- [ ] `ENG-GAMEDLL-ENT-001` Baseline edict index/pointer helpers, private-data
+  allocation/free ordering, 16-byte rounding, and
+  `BUGCOMP_PENTITYOFENTINDEX_FLAG`.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-ENT-002` Add tests for pure index admission, client-visible
+  versus all-entity lookup decisions, private-data rounding, and destructor
+  ordering plans.
+  Evidence:
+- [ ] `ENG-GAMEDLL-ENT-003` Route only policy decisions that do not own
+  `edict_t` memory or call game DLL destructors directly.
+  Evidence:
+- [ ] `ENG-GAMEDLL-ENT-004` Run focused tests, full tests, and smoke timing.
+  Evidence:
+
+## Phase 96: Game DLL Entity Parse And Spawn Boundary
+
+- [ ] `ENG-GAMEDLL-SPAWN-001` Baseline `SV_ParseEdict()`,
+  `SV_LoadFromFile()`, classname ordering, utility-key discard, angle rewrite,
+  and custom entity handling.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-SPAWN-002` Add parser/plan tests that do not invoke real
+  game entity code.
+  Evidence:
+- [ ] `ENG-GAMEDLL-SPAWN-003` Keep `pfnKeyValue()`, `pfnSpawn()`, edict
+  allocation, and map text lifetime legacy-owned until loaded-DLL fixtures
+  exist.
+  Evidence:
+- [ ] `ENG-GAMEDLL-SPAWN-004` Run focused tests, full tests, and smoke timing
+  if any route-through is added.
+  Evidence:
+
+## Phase 97: Game DLL Changelevel And Save/Restore Bridge Policy
+
+- [ ] `ENG-GAMEDLL-CHANGE-001` Baseline `pfnChangeLevel()`,
+  `SV_QueueChangeLevel()`, `SV_WriteEntityPatch()`, and save/restore game
+  callback sequencing.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-CHANGE-002` Add tests for duplicate changelevel
+  suppression, landmark truncation, invalid level names, and save patch
+  planning.
+  Evidence:
+- [ ] `ENG-GAMEDLL-CHANGE-003` Keep runtime save/load streams and game DLL
+  field serialization legacy-owned.
+  Evidence:
+- [ ] `ENG-GAMEDLL-CHANGE-004` Run focused tests, full tests, and smoke
+  timing.
+  Evidence:
+
+## Phase 98: Game DLL Visibility And Trace Boundary
+
+- [ ] `ENG-GAMEDLL-VIS-001` Baseline trace and visibility callback wrappers
+  after world/trace fixtures are available.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-VIS-002` Add pure admission and result-conversion tests
+  without moving BSP, hull, leaf, PVS/PAS, or collision ownership.
+  Evidence:
+- [ ] `ENG-GAMEDLL-VIS-003` Decide whether to defer route-through until a
+  broader world/trace phase.
+  Evidence:
+
+## Phase 99: Game DLL Movement And Fake-Client Boundary
+
+- [ ] `ENG-GAMEDLL-MOVE-001` Baseline yaw, pitch, move-to-origin, walkmove,
+  set-origin, maxspeed, and fake-client `pfnRunPlayerMove()` behavior.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-MOVE-002` Add pure movement-policy tests only after
+  movement fixtures exist.
+  Evidence:
+- [ ] `ENG-GAMEDLL-MOVE-003` Keep `SV_RunCmd()`, `playermove_t`,
+  `sv.current_client`, and physics callbacks legacy-owned.
+  Evidence:
+
+## Phase 100: Game DLL Load/Unload Facade Plan
+
+- [ ] `ENG-GAMEDLL-LOAD-001` Baseline missing-export, version mismatch,
+  fallback API, physics API, command/cvar unlink, string pool, and memory-pool
+  cleanup paths.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- [ ] `ENG-GAMEDLL-LOAD-002` Implement a fake-symbol load-plan helper without
+  moving real library lifetime.
+  Evidence:
+- [ ] `ENG-GAMEDLL-LOAD-003` Add tests for required export failures,
+  optional extension mismatch, API fallback, and cleanup planning.
+  Evidence:
+- [ ] `ENG-GAMEDLL-LOAD-004` Keep real DLL load/unload, `GiveFnptrsToDll()`,
+  edict allocation, and callback table publication legacy-owned.
+  Evidence:
+
+## Phase 101: Game DLL Bridge Manual Validation
+
+- [ ] `ENG-GAMEDLL-VALID-001` After each routed bridge slice, run focused
+  tests, full tests, `scripts/run-phase-validation.ps1`, and record
+  `+wait +wait` first-frame timing.
+  Evidence:
+- [ ] `ENG-GAMEDLL-VALID-002` Every few routed bridge slices, run
+  `scripts/run-game.ps1`, start a new game manually, and record the outcome.
+  Evidence:
+- [ ] `ENG-GAMEDLL-VALID-003` Record any mod-specific or Half-Life
+  asset-loading failures as bridge compatibility notes before continuing.
+  Evidence:
 
 ## Phase 800: POSIX Console Backend Validation
 

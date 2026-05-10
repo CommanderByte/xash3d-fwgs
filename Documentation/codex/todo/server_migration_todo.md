@@ -436,34 +436,38 @@ before touching the global `sv.resources` list directly.
 Goal: separate the single-resource announcement decision from reliable datagram
 delivery.
 
-- [ ] Baseline `SV_SendSingleResource()` for models, sounds, generic files,
+- [x] Baseline `SV_SendSingleResource()` for models, sounds, generic files,
   file-size lookup, path prefixing, and `svc_resource` emission.
-- [ ] Implement a hot-resource announcement planner that builds the exact
+- [x] Implement a hot-resource announcement planner that builds the exact
   `resource_t` snapshot needed by `SV_SendResource()`.
-- [ ] Keep `FS_FileSize()`, reliable datagram ownership, and final
+- [x] Keep `FS_FileSize()`, reliable datagram ownership, and final
   `SV_SendResource()` delivery legacy-owned.
-- [ ] Add tests for model `*` resources, sound path prefixing, empty names,
+- [x] Add tests for model `*` resources, sound path prefixing, empty names,
   generic files, flags, indexes, and size preservation.
-- [ ] Route `SV_SendSingleResource()` through the helper and verify focused
+- [x] Route `SV_SendSingleResource()` through the helper and verify focused
   tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: main task Phase 70 records `test_engine_server_hot_resource`,
+  alltests 81/81, and runtime smoke first frame 0.550 seconds.
 
 ## Phase 71: Server Reslist File Policy
 
 Goal: isolate `.res` and `reslist.txt` token classification without moving
 legacy file loading or parse ownership yet.
 
-- [ ] Baseline `SV_ReadResourceList()` behavior for safe-download filtering,
+- [x] Baseline `SV_ReadResourceList()` behavior for safe-download filtering,
   slash normalization, sound classification, generic fallback, and console
   diagnostics.
-- [ ] Implement a reslist token classifier that returns normalized path,
+- [x] Implement a reslist token classifier that returns normalized path,
   resource type, and intended index route.
-- [ ] Keep `FS_LoadFile()`, `COM_ParseFile()`, logging, `SV_SoundIndex()`, and
+- [x] Keep `FS_LoadFile()`, `COM_ParseFile()`, logging, `SV_SoundIndex()`, and
   `SV_GenericIndex()` legacy-owned.
-- [ ] Add tests for empty tokens, unsafe paths, backslash input, `sound/`
+- [x] Add tests for empty tokens, unsafe paths, backslash input, `sound/`
   prefixes, supported sound extensions, unsupported sound files, and generic
   fallback.
-- [ ] Route classification through the helper and verify focused tests, full
+- [x] Route classification through the helper and verify focused tests, full
   tests, and `+wait +wait` smoke timing.
+  Evidence: main task Phase 71 records `test_engine_server_reslist_policy`,
+  alltests 82/82, and runtime smoke first frame 0.492 seconds.
 
 ## Phase 72: Client Userinfo Update Message
 
@@ -571,17 +575,21 @@ writes.
 - [x] Route decisions while keeping masks and writes legacy-owned.
 - [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
-## Phase 79: Game DLL User Message Bridge
+## Phase 79: Superseded Game DLL User Message Bridge Placeholder
 
-Goal: model the game-DLL message session before any deeper enginefuncs-table
-work.
+Goal: keep the historical placeholder visible while routing actual bridge work
+through the deeper post-86 lane.
 
-- [ ] Baseline `pfnMessageBegin/End()`, write primitives, and rewrite rules.
-- [ ] Implement a C-compatible modern message-session facade.
-- [ ] Add tests for write primitives, malformed sequences, headers, and
-  rewriteable messages.
-- [ ] Route low-risk decisions while preserving the public game DLL ABI.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Baseline `pfnMessageBegin/End()`, write primitives, and rewrite rules.
+  Superseded by Phase 88.
+- [x] Implement a C-compatible modern message-session facade.
+  Superseded by Phase 88.
+- [x] Add tests for write primitives, malformed sequences, headers, and
+  rewriteable messages. Superseded by Phases 88 and 89.
+- [x] Route low-risk decisions while preserving the public game DLL ABI.
+  Superseded by Phases 88 and 89.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+  Superseded by Phase 101 validation tasks.
 
 ## Phase 80: Server Command Lifecycle Policy
 
@@ -676,7 +684,8 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 
 - [x] Audit enginefuncs, exported callbacks, entity allocation, string pool,
   private data ownership, and ABI constraints.
-  Evidence: `Documentation/codex/legacy/engine/game-dll-bridge-baseline.md`.
+  Evidence: `Documentation/codex/legacy/engine/game-dll-bridge-baseline.md`,
+  `Documentation/codex/legacy/engine/game-dll-callback-inventory.md`.
 - [x] Group callbacks into planned modern modules.
   Evidence: `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
 - [x] Identify adapter-boundary tests that do not need a real game DLL.
@@ -686,6 +695,8 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 - [x] Run documentation validation and focused adapter tests.
   Evidence: `git diff --check` passed. No focused adapter tests were added in
   this audit-only phase.
+- [x] Establish the post-audit game DLL bridge phase lane.
+  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
 
 ## Deferred Server Items
 
@@ -693,5 +704,7 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 - [ ] Declarative server command registration after filter/query pilots.
 - [ ] Runtime save/restore migration after real-save fixtures and game DLL field
   serialization coverage exist.
-- [ ] Game DLL bridge migration after explicit ABI and licensing review.
+- [ ] Game DLL bridge migration through the dedicated post-86 lane in
+  `Documentation/codex/todo/game_dll_bridge_todo.md`, with explicit ABI
+  preservation and later licensing review.
 - [ ] Physics/world migration after movement and trace fixtures exist.

@@ -33,6 +33,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [game-dll-bridge-baseline.md](game-dll-bridge-baseline.md) documents
   `sv_game.c` game DLL loading, callback tables, message state, edict/string
   ownership, and ABI boundaries before Phase 86 migration planning.
+- [game-dll-callback-inventory.md](game-dll-callback-inventory.md) expands
+  Phase 86 with callback domains, cross-file game DLL callers, compatibility
+  quirks, and route-risk ranking.
 - [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated

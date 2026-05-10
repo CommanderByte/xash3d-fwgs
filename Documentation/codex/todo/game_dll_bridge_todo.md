@@ -1,0 +1,168 @@
+# Game DLL Bridge TODO
+
+This TODO expands Phase 86 into a bounded implementation lane. The bridge is
+high risk because it is the compatibility boundary used by external game DLLs.
+Move only narrow, tested behavior behind adapters until the loader, edicts,
+string base, and callback table publication are ready for an explicit ABI
+phase.
+
+## Scope Start
+
+- Start with callback inventory, table metadata, user-message state, and small
+  target-neutral policy helpers.
+- Prefer tests that do not require loading a real game DLL.
+- Keep `enginefuncs_t`, `DLL_FUNCTIONS`, `NEW_DLL_FUNCTIONS`, `edict_t`,
+  `globalvars_t`, `entvars_t`, `string_t`, and `SAVERESTOREDATA` ABI-stable.
+- Keep live `sv`, `svs`, `svgame`, message buffers, cvars, commands,
+  filesystem probes, and DLL lifetime in adapters until each dependency has a
+  modern owner.
+
+## Scope End
+
+- End the first bridge lane before replacing DLL load/unload, edict array
+  allocation, `globalvars_t::pStringBase`, save/restore runtime callback
+  ordering, movement, trace, and visibility behavior.
+- Do not introduce a new public C++ plugin API in this lane.
+- Do not throw exceptions across game DLL callbacks.
+
+## Phase 87: Enginefuncs Metadata
+
+- [ ] Build a table-slot inventory for `enginefuncs_t`.
+- [ ] Categorize every callback by subsystem, adapter owner, and migration
+  readiness.
+- [ ] Add tests or compile-time checks that table metadata remains complete.
+- [ ] Keep the concrete `gEngfuncs` table and `engine/eiface.h` ABI unchanged.
+
+## Phase 88: Message Session Facade
+
+- [ ] Baseline `pfnMessageBegin()`, `pfnMessageEnd()`, write primitives, and
+  rewrite rules in enough detail for golden tests.
+- [ ] Implement a target-neutral message-session state machine that writes to
+  mock buffers.
+- [ ] Add tests for double begin, end without begin, fixed-size mismatch,
+  variable-size patching, overflow clearing, `pfnWriteByte(-1)`, string null
+  accounting, and rewrite admission.
+- [ ] Route only the smallest safe validation and size-accounting decisions.
+
+## Phase 89: User Message Registry Policy
+
+- [ ] Baseline `pfnRegUserMsg()` duplicate, invalid-name, invalid-size, and
+  active-server resend behavior.
+- [ ] Implement a target-neutral registry policy that can be tested without
+  live `svgame.msg` mutation.
+- [ ] Add tests for duplicate names, fixed/variable sizes, max-name length,
+  max-message count, and active resend planning.
+- [ ] Keep actual message IDs and multicast writes adapter-owned.
+
+## Phase 90: Game DLL Text, Command, And Alert Output Policy
+
+- [ ] Baseline `pfnServerCommand()`, `pfnClientCommand()`,
+  `pfnClientPrintf()`, `pfnServerPrint()`, `pfnAlertMessage()`, and
+  `pfnEndSection()`.
+- [ ] Extract command validation and output-classification decisions where
+  they do not depend on live sinks.
+- [ ] Add tests for fake-client skips, invalid commands, developer verbosity,
+  multiplayer `at_logged`, and aiconsole suppression.
+- [ ] Keep `Cbuf_AddText()`, command execution, print sinks, and log files
+  legacy-owned.
+
+## Phase 91: Resource And Precache Callback Policy
+
+- [ ] Baseline model, sound, generic, decal, and event precache callback
+  behavior.
+- [ ] Extract optional-resource admission, slash normalization, case-insensitive
+  lookup, and error-plan decisions.
+- [ ] Add tests for null/empty names, leading `!`, leading slashes, duplicate
+  lookup, missing optional resources, and bounds failures.
+- [ ] Keep actual resource tables, model loads, filesystem probes, and fatal
+  errors adapter-owned.
+
+## Phase 92: Game DLL Sound, Decal, And Static Payload Bridge
+
+- [ ] Reuse completed server sound/static/decal helpers where possible.
+- [ ] Baseline the game-DLL-facing callback inputs and legacy validation
+  behavior.
+- [ ] Add tests for ambient sound, static decal, static entity, particle, and
+  lightstyle callback plans.
+- [ ] Keep multicast, signon, and resource-index ownership in legacy adapters.
+
+## Phase 93: Client Info-Key And Query Callback Policy
+
+- [ ] Baseline `pfnGetInfoKeyBuffer()`, `pfnSetValueForKey()`,
+  `pfnSetClientKeyValue()`, physics info callbacks, auth/user ID callbacks,
+  and cvar query callbacks.
+- [ ] Extract safe admission and fallback-result policies.
+- [ ] Add tests for local/serverinfo selection, unchanged key-values,
+  resend-flag decisions, bad player query results, and game-dir compatibility.
+- [ ] Keep `Info_*` mutation and live client fields adapter-owned.
+
+## Phase 94: String Pool Compatibility Fixtures
+
+- [ ] Baseline `SV_ProcessString()`, `SV_AllocStringPool()`,
+  `SV_AllocString()`, `SV_MakeString()`, `SV_GetString()`, and string stats.
+- [ ] Add fixtures for empty strings, escape normalization, dedup behavior,
+  duplicate-disabled behavior, invalid handles, and overflow reset.
+- [ ] Keep `globalvars_t::pStringBase`, 64-bit near-DLL storage, and physics
+  string overrides legacy-owned until fixtures are broad enough.
+
+## Phase 95: Entity Handle And Private Data Policy
+
+- [ ] Baseline edict index/pointer helpers, private-data allocation, free
+  ordering, and `BUGCOMP_PENTITYOFENTINDEX_FLAG`.
+- [ ] Add tests around pure index admission, all-entity versus client-visible
+  lookup decisions, private-data size rounding, and destructor ordering plans.
+- [ ] Keep actual `edict_t` memory, `pvPrivateData`, and game DLL destructor
+  calls in the adapter until a loaded-DLL fixture exists.
+
+## Phase 96: Entity Parse And Spawn Boundary
+
+- [ ] Baseline `SV_ParseEdict()`, `SV_LoadFromFile()`, classname ordering,
+  utility-key discard, angle-to-angles rewrite, and custom entity handling.
+- [ ] Add parser/plan tests that do not invoke real game entity code.
+- [ ] Keep `pfnKeyValue()`, `pfnSpawn()`, edict allocation, and map text
+  lifetime legacy-owned.
+
+## Phase 97: Changelevel And Save/Restore Bridge Policy
+
+- [ ] Baseline `pfnChangeLevel()`, `SV_QueueChangeLevel()`,
+  `SV_WriteEntityPatch()`, and game callback sequencing in save/restore.
+- [ ] Add tests for duplicate changelevel suppression, landmark truncation,
+  invalid level names, and save patch planning.
+- [ ] Keep runtime save/load streams and game DLL field serialization
+  legacy-owned.
+
+## Phase 98: Visibility And Trace Callback Boundary
+
+- [ ] Baseline trace and visibility callback wrappers after world/trace
+  fixtures are available.
+- [ ] Add pure tests for admission and result conversion only.
+- [ ] Keep actual hull, BSP, leaf, PVS/PAS, and collision work in legacy code
+  until a broader world migration phase.
+
+## Phase 99: Movement And Fake-Client Callback Boundary
+
+- [ ] Baseline yaw, pitch, move-to-origin, walkmove, set-origin, maxspeed, and
+  fake-client `pfnRunPlayerMove()` behavior.
+- [ ] Add tests for pure movement-policy values only after movement fixtures
+  exist.
+- [ ] Keep `SV_RunCmd()`, `playermove_t`, `sv.current_client`, and physics
+  callbacks legacy-owned.
+
+## Phase 100: DLL Load/Unload Facade Plan
+
+- [ ] Baseline missing-export, version mismatch, fallback API, physics API,
+  command/cvar unlink, string pool, and memory-pool cleanup paths.
+- [ ] Implement a pure load-plan helper against fake symbol tables only.
+- [ ] Keep `COM_LoadLibrary()`, `COM_UnloadLibrary()`, real symbol lookup,
+  `GiveFnptrsToDll()`, edict allocation, and callback table publication in
+  legacy code until the final bridge phase.
+
+## Phase 101: Game DLL Bridge Manual Validation
+
+- [ ] After each routed bridge slice, run focused tests, full tests,
+  `scripts/run-phase-validation.ps1`, and record `+wait +wait` first-frame
+  time in `Documentation/codex/tasks.md`.
+- [ ] Every few routed slices, run `scripts/run-game.ps1` and manually start a
+  new game.
+- [ ] Record any mod-specific or Half-Life asset-loading failures as bridge
+  compatibility notes before continuing.

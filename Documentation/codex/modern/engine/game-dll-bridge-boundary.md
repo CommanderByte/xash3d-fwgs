@@ -19,6 +19,25 @@ Modern code may improve implementation structure behind those callbacks, but
 must not leak exceptions, C++ containers, references, virtual interfaces, or
 ownership assumptions across the C ABI.
 
+## Scope Start And End
+
+Start with table metadata, message-session state, user-message registry policy,
+small command/output decisions, and resource/precache admission rules. These
+areas are visible enough to matter, but can be tested through snapshots and
+mock buffers without loading a real game DLL.
+
+Stop the first bridge lane before replacing:
+
+- `COM_LoadLibrary()` / `COM_UnloadLibrary()` lifetime ownership;
+- `GiveFnptrsToDll()` and concrete callback table publication;
+- edict array allocation and `pvPrivateData` storage;
+- `globalvars_t::pStringBase` and 64-bit near-DLL string storage;
+- runtime save/restore game-field callback ordering;
+- trace, visibility, world collision, and movement behavior.
+
+Those are legitimate modernization targets, but they need deeper fixtures or
+broader subsystem migration before route-through.
+
 ## Proposed Module Split
 
 | Modern area | Suggested files | Responsibility | Legacy-owned until later |
@@ -54,16 +73,16 @@ moving edict layout, global vars, string base ownership, or actual DLL loading.
    - Complete Phase 84 save/restore hardening first.
    - Keep this Phase 86 audit as the map for later bridge work.
 
-2. **Message session facade**
-   - Revisit the Phase 79 game-DLL user-message bridge.
-   - Extract begin/write/end state transitions behind mockable buffer writers.
-   - Preserve system-message rewrites and multicast ownership in the adapter.
-
-3. **Engine callback table metadata**
+2. **Engine callback table metadata**
    - Add tests that ensure required callback slots are intentionally assigned.
    - Classify callbacks by module so future phases can move one domain at a
      time.
    - Do not alter `enginefuncs_t` order.
+
+3. **Message session facade**
+   - Supersede the earlier Phase 79 placeholder with Phase 88.
+   - Extract begin/write/end state transitions behind mockable buffer writers.
+   - Preserve system-message rewrites and multicast ownership in the adapter.
 
 4. **String pool policy**
    - Extract pure string-handle decisions and stats reporting where possible.
@@ -115,7 +134,33 @@ Runtime validation should still include full tests plus the usual
 
 ## Immediate Follow-Up
 
-The safest bridge follow-up is to revive Phase 79 as a concrete
-`GameDllMessageSession` slice. It has a clear state machine, already-adjacent
-message payload helpers, and fewer dependencies than loader, edict, physics, or
-save/restore ownership.
+The safest bridge follow-up is Phase 87 metadata first, then Phase 88 as a
+concrete `GameDllMessageSession` slice. The metadata phase prevents table-slot
+drift before code moves; the message phase has a clear state machine,
+already-adjacent message payload helpers, and fewer dependencies than loader,
+edict, physics, or save/restore ownership.
+
+## Post-Audit Phase Lane
+
+The Phase 86 deep audit turns into this implementation sequence:
+
+| Phase | Slice | Scope |
+| --- | --- | --- |
+| 87 | Enginefuncs metadata | Inventory and table-slot tests only; no ABI changes. |
+| 88 | Message session facade | Begin/write/end state, size accounting, fixed-size checks, overflow, and rewrite admission. |
+| 89 | User message registry policy | Duplicate/invalid registration decisions and active-server resend planning. |
+| 90 | Text, command, and alert output policy | Validation and output classification while sinks stay legacy-owned. |
+| 91 | Resource and precache callback policy | Optional resource flags, path normalization, and lookup/admission decisions. |
+| 92 | Sound, decal, and static payload bridge | Reuse existing payload helpers from server-message phases where possible. |
+| 93 | Client info-key and query callback policy | Info buffer selection, key-value mutation decisions, cvar-query fallback results, and game-dir behavior. |
+| 94 | String pool fixtures | Escape normalization, dedup, invalid handles, overflow, and 64-bit mode documentation before routing. |
+| 95 | Entity handle and private-data policy | Index admission, bugcompat pointer behavior, private-data rounding, and destructor ordering plans. |
+| 96 | Entity parse and spawn boundary | Classname/keyvalue/angle parsing plans while game callbacks remain legacy-owned. |
+| 97 | Changelevel and save/restore bridge policy | Duplicate suppression, landmark handling, and save patch planning. |
+| 98 | Visibility and trace boundary | Audit and pure admission/result conversion only after world fixtures exist. |
+| 99 | Movement and fake-client boundary | Audit and pure policy only after movement fixtures exist. |
+| 100 | DLL load/unload facade plan | Fake-symbol load planner only; real DLL lifetime remains last. |
+| 101 | Manual bridge validation | Full tests plus `+wait +wait` smoke and periodic new-game checks after routed slices. |
+
+The detailed checklist for this lane is
+[`Documentation/codex/todo/game_dll_bridge_todo.md`](../../todo/game_dll_bridge_todo.md).
