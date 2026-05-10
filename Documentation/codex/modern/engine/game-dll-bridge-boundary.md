@@ -119,6 +119,18 @@ Useful tests:
 Runtime validation should still include full tests plus the usual
 `+wait +wait` smoke after any route-through.
 
+## Validation Practice
+
+Bridge validation is a standing practice, not its own implementation phase:
+
+- after each routed bridge slice, run focused tests, full tests, and
+  `scripts/run-phase-validation.ps1`;
+- record `+wait +wait` first-frame timing in `Documentation/codex/tasks.md`;
+- every few routed slices, run `scripts/run-game.ps1`, manually start a new
+  game, and record the result in the relevant phase evidence;
+- record mod-specific, game DLL, asset-loading, or runtime compatibility
+  failures before continuing.
+
 ## Compatibility Rules
 
 - Keep `engine/eiface.h` ABI definitions stable.
@@ -160,7 +172,6 @@ The Phase 86 deep audit turns into this implementation sequence:
 | 98 | Visibility and trace boundary | Audit and pure admission/result conversion only after world fixtures exist. |
 | 99 | Movement and fake-client boundary | Audit and pure policy only after movement fixtures exist. |
 | 100 | DLL load/unload facade plan | Fake-symbol load planner only; real DLL lifetime remains last. |
-| 101 | Manual bridge validation | Full tests plus `+wait +wait` smoke and periodic new-game checks after routed slices. |
 
 The detailed checklist for this lane is
 [`Documentation/codex/todo/game_dll_bridge_todo.md`](../../todo/game_dll_bridge_todo.md).

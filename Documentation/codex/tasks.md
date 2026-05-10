@@ -2564,7 +2564,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-USERMSG-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
   Evidence: superseded by `ENG-GAMEDLL-MSG-005`,
-  `ENG-GAMEDLL-USERMSG-005`, and Phase 101 validation tasks.
+  `ENG-GAMEDLL-USERMSG-005`, and the game DLL bridge validation practice.
 
 ## Phase 80: Server Command Lifecycle Policy
 
@@ -3127,19 +3127,6 @@ Phase 89 covers user-message registry policy.
   passed, `.\waf.bat build --targets=xash` passed, full tests passed 108/108;
   `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
   first frame in 0.507 seconds and stopped with reason `command`.
-
-## Phase 101: Game DLL Bridge Manual Validation
-
-- [ ] `ENG-GAMEDLL-VALID-001` After each routed bridge slice, run focused
-  tests, full tests, `scripts/run-phase-validation.ps1`, and record
-  `+wait +wait` first-frame timing.
-  Evidence:
-- [ ] `ENG-GAMEDLL-VALID-002` Every few routed bridge slices, run
-  `scripts/run-game.ps1`, start a new game manually, and record the outcome.
-  Evidence:
-- [ ] `ENG-GAMEDLL-VALID-003` Record any mod-specific or Half-Life
-  asset-loading failures as bridge compatibility notes before continuing.
-  Evidence:
 
 ## Phase 800: POSIX Console Backend Validation
 

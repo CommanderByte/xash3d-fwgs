@@ -240,12 +240,12 @@ phase.
   `test_engine_game_dll_load_policy`, `xash`, 108/108 tests, and a 0.507s
   first-frame smoke.
 
-## Phase 101: Game DLL Bridge Manual Validation
+## Bridge Validation Practice
 
-- [ ] After each routed bridge slice, run focused tests, full tests,
+- After each routed bridge slice, run focused tests, full tests,
   `scripts/run-phase-validation.ps1`, and record `+wait +wait` first-frame
   time in `Documentation/codex/tasks.md`.
-- [ ] Every few routed slices, run `scripts/run-game.ps1` and manually start a
+- Every few routed slices, run `scripts/run-game.ps1` and manually start a
   new game.
-- [ ] Record any mod-specific or Half-Life asset-loading failures as bridge
+- Record any mod-specific or Half-Life asset-loading failures as bridge
   compatibility notes before continuing.

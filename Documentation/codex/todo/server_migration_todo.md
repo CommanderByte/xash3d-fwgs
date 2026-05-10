@@ -589,7 +589,7 @@ through the deeper post-86 lane.
 - [x] Route low-risk decisions while preserving the public game DLL ABI.
   Superseded by Phases 88 and 89.
 - [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
-  Superseded by Phase 101 validation tasks.
+  Superseded by the game DLL bridge validation practice.
 
 ## Phase 80: Server Command Lifecycle Policy
 
