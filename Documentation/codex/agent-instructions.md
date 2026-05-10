@@ -62,6 +62,8 @@ Prefer the local scripts for repeated phase mechanics:
   a copy-pasteable evidence line.
 - `scripts/ask-local-model.ps1`: ask a local LM Studio model for read-only
   analysis and write the scratch report under `.codex-cache/local-agent/`.
+- `scripts/start-local-model-ask.ps1`: launch the same helper asynchronously
+  with a prompt file, request JSON, PID status, and stdout/stderr logs.
 - `scripts/lmstudio-mcp-server.py`: expose the same local LM Studio helper as
   a read-only stdio MCP server for clients that can register local MCP tools.
 
@@ -76,7 +78,9 @@ evidence or a replacement for direct code inspection.
 When LM Studio is running with a large context window, such as 64K, prefer using
 it asynchronously for bounded sidecar scouting while continuing direct code
 inspection locally. Keep prompts file-scoped, and do not put local-model output
-on the critical path unless the task is explicitly exploratory.
+on the critical path unless the task is explicitly exploratory. Use
+`start-local-model-ask.ps1` for hidden/background jobs so argument quoting does
+not split prompts into positional PowerShell parameters.
 
 ## Filesystem Modernization Rules
 

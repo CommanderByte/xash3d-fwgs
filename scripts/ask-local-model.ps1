@@ -1,3 +1,4 @@
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$BaseUrl = $env:LMSTUDIO_BASE_URL,
     [string]$Model = $env:LMSTUDIO_MODEL,
@@ -8,10 +9,13 @@ param(
     [int]$MaxFileChars = 12000,
     [int]$MaxTokens = 1024,
     [double]$Temperature = 0.2,
-    [string]$OutputPath = ".codex-cache/local-agent/last-response.md"
+    [string]$OutputPath = ".codex-cache/local-agent/last-response.md",
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ExtraFiles = @()
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
     $BaseUrl = "http://localhost:1234/v1"
@@ -69,6 +73,10 @@ if ([string]::IsNullOrWhiteSpace($Prompt)) {
 
 if ([string]::IsNullOrWhiteSpace($Prompt)) {
     throw "Provide -Prompt, -PromptFile, or pipe prompt text on stdin."
+}
+
+if ($ExtraFiles.Count -gt 0) {
+    $Files += $ExtraFiles
 }
 
 if ([string]::IsNullOrWhiteSpace($Model)) {

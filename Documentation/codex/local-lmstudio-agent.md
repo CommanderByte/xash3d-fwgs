@@ -53,6 +53,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ask-local-model.ps
 
 The script writes the response to `.codex-cache/local-agent/last-response.md`.
 
+## Async Script
+
+Use `scripts/start-local-model-ask.ps1` for sidecar scouting while Codex keeps
+working locally:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local-model-ask.ps1 `
+  -Prompt "Summarize migration risks in this file." `
+  -Files engine/server/sv_init.c `
+  -OutputPath .codex-cache/local-agent/sv-init.md `
+  -MaxTokens 1200
+```
+
+The async wrapper writes a prompt file, request JSON, PID status file, and
+stdout/stderr logs beside the requested report. Prefer this wrapper over manual
+`Start-Process` calls because it avoids splitting multi-word prompts into stray
+PowerShell arguments.
+
 ## MCP Server
 
 Use `scripts/lmstudio-mcp-server.py` as a stdio MCP server for clients that can
