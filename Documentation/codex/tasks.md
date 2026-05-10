@@ -3271,16 +3271,25 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 106: Runtime Route-Through Review
 
-- [ ] `ENG-SVROUTE-001` Review constants mirrored in Phases 101-105.
-  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
-- [ ] `ENG-SVROUTE-002` Choose the safest small route-through call sites.
+- [x] `ENG-SVROUTE-001` Review constants mirrored in Phases 101-105.
   Evidence:
-- [ ] `ENG-SVROUTE-003` Explicitly mark layout-sensitive macros as
+  `Documentation/codex/modern/engine/server-route-through-review.md`,
+  `Documentation/codex/todo/server_constants_todo.md`.
+- [x] `ENG-SVROUTE-002` Choose the safest small route-through call sites.
+  Evidence: Phase 106 adds no new route-through because the safe small sites
+  were already handled by Phases 102-105; remaining candidates are deferred to
+  behavior-owner phases.
+- [x] `ENG-SVROUTE-003` Explicitly mark layout-sensitive macros as
   legacy-owned.
   Evidence:
-- [ ] `ENG-SVROUTE-004` Run focused tests, full tests, and runtime smoke before
+  `Documentation/codex/modern/engine/server-route-through-review.md`.
+- [x] `ENG-SVROUTE-004` Run focused tests, full tests, and runtime smoke before
   any route-through commit.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_limits -StopRunningXash` passed; focused test passed,
+  `.\waf.bat build --targets=xash` passed, full tests passed 113/113;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.527 seconds and stopped with reason `command`.
 
 ## Phase 800: POSIX Console Backend Validation
 

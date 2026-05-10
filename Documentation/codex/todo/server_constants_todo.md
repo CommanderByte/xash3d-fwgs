@@ -121,8 +121,14 @@ before route-through work touches live server ownership.
 
 ## Phase 106: Runtime Route-Through Review
 
-- [ ] Review constants mirrored in Phases 101-105.
-- [ ] Choose the safest small route-through call sites.
-- [ ] Explicitly mark layout-sensitive macros as legacy-owned.
-- [ ] Run focused tests, full tests, and runtime smoke before any route-through
+- [x] Review constants mirrored in Phases 101-105.
+  Evidence: `Documentation/codex/modern/engine/server-route-through-review.md`.
+- [x] Choose the safest small route-through call sites.
+  Evidence: no new Phase 106 route-through was added; the safe small sites
+  were already routed in Phases 102-105.
+- [x] Explicitly mark layout-sensitive macros as legacy-owned.
+  Evidence: `Documentation/codex/modern/engine/server-route-through-review.md`.
+- [x] Run focused tests, full tests, and runtime smoke before any route-through
   commit.
+  Evidence: Phase 106 validation passed with `test_engine_server_limits`,
+  `xash`, 113/113 tests, and a 0.527s first-frame smoke.

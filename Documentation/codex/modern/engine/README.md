@@ -109,6 +109,9 @@ Current implementation notes:
 - `server-visibility-constraints.md`: how Phase 105 routes entity leaf and
   portal viewentity capacity policy through target-neutral helpers while
   keeping BSP traversal, PVS/PAS, and packet ownership legacy-owned.
+- `server-route-through-review.md`: how Phase 106 reviews the Phase 101-105
+  constants lane, confirms no extra broad route-through should be made, and
+  lists the next behavior-owner phases.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.
