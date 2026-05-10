@@ -43,5 +43,7 @@ Current helpers:
   digest bytes.
 - `server_service_messages.hpp`: compact service-message payload writers for
   file-transfer failure, reconnect, set-view, set-pause, and voice-init.
+- `server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and
+  `svc_voicedata` payload serialization.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
 - `user_agent_policy.hpp`: connection UUID and input-device validation policy.

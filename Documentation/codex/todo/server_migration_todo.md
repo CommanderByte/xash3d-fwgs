@@ -504,17 +504,144 @@ creating a broad serverdata rewrite.
 Goal: extract the voice relay decision tree before attempting a larger client
 message or audio subsystem migration.
 
-- [ ] Baseline `SV_ParseVoiceData()` for loopback, frame count, size limits,
+- [x] Baseline `SV_ParseVoiceData()` for loopback, frame count, size limits,
   voice enable gates, spawned-client gates, physics callback behavior,
   listener masks, and per-recipient datagram-capacity checks.
-- [ ] Implement a target-neutral voice relay policy helper and add a
+- [x] Implement a target-neutral voice relay policy helper and add a
   `svc_voicedata` payload writer only if the boundary stays small.
-- [ ] Keep message reads, `SV_Physics()->pfnVoice_SetClientListening()`,
+- [x] Keep message reads, `SV_Physics()->pfnVoice_SetClientListening()`,
   recipient iteration, and datagram writes legacy-owned.
-- [ ] Add tests for oversized packets, disabled voice, loopback to sender,
+- [x] Add tests for oversized packets, disabled voice, loopback to sender,
   listener-mask filtering, single-player suppression, and capacity rejection.
-- [ ] Route relay decisions through the helper and verify focused tests, full
+- [x] Route relay decisions through the helper and verify focused tests, full
   tests, and `+wait +wait` smoke timing.
+
+## Phase 75: Server Text Command Messages
+
+Goal: extract the repeated `svc_print` and `svc_stufftext` payload shapes
+without moving command dispatch, formatting, or client iteration yet.
+
+- [ ] Baseline `SV_ClientPrintf()`, `SV_BroadcastPrintf()`,
+  `SV_BroadcastCommand()`, `pfnClientCommand()`, and nearby text-message
+  writers.
+- [ ] Implement target-neutral text payload encoders and small command-string
+  builders where useful.
+- [ ] Add golden tests for print channels, stufftext commands, empty strings,
+  append-after-command behavior, and overflow.
+- [ ] Route selected writers while keeping formatting, destination selection,
+  and fake-client handling legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 76: Server Sound Message Builder
+
+Goal: isolate `SV_BuildSoundMsg()` before touching broader audio or multicast
+ownership.
+
+- [ ] Baseline spawn/restore sound commands, optional fields, entity/channel
+  encoding, origin handling, and invalid sample checks.
+- [ ] Implement target-neutral sound-message planning and payload helpers.
+- [ ] Add golden tests for minimal and flagged sound messages.
+- [ ] Route `SV_BuildSoundMsg()` while keeping resource indexes and multicast
+  ownership legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 77: Decal And Static Entity Messages
+
+Goal: extract stable signon/reliable payloads for decals and static entities.
+
+- [ ] Baseline decal/static entity writers and restart flows.
+- [ ] Implement `svc_bspdecal` and `svc_spawnstatic` payload helpers.
+- [ ] Add golden tests for indexes, flags, scale, static baseline fields, and
+  overflow.
+- [ ] Route payloads while keeping entity validation and signon ownership
+  legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 78: Server Multicast Routing Policy
+
+Goal: separate destination/recipient decisions from actual multicast buffer
+writes.
+
+- [ ] Baseline `SV_Multicast()` destination modes, PVS/PHS, spectator proxy,
+  and rewrite behavior.
+- [ ] Implement recipient/destination policy helpers.
+- [ ] Add tests for broadcast, filtered, reliable/unreliable, spectator, and
+  invalid destination cases.
+- [ ] Route decisions while keeping masks and writes legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 79: Game DLL User Message Bridge
+
+Goal: model the game-DLL message session before any deeper enginefuncs-table
+work.
+
+- [ ] Baseline `pfnMessageBegin/End()`, write primitives, and rewrite rules.
+- [ ] Implement a C-compatible modern message-session facade.
+- [ ] Add tests for write primitives, malformed sequences, headers, and
+  rewriteable messages.
+- [ ] Route low-risk decisions while preserving the public game DLL ABI.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 80: Server Command Lifecycle Policy
+
+Goal: make map/load/save/changelevel command decisions testable without moving
+the command system itself.
+
+- [ ] Baseline lifecycle commands in `sv_cmds.c`.
+- [ ] Implement target-neutral command decision helpers.
+- [ ] Add tests for missing args, invalid maps, saves, aliases, and rejected
+  transitions.
+- [ ] Route selected decisions while keeping `Cmd_Argv()`, filesystem probes,
+  cvars, and host command execution legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 81: Serverdata And Spawn Handshake
+
+Goal: prepare a safer boundary for the larger new/spawn/serverdata flow.
+
+- [ ] Baseline serverdata, signon fragments, resend flags, and signon number
+  behavior.
+- [ ] Implement serverdata payload and spawn-handshake planning helpers.
+- [ ] Add golden tests for serverdata fields, bounds, overflow/drop, and
+  single-player versus multiplayer branches.
+- [ ] Route decisions while keeping fragmentation and state mutation
+  legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 82: Server Frame Datagram Assembly
+
+Goal: separate frame-send planning from netchan writes and entity frame
+construction.
+
+- [ ] Baseline reliable/unreliable/spectator datagram assembly and overflow
+  behavior.
+- [ ] Implement copy/fragment/ignore planning helpers.
+- [ ] Add tests for reliable copy, reliable fragment, ignored unreliable
+  overflow, spectator payloads, and resend flags.
+- [ ] Route planning while keeping netchan and writes legacy-owned.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 83: Save/Restore Compatibility Fixtures
+
+Goal: stop treating save/restore as a black box before attempting migration.
+
+- [ ] Audit `sv_save.c` binary formats and compatibility quirks.
+- [ ] Create tiny generated fixtures or read-only parser fixtures.
+- [ ] Add tests for headers, token tables, entities, lightstyles, and malformed
+  data.
+- [ ] Decide the safe modernization boundary.
+- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 84: Game DLL Bridge Boundary Audit
+
+Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
+
+- [ ] Audit enginefuncs, exported callbacks, entity allocation, string pool,
+  private data ownership, and ABI constraints.
+- [ ] Group callbacks into planned modern modules.
+- [ ] Add adapter-boundary tests that do not need a real game DLL.
+- [ ] Produce a migration order that preserves ABI while moving internals.
+- [ ] Run documentation validation and focused adapter tests.
 
 ## Deferred Server Items
 

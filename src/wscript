@@ -103,6 +103,7 @@ def build(bld):
 			'engine_server_reslist_policy': '../tests/engine/server_reslist_policy.cpp',
 			'engine_server_userinfo_message': '../tests/engine/server_userinfo_message.cpp',
 			'engine_server_service_messages': '../tests/engine/server_service_messages.cpp',
+			'engine_server_voice_relay': '../tests/engine/server_voice_relay.cpp',
 			'engine_server_customization_message': '../tests/engine/server_customization_message.cpp',
 			'engine_server_resource_message': '../tests/engine/server_resource_message.cpp',
 			'engine_server_download_policy': '../tests/engine/server_download_policy.cpp',

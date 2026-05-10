@@ -2390,23 +2390,229 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 74: Server Voice Relay Policy
 
-- [ ] `ENG-VOICE-001` Baseline `SV_ParseVoiceData()` loopback, frame count,
+- [x] `ENG-VOICE-001` Baseline `SV_ParseVoiceData()` loopback, frame count,
   size limit, voice enable gates, spawned-client gate, physics callback,
   listener mask, and per-recipient datagram behavior.
-  Evidence:
-- [ ] `ENG-VOICE-002` Implement a target-neutral voice relay policy helper and,
+  Evidence: `Documentation/codex/legacy/engine/server-voice-relay-baseline.md`.
+- [x] `ENG-VOICE-002` Implement a target-neutral voice relay policy helper and,
   if cleanly separable, a `svc_voicedata` payload writer.
-  Evidence:
-- [ ] `ENG-VOICE-003` Add tests for oversized packets, disabled voice, sender
+  Evidence: `src/include/engine/server/server_voice_relay.hpp`,
+  `src/engine/server/server_voice_relay.cpp`,
+  `engine/server/server_voice_relay_adapter.h`, and
+  `engine/server/server_voice_relay_adapter.cpp`.
+- [x] `ENG-VOICE-003` Add tests for oversized packets, disabled voice, sender
   loopback behavior, listener-mask filtering, single-player suppression, and
   datagram-capacity rejection.
-  Evidence:
-- [ ] `ENG-VOICE-004` Route relay decisions through the helper while keeping
+  Evidence: `tests/engine/server_voice_relay.cpp`.
+- [x] `ENG-VOICE-004` Route relay decisions through the helper while keeping
   message reads, game DLL physics callbacks, recipient iteration, and datagram
   writes legacy-owned.
-  Evidence:
-- [ ] `ENG-VOICE-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/sv_client.c` keeps incoming message reads,
+  `SV_Physics()->pfnVoiceData()`, recipient iteration, and `MSG_BeginServerCmd()`
+  legacy-owned while using the helper for gates, recipient decisions, and
+  `svc_voicedata` payload bits.
+- [x] `ENG-VOICE-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_voice_relay` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 85/85, runtime smoke first
+  frame 0.493 seconds, stop reason `command`.
+
+## Phase 75: Server Text Command Messages
+
+- [ ] `ENG-TEXTMSG-001` Baseline `SV_ClientPrintf()`, `SV_BroadcastPrintf()`,
+  `SV_BroadcastCommand()`, `pfnClientCommand()`, and related `svc_print` /
+  `svc_stufftext` writers for command bytes, text formatting, destination
+  selection, and fake-client behavior.
+  Evidence:
+- [ ] `ENG-TEXTMSG-002` Implement target-neutral print/stufftext payload
+  encoders and, where useful, tiny command-string builders.
+  Evidence:
+- [ ] `ENG-TEXTMSG-003` Add golden tests for print channels, empty strings,
+  formatted reconnect/stufftext-style commands, overflow handling, and append
+  after legacy command bytes.
+  Evidence:
+- [ ] `ENG-TEXTMSG-004` Route selected text-message writers while keeping
+  formatting ownership, client iteration, and command dispatch legacy-owned.
+  Evidence:
+- [ ] `ENG-TEXTMSG-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 76: Server Sound Message Builder
+
+- [ ] `ENG-SOUNDMSG-001` Baseline `SV_BuildSoundMsg()` and callers for spawn
+  versus restore sound commands, optional volume/attenuation/pitch fields,
+  entity/channel encoding, origin handling, and bounds checks.
+  Evidence:
+- [ ] `ENG-SOUNDMSG-002` Implement target-neutral sound-message flag planning
+  and payload serialization.
+  Evidence:
+- [ ] `ENG-SOUNDMSG-003` Add golden tests for minimal sounds, flagged optional
+  fields, restore-sound payloads, large coordinates, invalid sample indexes,
+  and overflow handling.
+  Evidence:
+- [ ] `ENG-SOUNDMSG-004` Route `SV_BuildSoundMsg()` through the helper while
+  keeping entity lookup, model/sound indexes, game DLL callbacks, and multicast
+  destination ownership legacy-owned.
+  Evidence:
+- [ ] `ENG-SOUNDMSG-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 77: Decal And Static Entity Messages
+
+- [ ] `ENG-STATICMSG-001` Baseline `SV_CreateDecal()`, `SV_CreateStaticEntity()`,
+  `SV_RestartStaticEnts()`, `SV_RestartDecals()`, and permanent decal restore
+  behavior.
+  Evidence:
+- [ ] `ENG-STATICMSG-002` Implement target-neutral `svc_bspdecal` and
+  `svc_spawnstatic` payload helpers for stable message layout.
+  Evidence:
+- [ ] `ENG-STATICMSG-003` Add golden tests for entity/model indexes, decal
+  flags, scale, static entity baseline fields, and overflow handling.
+  Evidence:
+- [ ] `ENG-STATICMSG-004` Route selected message payloads through helpers while
+  keeping entity validation, resource indexes, signon buffer ownership, and map
+  restart iteration legacy-owned.
+  Evidence:
+- [ ] `ENG-STATICMSG-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 78: Server Multicast Routing Policy
+
+- [ ] `ENG-MCAST-001` Baseline `SV_Multicast()` for destination modes, PVS/PHS
+  masks, reliable/unreliable buffers, spectator proxy handling, and usermessage
+  rewrite behavior.
+  Evidence:
+- [ ] `ENG-MCAST-002` Implement target-neutral recipient/destination policy
+  helpers that do not own actual buffer writes.
+  Evidence:
+- [ ] `ENG-MCAST-003` Add tests for broadcast, one-client, PVS/PHS filtered,
+  reliable/unreliable, spectator, and invalid destination cases.
+  Evidence:
+- [ ] `ENG-MCAST-004` Route decision-making through the helper while keeping
+  visibility mask generation, `sv.multicast`, and final writes legacy-owned.
+  Evidence:
+- [ ] `ENG-MCAST-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 79: Game DLL User Message Bridge
+
+- [ ] `ENG-USERMSG-001` Baseline `pfnMessageBegin()`, `pfnMessageEnd()`,
+  `pfnWriteByte/Char/Short/Long/Angle/Coord/String/Entity()`, and
+  `SV_RewriteMessage()` behavior.
+  Evidence:
+- [ ] `ENG-USERMSG-002` Implement a modern message-session facade that models
+  destination, message id, origin, entity target, rewrite eligibility, and
+  payload writes without exposing STL through the ABI.
+  Evidence:
+- [ ] `ENG-USERMSG-003` Add tests for write primitives, bounds, rewriteable
+  messages, usermessage headers, and malformed begin/end sequences.
+  Evidence:
+- [ ] `ENG-USERMSG-004` Route low-risk payload decisions through the facade
+  while keeping the enginefuncs ABI and `sv.multicast` storage legacy-owned.
+  Evidence:
+- [ ] `ENG-USERMSG-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 80: Server Command Lifecycle Policy
+
+- [ ] `ENG-SVCMD-001` Baseline map/load/save/changelevel/restart command
+  validation in `sv_cmds.c`, including argument parsing and console output.
+  Evidence:
+- [ ] `ENG-SVCMD-002` Implement target-neutral command decision helpers for
+  map validation, save/load request classification, and lifecycle action plans.
+  Evidence:
+- [ ] `ENG-SVCMD-003` Add tests for missing args, invalid maps, background
+  maps, save names, quickload/quicksave aliases, and rejected transitions.
+  Evidence:
+- [ ] `ENG-SVCMD-004` Route selected command decision trees through helpers
+  while keeping `Cmd_Argv()`, filesystem probes, cvar mutation, and host command
+  execution legacy-owned.
+  Evidence:
+- [ ] `ENG-SVCMD-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 81: Serverdata And Spawn Handshake
+
+- [ ] `ENG-SERVERDATA-001` Baseline `SV_SendServerdata()`, `SV_New_f()`,
+  `SV_Spawn_f()`, signon fragments, movevars/userinfo resend flags, and
+  developer/multiplayer print behavior.
+  Evidence:
+- [ ] `ENG-SERVERDATA-002` Implement target-neutral serverdata payload and
+  spawn-handshake planning helpers.
+  Evidence:
+- [ ] `ENG-SERVERDATA-003` Add golden tests for serverdata fields, player box
+  bounds, signon number, reconnect fallback, overflow/drop behavior, and
+  single-player versus multiplayer branches.
+  Evidence:
+- [ ] `ENG-SERVERDATA-004` Route helper decisions while keeping fragmentation,
+  client state mutation, `SV_PutClientInServer()`, and reliable buffer ownership
+  legacy-owned.
+  Evidence:
+- [ ] `ENG-SERVERDATA-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 82: Server Frame Datagram Assembly
+
+- [ ] `ENG-FRAME-001` Baseline `SV_SendClientMessages()`, reliable datagram
+  copy/fragment decisions, unreliable datagram copy, spectator datagram copy,
+  overflow clearing, and resend userinfo/movevars flags.
+  Evidence:
+- [ ] `ENG-FRAME-002` Implement target-neutral frame-send planning helpers for
+  copy versus fragment decisions and overflow responses.
+  Evidence:
+- [ ] `ENG-FRAME-003` Add tests for small reliable data, fragmented reliable
+  data, ignored unreliable overflow, spectator payloads, and resend flags.
+  Evidence:
+- [ ] `ENG-FRAME-004` Route planning through helpers while keeping netchan,
+  frame construction, and actual message writes legacy-owned.
+  Evidence:
+- [ ] `ENG-FRAME-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 83: Save/Restore Compatibility Fixtures
+
+- [ ] `ENG-SAVE-001` Audit `sv_save.c` binary formats, token tables, landmark
+  handling, global state, entity fields, and known compatibility quirks.
+  Evidence:
+- [ ] `ENG-SAVE-002` Create tiny save/restore fixtures or generated binary
+  fixtures that can be tested without shipping game assets.
+  Evidence:
+- [ ] `ENG-SAVE-003` Add read-only parser tests for header, token table, entity
+  section, lightstyles, and rejected malformed data.
+  Evidence:
+- [ ] `ENG-SAVE-004` Decide the safe modernization boundary for save/restore
+  before moving implementation code.
+  Evidence:
+- [ ] `ENG-SAVE-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 84: Game DLL Bridge Boundary Audit
+
+- [ ] `ENG-GAMEDLL-001` Audit the `sv_game.c` enginefuncs table, exported game
+  callbacks, entity allocation, string pool, private data ownership, and ABI
+  constraints.
+  Evidence:
+- [ ] `ENG-GAMEDLL-002` Group enginefunc callbacks into planned modern modules
+  such as resources, tracing, messaging, entity lifecycle, cvars, and logging.
+  Evidence:
+- [ ] `ENG-GAMEDLL-003` Add adapter-boundary tests for C-compatible callback
+  shims that can be exercised without a real game DLL.
+  Evidence:
+- [ ] `ENG-GAMEDLL-004` Produce a migration order that avoids changing the
+  game DLL ABI while allowing internals to move toward `src/engine`.
+  Evidence:
+- [ ] `ENG-GAMEDLL-005` Run documentation validation and any focused adapter
+  tests added by the audit.
   Evidence:
 
 ## Phase 800: POSIX Console Backend Validation

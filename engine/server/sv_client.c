@@ -26,6 +26,7 @@ GNU General Public License for more details.
 #include "server_upload_queue_adapter.h"
 #include "server_service_messages_adapter.h"
 #include "server_userinfo_message_adapter.h"
+#include "server_voice_relay_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
 #define CHALLENGE_WINDOW_SECONDS 5
@@ -3678,6 +3679,7 @@ SV_ParseVoiceData
 static void SV_ParseVoiceData( sv_client_t *cl, sizebuf_t *msg )
 {
 	char received[4096];
+	sv_voice_relay_decision_t relay;
 	int i;
 
 	const qboolean loopback = !!MSG_ReadByte( msg );
@@ -3685,7 +3687,7 @@ static void SV_ParseVoiceData( sv_client_t *cl, sizebuf_t *msg )
 	const uint size = MSG_ReadShort( msg );
 	const int client = cl - svs.clients;
 
-	if( size > sizeof( received ))
+	if( SV_VoiceRelay_IsPayloadTooLarge( size ))
 	{
 		Con_DPrintf( "%s: invalid incoming packet.\n", __func__ );
 		SV_DropClient( cl, false );
@@ -3694,45 +3696,65 @@ static void SV_ParseVoiceData( sv_client_t *cl, sizebuf_t *msg )
 
 	MSG_ReadBytes( msg, received, size );
 
-	if( !sv_voiceenable.value || cl->state != cs_spawned )
+	relay = SV_VoiceRelay_BuildInputGateDecision(
+		sv_voiceenable.value != 0.0f,
+		cl->state == cs_spawned );
+
+	if( !relay.should_relay )
 		return;
 
 	if( svgame.physFuncs.pfnVoiceData != NULL )
 	{
-		if( svgame.physFuncs.pfnVoiceData( client, frames, size, loopback, received ))
-			return;
+		relay = SV_VoiceRelay_BuildPostPhysicsGateDecision(
+			svgame.physFuncs.pfnVoiceData( client, frames, size, loopback, received ),
+			svs.maxclients,
+			sv_voice_singleplayer.value != 0.0f );
+	}
+	else
+	{
+		relay = SV_VoiceRelay_BuildPostPhysicsGateDecision(
+			false,
+			svs.maxclients,
+			sv_voice_singleplayer.value != 0.0f );
 	}
 
-	if( svs.maxclients <= 1 && sv_voice_singleplayer.value == 0.0f )
+	if( !relay.should_relay )
 		return;
 
 	for( i = 0; i < svs.maxclients; i++ )
 	{
 		sv_client_t *cur = &svs.clients[i];
-		const qboolean local = cl == cur;
-		uint length = size;
+		sv_voice_recipient_decision_t recipient;
+		sv_voice_relay_write_result_t result;
 
-		if( !local )
-		{
-			if( cur->state < cs_connected )
-				continue;
+		recipient = SV_VoiceRelay_BuildRecipientDecision(
+			client,
+			i,
+			cur->state >= cs_connected,
+			cl->listeners,
+			loopback,
+			size,
+			MSG_GetNumBytesLeft( &cur->datagram ));
 
-			if( !FBitSet( cl->listeners, BIT( i )))
-				continue;
-		}
-
-		// 6 is a number of bytes for other parts of message
-		if( MSG_GetNumBytesLeft( &cur->datagram ) < length + 6 )
+		if( !recipient.should_send )
 			continue;
 
-		if( cl == cur && !loopback )
-			length = 0;
-
 		MSG_BeginServerCmd( &cur->datagram, svc_voicedata );
-		MSG_WriteByte( &cur->datagram, client );
-		MSG_WriteByte( &cur->datagram, frames );
-		MSG_WriteShort( &cur->datagram, length );
-		MSG_WriteBytes( &cur->datagram, received, length );
+		if( cur->datagram.bOverflow )
+			continue;
+
+		result = SV_VoiceRelay_WritePayload(
+			cur->datagram.pData,
+			cur->datagram.nDataBits,
+			cur->datagram.iCurBit,
+			client,
+			frames,
+			received,
+			recipient.outgoing_payload_size );
+
+		cur->datagram.iCurBit = result.current_bit;
+		if( result.overflow )
+			cur->datagram.bOverflow = true;
 	}
 }
 
