@@ -88,11 +88,37 @@ the main phase tracker until they are selected.
   reached first frame in 0.426 seconds, and stopped with reason `command` at
   May 10 2026 14:20:42 local time.
 
+## Phase 56: Legacy NetAPI Query String Builder
+
+- [x] Baseline short `SV_Info()` and long `SV_BuildNetAnswer()` behavior.
+  Evidence: `Documentation/codex/legacy/engine/netapi-info-baseline.md`.
+- [x] Implement a sibling NetAPI info-string builder, reusing Phase 54 protected
+  value masking where appropriate.
+  Evidence: `src/include/engine/server/netapi_info.hpp`,
+  `src/engine/server/netapi_info.cpp`.
+- [x] Add tests for protected cvar masking, errors, details, players, ping, and
+  short server-info key order.
+  Evidence: `tests/engine/netapi_info.cpp`.
+- [x] Route string construction through modern helpers while keeping
+  `Netchan_OutOfBandPrint()` and live state reads legacy-owned.
+  Evidence: `engine/server/netapi_info_adapter.h`,
+  `engine/server/netapi_info_adapter.cpp`, `engine/server/sv_client.c`.
+- [x] Run focused tests, `.\waf.bat build --alltests`, and a runtime smoke.
+  Evidence: `.\waf.bat build --targets=test_engine_netapi_info` passed 1/1;
+  `.\waf.bat build --alltests` passed 68/68; Windows runtime smoke copied the
+  rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.437 seconds, and stopped with reason `command` at
+  May 10 2026 14:29:55 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 56 candidate: legacy NetAPI info/rules/player string responses in
-  `sv_client.c::SV_Info()`, especially the duplicated details path that says it
-  should match `SV_SourceQuery_Details`.
+- [ ] Phase 57 candidate: connectionless command classification in
+  `SV_ConnectionlessPacket()`, keeping message reads and handler calls
+  legacy-owned while testing the command/type classifier.
+- [ ] Phase 58 candidate: server event log formatting in `sv_log.c`, keeping
+  file, console, and UDP sinks legacy-owned until the logging router is ready.
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
 - [ ] Save/restore migration after binary compatibility fixtures exist.

@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "net_encode.h"
 #include "net_api.h"
+#include "netapi_info_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
 #define CHALLENGE_WINDOW_SECONDS 5
@@ -865,48 +866,38 @@ The second parameter should be the current protocol version number.
 static void SV_Info( netadr_t from, int protocolVersion )
 {
 	char s[512];
+	sv_legacy_server_info_t info;
+	int count = 0;
+	int bots = 0;
 
 	// ignore in single player
 	if( svs.maxclients == 1 || !svs.initialized )
 		return;
 
-	s[0] = '\0';
-
-	if( protocolVersion != PROTOCOL_VERSION )
-	{
-		Q_snprintf( s, sizeof( s ), "%s: wrong version\n", hostname.string );
-	}
-	else
-	{
-		int count;
-		int bots;
-		int remaining;
-		char temp[sizeof( s )];
-
+	if( protocolVersion == PROTOCOL_VERSION )
 		SV_GetPlayerCount( &count, &bots );
 
-		// a1ba: send protocol version to distinguish old engine and new
-		Info_SetValueForKeyf( s, "p", sizeof( s ), "%i", PROTOCOL_VERSION );
-		Info_SetValueForKey( s, "map", sv.name, sizeof( s ));
-		Info_SetValueForKey( s, "dm", svgame.globals->deathmatch ? "1" : "0", sizeof( s ));
-		Info_SetValueForKey( s, "team", svgame.globals->teamplay ? "1" : "0", sizeof( s ));
-		Info_SetValueForKey( s, "coop", svgame.globals->coop ? "1" : "0", sizeof( s ));
-		Info_SetValueForKeyf( s, "numcl", sizeof( s ), "%i", count );
-		Info_SetValueForKeyf( s, "maxcl", sizeof( s ), "%i", svs.maxclients );
-		Info_SetValueForKey( s, "gamedir", GI->gamefolder, sizeof( s ));
-		Info_SetValueForKey( s, "password", SV_HavePassword() ? "1" : "0", sizeof( s ));
+	memset( &info, 0, sizeof( info ));
+	info.request_protocol = protocolVersion;
+	info.protocol_version = PROTOCOL_VERSION;
+	info.hostname = hostname.string;
 
-		// write host last so we can try to cut off too long hostnames
-		// TODO: value size limit for infostrings
-		remaining = sizeof( s ) - Q_strlen( s ) - sizeof( "\\host\\" ) - 1;
-		if( remaining < 0 )
-		{
-			// should never happen?
-			Con_Printf( S_ERROR "%s: infostring overflow!\n", __func__ );
-			return;
-		}
-		Q_strncpy( temp, hostname.string, remaining );
-		Info_SetValueForKey( s, "host", temp, sizeof( s ));
+	if( protocolVersion == PROTOCOL_VERSION )
+	{
+		info.map_name = sv.name;
+		info.deathmatch = svgame.globals->deathmatch;
+		info.teamplay = svgame.globals->teamplay;
+		info.coop = svgame.globals->coop;
+		info.player_count = count;
+		info.max_players = svs.maxclients;
+		info.game_folder = GI->gamefolder;
+		info.password_protected = SV_HavePassword();
+	}
+
+	if( !SV_NetApiInfo_BuildLegacyServerInfo( s, sizeof( s ), &info ))
+	{
+		Con_Printf( S_ERROR "%s: infostring overflow!\n", __func__ );
+		return;
 	}
 
 	Netchan_OutOfBandPrint( NS_SERVER, from, A2A_INFO"\n%s", s );
@@ -958,7 +949,7 @@ static void SV_BuildNetAnswer( netadr_t from )
 	if( version != PROTOCOL_VERSION )
 	{
 		// send error unsupported protocol
-		Info_SetValueForKey( string, "neterror", "protocol", sizeof( string ));
+		SV_NetApiInfo_BuildProtocolError( string, sizeof( string ));
 		Netchan_OutOfBandPrint( NS_SERVER, from, A2A_NETINFO" %i %i %s\n", context, type, string );
 		return;
 	}
@@ -966,33 +957,35 @@ static void SV_BuildNetAnswer( netadr_t from )
 	switch( type )
 	{
 	case NETAPI_REQUEST_PING:
+		SV_NetApiInfo_BuildPing( string, sizeof( string ));
 		break;
 	case NETAPI_REQUEST_RULES:
+		SV_NetApiInfo_BeginRules( string, sizeof( string ));
 		for( cv = Cvar_GetList( ); cv; cv = cv->next )
 		{
 			if( !FBitSet( cv->flags, FCVAR_SERVER ))
 				continue;
 
-			if( FBitSet( cv->flags, FCVAR_PROTECTED ))
-			{
-				if( !COM_StringEmpty( cv->string ) && Q_stricmp( cv->string, "none" ))
-					Info_SetValueForKey( string, cv->name, "1", sizeof( string ));
-				else Info_SetValueForKey( string, cv->name, "0", sizeof( string ));
-			}
-			else Info_SetValueForKey( string, cv->name, cv->string, sizeof( string ));
+			SV_NetApiInfo_AppendRule(
+				string,
+				sizeof( string ),
+				cv->name,
+				cv->string,
+				FBitSet( cv->flags, FCVAR_PROTECTED ));
 
 			count++;
 		}
 
-		Info_SetValueForKeyf( string, "rules", sizeof( string ), "%i", count );
+		SV_NetApiInfo_FinishRules( string, sizeof( string ), count );
 		break;
 	case NETAPI_REQUEST_PLAYERS:
 		if( !sv_expose_player_list.value || SV_HavePassword( ))
 		{
-			Info_SetValueForKey( string, "neterror", "forbidden", sizeof( string ));
+			SV_NetApiInfo_BuildForbiddenError( string, sizeof( string ));
 		}
 		else
 		{
+			SV_NetApiInfo_BeginPlayers( string, sizeof( string ));
 			for( i = 0; i < svs.maxclients; i++ )
 			{
 				const sv_client_t *cl = &svs.clients[i];
@@ -1000,17 +993,24 @@ static void SV_BuildNetAnswer( netadr_t from )
 				if( cl->state < cs_connected )
 					continue;
 
-				Info_SetValueForKey( string, va( "p%iname", count ), cl->name, sizeof( string ));
-				Info_SetValueForKeyf( string, va( "p%ifrags", count ), sizeof( string ), "%i", (int)cl->edict->v.frags );
-				Info_SetValueForKeyf( string, va( "p%itime", count ), sizeof( string ), "%f", host.realtime - cl->connection_started );
+				SV_NetApiInfo_AppendPlayer(
+					string,
+					sizeof( string ),
+					count,
+					cl->name,
+					(int)cl->edict->v.frags,
+					host.realtime - cl->connection_started );
 
 				count++;
 			}
 
-			Info_SetValueForKeyf( string, "players", sizeof( string ), "%i", count );
+			SV_NetApiInfo_FinishPlayers( string, sizeof( string ), count );
 		}
 		break;
 	case NETAPI_REQUEST_DETAILS:
+	{
+		sv_netapi_details_t details;
+
 		for( i = 0; i < svs.maxclients; i++ )
 		{
 			if( svs.clients[i].state >= cs_connected )
@@ -1018,15 +1018,18 @@ static void SV_BuildNetAnswer( netadr_t from )
 		}
 
 		// should match SV_SourceQuery_Details
-		Info_SetValueForKey( string, "hostname", hostname.string, sizeof( string ));
-		Info_SetValueForKey( string, "gamedir", GI->gamefolder, sizeof( string ));
-		Info_SetValueForKeyf( string, "current", sizeof( string ), "%i", count );
-		Info_SetValueForKeyf( string, "max", sizeof( string ), "%i", svs.maxclients );
-		Info_SetValueForKey( string, "map", sv.name, sizeof( string ));
+		memset( &details, 0, sizeof( details ));
+		details.hostname = hostname.string;
+		details.game_folder = GI->gamefolder;
+		details.current_players = count;
+		details.max_players = svs.maxclients;
+		details.map_name = sv.name;
+		SV_NetApiInfo_BuildDetails( string, sizeof( string ), &details );
 		break;
+	}
 	default:
 		// send error undefined request type
-		Info_SetValueForKey( string, "neterror", "undefined", sizeof( string ));
+		SV_NetApiInfo_BuildUndefinedError( string, sizeof( string ));
 		break;
 	}
 

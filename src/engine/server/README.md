@@ -9,6 +9,7 @@ code until a later compatibility phase changes those boundaries.
 
 Current helpers:
 
+- `netapi_info.cpp`: target-neutral NetAPI info-string construction.
 - `server_filter.cpp`: target-neutral ban filter policy.
 - `source_query.cpp`: target-neutral GoldSrc query payload construction.
 - `user_agent_policy.cpp`: target-neutral connection user-agent validation.

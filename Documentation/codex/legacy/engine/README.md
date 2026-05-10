@@ -22,6 +22,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [network-buffer-baseline.md](network-buffer-baseline.md) documents `MSG_*`
   bit/byte buffer behavior, overflow quirks, GoldSrc sign mode, and the first
   safe routing boundary.
+- [netapi-info-baseline.md](netapi-info-baseline.md) documents the short
+  `A2A_INFO` and long `A2A_NETINFO` info-string response builders in
+  `sv_client.c`.
 - [server-boundary-audit.md](server-boundary-audit.md) audits `engine/server/`
   ownership, compatibility surfaces, and near-term migration candidates.
 - [server-filter-baseline.md](server-filter-baseline.md) documents current

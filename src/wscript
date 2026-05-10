@@ -88,6 +88,7 @@ def build(bld):
 			'engine_filesystem_mount_flags': '../tests/engine/filesystem_mount_flags.cpp',
 			'engine_info_string': '../tests/engine/info_string.cpp',
 			'engine_network_buffer': '../tests/engine/network_buffer.cpp',
+			'engine_netapi_info': '../tests/engine/netapi_info.cpp',
 			'engine_platform_console_backend': '../tests/engine/platform_console_backend.cpp',
 			'engine_platform_command_line': '../tests/engine/platform_command_line.cpp',
 			'engine_platform_current_user': '../tests/engine/platform_current_user.cpp',

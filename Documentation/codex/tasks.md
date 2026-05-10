@@ -1904,18 +1904,61 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 56: Legacy NetAPI Query String Builder
 
-- [ ] `ENG-SVNETINFO-001` Baseline `sv_client.c::SV_Info()` string response
-  behavior for details, rules, players, ping, errors, and forbidden player
-  lists.
-  Evidence:
-- [ ] `ENG-SVNETINFO-002` Decide whether to reuse Phase 54 source-query value
+- [x] `ENG-SVNETINFO-001` Baseline `SV_Info()` and `SV_BuildNetAnswer()` string
+  response behavior for details, rules, players, ping, errors, and forbidden
+  player lists.
+  Evidence: `Documentation/codex/legacy/engine/netapi-info-baseline.md`.
+- [x] `ENG-SVNETINFO-002` Decide whether to reuse Phase 54 source-query value
   rows or create a sibling NetAPI info-string builder.
-  Evidence:
-- [ ] `ENG-SVNETINFO-003` Add tests for protected cvar masking and the details
+  Evidence: `Documentation/codex/modern/engine/netapi-info-migration.md`.
+- [x] `ENG-SVNETINFO-003` Add tests for protected cvar masking and the details
   response that currently comments it should match `SV_SourceQuery_Details`.
-  Evidence:
-- [ ] `ENG-SVNETINFO-004` Route string construction through modern helpers
+  Evidence: `tests/engine/netapi_info.cpp`.
+- [x] `ENG-SVNETINFO-004` Route string construction through modern helpers
   while keeping `Netchan_OutOfBandPrint()` and live state reads legacy-owned.
+  Evidence: `engine/server/netapi_info_adapter.h`,
+  `engine/server/netapi_info_adapter.cpp`, `engine/server/sv_client.c`.
+- [x] `ENG-SVNETINFO-005` Run focused tests, `.\waf.bat build --alltests`, and
+  a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_netapi_info` passed
+  1/1; `.\waf.bat build --alltests` passed 68/68; Windows runtime smoke copied
+  the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.437 seconds, and stopped with reason `command` at
+  May 10 2026 14:29:55 local time.
+
+## Phase 57: Server Connectionless Command Classifier
+
+- [ ] `ENG-SVCONNLESS-001` Baseline `SV_ConnectionlessPacket()` command parsing
+  and dispatch order, including source-query, short info, NetAPI info, rcon,
+  challenge, connect, ping, ack, NAT, and unknown commands.
+  Evidence:
+- [ ] `ENG-SVCONNLESS-002` Implement a target-neutral classifier for the
+  command string and first-token cases under `src/engine/server`.
+  Evidence:
+- [ ] `ENG-SVCONNLESS-003` Add tests for exact `A2S_GOLDSRC_INFO`, single-byte
+  source-query requests, command aliases, and unknown commands.
+  Evidence:
+- [ ] `ENG-SVCONNLESS-004` Route only classification through the modern helper,
+  while message reads, logging, command handlers, and packet sends remain
+  legacy-owned.
+  Evidence:
+
+## Phase 58: Server Event Log Formatter
+
+- [ ] `ENG-SVLOG-001` Baseline `sv_log.c` timestamp prefix, server cvar log
+  lines, open/close messages, and command responses.
+  Evidence:
+- [ ] `ENG-SVLOG-002` Implement target-neutral event log formatting helpers,
+  without moving file, console, or UDP sinks.
+  Evidence:
+- [ ] `ENG-SVLOG-003` Add tests for timestamp-injected formatting and standard
+  server cvar/start/close lines.
+  Evidence:
+- [ ] `ENG-SVLOG-004` Route formatting through the modern helper while keeping
+  `FS_*`, `Con_Printf`, `Netchan_OutOfBandPrint`, and command parsing
+  legacy-owned.
   Evidence:
 
 ## Phase 800: POSIX Console Backend Validation
