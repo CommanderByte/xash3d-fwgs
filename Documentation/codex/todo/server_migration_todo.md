@@ -614,13 +614,13 @@ Goal: prepare a safer boundary for the larger new/spawn/serverdata flow.
 Goal: separate frame-send planning from netchan writes and entity frame
 construction.
 
-- [ ] Baseline reliable/unreliable/spectator datagram assembly and overflow
+- [x] Baseline reliable/unreliable/spectator datagram assembly and overflow
   behavior.
-- [ ] Implement copy/fragment/ignore planning helpers.
-- [ ] Add tests for reliable copy, reliable fragment, ignored unreliable
+- [x] Implement copy/fragment/ignore planning helpers.
+- [x] Add tests for reliable copy, reliable fragment, ignored unreliable
   overflow, spectator payloads, and resend flags.
-- [ ] Route planning while keeping netchan and writes legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Route planning while keeping netchan and writes legacy-owned.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 83: Save/Restore Compatibility Fixtures
 

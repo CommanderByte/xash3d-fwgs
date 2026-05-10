@@ -32,6 +32,8 @@ Current helpers:
   argument, alias, and validation routing decisions.
 - `server_spawn_handshake.cpp`: target-neutral fixed `svc_serverdata`
   payloads and new/spawn/begin handshake decisions.
+- `server_frame_datagram.cpp`: target-neutral frame datagram fanout,
+  overflow, resend, and send-loop gate decisions.
 - `server_resource_message.cpp`: target-neutral resource-list row
   serialization using modern bit-buffer primitives.
 - `server_upload_queue.cpp`: target-neutral client resource upload queue

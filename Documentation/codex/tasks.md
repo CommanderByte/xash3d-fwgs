@@ -2615,22 +2615,31 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 82: Server Frame Datagram Assembly
 
-- [ ] `ENG-FRAME-001` Baseline `SV_SendClientMessages()`, reliable datagram
+- [x] `ENG-FRAME-001` Baseline `SV_SendClientMessages()`, reliable datagram
   copy/fragment decisions, unreliable datagram copy, spectator datagram copy,
   overflow clearing, and resend userinfo/movevars flags.
-  Evidence:
-- [ ] `ENG-FRAME-002` Implement target-neutral frame-send planning helpers for
+  Evidence: Added
+  `Documentation/codex/legacy/engine/server-frame-datagram-baseline.md`.
+- [x] `ENG-FRAME-002` Implement target-neutral frame-send planning helpers for
   copy versus fragment decisions and overflow responses.
-  Evidence:
-- [ ] `ENG-FRAME-003` Add tests for small reliable data, fragmented reliable
+  Evidence: Added `src/engine/server/server_frame_datagram.cpp` and
+  `src/include/engine/server/server_frame_datagram.hpp`.
+- [x] `ENG-FRAME-003` Add tests for small reliable data, fragmented reliable
   data, ignored unreliable overflow, spectator payloads, and resend flags.
-  Evidence:
-- [ ] `ENG-FRAME-004` Route planning through helpers while keeping netchan,
+  Evidence: Added `tests/engine/server_frame_datagram.cpp`; focused target
+  `test_engine_server_frame_datagram` passes.
+- [x] `ENG-FRAME-004` Route planning through helpers while keeping netchan,
   frame construction, and actual message writes legacy-owned.
-  Evidence:
-- [ ] `ENG-FRAME-005` Run focused tests, full tests, runtime smoke with
+  Evidence: Added `engine/server/server_frame_datagram_adapter.cpp` and routed
+  `SV_SendClientDatagram()`, `SV_UpdateToReliableMessages()`, and
+  `SV_SendClientMessages()` through it while leaving netchan, frame
+  construction, and message writes in `engine/server/sv_frame.c`.
+- [x] `ENG-FRAME-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_frame_datagram` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 92/92, runtime smoke first
+  frame 0.504 seconds, stop reason `command`.
 
 ## Phase 83: Save/Restore Compatibility Fixtures
 

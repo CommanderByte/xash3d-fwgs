@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "const.h"
 #include "net_encode.h"
+#include "server_frame_datagram_adapter.h"
 
 typedef struct
 {
@@ -686,6 +687,7 @@ static void SV_SendClientDatagram( sv_client_t *cl )
 {
 	byte	msg_buf[MAX_DATAGRAM];
 	sizebuf_t	msg;
+	sv_frame_transfer_plan_t datagram_plan;
 
 	memset( msg_buf, 0, sizeof( msg_buf ));
 	MSG_Init( &msg, "Datagram", msg_buf, sizeof( msg_buf ));
@@ -699,22 +701,30 @@ static void SV_SendClientDatagram( sv_client_t *cl )
 
 	// copy the accumulated multicast datagram
 	// for this client out to the message
-	if( MSG_CheckOverflow( &cl->datagram ))
+	datagram_plan = SV_Frame_BuildClientDatagramAppendPlan(
+		MSG_CheckOverflow( &cl->datagram ),
+		MSG_GetNumBytesWritten( &cl->datagram ),
+		MSG_GetNumBytesLeft( &msg ),
+		host.realtime,
+		cl->overflow_warn_time );
+
+	if( datagram_plan.action == SV_FRAME_TRANSFER_SOURCE_OVERFLOW )
 	{
 		Con_Printf( S_WARN "%s overflowed for %s\n", MSG_GetName( &cl->datagram ), cl->name );
 	}
-	else
+	else if( datagram_plan.action == SV_FRAME_TRANSFER_COPY )
 	{
-		if( MSG_GetNumBytesWritten( &cl->datagram ) < MSG_GetNumBytesLeft( &msg ))
-			MSG_WriteBits( &msg, MSG_GetData( &cl->datagram ), MSG_GetNumBitsWritten( &cl->datagram ));
-		else if( host.realtime > cl->overflow_warn_time )
-		{
-			Con_DPrintf( S_WARN "Ignoring unreliable datagram for %s, would overflow on msg\n", cl->name );
-			cl->overflow_warn_time = host.realtime + 5.0f;
-		}
+		MSG_WriteBits( &msg, MSG_GetData( &cl->datagram ), MSG_GetNumBitsWritten( &cl->datagram ));
+	}
+	else if( datagram_plan.action == SV_FRAME_TRANSFER_IGNORE && datagram_plan.warn )
+	{
+		Con_DPrintf( S_WARN "Ignoring unreliable datagram for %s, would overflow on msg\n", cl->name );
+		if( datagram_plan.update_overflow_warn_time )
+			cl->overflow_warn_time = datagram_plan.next_overflow_warn_time;
 	}
 
-	MSG_Clear( &cl->datagram );
+	if( datagram_plan.clear_source )
+		MSG_Clear( &cl->datagram );
 
 	if( MSG_CheckOverflow( &msg ))
 	{
@@ -747,6 +757,8 @@ SV_UpdateToReliableMessages
 static void SV_UpdateToReliableMessages( void )
 {
 	sv_client_t	*cl;
+	sv_frame_reliable_resend_plan_t resend_plan;
+	sv_frame_transfer_plan_t transfer_plan;
 	int		i;
 
 	// check for changes to be sent over the reliable streams to all clients
@@ -757,13 +769,17 @@ static void SV_UpdateToReliableMessages( void )
 		if( cl->state != cs_spawned )
 			continue;
 
-		if( FBitSet( cl->flags, FCL_RESEND_USERINFO ) && cl->next_sendinfotime <= host.realtime )
-		{
-			if( MSG_GetNumBytesLeft( &sv.reliable_datagram ) >= ( Q_strlen( cl->userinfo ) + 6 ))
-				SV_UpdateUserInfo( cl );
-		}
+		resend_plan = SV_Frame_BuildReliableResendPlan(
+			cl->flags,
+			cl->next_sendinfotime,
+			host.realtime,
+			MSG_GetNumBytesLeft( &sv.reliable_datagram ),
+			Q_strlen( cl->userinfo ));
 
-		if( FBitSet( cl->flags, FCL_RESEND_MOVEVARS ))
+		if( resend_plan.send_userinfo )
+			SV_UpdateUserInfo( cl );
+
+		if( resend_plan.send_movevars )
 		{
 			SV_FullUpdateMovevars( cl, &cl->netchan.message );
 			ClearBits( cl->flags, FCL_RESEND_MOVEVARS );
@@ -771,14 +787,16 @@ static void SV_UpdateToReliableMessages( void )
 	}
 
 	// clear the server datagram if it overflowed.
-	if( MSG_CheckOverflow( &sv.datagram ))
+	transfer_plan = SV_Frame_BuildOverflowClearPlan( MSG_CheckOverflow( &sv.datagram ));
+	if( transfer_plan.action == SV_FRAME_TRANSFER_CLEAR_OVERFLOW )
 	{
 		Con_DPrintf( S_ERROR "sv.datagram overflowed!\n" );
 		MSG_Clear( &sv.datagram );
 	}
 
 	// clear the server datagram if it overflowed.
-	if( MSG_CheckOverflow( &sv.spec_datagram ))
+	transfer_plan = SV_Frame_BuildOverflowClearPlan( MSG_CheckOverflow( &sv.spec_datagram ));
+	if( transfer_plan.action == SV_FRAME_TRANSFER_CLEAR_OVERFLOW )
 	{
 		Con_DPrintf( S_ERROR "sv.spec_datagram overflowed!\n" );
 		MSG_Clear( &sv.spec_datagram );
@@ -787,23 +805,35 @@ static void SV_UpdateToReliableMessages( void )
 	// now send the reliable and server datagrams to all clients.
 	for( i = 0, cl = svs.clients; i < svs.maxclients; i++, cl++ )
 	{
-		if( cl->state < cs_connected || FBitSet( cl->flags, FCL_FAKECLIENT ))
+		if( !SV_Frame_ShouldProcessClient( cl->state, FBitSet( cl->flags, FCL_FAKECLIENT )))
 			continue;	// reliables go to all connected or spawned
 
-		if( MSG_GetNumBytesWritten( &sv.reliable_datagram ) < MSG_GetNumBytesLeft( &cl->netchan.message ))
+		transfer_plan = SV_Frame_BuildServerReliableDatagramPlan(
+			MSG_GetNumBytesWritten( &sv.reliable_datagram ),
+			MSG_GetNumBytesLeft( &cl->netchan.message ));
+		if( transfer_plan.action == SV_FRAME_TRANSFER_COPY )
 			MSG_WriteBits( &cl->netchan.message, MSG_GetData( &sv.reliable_datagram ), MSG_GetNumBitsWritten( &sv.reliable_datagram ));
-		else Netchan_CreateFragments( &cl->netchan, &sv.reliable_datagram );
+		else if( transfer_plan.action == SV_FRAME_TRANSFER_FRAGMENT )
+			Netchan_CreateFragments( &cl->netchan, &sv.reliable_datagram );
 
-		if( MSG_GetNumBytesWritten( &sv.datagram ) < MSG_GetNumBytesLeft( &cl->datagram ))
+		transfer_plan = SV_Frame_BuildServerUnreliableDatagramPlan(
+			MSG_GetNumBytesWritten( &sv.datagram ),
+			MSG_GetNumBytesLeft( &cl->datagram ));
+		if( transfer_plan.action == SV_FRAME_TRANSFER_COPY )
 			MSG_WriteBits( &cl->datagram, MSG_GetData( &sv.datagram ), MSG_GetNumBitsWritten( &sv.datagram ));
-		else Con_DPrintf( S_WARN "Ignoring unreliable datagram for %s, would overflow\n", cl->name );
+		else if( transfer_plan.warn )
+			Con_DPrintf( S_WARN "Ignoring unreliable datagram for %s, would overflow\n", cl->name );
 
-		if( FBitSet( cl->flags, FCL_HLTV_PROXY ))
+		transfer_plan = SV_Frame_BuildServerSpectatorDatagramPlan(
+			FBitSet( cl->flags, FCL_HLTV_PROXY ),
+			MSG_GetNumBytesWritten( &sv.spec_datagram ),
+			MSG_GetNumBytesLeft( &cl->datagram ));
+		if( transfer_plan.action == SV_FRAME_TRANSFER_COPY )
 		{
-			if( MSG_GetNumBytesWritten( &sv.spec_datagram ) < MSG_GetNumBytesLeft( &cl->datagram ))
-				MSG_WriteBits( &cl->datagram, MSG_GetData( &sv.spec_datagram ), MSG_GetNumBitsWritten( &sv.spec_datagram ));
-			else Con_DPrintf( S_WARN "Ignoring spectator datagram for %s, would overflow\n", cl->name );
+			MSG_WriteBits( &cl->datagram, MSG_GetData( &sv.spec_datagram ), MSG_GetNumBitsWritten( &sv.spec_datagram ));
 		}
+		else if( transfer_plan.warn )
+			Con_DPrintf( S_WARN "Ignoring spectator datagram for %s, would overflow\n", cl->name );
 	}
 
 	// now clear the reliable and datagram buffers.
@@ -821,7 +851,6 @@ void SV_SendClientMessages( void )
 {
 	sv_client_t *cl;
 	int          i;
-	double       time_until_next_message;
 
 	if( sv.state == ss_dead )
 		return;
@@ -833,33 +862,31 @@ void SV_SendClientMessages( void )
 	{
 		cl = sv.current_client;
 
-		if( cl->state <= cs_zombie || FBitSet( cl->flags, FCL_FAKECLIENT ))
+		if( !SV_Frame_ShouldProcessClient( cl->state, FBitSet( cl->flags, FCL_FAKECLIENT )))
 			continue;
 
-		if( FBitSet( cl->flags, FCL_SKIP_NET_MESSAGE ))
+		if( SV_Frame_ShouldClearSkipNetMessage( cl->flags ))
 		{
 			ClearBits( cl->flags, FCL_SKIP_NET_MESSAGE );
 			continue;
 		}
 
-		if( !host_limitlocal.value && NET_IsLocalAddress( cl->netchan.remote_address ))
+		if( SV_Frame_ShouldForceLocalClientSend( host_limitlocal.value != 0.0f, NET_IsLocalAddress( cl->netchan.remote_address )))
 			SetBits( cl->flags, FCL_SEND_NET_MESSAGE );
 
-		if( cl->state == cs_spawned )
+		if( SV_Frame_ShouldScheduleSpawnedClientMessage(
+			cl->state,
+			cl->next_messagetime,
+			host.realtime,
+			sv.frametime ))
 		{
-			// Try to send a message as soon as we can.
-			// If the target time for sending is within the next frame interval ( based on last frame ),
-			// trigger the send now. Note that in single player,
-			// FCL_SEND_NET_MESSAGE flag is also set any time a packet arrives from the client.
-			time_until_next_message = cl->next_messagetime - ( host.realtime + sv.frametime );
-			if( time_until_next_message <= 0.0 )
-				SetBits( cl->flags, FCL_SEND_NET_MESSAGE );
-			else if( time_until_next_message > 2.0 ) // something got hosed
-				SetBits( cl->flags, FCL_SEND_NET_MESSAGE );
+			// Try to send a message as soon as we can, or recover if the
+			// target time moved too far into the future.
+			SetBits( cl->flags, FCL_SEND_NET_MESSAGE );
 		}
 
 		// if the reliable message overflowed, drop the client
-		if( MSG_CheckOverflow( &cl->netchan.message ))
+		if( SV_Frame_ShouldDropReliableOverflow( MSG_CheckOverflow( &cl->netchan.message )))
 		{
 			MSG_Clear( &cl->netchan.message );
 			MSG_Clear( &cl->datagram );
@@ -869,18 +896,21 @@ void SV_SendClientMessages( void )
 			SetBits( cl->flags, FCL_SEND_NET_MESSAGE );
 			cl->netchan.cleartime = 0.0;	// don't choke this message
 		}
-		else if( FBitSet( cl->flags, FCL_SEND_NET_MESSAGE ))
+		else if( SV_Frame_ShouldClearSendAfterFailureTimeout(
+			cl->flags,
+			sv_failuretime.value,
+			host.realtime,
+			cl->netchan.last_received ))
 		{
 			// If we haven't gotten a message in sv_failuretime seconds, then stop sending messages to this client
 			// until we get another packet in from the client. This prevents crash/drop and reconnect where they are
 			// being hosed with "sequenced packet without connection" packets.
-			if( sv_failuretime.value < ( host.realtime - cl->netchan.last_received ))
-				ClearBits( cl->flags, FCL_SEND_NET_MESSAGE );
+			ClearBits( cl->flags, FCL_SEND_NET_MESSAGE );
 		}
 
 		// only send messages if the client has sent one
 		// and the bandwidth is not choked
-		if( FBitSet( cl->flags, FCL_SEND_NET_MESSAGE ))
+		if( SV_Frame_ShouldSendClientFrame( cl->flags ))
 		{
 			// bandwidth choke active?
 			if( !Netchan_CanPacket( &cl->netchan, cl->state == cs_spawned ))
