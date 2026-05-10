@@ -159,12 +159,17 @@ phase.
 
 ## Phase 95: Entity Handle And Private Data Policy
 
-- [ ] Baseline edict index/pointer helpers, private-data allocation, free
+- [x] Baseline edict index/pointer helpers, private-data allocation, free
   ordering, and `BUGCOMP_PENTITYOFENTINDEX_FLAG`.
-- [ ] Add tests around pure index admission, all-entity versus client-visible
+  Evidence: `Documentation/codex/modern/engine/game-dll-entity-lifecycle-policy.md`.
+- [x] Add tests around pure index admission, all-entity versus client-visible
   lookup decisions, private-data size rounding, and destructor ordering plans.
-- [ ] Keep actual `edict_t` memory, `pvPrivateData`, and game DLL destructor
+  Evidence: `tests/engine/game_dll_entity_lifecycle.cpp`.
+- [x] Keep actual `edict_t` memory, `pvPrivateData`, and game DLL destructor
   calls in the adapter until a loaded-DLL fixture exists.
+  Evidence: `engine/server/game_dll_entity_lifecycle_adapter.cpp` routes only
+  small decisions; `engine/server/sv_game.c` still owns memory calls,
+  destructor calls, and edict lifetime.
 
 ## Phase 96: Entity Parse And Spawn Boundary
 

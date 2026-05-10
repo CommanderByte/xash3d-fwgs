@@ -11,6 +11,8 @@ Current helpers:
 
 - `game_dll_enginefuncs.cpp`: target-neutral metadata lookup for the stable
   `enginefuncs_t` game DLL callback table.
+- `game_dll_entity_lifecycle.cpp`: target-neutral entity index, bugcompat
+  player-slot, and private-data allocation/free plans for the game DLL bridge.
 - `game_dll_string_pool_compat.cpp`: fixture-safe game DLL string-pool
   compatibility model for escape processing, duplicate handling, static and
   dynamic arena accounting, overflow rewind behavior, and make-string

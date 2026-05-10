@@ -2985,19 +2985,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 95: Game DLL Entity Handle And Private Data Policy
 
-- [ ] `ENG-GAMEDLL-ENT-001` Baseline edict index/pointer helpers, private-data
+- [x] `ENG-GAMEDLL-ENT-001` Baseline edict index/pointer helpers, private-data
   allocation/free ordering, 16-byte rounding, and
   `BUGCOMP_PENTITYOFENTINDEX_FLAG`.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-ENT-002` Add tests for pure index admission, client-visible
+  Evidence: `Documentation/codex/modern/engine/game-dll-entity-lifecycle-policy.md`.
+- [x] `ENG-GAMEDLL-ENT-002` Add tests for pure index admission, client-visible
   versus all-entity lookup decisions, private-data rounding, and destructor
   ordering plans.
-  Evidence:
-- [ ] `ENG-GAMEDLL-ENT-003` Route only policy decisions that do not own
+  Evidence: `tests/engine/game_dll_entity_lifecycle.cpp`.
+- [x] `ENG-GAMEDLL-ENT-003` Route only policy decisions that do not own
   `edict_t` memory or call game DLL destructors directly.
-  Evidence:
-- [ ] `ENG-GAMEDLL-ENT-004` Run focused tests, full tests, and smoke timing.
-  Evidence:
+  Evidence: `src/include/engine/server/game_dll_entity_lifecycle.hpp`,
+  `src/engine/server/game_dll_entity_lifecycle.cpp`,
+  `engine/server/game_dll_entity_lifecycle_adapter.cpp`, and
+  `engine/server/sv_game.c`.
+- [x] `ENG-GAMEDLL-ENT-004` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_entity_lifecycle -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 103/103, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.514 seconds and
+  stopped with reason `command`.
 
 ## Phase 96: Game DLL Entity Parse And Spawn Boundary
 

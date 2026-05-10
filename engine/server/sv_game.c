@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
 #include "game_dll_client_info_policy_adapter.h"
+#include "game_dll_entity_lifecycle_adapter.h"
 #include "game_dll_message_session_adapter.h"
 #include "game_dll_output_policy_adapter.h"
 #include "game_dll_payload_policy_adapter.h"
@@ -93,16 +94,18 @@ static edict_t *SV_PEntityOfEntIndex( const int iEntIndex, const qboolean allent
 	if( iEntIndex >= 0 && iEntIndex < GI->max_edicts )
 	{
 		edict_t *pEdict = SV_EdictNum( iEntIndex );
-		qboolean player = allentities ? iEntIndex <= svs.maxclients : iEntIndex < svs.maxclients;
+		qboolean validEdict = SV_IsValidEdict( pEdict );
+		sv_gamedll_entity_lookup_plan_t plan =
+			SV_GameDllEntity_BuildLookupPlan(
+				iEntIndex,
+				GI->max_edicts,
+				svs.maxclients,
+				FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ),
+				allentities,
+				validEdict,
+				pEdict && pEdict->pvPrivateData );
 
-		if( !iEntIndex || FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ))
-			return pEdict; // just get access to array
-
-		if( SV_IsValidEdict( pEdict ) && pEdict->pvPrivateData )
-			return pEdict;
-
-		// g-cont: world and clients can be accessed even without private data
-		if( SV_IsValidEdict( pEdict ) && player )
+		if( plan.action == SV_GAMEDLL_ENTITY_LOOKUP_RETURN_ENTITY )
 			return pEdict;
 	}
 
@@ -1048,14 +1051,21 @@ release private edict memory
 */
 static void GAME_EXPORT SV_FreePrivateData( edict_t *pEdict )
 {
-	if( !pEdict || !pEdict->pvPrivateData )
+	sv_gamedll_private_data_free_plan_t plan =
+		SV_GameDllEntity_BuildPrivateDataFreePlan(
+			pEdict != NULL,
+			pEdict && pEdict->pvPrivateData,
+			svgame.dllFuncs2.pfnOnFreeEntPrivateData != NULL );
+
+	if( !plan.should_clear_pointer )
 		return;
 
 	// NOTE: new interface can be missing
-	if( svgame.dllFuncs2.pfnOnFreeEntPrivateData != NULL )
+	if( plan.should_call_destructor )
 		svgame.dllFuncs2.pfnOnFreeEntPrivateData( pEdict );
 
-	if( Mem_IsAllocatedExt( svgame.mempool, pEdict->pvPrivateData ))
+	if( plan.should_check_and_free_allocation &&
+		Mem_IsAllocatedExt( svgame.mempool, pEdict->pvPrivateData ))
 		Mem_Free( pEdict->pvPrivateData );
 
 	pEdict->pvPrivateData = NULL;
@@ -3047,14 +3057,18 @@ pfnPvAllocEntPrivateData
 */
 static void *GAME_EXPORT pfnPvAllocEntPrivateData( edict_t *pEdict, long cb )
 {
+	sv_gamedll_private_data_allocation_plan_t plan =
+		SV_GameDllEntity_BuildPrivateDataAllocationPlan( cb );
+
 	Assert( pEdict != NULL );
 
-	SV_FreePrivateData( pEdict );
+	if( plan.should_free_existing )
+		SV_FreePrivateData( pEdict );
 
-	if( cb > 0 )
+	if( plan.action == SV_GAMEDLL_PRIVATE_DATA_ALLOCATE_ROUNDED_BLOCK )
 	{
 		// a poke646 have memory corrupt in somewhere - this is trashed last sixteen bytes :(
-		pEdict->pvPrivateData = Mem_Calloc( svgame.mempool, (cb + 15) & ~15 );
+		pEdict->pvPrivateData = Mem_Calloc( svgame.mempool, plan.rounded_bytes );
 	}
 
 	return pEdict->pvPrivateData;
@@ -3490,13 +3504,19 @@ pfnIndexOfEdict
 int GAME_EXPORT pfnIndexOfEdict( const edict_t *pEdict )
 {
 	int	number;
+	sv_gamedll_edict_index_plan_t plan;
 
-	if( !pEdict ) return 0; // world ?
+	if( !pEdict )
+		return SV_GameDllEntity_BuildEdictIndexPlan(
+			false, 0, GI->max_edicts ).index; // world ?
 
 	number = NUM_FOR_EDICT( pEdict );
-	if( number < 0 || number > GI->max_edicts )
+	plan = SV_GameDllEntity_BuildEdictIndexPlan(
+		true, number, GI->max_edicts );
+
+	if( plan.action == SV_GAMEDLL_EDICT_INDEX_FATAL_BAD_ENTITY_NUMBER )
 		Host_Error( "bad entity number %d\n", number );
-	return number;
+	return plan.index;
 }
 
 /*
