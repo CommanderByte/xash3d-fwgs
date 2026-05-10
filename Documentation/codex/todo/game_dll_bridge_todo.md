@@ -173,11 +173,16 @@ phase.
 
 ## Phase 96: Entity Parse And Spawn Boundary
 
-- [ ] Baseline `SV_ParseEdict()`, `SV_LoadFromFile()`, classname ordering,
+- [x] Baseline `SV_ParseEdict()`, `SV_LoadFromFile()`, classname ordering,
   utility-key discard, angle-to-angles rewrite, and custom entity handling.
-- [ ] Add parser/plan tests that do not invoke real game entity code.
-- [ ] Keep `pfnKeyValue()`, `pfnSpawn()`, edict allocation, and map text
+  Evidence: `Documentation/codex/modern/engine/game-dll-entity-parse-boundary.md`.
+- [x] Add parser/plan tests that do not invoke real game entity code.
+  Evidence: `tests/engine/game_dll_entity_parse.cpp`.
+- [x] Keep `pfnKeyValue()`, `pfnSpawn()`, edict allocation, and map text
   lifetime legacy-owned.
+  Evidence: Phase 96 adds no live route-through; `engine/server/sv_game.c`
+  still owns `SV_ParseEdict()`, `SV_LoadFromFile()`, callback ordering, and
+  edict lifetime.
 
 ## Phase 97: Changelevel And Save/Restore Bridge Policy
 

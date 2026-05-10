@@ -3009,20 +3009,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 96: Game DLL Entity Parse And Spawn Boundary
 
-- [ ] `ENG-GAMEDLL-SPAWN-001` Baseline `SV_ParseEdict()`,
+- [x] `ENG-GAMEDLL-SPAWN-001` Baseline `SV_ParseEdict()`,
   `SV_LoadFromFile()`, classname ordering, utility-key discard, angle rewrite,
   and custom entity handling.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-SPAWN-002` Add parser/plan tests that do not invoke real
+  Evidence: `Documentation/codex/modern/engine/game-dll-entity-parse-boundary.md`.
+- [x] `ENG-GAMEDLL-SPAWN-002` Add parser/plan tests that do not invoke real
   game entity code.
-  Evidence:
-- [ ] `ENG-GAMEDLL-SPAWN-003` Keep `pfnKeyValue()`, `pfnSpawn()`, edict
+  Evidence: `tests/engine/game_dll_entity_parse.cpp`.
+- [x] `ENG-GAMEDLL-SPAWN-003` Keep `pfnKeyValue()`, `pfnSpawn()`, edict
   allocation, and map text lifetime legacy-owned until loaded-DLL fixtures
   exist.
-  Evidence:
-- [ ] `ENG-GAMEDLL-SPAWN-004` Run focused tests, full tests, and smoke timing
+  Evidence: `src/include/engine/server/game_dll_entity_parse.hpp`,
+  `src/engine/server/game_dll_entity_parse.cpp`, and no live route-through in
+  `engine/server/sv_game.c`.
+- [x] `ENG-GAMEDLL-SPAWN-004` Run focused tests, full tests, and smoke timing
   if any route-through is added.
-  Evidence:
+  Evidence: No live route-through was added, but
+  `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_entity_parse -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 104/104, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.521 seconds and
+  stopped with reason `command`.
 
 ## Phase 97: Game DLL Changelevel And Save/Restore Bridge Policy
 

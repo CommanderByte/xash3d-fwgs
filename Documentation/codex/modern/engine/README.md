@@ -36,6 +36,10 @@ Current implementation notes:
 - `game-dll-entity-lifecycle-policy.md`: how Phase 95 routes narrow entity
   index, player-slot, and private-data allocation/free planning while leaving
   actual `edict_t` storage and destructor calls legacy-owned.
+- `game-dll-entity-parse-boundary.md`: how Phase 96 models map entity
+  key-value parsing, `angle` rewrite, custom entity fallback, and spawn
+  rejection decisions without moving live `pfnKeyValue()`/`pfnSpawn()`
+  ordering out of `sv_game.c`.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of
