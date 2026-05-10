@@ -2420,24 +2420,33 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 75: Server Text Command Messages
 
-- [ ] `ENG-TEXTMSG-001` Baseline `SV_ClientPrintf()`, `SV_BroadcastPrintf()`,
+- [x] `ENG-TEXTMSG-001` Baseline `SV_ClientPrintf()`, `SV_BroadcastPrintf()`,
   `SV_BroadcastCommand()`, `pfnClientCommand()`, and related `svc_print` /
   `svc_stufftext` writers for command bytes, text formatting, destination
   selection, and fake-client behavior.
-  Evidence:
-- [ ] `ENG-TEXTMSG-002` Implement target-neutral print/stufftext payload
+  Evidence: `Documentation/codex/legacy/engine/server-text-message-baseline.md`.
+- [x] `ENG-TEXTMSG-002` Implement target-neutral print/stufftext payload
   encoders and, where useful, tiny command-string builders.
-  Evidence:
-- [ ] `ENG-TEXTMSG-003` Add golden tests for print channels, empty strings,
+  Evidence: `src/include/engine/server/server_text_messages.hpp`,
+  `src/engine/server/server_text_messages.cpp`,
+  `engine/server/server_text_messages_adapter.h`, and
+  `engine/server/server_text_messages_adapter.cpp`.
+- [x] `ENG-TEXTMSG-003` Add golden tests for print channels, empty strings,
   formatted reconnect/stufftext-style commands, overflow handling, and append
   after legacy command bytes.
-  Evidence:
-- [ ] `ENG-TEXTMSG-004` Route selected text-message writers while keeping
+  Evidence: `tests/engine/server_text_messages.cpp`.
+- [x] `ENG-TEXTMSG-004` Route selected text-message writers while keeping
   formatting ownership, client iteration, and command dispatch legacy-owned.
-  Evidence:
-- [ ] `ENG-TEXTMSG-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/sv_cmds.c` and `engine/server/sv_game.c` keep
+  formatting, fake-client checks, spawned-client filters, ignored-client
+  handling, and `SV_IsValidCmd()` legacy-owned while using text payload
+  adapters after legacy command bytes are written.
+- [x] `ENG-TEXTMSG-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_text_messages` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 86/86, runtime smoke first
+  frame 0.668 seconds, stop reason `command`.
 
 ## Phase 76: Server Sound Message Builder
 

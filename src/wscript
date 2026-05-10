@@ -140,6 +140,7 @@ def build(bld):
 			'utilities_path': '../tests/utilities/path.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',
 			'utilities_text': '../tests/utilities/text.cpp',
+			'engine_server_text_messages': '../tests/engine/server_text_messages.cpp',
 		}
 
 		for i in tests:

@@ -15,6 +15,48 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_text_messages_adapter.h"
+
+static void SV_ApplyTextMessageWriteResult( sizebuf_t *msg, sv_text_message_write_result_t result )
+{
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
+}
+
+static void SV_WritePrintTextMessage( sizebuf_t *msg, const char *text )
+{
+	sv_text_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_print );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_TextMessage_WritePrintPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		text );
+
+	SV_ApplyTextMessageWriteResult( msg, result );
+}
+
+static void SV_WriteStuffTextMessage( sizebuf_t *msg, const char *command_text )
+{
+	sv_text_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_stufftext );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_TextMessage_WriteStuffTextPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		command_text );
+
+	SV_ApplyTextMessageWriteResult( msg, result );
+}
 
 /*
 =================
@@ -35,8 +77,7 @@ void SV_ClientPrintf( sv_client_t *cl, const char *fmt, ... )
 	Q_vsnprintf( string, sizeof( string ), fmt, argptr );
 	va_end( argptr );
 
-	MSG_BeginServerCmd( &cl->netchan.message, svc_print );
-	MSG_WriteString( &cl->netchan.message, string );
+	SV_WritePrintTextMessage( &cl->netchan.message, string );
 }
 
 /*
@@ -67,8 +108,7 @@ void SV_BroadcastPrintf( sv_client_t *ignore, const char *fmt, ... )
 			if( cl == ignore || cl->state != cs_spawned )
 				continue;
 
-			MSG_BeginServerCmd( &cl->netchan.message, svc_print );
-			MSG_WriteString( &cl->netchan.message, string );
+			SV_WritePrintTextMessage( &cl->netchan.message, string );
 		}
 	}
 
@@ -98,8 +138,7 @@ void SV_BroadcastCommand( const char *fmt, ... )
 	Q_vsnprintf( string, sizeof( string ), fmt, argptr );
 	va_end( argptr );
 
-	MSG_BeginServerCmd( &sv.reliable_datagram, svc_stufftext );
-	MSG_WriteString( &sv.reliable_datagram, string );
+	SV_WriteStuffTextMessage( &sv.reliable_datagram, string );
 }
 
 /*

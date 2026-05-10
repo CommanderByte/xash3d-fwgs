@@ -24,9 +24,34 @@ GNU General Public License for more details.
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
 #include "server_service_messages_adapter.h"
+#include "server_text_messages_adapter.h"
 
 // GameAPI functions declarations
 static int GAME_EXPORT pfnModelIndex( const char *m );
+
+static void SV_ApplyTextMessageWriteResult( sizebuf_t *msg, sv_text_message_write_result_t result )
+{
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
+}
+
+static void SV_WriteClientStuffTextMessage( sizebuf_t *msg, const char *command_text )
+{
+	sv_text_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_stufftext );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_TextMessage_WriteStuffTextPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		command_text );
+
+	SV_ApplyTextMessageWriteResult( msg, result );
+}
 
 // fatpvs stuff
 static byte fatphs[(MAX_MAP_LEAFS+7)/8];
@@ -2393,8 +2418,7 @@ void GAME_EXPORT pfnClientCommand( edict_t* pEdict, char* szFmt, ... )
 
 	if( SV_IsValidCmd( buffer ))
 	{
-		MSG_BeginServerCmd( &cl->netchan.message, svc_stufftext );
-		MSG_WriteString( &cl->netchan.message, buffer );
+		SV_WriteClientStuffTextMessage( &cl->netchan.message, buffer );
 	}
 	else Con_Printf( S_ERROR "Tried to stuff bad command %s\n", buffer );
 }

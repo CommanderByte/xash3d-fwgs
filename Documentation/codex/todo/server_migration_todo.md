@@ -521,16 +521,16 @@ message or audio subsystem migration.
 Goal: extract the repeated `svc_print` and `svc_stufftext` payload shapes
 without moving command dispatch, formatting, or client iteration yet.
 
-- [ ] Baseline `SV_ClientPrintf()`, `SV_BroadcastPrintf()`,
+- [x] Baseline `SV_ClientPrintf()`, `SV_BroadcastPrintf()`,
   `SV_BroadcastCommand()`, `pfnClientCommand()`, and nearby text-message
   writers.
-- [ ] Implement target-neutral text payload encoders and small command-string
+- [x] Implement target-neutral text payload encoders and small command-string
   builders where useful.
-- [ ] Add golden tests for print channels, stufftext commands, empty strings,
+- [x] Add golden tests for print channels, stufftext commands, empty strings,
   append-after-command behavior, and overflow.
-- [ ] Route selected writers while keeping formatting, destination selection,
+- [x] Route selected writers while keeping formatting, destination selection,
   and fake-client handling legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 76: Server Sound Message Builder
 
