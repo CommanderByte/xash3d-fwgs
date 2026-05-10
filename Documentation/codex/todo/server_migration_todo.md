@@ -112,13 +112,40 @@ the main phase tracker until they are selected.
   reached first frame in 0.437 seconds, and stopped with reason `command` at
   May 10 2026 14:29:55 local time.
 
+## Phase 57: Server Connectionless Command Classifier
+
+- [x] Baseline `SV_ConnectionlessPacket()` parsing and dispatch order.
+  Evidence: `Documentation/codex/legacy/engine/connectionless-packet-baseline.md`.
+- [x] Implement a target-neutral classifier for full-line and first-token
+  command decisions.
+  Evidence: `src/include/engine/server/connectionless_classifier.hpp`,
+  `src/engine/server/connectionless_classifier.cpp`.
+- [x] Add tests for source-query exact match, loose `U`/`V` first-character
+  routing, ping/ack aliases, master-server commands, uninitialized `rcon`, and
+  game-DLL fallback.
+  Evidence: `tests/engine/connectionless_classifier.cpp`.
+- [x] Route `SV_ConnectionlessPacket()` through the adapter while keeping
+  message reads, logging, handlers, and packet sends legacy-owned.
+  Evidence: `engine/server/connectionless_classifier_adapter.h`,
+  `engine/server/connectionless_classifier_adapter.cpp`,
+  `engine/server/sv_client.c`.
+- [x] Run focused tests, full tests, and a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_connectionless_classifier`
+  passed 1/1; `.\waf.bat build --alltests` passed 69/69; Windows runtime
+  smoke copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.436 seconds, and stopped with reason `command` at
+  May 10 2026 14:37:01 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 57 candidate: connectionless command classification in
-  `SV_ConnectionlessPacket()`, keeping message reads and handler calls
-  legacy-owned while testing the command/type classifier.
-- [ ] Phase 58 candidate: server event log formatting in `sv_log.c`, keeping
+- [ ] Phase 58: server event log formatting in `sv_log.c`, keeping
   file, console, and UDP sinks legacy-owned until the logging router is ready.
+- [ ] Phase 59: challenge and rejection response formatting in `sv_client.c`,
+  keeping challenge generation and packet sends legacy-owned.
+- [ ] Phase 60: client command dispatch table lookup in `sv_client.c`, keeping
+  command handlers and client mutation legacy-owned.
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
 - [ ] Save/restore migration after binary compatibility fixtures exist.

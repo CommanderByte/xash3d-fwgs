@@ -10,6 +10,8 @@ Current helpers:
 
 - `netapi_info.hpp`: short `A2A_INFO` and long `A2A_NETINFO` info-string
   response builders.
+- `connectionless_classifier.hpp`: server connectionless command
+  classification.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
 - `user_agent_policy.hpp`: connection UUID and input-device validation policy.

@@ -14,6 +14,9 @@ Current implementation notes:
 - `console-logging-migration-guide.md`: how console/logging should be split
   into filters, formatters, and sinks while preserving the public C print
   surface and the rendered console/platform console distinction.
+- `connectionless-classifier-migration.md`: how Phase 57 routes
+  `SV_ConnectionlessPacket()` command classification through target-neutral
+  server helpers while reads and handler effects stay legacy-owned.
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.

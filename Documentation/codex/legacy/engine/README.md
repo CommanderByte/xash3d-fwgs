@@ -15,6 +15,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [console-logging-baseline.md](console-logging-baseline.md) documents the
   current print hub, in-game console, platform console, engine log, and server
   event log ownership.
+- [connectionless-packet-baseline.md](connectionless-packet-baseline.md)
+  documents current `SV_ConnectionlessPacket()` command classification and
+  dispatch ordering.
 - [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated

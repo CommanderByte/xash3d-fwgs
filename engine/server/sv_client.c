@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "net_encode.h"
 #include "net_api.h"
+#include "connectionless_classifier_adapter.h"
 #include "netapi_info_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
@@ -3183,6 +3184,8 @@ connectionless packets.
 void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 {
 	const char *pcmd, *args;
+	sv_connectionless_command_t command;
+	qboolean from_master_server;
 
 	// prevent flooding from banned address
 	if( SV_CheckIP( &from ))
@@ -3199,72 +3202,52 @@ void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 	if( sv_log_outofband.value )
 		Con_Reportf( "%s: %s : %s\n", __func__, NET_AdrToString( from ), pcmd );
 
-	if( !svs.initialized )
-	{
-		// only process rcon if server not initialized
-		if( !Q_strcmp( pcmd, C2S_RCON ))
-			SV_RemoteCommand( net_from, &net_message );
+	from_master_server = svs.initialized ? NET_IsMasterAdr( from, NULL ) : false;
+	command = SV_ConnectionlessClassifier_Classify( args, pcmd, svs.initialized, from_master_server );
 
+	switch( command )
+	{
+	case SV_CONNLESS_IGNORE:
 		return;
-	}
-
-	if( NET_IsMasterAdr( from, NULL ))
-	{
-		if( !Q_strcmp( pcmd, M2S_CHALLENGE ))
-		{
-			SV_AddToMaster( from, msg );
-		}
-		else if( !Q_strcmp( pcmd, M2S_NAT_CONNECT ))
-		{
-			SV_ConnectNatClient( from );
-		}
-
+	case SV_CONNLESS_MASTER_CHALLENGE:
+		SV_AddToMaster( from, msg );
 		return;
-	}
-
-	// Must check `args` because A2S_GOLDSRC_INFO contains spaces.
-	// `pcmd` points only to the first word from the query string.
-	if( !Q_strcmp( args, A2S_GOLDSRC_INFO ) || pcmd[0] == A2S_GOLDSRC_PLAYERS || pcmd[0] == A2S_GOLDSRC_RULES )
-	{
+	case SV_CONNLESS_MASTER_NAT_CONNECT:
+		SV_ConnectNatClient( from );
+		return;
+	case SV_CONNLESS_SOURCE_QUERY:
 		SV_SourceQuery_HandleConnnectionlessPacket( args, from );
-	}
-	else if( !Q_strcmp( pcmd, A2A_NETINFO ))
-	{
+		return;
+	case SV_CONNLESS_NETAPI_INFO:
 		SV_BuildNetAnswer( from );
-	}
-	else if( !Q_strcmp( pcmd, A2A_INFO ))
-	{
+		return;
+	case SV_CONNLESS_LEGACY_INFO:
 		SV_Info( from, Q_atoi( Cmd_Argv( 1 )));
-	}
-	else if( !Q_strcmp( pcmd, C2S_BANDWIDTHTEST ))
-	{
+		return;
+	case SV_CONNLESS_BANDWIDTH_TEST:
 		SV_TestBandWidth( from );
-	}
-	else if( !Q_strcmp( pcmd, C2S_GETCHALLENGE ))
-	{
+		return;
+	case SV_CONNLESS_CHALLENGE_REQUEST:
 		SV_SendChallenge( from, !sv_allow_testpacket.value || !svs.testpacket_buf );
-	}
-	else if( !Q_strcmp( pcmd, C2S_CONNECT ))
-	{
+		return;
+	case SV_CONNLESS_CONNECT:
 		SV_ConnectClient( from );
-	}
-	else if( !Q_strcmp( pcmd, A2A_PING ))
-	{
+		return;
+	case SV_CONNLESS_PING:
 		Netchan_OutOfBandPrint( NS_SERVER, from, A2A_ACK );
-	}
-	else if( !Q_strcmp( pcmd, A2A_GOLDSRC_PING ))
-	{
+		return;
+	case SV_CONNLESS_GOLDSRC_PING:
 		Netchan_OutOfBandPrint( NS_SERVER, from, A2A_GOLDSRC_ACK );
-	}
-	else if( !Q_strcmp( pcmd, C2S_RCON ))
-	{
-		SV_RemoteCommand( from, msg );
-	}
-	else if( !Q_strcmp( pcmd, A2A_ACK ) || !Q_strcmp( pcmd, A2A_GOLDSRC_ACK ))
-	{
+		return;
+	case SV_CONNLESS_REMOTE_COMMAND:
+		if( !svs.initialized )
+			SV_RemoteCommand( net_from, &net_message );
+		else SV_RemoteCommand( from, msg );
+		return;
+	case SV_CONNLESS_ACKNOWLEDGEMENT:
 		SV_Ack( from );
-	}
-	else
+		return;
+	case SV_CONNLESS_GAME_DLL_PACKET:
 	{
 		char buf[MAX_SYSPATH];
 		int	len = sizeof( buf );
@@ -3277,6 +3260,8 @@ void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 		}
 		else if( sv_log_outofband.value )
 			Con_DPrintf( S_ERROR "bad connectionless packet from %s:\n%s\n", NET_AdrToString( from ), args );
+		return;
+	}
 	}
 }
 

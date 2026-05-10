@@ -1930,20 +1930,31 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 57: Server Connectionless Command Classifier
 
-- [ ] `ENG-SVCONNLESS-001` Baseline `SV_ConnectionlessPacket()` command parsing
+- [x] `ENG-SVCONNLESS-001` Baseline `SV_ConnectionlessPacket()` command parsing
   and dispatch order, including source-query, short info, NetAPI info, rcon,
   challenge, connect, ping, ack, NAT, and unknown commands.
-  Evidence:
-- [ ] `ENG-SVCONNLESS-002` Implement a target-neutral classifier for the
+  Evidence: `Documentation/codex/legacy/engine/connectionless-packet-baseline.md`.
+- [x] `ENG-SVCONNLESS-002` Implement a target-neutral classifier for the
   command string and first-token cases under `src/engine/server`.
-  Evidence:
-- [ ] `ENG-SVCONNLESS-003` Add tests for exact `A2S_GOLDSRC_INFO`, single-byte
+  Evidence: `src/include/engine/server/connectionless_classifier.hpp`,
+  `src/engine/server/connectionless_classifier.cpp`.
+- [x] `ENG-SVCONNLESS-003` Add tests for exact `A2S_GOLDSRC_INFO`, single-byte
   source-query requests, command aliases, and unknown commands.
-  Evidence:
-- [ ] `ENG-SVCONNLESS-004` Route only classification through the modern helper,
+  Evidence: `tests/engine/connectionless_classifier.cpp`.
+- [x] `ENG-SVCONNLESS-004` Route only classification through the modern helper,
   while message reads, logging, command handlers, and packet sends remain
   legacy-owned.
-  Evidence:
+  Evidence: `engine/server/connectionless_classifier_adapter.h`,
+  `engine/server/connectionless_classifier_adapter.cpp`,
+  `engine/server/sv_client.c`.
+- [x] `ENG-SVCONNLESS-005` Run focused tests, full tests, and a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_connectionless_classifier`
+  passed 1/1; `.\waf.bat build --alltests` passed 69/69; Windows runtime
+  smoke copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.436 seconds, and stopped with reason `command` at
+  May 10 2026 14:37:01 local time.
 
 ## Phase 58: Server Event Log Formatter
 
@@ -1959,6 +1970,40 @@ commit, test command, document link, or manual verification note that proves it.
 - [ ] `ENG-SVLOG-004` Route formatting through the modern helper while keeping
   `FS_*`, `Con_Printf`, `Netchan_OutOfBandPrint`, and command parsing
   legacy-owned.
+  Evidence:
+
+## Phase 59: Server Challenge And Rejection Response Formatter
+
+- [ ] `ENG-SVCHAL-001` Baseline `SV_SendChallenge()`,
+  `SV_RejectConnection()`, and connection refusal text emitted during
+  `SV_ConnectClient()` validation.
+  Evidence:
+- [ ] `ENG-SVCHAL-002` Decide the safe boundary between challenge-number
+  generation, which still depends on `netadr_t`, MD5, and server salt, and
+  target-neutral response text formatting.
+  Evidence:
+- [ ] `ENG-SVCHAL-003` Add tests for challenge response formatting and the
+  three legacy rejection packet strings.
+  Evidence:
+- [ ] `ENG-SVCHAL-004` Route response formatting through modern helpers while
+  keeping `SV_GetChallenge()`, `SV_CheckChallenge()`, `Con_Reportf()`, and
+  `Netchan_OutOfBandPrint()` legacy-owned.
+  Evidence:
+
+## Phase 60: Server Client Command Dispatch Table
+
+- [ ] `ENG-SVCMDTABLE-001` Baseline the `ucmd_t` table and
+  `SV_ExecuteClientCommand()` lookup behavior, including command case
+  sensitivity, unknown-command handling, and state-gated handlers.
+  Evidence:
+- [ ] `ENG-SVCMDTABLE-002` Decide whether the first route-through should be a
+  target-neutral command metadata table or only a lookup/classification helper.
+  Evidence:
+- [ ] `ENG-SVCMDTABLE-003` Add tests for command lookup and dispatch decisions
+  without invoking live `sv_client_t` effects.
+  Evidence:
+- [ ] `ENG-SVCMDTABLE-004` Route lookup/classification through modern helpers
+  while keeping handler functions and client mutation legacy-owned.
   Evidence:
 
 ## Phase 800: POSIX Console Backend Validation
