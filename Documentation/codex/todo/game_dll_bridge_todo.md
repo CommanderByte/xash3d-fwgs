@@ -145,12 +145,17 @@ phase.
 
 ## Phase 94: String Pool Compatibility Fixtures
 
-- [ ] Baseline `SV_ProcessString()`, `SV_AllocStringPool()`,
+- [x] Baseline `SV_ProcessString()`, `SV_AllocStringPool()`,
   `SV_AllocString()`, `SV_MakeString()`, `SV_GetString()`, and string stats.
-- [ ] Add fixtures for empty strings, escape normalization, dedup behavior,
+  Evidence: `Documentation/codex/modern/engine/game-dll-string-pool-compatibility.md`.
+- [x] Add fixtures for empty strings, escape normalization, dedup behavior,
   duplicate-disabled behavior, invalid handles, and overflow reset.
-- [ ] Keep `globalvars_t::pStringBase`, 64-bit near-DLL storage, and physics
+  Evidence: `tests/engine/game_dll_string_pool_compat.cpp`.
+- [x] Keep `globalvars_t::pStringBase`, 64-bit near-DLL storage, and physics
   string overrides legacy-owned until fixtures are broad enough.
+  Evidence: Phase 94 adds only `src/engine/server/game_dll_string_pool_compat.cpp`;
+  live `SV_AllocString()`, `SV_MakeString()`, and `SV_GetString()` remain in
+  `engine/server/sv_game.c`.
 
 ## Phase 95: Entity Handle And Private Data Policy
 

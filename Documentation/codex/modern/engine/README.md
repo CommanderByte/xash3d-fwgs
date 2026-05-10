@@ -33,6 +33,10 @@ Current implementation notes:
   internals while preserving the game DLL ABI, callback table order, edict
   ownership, and message/session compatibility. The post-audit implementation
   lane is tracked in `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- `game-dll-string-pool-compatibility.md`: how Phase 94 models
+  game-DLL-facing string processing, deduplication, overflow, and
+  `string_t` offset behavior without moving the live string base out of
+  `sv_game.c`.
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.

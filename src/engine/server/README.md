@@ -11,6 +11,10 @@ Current helpers:
 
 - `game_dll_enginefuncs.cpp`: target-neutral metadata lookup for the stable
   `enginefuncs_t` game DLL callback table.
+- `game_dll_string_pool_compat.cpp`: fixture-safe game DLL string-pool
+  compatibility model for escape processing, duplicate handling, static and
+  dynamic arena accounting, overflow rewind behavior, and make-string
+  fallback decisions.
 - `game_dll_message_session.cpp`: mockable game DLL message-session state
   machine for payload accounting and low-risk compatibility decisions.
 - `game_dll_output_policy.cpp`: mockable game DLL command and output routing

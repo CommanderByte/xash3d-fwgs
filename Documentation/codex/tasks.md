@@ -2959,22 +2959,29 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 94: Game DLL String Pool Compatibility Fixtures
 
-- [ ] `ENG-GAMEDLL-STR-001` Baseline string processing, allocation modes,
+- [x] `ENG-GAMEDLL-STR-001` Baseline string processing, allocation modes,
   deduplication, invalid handles, overflow reset, statistics, and physics
   string overrides.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-STR-002` Add fixtures for empty strings, newline/carriage
+  Evidence: `Documentation/codex/modern/engine/game-dll-string-pool-compatibility.md`.
+- [x] `ENG-GAMEDLL-STR-002` Add fixtures for empty strings, newline/carriage
   return/tab normalization, duplicate-on/off behavior, invalid handles, and
   overflow paths.
-  Evidence:
-- [ ] `ENG-GAMEDLL-STR-003` Extract pure policy only after fixtures prove the
+  Evidence: `tests/engine/game_dll_string_pool_compat.cpp`.
+- [x] `ENG-GAMEDLL-STR-003` Extract pure policy only after fixtures prove the
   numeric `string_t` compatibility model.
-  Evidence:
-- [ ] `ENG-GAMEDLL-STR-004` Keep `globalvars_t::pStringBase`, 64-bit near-DLL
+  Evidence: `src/include/engine/server/game_dll_string_pool_compat.hpp` and
+  `src/engine/server/game_dll_string_pool_compat.cpp`.
+- [x] `ENG-GAMEDLL-STR-004` Keep `globalvars_t::pStringBase`, 64-bit near-DLL
   storage, and physics overrides legacy-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-STR-005` Run focused tests, full tests, and smoke timing.
-  Evidence:
+  Evidence: Phase 94 adds fixture/policy code only; live string APIs remain in
+  `engine/server/sv_game.c`.
+- [x] `ENG-GAMEDLL-STR-005` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_string_pool_compat -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 102/102, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.502 seconds and
+  stopped with reason `command`.
 
 ## Phase 95: Game DLL Entity Handle And Private Data Policy
 
