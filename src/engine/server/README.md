@@ -49,6 +49,9 @@ Current helpers:
   command planning and bit-packed payload serialization.
 - `server_static_messages.cpp`: target-neutral `svc_bspdecal` payload
   serialization and safe static-entity admission checks.
+- `server_multicast_policy.cpp`: target-neutral `SV_Multicast()`
+  destination and recipient routing decisions while leaving masks and writes
+  legacy-owned.
 - `server_text_messages.cpp`: target-neutral payload serialization for
   `svc_print` and `svc_stufftext` NUL-terminated text messages.
 - `server_voice_relay.cpp`: target-neutral voice relay gates, recipient

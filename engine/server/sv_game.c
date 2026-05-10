@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
+#include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
 #include "server_sound_message_adapter.h"
 #include "server_static_messages_adapter.h"
@@ -403,6 +404,7 @@ static int SV_Multicast( int dest, const vec3_t origin, const edict_t *ent, qboo
 	qboolean		reliable = false;
 	qboolean		specproxy = false;
 	int		numsends = 0;
+	sv_multicast_destination_plan_t plan;
 
 	// some mods trying to send messages after SV_FinalMessage
 	if( !svs.initialized || sv.state == ss_dead )
@@ -411,92 +413,109 @@ static int SV_Multicast( int dest, const vec3_t origin, const edict_t *ent, qboo
 		return 0;
 	}
 
-	switch( dest )
+	plan = SV_Multicast_BuildDestinationPlan( dest, sv.state == ss_loading, origin != NULL );
+
+	if( plan.action == SV_MULTICAST_ACTION_WRITE_SIGNON )
 	{
-	case MSG_INIT:
-		if( sv.state == ss_loading )
-		{
-			// copy to signon buffer
-			MSG_WriteBits( &sv.signon, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
+		MSG_WriteBits( &sv.signon, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
+		if( plan.clear_multicast )
 			MSG_Clear( &sv.multicast );
-			return 1;
-		}
-		// intentional fallthrough (in-game MSG_INIT it's a MSG_ALL reliable)
-	case MSG_ALL:
-		reliable = true;
-		// intentional fallthrough
-	case MSG_BROADCAST:
-		// nothing to sort
+		return plan.return_value;
+	}
+
+	if( plan.action == SV_MULTICAST_ACTION_ABORT )
+	{
+		if( plan.clear_multicast )
+			MSG_Clear( &sv.multicast );
+		return plan.return_value;
+	}
+
+	if( plan.action == SV_MULTICAST_ACTION_HOST_ERROR )
+	{
+		Host_Error( "%s: bad dest: %i\n", __func__, dest );
+		return 0;
+	}
+
+	reliable = plan.reliable != 0;
+	specproxy = plan.spectator_proxy != 0;
+
+	switch( plan.visibility_mode )
+	{
+	case SV_MULTICAST_VISIBILITY_NONE:
 		break;
-	case MSG_PAS_R:
-		reliable = true;
-		// intentional fallthrough
-	case MSG_PAS:
-		if( origin == NULL ) return false;
+	case SV_MULTICAST_VISIBILITY_PAS:
 		// NOTE: GoldSource not using PHS for singleplayer
 		Mod_FatPVS( origin, FATPHS_RADIUS, fatphs, world.fatbytes, false, ( svs.maxclients == 1 ), true );
 		mask = fatphs; // using the FatPVS like a PHS
 		break;
-	case MSG_PVS_R:
-		reliable = true;
-		// intentional fallthrough
-	case MSG_PVS:
-		if( origin == NULL ) return 0;
+	case SV_MULTICAST_VISIBILITY_PVS:
 		mask = Mod_GetPVSForPoint( origin );
 		break;
-	case MSG_ONE:
-		reliable = true;
-		// intentional fallthrough
-	case MSG_ONE_UNRELIABLE:
+	default:
+		Host_Error( "%s: bad visibility mode: %i\n", __func__, plan.visibility_mode );
+		return 0;
+	}
+
+	if( plan.single_client )
+	{
 		if( !SV_IsValidEdict( ent )) return 0;
 		j = NUM_FOR_EDICT( ent );
 		if( j < 1 || j > numclients ) return 0;
 		current = svs.clients + (j - 1);
 		numclients = 1; // send to one
-		break;
-	case MSG_SPEC:
-		specproxy = reliable = true;
-		break;
-	default:
-		Host_Error( "%s: bad dest: %i\n", __func__, dest );
-		return 0;
 	}
 
 	// send the data to all relevent clients (or once only)
 	for( j = 0, cl = current; j < numclients; j++, cl++ )
 	{
-		if( cl->state == cs_free || cl->state == cs_zombie )
-			continue;
-
-		if( cl->state != cs_spawned && ( !reliable || usermessage ))
-			continue;
-
-		if( specproxy && !FBitSet( cl->flags, FCL_HLTV_PROXY ))
-			continue;
-
-		if( !cl->edict || FBitSet( cl->flags, FCL_FAKECLIENT ))
-			continue;
+		qboolean group_passes = true;
+		qboolean has_edict = cl->edict != NULL;
+		qboolean visible = true;
+		qboolean preliminary_candidate;
+		sv_multicast_recipient_decision_t recipient;
 
 		// reject step sounds while predicting is enabled
 		// FIXME: make sure what this code doesn't cutoff something important!!!
-		if( filter && cl == sv.current_client && FBitSet( sv.current_client->flags, FCL_PREDICT_MOVEMENT ))
-			continue;
+		preliminary_candidate = cl->state != cs_free && cl->state != cs_zombie &&
+			( cl->state == cs_spawned || ( reliable && !usermessage )) &&
+			( !specproxy || FBitSet( cl->flags, FCL_HLTV_PROXY )) &&
+			has_edict &&
+			!FBitSet( cl->flags, FCL_FAKECLIENT ) &&
+			!( filter && cl == sv.current_client && FBitSet( sv.current_client->flags, FCL_PREDICT_MOVEMENT ));
 
-		if( SV_IsValidEdict( ent ) && ent->v.groupinfo && cl->edict->v.groupinfo )
+		if( preliminary_candidate && SV_IsValidEdict( ent ) && ent->v.groupinfo && cl->edict->v.groupinfo )
 		{
 			if( svs.groupop == GROUP_OP_AND && !FBitSet( cl->edict->v.groupinfo, ent->v.groupinfo ))
-				continue;
+				group_passes = false;
 
 			if( svs.groupop == GROUP_OP_NAND && FBitSet( cl->edict->v.groupinfo, ent->v.groupinfo ))
-				continue;
+				group_passes = false;
 		}
 
-		if( !SV_CheckClientVisiblity( cl, mask ))
+		if( preliminary_candidate && group_passes )
+			visible = SV_CheckClientVisiblity( cl, mask );
+
+		recipient = SV_Multicast_BuildRecipientDecision(
+			cl->state,
+			reliable,
+			usermessage,
+			specproxy,
+			FBitSet( cl->flags, FCL_HLTV_PROXY ),
+			has_edict,
+			FBitSet( cl->flags, FCL_FAKECLIENT ),
+			filter && cl == sv.current_client && FBitSet( sv.current_client->flags, FCL_PREDICT_MOVEMENT ),
+			group_passes,
+			visible );
+
+		if( !recipient.should_send )
 			continue;
 
-		if( specproxy ) MSG_WriteBits( &sv.spec_datagram, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
-		else if( reliable ) MSG_WriteBits( &cl->netchan.message, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
-		else MSG_WriteBits( &cl->datagram, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
+		if( recipient.route == SV_MULTICAST_ROUTE_SPECTATOR_DATAGRAM )
+			MSG_WriteBits( &sv.spec_datagram, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
+		else if( recipient.route == SV_MULTICAST_ROUTE_CLIENT_RELIABLE )
+			MSG_WriteBits( &cl->netchan.message, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
+		else
+			MSG_WriteBits( &cl->datagram, MSG_GetData( &sv.multicast ), MSG_GetNumBitsWritten( &sv.multicast ));
 		numsends++;
 	}
 

@@ -2515,22 +2515,28 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 78: Server Multicast Routing Policy
 
-- [ ] `ENG-MCAST-001` Baseline `SV_Multicast()` for destination modes, PVS/PHS
+- [x] `ENG-MCAST-001` Baseline `SV_Multicast()` for destination modes, PVS/PHS
   masks, reliable/unreliable buffers, spectator proxy handling, and usermessage
   rewrite behavior.
-  Evidence:
-- [ ] `ENG-MCAST-002` Implement target-neutral recipient/destination policy
+  Evidence: `Documentation/codex/legacy/engine/server-multicast-baseline.md`.
+- [x] `ENG-MCAST-002` Implement target-neutral recipient/destination policy
   helpers that do not own actual buffer writes.
-  Evidence:
-- [ ] `ENG-MCAST-003` Add tests for broadcast, one-client, PVS/PHS filtered,
+  Evidence: `src/include/engine/server/server_multicast_policy.hpp` and
+  `src/engine/server/server_multicast_policy.cpp`.
+- [x] `ENG-MCAST-003` Add tests for broadcast, one-client, PVS/PHS filtered,
   reliable/unreliable, spectator, and invalid destination cases.
-  Evidence:
-- [ ] `ENG-MCAST-004` Route decision-making through the helper while keeping
+  Evidence: `tests/engine/server_multicast_policy.cpp`.
+- [x] `ENG-MCAST-004` Route decision-making through the helper while keeping
   visibility mask generation, `sv.multicast`, and final writes legacy-owned.
-  Evidence:
-- [ ] `ENG-MCAST-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/server_multicast_policy_adapter.h`,
+  `engine/server/server_multicast_policy_adapter.cpp`, and
+  `engine/server/sv_game.c`.
+- [x] `ENG-MCAST-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_multicast_policy` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 89/89, runtime smoke first
+  frame 0.501 seconds, stop reason `command`.
 
 ## Phase 79: Game DLL User Message Bridge
 

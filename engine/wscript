@@ -216,6 +216,7 @@ def build(bld):
 		'server/server_text_messages_adapter.cpp',
 		'server/server_sound_message_adapter.cpp',
 		'server/server_static_messages_adapter.cpp',
+		'server/server_multicast_policy_adapter.cpp',
 	]
 	libs += ['modern_engine']
 

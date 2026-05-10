@@ -143,6 +143,7 @@ def build(bld):
 			'engine_server_text_messages': '../tests/engine/server_text_messages.cpp',
 			'engine_server_sound_message': '../tests/engine/server_sound_message.cpp',
 			'engine_server_static_messages': '../tests/engine/server_static_messages.cpp',
+			'engine_server_multicast_policy': '../tests/engine/server_multicast_policy.cpp',
 		}
 
 		for i in tests:

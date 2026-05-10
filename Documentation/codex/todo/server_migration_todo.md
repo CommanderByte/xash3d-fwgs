@@ -563,13 +563,13 @@ Goal: extract stable signon/reliable payloads for decals and static entities.
 Goal: separate destination/recipient decisions from actual multicast buffer
 writes.
 
-- [ ] Baseline `SV_Multicast()` destination modes, PVS/PHS, spectator proxy,
+- [x] Baseline `SV_Multicast()` destination modes, PVS/PHS, spectator proxy,
   and rewrite behavior.
-- [ ] Implement recipient/destination policy helpers.
-- [ ] Add tests for broadcast, filtered, reliable/unreliable, spectator, and
+- [x] Implement recipient/destination policy helpers.
+- [x] Add tests for broadcast, filtered, reliable/unreliable, spectator, and
   invalid destination cases.
-- [ ] Route decisions while keeping masks and writes legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Route decisions while keeping masks and writes legacy-owned.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 79: Game DLL User Message Bridge
 
