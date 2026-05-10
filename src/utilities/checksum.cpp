@@ -7,7 +7,10 @@ namespace xash
 namespace utilities
 {
 
-uint32_t Crc32TableEntry(uint32_t index)
+namespace
+{
+
+uint32_t GenerateCrc32TableEntry(uint32_t index)
 {
 	uint32_t value = index;
 
@@ -22,28 +25,16 @@ uint32_t Crc32TableEntry(uint32_t index)
 	return value;
 }
 
-uint32_t Crc32ProcessByte(uint32_t crc, uint8_t value)
+struct Crc32TableStorage
 {
-	return Crc32TableEntry((crc ^ value) & 0xFFu) ^ (crc >> 8);
-}
+	uint32_t values[kCrc32TableSize];
 
-uint32_t Crc32ProcessBuffer(uint32_t crc, const void *buffer, int length)
-{
-	const uint8_t *bytes = static_cast<const uint8_t *>(buffer);
-
-	while (length-- > 0)
-		crc = Crc32ProcessByte(crc, *bytes++);
-
-	return crc;
-}
-
-uint32_t Crc32Final(uint32_t crc)
-{
-	return crc ^ kCrc32XorValue;
-}
-
-namespace
-{
+	Crc32TableStorage()
+	{
+		for (uint32_t index = 0; index < kCrc32TableSize; ++index)
+			values[index] = GenerateCrc32TableEntry(index);
+	}
+};
 
 void WriteLittleEndian32(uint8_t *dst, uint32_t value)
 {
@@ -53,6 +44,42 @@ void WriteLittleEndian32(uint8_t *dst, uint32_t value)
 	dst[3] = static_cast<uint8_t>((value >> 24) & 0xFFu);
 }
 
+}
+
+const uint32_t *Crc32Table()
+{
+	static const Crc32TableStorage table;
+
+	return table.values;
+}
+
+uint32_t Crc32TableEntry(uint32_t index)
+{
+	if (index < kCrc32TableSize)
+		return Crc32Table()[index];
+
+	return GenerateCrc32TableEntry(index);
+}
+
+uint32_t Crc32ProcessByte(uint32_t crc, uint8_t value)
+{
+	return Crc32Table()[(crc ^ value) & 0xFFu] ^ (crc >> 8);
+}
+
+uint32_t Crc32ProcessBuffer(uint32_t crc, const void *buffer, int length)
+{
+	const uint8_t *bytes = static_cast<const uint8_t *>(buffer);
+	const uint32_t *table = Crc32Table();
+
+	while (length-- > 0)
+		crc = table[(crc ^ *bytes++) & 0xFFu] ^ (crc >> 8);
+
+	return crc;
+}
+
+uint32_t Crc32Final(uint32_t crc)
+{
+	return crc ^ kCrc32XorValue;
 }
 
 uint8_t Crc32BlockSequence(const uint8_t *base, int length, int sequence)

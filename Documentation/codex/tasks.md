@@ -1615,25 +1615,40 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 46: Low-Risk Standalone Straggler Sweep
 
-- [ ] `ENG-STRAG-001` Audit current low-risk public/engine utility stragglers
+- [x] `ENG-STRAG-001` Audit current low-risk public/engine utility stragglers
   against existing modern helpers and tests.
-  Evidence: `Documentation/codex/todo/low_risk_stragglers_todo.md`,
+  Evidence: `Documentation/codex/done/todo/low_risk_stragglers_todo.md`,
   `Documentation/codex/modern/engine/standalone-stragglers-roadmap.md`.
-- [ ] `ENG-STRAG-002` Start with CRC32 table/constants by removing duplication
+- [x] `ENG-STRAG-002` Start with CRC32 table/constants by removing duplication
   or routing public CRC lookup through the existing modern checksum helper.
-  Evidence:
-- [ ] `ENG-STRAG-003` Preserve public `CRC32_Init`, `CRC32_Final`,
+  Evidence: `src/include/utilities/checksum.hpp`,
+  `src/utilities/checksum.cpp`,
+  `src/include/utilities/compat/checksum_adapter.h`,
+  `src/utilities/compat/checksum_adapter.cpp`, `public/crclib.c`,
+  `public/wscript`.
+- [x] `ENG-STRAG-003` Preserve public `CRC32_Init`, `CRC32_Final`,
   `CRC32_ProcessByte`, `CRC32_ProcessBuffer`, and `CRC32_BlockSequence`
   behavior.
-  Evidence:
-- [ ] `ENG-STRAG-004` Add or confirm tests for CRC known vectors,
+  Evidence: public ABI declarations remain in `public/crclib.h`; public CRC
+  implementations remain in `public/crclib.c` and now use
+  `Xash_Crc32Table()`.
+- [x] `ENG-STRAG-004` Add or confirm tests for CRC known vectors,
   byte-vs-buffer parity, empty buffer finalization, block sequence negative
   sequence handling, payload clamp, and sequence wraparound.
-  Evidence:
-- [ ] `ENG-STRAG-005` Run focused CRC tests, modern checksum/hash tests,
+  Evidence: `public/tests/test_crclib.c`, `tests/utilities/hash.cpp`.
+- [x] `ENG-STRAG-005` Run focused CRC tests, modern checksum/hash tests,
   `.\waf.bat build --alltests`, and a smoke test if public linkage changes
   engine/runtime binaries.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_crclib,test_utilities_hash --alltests`
+  passed 2/2 focused tests, `.\waf.bat build --alltests` passed 56/56 tests,
+  and Windows runtime smoke copied `build\engine\xash.dll`,
+  `build\filesystem\filesystem_stdio.dll`, and `build\ref\gl\ref_gl.dll` into
+  `run-win32`, then ran `.\xash3d.exe -dev 2 -log +fs_path +quit` from
+  `run-win32` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  The smoke log `run-win32\engine.log` reached renderer initialization and
+  stopped with reason `command` at May 10 2026 12:32:29 local time. The quick
+  `+quit` smoke did not emit a first-frame timing marker.
 
 ## Phase 47: Public CRT Micro-Seams
 
@@ -1781,4 +1796,5 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-09 | DEC-042 | Defer broad memory-pool modernization to Phase 990 and promote network buffers to Phase 42, using golden byte vectors and narrow helper routing before any broad `MSG_*` rewrite. | `todo/engine_memory_todo.md`, `done/todo/engine_netbuffer_todo.md`, `legacy/engine/network-buffer-baseline.md`, `modern/engine/network-buffer-migration-guide.md` |
 | 2026-05-09 | DEC-043 | Use console/logging ownership as the next engine phase because it unlocks deferred filesystem logging cleanup, then use the launcher/platform lessons for a `system.c` facade audit. | `done/todo/engine_logging_todo.md`, `done/todo/engine_platform_todo.md`, `legacy/engine/common-audit.md` |
 | 2026-05-10 | DEC-045 | Consolidate engine command-line lookup behind a stateless modern view and C adapter, while leaving startup parsing in the launcher and legacy copying/numeric parsing in `system.c`. | `done/todo/engine_command_line_todo.md`, `modern/engine/command-line-facade-plan.md`, `src/engine/platform/command_line.cpp` |
-| 2026-05-10 | DEC-046 | Put a low-risk standalone straggler sweep at the top of the next roadmap, with CRC32 table/constant consolidation as the first target and broader CRT/platform work queued behind it. | `todo/low_risk_stragglers_todo.md`, `modern/engine/standalone-stragglers-roadmap.md`, `public/crclib.c`, `src/utilities/checksum.cpp` |
+| 2026-05-10 | DEC-046 | Put a low-risk standalone straggler sweep at the top of the next roadmap, with CRC32 table/constant consolidation as the first target and broader CRT/platform work queued behind it. | `done/todo/low_risk_stragglers_todo.md`, `modern/engine/standalone-stragglers-roadmap.md`, `public/crclib.c`, `src/utilities/checksum.cpp` |
+| 2026-05-10 | DEC-047 | Centralize CRC32 table ownership in `src/utilities/checksum.cpp` and expose a private C table adapter so public `CRC32_*` loops keep their ABI and table-lookup performance. | `src/include/utilities/compat/checksum_adapter.h`, `src/utilities/compat/checksum_adapter.cpp`, `public/crclib.c`, `public/tests/test_crclib.c` |

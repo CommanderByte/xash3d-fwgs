@@ -7,8 +7,8 @@ Current implementation files:
 
 - `hash.cpp`: legacy-compatible hash-key behavior shared by modern internals and
   C compatibility exports.
-- `checksum.cpp`: CRC32 helpers used to pin legacy checksum behavior before any
-  broader `crclib` migration.
+- `checksum.cpp`: CRC32 helpers and the shared CRC32 table used by modern code
+  and public C compatibility exports.
 - `path.cpp`: legacy-compatible path component and extension helpers shared by
   public C compatibility exports.
 

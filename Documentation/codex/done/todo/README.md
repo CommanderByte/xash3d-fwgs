@@ -25,6 +25,7 @@ auditability and evidence lookup while active migration work continues under
 - [game_launch_todo.md](game_launch_todo.md)
 - [game_hierarchy_todo.md](game_hierarchy_todo.md)
 - [library_locator_todo.md](library_locator_todo.md)
+- [low_risk_stragglers_todo.md](low_risk_stragglers_todo.md)
 - [modern_filesystem_handlers_todo.md](modern_filesystem_handlers_todo.md)
 - [pak_backend_todo.md](pak_backend_todo.md)
 - [path_policy_todo.md](path_policy_todo.md)

@@ -19,8 +19,6 @@ Active documents:
   allocation modernization.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
-- [low_risk_stragglers_todo.md](low_risk_stragglers_todo.md) tracks standalone
-  utility cleanup candidates, starting with CRC32 constants.
 - [non_windows_console_backend_todo.md](non_windows_console_backend_todo.md)
   tracks deferred non-Windows output backend decisions.
 - [posix_console_backend_todo.md](posix_console_backend_todo.md) tracks POSIX

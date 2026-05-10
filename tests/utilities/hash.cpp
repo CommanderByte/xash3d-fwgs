@@ -39,26 +39,34 @@ static int TestCrc32()
 	unsigned char incremental[] = "123456789";
 	uint32_t crc = kCrc32InitialValue;
 
-	crc = Crc32ProcessBuffer(crc, digits, 9);
-	if (crc != 0x340BC6D9u)
+	if (Crc32Table()[0] != 0x00000000u ||
+		Crc32Table()[1] != 0x77073096u ||
+		Crc32Table()[255] != 0x2D02EF8Du)
 		return 1;
 
-	if (Crc32Final(crc) != 0xCBF43926u)
+	if (Crc32TableEntry(1) != Crc32Table()[1])
 		return 2;
+
+	crc = Crc32ProcessBuffer(crc, digits, 9);
+	if (crc != 0x340BC6D9u)
+		return 3;
+
+	if (Crc32Final(crc) != 0xCBF43926u)
+		return 4;
 
 	crc = kCrc32InitialValue;
 	for (int i = 0; i < 9; ++i)
 		crc = Crc32ProcessByte(crc, incremental[i]);
 
 	if (Crc32Final(crc) != 0xCBF43926u)
-		return 3;
+		return 5;
 
 	crc = Crc32ProcessBuffer(kCrc32InitialValue, name, 11);
 	if (crc != 0xBB60C42Fu || Crc32Final(crc) != 0x449F3BD0u)
-		return 4;
+		return 6;
 
 	if (Crc32Final(Crc32ProcessBuffer(kCrc32InitialValue, "", 0)) != 0u)
-		return 5;
+		return 7;
 
 	return 0;
 }

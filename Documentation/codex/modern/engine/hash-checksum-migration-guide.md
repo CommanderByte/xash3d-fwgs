@@ -25,10 +25,15 @@ public/crclib.h
         +-- CRC32 and MD5 C symbols
                 |
                 +-- public/crclib.c
+                        |
+                        +-- Xash_Crc32Table C adapter
+                                |
+                                +-- src/utilities/checksum.cpp
 ```
 
-`src/utilities/checksum.cpp` mirrors CRC32 behavior for modern callers and tests,
-but the public CRC32 functions remain in `public/crclib.c` for now.
+`src/utilities/checksum.cpp` owns the shared CRC32 table and modern CRC helpers.
+The public CRC32 functions remain in `public/crclib.c` for ABI stability and
+use the shared table through a private C adapter.
 
 ## Rules
 
@@ -46,9 +51,10 @@ but the public CRC32 functions remain in `public/crclib.c` for now.
 
 Good follow-up work:
 
-- Replace public CRC32 symbols with compatibility exports only after confirming
-  performance and static-link behavior across C-only public tests.
+- Consider replacing public CRC32 symbol implementations with compatibility
+  exports only after profiling confirms no regression versus the current
+  unrolled public loops.
 - Add file-hashing tests around `CRC32_File` and `MD5_HashFile` before any
   filesystem-level migration.
-- Consider a table-backed modern CRC32 implementation if the C symbols are
-  routed through `src/utilities/checksum.cpp`.
+- Keep MD5 implementation and `MD5_Print` as a separate decision so the checksum
+  namespace does not grow accidental one-off helpers.

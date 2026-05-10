@@ -4,8 +4,8 @@ This folder contains subsystem-neutral C++ utility headers for modern internals.
 
 Current headers:
 
-- `checksum.hpp`: modern CRC32 helpers that mirror the legacy `crclib` CRC
-  behavior without exposing engine state
+- `checksum.hpp`: modern CRC32 helpers and shared CRC32 table access that
+  mirror legacy `crclib` behavior without exposing engine state
 - `hash.hpp`: legacy-compatible hash-key helpers shared by modern internals and
   C compatibility exports
 - `path.hpp`: legacy-compatible path component and extension helpers shared by

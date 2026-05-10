@@ -10,7 +10,9 @@ namespace utilities
 
 static const uint32_t kCrc32InitialValue = 0xFFFFFFFFu;
 static const uint32_t kCrc32XorValue = 0xFFFFFFFFu;
+static const uint32_t kCrc32TableSize = 256u;
 
+const uint32_t *Crc32Table();
 uint32_t Crc32TableEntry(uint32_t index);
 uint32_t Crc32ProcessByte(uint32_t crc, uint8_t value);
 uint32_t Crc32ProcessBuffer(uint32_t crc, const void *buffer, int length);
