@@ -30,6 +30,8 @@ It focuses on real ownership, coupling, global state, and migration risk.
   `sv_client.c`.
 - [server-boundary-audit.md](server-boundary-audit.md) audits `engine/server/`
   ownership, compatibility surfaces, and near-term migration candidates.
+- [server-event-log-baseline.md](server-event-log-baseline.md) documents
+  `sv_log.c` timestamp, stock message, and sink ownership before Phase 58.
 - [server-filter-baseline.md](server-filter-baseline.md) documents current
   `sv_filter.c` ID/IP filter behavior, command/file surfaces, and Phase 53
   route-through scope.

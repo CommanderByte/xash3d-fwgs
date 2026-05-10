@@ -13,5 +13,6 @@ Current helpers:
 - `connectionless_classifier.hpp`: server connectionless command
   classification.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
+- `server_event_log.hpp`: server event log line and stock message formatting.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
 - `user_agent_policy.hpp`: connection UUID and input-device validation policy.

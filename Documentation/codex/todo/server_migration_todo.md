@@ -138,10 +138,32 @@ the main phase tracker until they are selected.
   reached first frame in 0.436 seconds, and stopped with reason `command` at
   May 10 2026 14:37:01 local time.
 
+## Phase 58: Server Event Log Formatter
+
+- [x] Baseline `sv_log.c` timestamp prefix, stock messages, and sink ownership.
+  Evidence: `Documentation/codex/legacy/engine/server-event-log-baseline.md`.
+- [x] Implement target-neutral server event log formatting helpers.
+  Evidence: `src/include/engine/server/server_event_log.hpp`,
+  `src/engine/server/server_event_log.cpp`.
+- [x] Add tests for timestamped lines, cvar rows, start/end rows, log-file
+  start/close rows, and truncation termination.
+  Evidence: `tests/engine/server_event_log.cpp`.
+- [x] Route `sv_log.c` stock message and timestamp line formatting through the
+  adapter while keeping files, console echo, UDP, time, cvars, and commands
+  legacy-owned.
+  Evidence: `engine/server/server_event_log_adapter.h`,
+  `engine/server/server_event_log_adapter.cpp`, `engine/server/sv_log.c`.
+- [x] Run focused tests, full tests, and a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_server_event_log`
+  passed 1/1; `.\waf.bat build --alltests` passed 70/70; Windows runtime
+  smoke copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.422 seconds, and stopped with reason `command` at
+  May 10 2026 14:42:16 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 58: server event log formatting in `sv_log.c`, keeping
-  file, console, and UDP sinks legacy-owned until the logging router is ready.
 - [ ] Phase 59: challenge and rejection response formatting in `sv_client.c`,
   keeping challenge generation and packet sends legacy-owned.
 - [ ] Phase 60: client command dispatch table lookup in `sv_client.c`, keeping

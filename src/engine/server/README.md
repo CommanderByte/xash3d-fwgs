@@ -13,5 +13,7 @@ Current helpers:
 - `connectionless_classifier.cpp`: target-neutral server connectionless command
   classification.
 - `server_filter.cpp`: target-neutral ban filter policy.
+- `server_event_log.cpp`: target-neutral server event log line and stock
+  message formatting.
 - `source_query.cpp`: target-neutral GoldSrc query payload construction.
 - `user_agent_policy.cpp`: target-neutral connection user-agent validation.

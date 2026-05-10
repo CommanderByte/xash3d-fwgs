@@ -1958,19 +1958,29 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 58: Server Event Log Formatter
 
-- [ ] `ENG-SVLOG-001` Baseline `sv_log.c` timestamp prefix, server cvar log
+- [x] `ENG-SVLOG-001` Baseline `sv_log.c` timestamp prefix, server cvar log
   lines, open/close messages, and command responses.
-  Evidence:
-- [ ] `ENG-SVLOG-002` Implement target-neutral event log formatting helpers,
+  Evidence: `Documentation/codex/legacy/engine/server-event-log-baseline.md`.
+- [x] `ENG-SVLOG-002` Implement target-neutral event log formatting helpers,
   without moving file, console, or UDP sinks.
-  Evidence:
-- [ ] `ENG-SVLOG-003` Add tests for timestamp-injected formatting and standard
+  Evidence: `src/include/engine/server/server_event_log.hpp`,
+  `src/engine/server/server_event_log.cpp`.
+- [x] `ENG-SVLOG-003` Add tests for timestamp-injected formatting and standard
   server cvar/start/close lines.
-  Evidence:
-- [ ] `ENG-SVLOG-004` Route formatting through the modern helper while keeping
+  Evidence: `tests/engine/server_event_log.cpp`.
+- [x] `ENG-SVLOG-004` Route formatting through the modern helper while keeping
   `FS_*`, `Con_Printf`, `Netchan_OutOfBandPrint`, and command parsing
   legacy-owned.
-  Evidence:
+  Evidence: `engine/server/server_event_log_adapter.h`,
+  `engine/server/server_event_log_adapter.cpp`, `engine/server/sv_log.c`.
+- [x] `ENG-SVLOG-005` Run focused tests, full tests, and a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_server_event_log`
+  passed 1/1; `.\waf.bat build --alltests` passed 70/70; Windows runtime
+  smoke copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.422 seconds, and stopped with reason `command` at
+  May 10 2026 14:42:16 local time.
 
 ## Phase 59: Server Challenge And Rejection Response Formatter
 

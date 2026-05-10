@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_event_log_adapter.h"
 
 void Log_Open( void )
 {
@@ -22,6 +23,7 @@ void Log_Open( void )
 	struct tm		*today;
 	char		szFileBase[ MAX_OSPATH ];
 	char		szTestFile[ MAX_OSPATH ];
+	char		logMessage[1024];
 	file_t		*fp = NULL;
 	const char		*temp;
 	int		i;
@@ -77,15 +79,22 @@ void Log_Open( void )
 	}
 
 	if( fp ) svs.log.file = fp;
-	Log_Printf( "Log file started (file \"%s\") (game \"%s\") (version \"%i/" XASH_VERSION "/%d\")\n",
-	szTestFile, Info_ValueForKey( svs.serverinfo, "*gamedir" ), PROTOCOL_VERSION, Q_buildnum() );
+	if( SV_ServerEventLog_FormatLogFileStartedMessage( logMessage, sizeof( logMessage ),
+		szTestFile, Info_ValueForKey( svs.serverinfo, "*gamedir" ), PROTOCOL_VERSION,
+		XASH_VERSION, Q_buildnum() ))
+	{
+		Log_Printf( "%s", logMessage );
+	}
 }
 
 void Log_Close( void )
 {
 	if( svs.log.file )
 	{
-		Log_Printf( "Log file closed\n" );
+		char logMessage[64];
+
+		if( SV_ServerEventLog_FormatLogFileClosedMessage( logMessage, sizeof( logMessage )))
+			Log_Printf( "%s", logMessage );
 		FS_Close( svs.log.file );
 	}
 	svs.log.file = NULL;
@@ -102,10 +111,10 @@ void Log_Printf( const char *fmt, ... )
 {
 	va_list		argptr;
 	static char	string[1024];
-	char		*p;
+	char		message[1024];
 	time_t		ltime;
 	struct tm	*today;
-	int		len;
+	sv_server_log_timestamp_t timestamp;
 
 	if( !svs.log.net_log && !svs.log.active )
 		return;
@@ -113,14 +122,19 @@ void Log_Printf( const char *fmt, ... )
 	time( &ltime );
 	today = localtime( &ltime );
 
-	len = Q_snprintf( string, sizeof( string ), "%02i/%02i/%04i - %02i:%02i:%02i: ",
-		today->tm_mon+1, today->tm_mday, 1900 + today->tm_year, today->tm_hour, today->tm_min, today->tm_sec );
-
-	p = string + len;
-
 	va_start( argptr, fmt );
-	Q_vsnprintf( p, sizeof( string ) - len, fmt, argptr );
+	Q_vsnprintf( message, sizeof( message ), fmt, argptr );
 	va_end( argptr );
+
+	timestamp.month = today->tm_mon + 1;
+	timestamp.day = today->tm_mday;
+	timestamp.year = 1900 + today->tm_year;
+	timestamp.hour = today->tm_hour;
+	timestamp.minute = today->tm_min;
+	timestamp.second = today->tm_sec;
+
+	if( !SV_ServerEventLog_FormatLine( string, sizeof( string ), &timestamp, message ))
+		return;
 
 	if( svs.log.net_log )
 		Netchan_OutOfBandPrint( NS_SERVER, svs.log.net_address, "log %s", string );
@@ -139,7 +153,10 @@ void Log_Printf( const char *fmt, ... )
 
 static void Log_PrintServerCvar( const char *var_name, const char *var_value, const void *unused2, void *unused3 )
 {
-	Log_Printf( "Server cvar \"%s\" = \"%s\"\n", var_name, var_value );
+	char logMessage[1024];
+
+	if( SV_ServerEventLog_FormatServerCvarMessage( logMessage, sizeof( logMessage ), var_name, var_value ))
+		Log_Printf( "%s", logMessage );
 }
 
 /*
@@ -150,12 +167,16 @@ Log_PrintServerVars
 */
 void Log_PrintServerVars( void )
 {
+	char logMessage[64];
+
 	if( !svs.log.active )
 		return;
 
-	Log_Printf( "Server cvars start\n" );
+	if( SV_ServerEventLog_FormatServerCvarsStartMessage( logMessage, sizeof( logMessage )))
+		Log_Printf( "%s", logMessage );
 	Cvar_LookupVars( FCVAR_SERVER, NULL, NULL, (setpair_t)Log_PrintServerCvar );
-	Log_Printf( "Server cvars end\n" );
+	if( SV_ServerEventLog_FormatServerCvarsEndMessage( logMessage, sizeof( logMessage )))
+		Log_Printf( "%s", logMessage );
 }
 
 /*

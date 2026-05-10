@@ -28,6 +28,9 @@ Current implementation notes:
 - `server-migration-guide.md`: how server-side helpers should move into
   `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
   surfaces remain compatibility boundaries.
+- `server-event-log-migration.md`: how Phase 58 routes server event log line
+  and stock message formatting through target-neutral helpers while sinks stay
+  legacy-owned.
 - `server-filter-migration.md`: how Phase 53 routes ID/IP filter policy through
   target-neutral modern server helpers while legacy command/file ownership
   stays in `sv_filter.c`.

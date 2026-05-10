@@ -94,6 +94,7 @@ def build(bld):
 			'engine_platform_command_line': '../tests/engine/platform_command_line.cpp',
 			'engine_platform_current_user': '../tests/engine/platform_current_user.cpp',
 			'engine_server_filter': '../tests/engine/server_filter.cpp',
+			'engine_server_event_log': '../tests/engine/server_event_log.cpp',
 			'engine_source_query': '../tests/engine/source_query.cpp',
 			'engine_system_console_message': '../tests/engine/system_console_message.cpp',
 			'engine_user_agent_policy': '../tests/engine/user_agent_policy.cpp',
