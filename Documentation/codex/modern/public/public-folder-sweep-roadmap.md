@@ -62,10 +62,20 @@ Good candidates:
 - `atlas.c`: tiny, project-owned, tested, and utility-shaped.
 - `build.c`: split only pure date/build-number math first.
 
+Status: completed on 2026-05-10. Atlas allocation now lives in
+`src/utilities/atlas.cpp`, and `public/atlas.c` was removed. Pure ISO
+build-number math now lives in `src/utilities/build_number.cpp`; `public/build.c`
+still owns `Q_buildnum` caching and generated VCS metadata access.
+
 Needs tests before movement:
 
 - `utflib.c`
 - `dllhelpers.c`
+
+Status: `utflib.c` now has focused public coverage in
+`public/tests/test_utflib.c`. The implementation remains in `public/` until a
+dedicated Unicode migration phase can preserve its signed-byte and invalid
+sequence behavior deliberately.
 
 Keep in public for now:
 

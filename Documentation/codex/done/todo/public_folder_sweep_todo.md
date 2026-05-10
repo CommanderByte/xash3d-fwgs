@@ -55,17 +55,23 @@ This phase follows the patterns proven by:
   `src/utilities/compat/crtlib_text.cpp`, `public/crtlib.c`,
   `public/tests/test_strings.c`, `tests/utilities/text.cpp`.
 
-- [ ] `PUB-SWEEP-004` Move the atlas packer implementation behind
+- [x] `PUB-SWEEP-004` Move the atlas packer implementation behind
   `src/utilities/atlas.*` while preserving `atlas_t` and `Atlas_*`.
-  Evidence:
+  Evidence: `src/include/utilities/atlas.hpp`, `src/utilities/atlas.cpp`,
+  `src/utilities/compat/atlas_adapter.cpp`, `public/atlas.h`,
+  `tests/utilities/atlas.cpp`; `public/atlas.c` was removed.
 
-- [ ] `PUB-SWEEP-005` Split pure build-number calculation from generated VCS
+- [x] `PUB-SWEEP-005` Split pure build-number calculation from generated VCS
   build data, moving only the pure calculation first.
-  Evidence:
+  Evidence: `src/include/utilities/build_number.hpp`,
+  `src/utilities/build_number.cpp`,
+  `src/utilities/compat/build_number_adapter.cpp`, `public/build.c`,
+  `tests/utilities/build_number.cpp`.
 
-- [ ] `PUB-SWEEP-006` Add focused UTF helper tests before any `utflib`
+- [x] `PUB-SWEEP-006` Add focused UTF helper tests before any `utflib`
   migration.
-  Evidence:
+  Evidence: `public/tests/test_utflib.c`; `public/wscript` now builds
+  `test_utflib`.
 
 - [x] `PUB-SWEEP-007` Explicitly defer `getopt`, `miniz`, math, matrix, and
   swap helpers unless a later dedicated phase selects them.
@@ -77,5 +83,6 @@ This phase follows the patterns proven by:
   binaries.
   Evidence: `.\waf.bat build --targets=test_crclib,test_utilities_md5 --alltests`,
   `.\waf.bat build --targets=test_strings,test_utilities_text --alltests`,
-  `.\waf.bat build --alltests`, and a Windows `+fs_path +quit` smoke passed on
-  2026-05-10.
+  `.\waf.bat build --targets=test_atlas,test_utilities_atlas,test_build,test_utilities_build_number,test_utflib --alltests`,
+  `.\waf.bat build --alltests`, and Windows `+fs_path +quit` smoke tests passed
+  on 2026-05-10.

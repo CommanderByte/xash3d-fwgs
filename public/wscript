@@ -146,6 +146,8 @@ def build(bld):
 
 	public_sources = bld.path.ant_glob('*.c', excl='build_vcs.c')
 	public_sources += [
+		'../src/utilities/compat/atlas_adapter.cpp',
+		'../src/utilities/compat/build_number_adapter.cpp',
 		'../src/utilities/compat/checksum_adapter.cpp',
 		'../src/utilities/compat/crclib_hash.cpp',
 		'../src/utilities/compat/crclib_md5.cpp',
@@ -172,6 +174,7 @@ def build(bld):
 			'parsefile': 'tests/test_parsefile.c',
 			'atlas': 'tests/test_atlas.c',
 			'swapstruct': 'tests/test_swapstruct.c',
+			'utflib': 'tests/test_utflib.c',
 		}
 
 		for i in tests:

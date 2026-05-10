@@ -30,6 +30,7 @@ auditability and evidence lookup while active migration work continues under
 - [modern_filesystem_handlers_todo.md](modern_filesystem_handlers_todo.md)
 - [pak_backend_todo.md](pak_backend_todo.md)
 - [path_policy_todo.md](path_policy_todo.md)
+- [public_folder_sweep_todo.md](public_folder_sweep_todo.md)
 - [search_results_todo.md](search_results_todo.md)
 - [utilities_todo.md](utilities_todo.md)
 - [wad_backend_todo.md](wad_backend_todo.md)
