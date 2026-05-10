@@ -397,10 +397,131 @@ the main phase tracker until they are selected.
   frame in 0.409 seconds before stopping with reason `command` at May 10 2026
   17:52 local time.
 
+## Phase 69: Server Resource Catalog Builder
+
+Goal: turn the resource-list construction rules into a target-neutral planner
+before touching the global `sv.resources` list directly.
+
+- [x] Baseline `SV_AddResource()`, `SV_CreateResourceList()`,
+  `SV_DetermineResourceType()`, and the ordering of generic, sound, model,
+  decal, and event resources.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] Implement a modern resource catalog builder that takes snapshots of
+  precache entries, flags, indexes, types, and adapter-provided file sizes.
+  Evidence: `src/include/engine/server/server_resource_catalog.hpp`,
+  `src/engine/server/server_resource_catalog.cpp`.
+- [x] Keep filesystem probes, console output, `sv.resources` mutation, and
+  `MAX_RESOURCE_LIST` enforcement in the adapter unless the boundary becomes
+  clearly cleaner during implementation.
+  Evidence: `engine/server/server_resource_catalog_adapter.h`,
+  `engine/server/server_resource_catalog_adapter.cpp`,
+  `engine/server/sv_init.c`.
+- [x] Add tests for empty precache entries, `!` sound sentinels, model wildcard
+  resources, signed sizes, index propagation, flags, and stable output order.
+  Evidence: `tests/engine/server_resource_catalog.cpp`.
+- [x] Route the resource entry planning through the helper and verify focused
+  tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_resource_catalog`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 80/80 tests, and the fresh
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` smoke copied
+  `build\engine\xash.dll` into `run-win32`, ran with
+  `XASH3D_BASEDIR=C:\git\xash3d-fwgs\run-win32` and
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.413 seconds, and stopped with reason `command` at
+  May 10 2026 18:07 local time.
+
+## Phase 70: Hot Resource Announcement
+
+Goal: separate the single-resource announcement decision from reliable datagram
+delivery.
+
+- [ ] Baseline `SV_SendSingleResource()` for models, sounds, generic files,
+  file-size lookup, path prefixing, and `svc_resource` emission.
+- [ ] Implement a hot-resource announcement planner that builds the exact
+  `resource_t` snapshot needed by `SV_SendResource()`.
+- [ ] Keep `FS_FileSize()`, reliable datagram ownership, and final
+  `SV_SendResource()` delivery legacy-owned.
+- [ ] Add tests for model `*` resources, sound path prefixing, empty names,
+  generic files, flags, indexes, and size preservation.
+- [ ] Route `SV_SendSingleResource()` through the helper and verify focused
+  tests, full tests, and `+wait +wait` smoke timing.
+
+## Phase 71: Server Reslist File Policy
+
+Goal: isolate `.res` and `reslist.txt` token classification without moving
+legacy file loading or parse ownership yet.
+
+- [ ] Baseline `SV_ReadResourceList()` behavior for safe-download filtering,
+  slash normalization, sound classification, generic fallback, and console
+  diagnostics.
+- [ ] Implement a reslist token classifier that returns normalized path,
+  resource type, and intended index route.
+- [ ] Keep `FS_LoadFile()`, `COM_ParseFile()`, logging, `SV_SoundIndex()`, and
+  `SV_GenericIndex()` legacy-owned.
+- [ ] Add tests for empty tokens, unsafe paths, backslash input, `sound/`
+  prefixes, supported sound extensions, unsupported sound files, and generic
+  fallback.
+- [ ] Route classification through the helper and verify focused tests, full
+  tests, and `+wait +wait` smoke timing.
+
+## Phase 72: Client Userinfo Update Message
+
+Goal: move the `svc_updateuserinfo` payload shape into modern tested code while
+preserving legacy userinfo mutation and hashing.
+
+- [ ] Baseline `SV_FullClientUpdate()` for named clients, unnamed clients,
+  client indexes, user IDs, sanitized info strings, and hashed CD key payloads.
+- [ ] Implement a target-neutral update-userinfo encoder that consumes
+  adapter-provided sanitized userinfo and digest bytes.
+- [ ] Keep `SV_UserinfoChanged()`, `Info_RemovePrefixedKeys()`, MD5
+  calculation, and destination message ownership legacy-owned unless a smaller
+  extraction proves safe.
+- [ ] Add golden tests for name-present bit behavior, unnamed clients, digest
+  emission, exact byte layout, and overflow handling.
+- [ ] Route serialization through the helper and verify focused tests, full
+  tests, and `+wait +wait` smoke timing.
+
+## Phase 73: Small Server Service Messages
+
+Goal: remove a set of tiny service-message writers from legacy code without
+creating a broad serverdata rewrite.
+
+- [ ] Baseline `SV_FailDownload()`, `SV_BuildReconnect()`,
+  `SV_UpdateClientView()`, `SV_TogglePause()`, and `SV_WriteVoiceCodec()`.
+- [ ] Implement target-neutral encoders for `svc_filetxferfailed`,
+  `svc_stufftext reconnect`, `svc_setview`, `svc_setpause`, and
+  `svc_voiceinit`.
+- [ ] Keep cvars, state checks, client selection, and destination buffer
+  ownership in legacy code.
+- [ ] Add golden tests for command bytes, strings, signed fields, fallback
+  codec behavior, and overflow handling.
+- [ ] Route the selected writers through adapters and verify focused tests,
+  full tests, and `+wait +wait` smoke timing.
+
+## Phase 74: Server Voice Relay Policy
+
+Goal: extract the voice relay decision tree before attempting a larger client
+message or audio subsystem migration.
+
+- [ ] Baseline `SV_ParseVoiceData()` for loopback, frame count, size limits,
+  voice enable gates, spawned-client gates, physics callback behavior,
+  listener masks, and per-recipient datagram-capacity checks.
+- [ ] Implement a target-neutral voice relay policy helper and add a
+  `svc_voicedata` payload writer only if the boundary stays small.
+- [ ] Keep message reads, `SV_Physics()->pfnVoice_SetClientListening()`,
+  recipient iteration, and datagram writes legacy-owned.
+- [ ] Add tests for oversized packets, disabled voice, loopback to sender,
+  listener-mask filtering, single-player suppression, and capacity rejection.
+- [ ] Route relay decisions through the helper and verify focused tests, full
+  tests, and `+wait +wait` smoke timing.
+
 ## Deferred Server Items
 
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
+- [ ] Serverdata handshake migration after the smaller service-message writers
+  are stable and a baseline fixture exists.
 - [ ] Save/restore migration after binary compatibility fixtures exist.
 - [ ] Game DLL bridge migration after explicit ABI and licensing review.
 - [ ] Physics/world migration after movement and trace fixtures exist.

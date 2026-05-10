@@ -98,6 +98,7 @@ def build(bld):
 			'engine_resource_identity': '../tests/engine/resource_identity.cpp',
 			'engine_server_consistency_list': '../tests/engine/server_consistency_list.cpp',
 			'engine_server_consistency_policy': '../tests/engine/server_consistency_policy.cpp',
+			'engine_server_resource_catalog': '../tests/engine/server_resource_catalog.cpp',
 			'engine_server_customization_message': '../tests/engine/server_customization_message.cpp',
 			'engine_server_resource_message': '../tests/engine/server_resource_message.cpp',
 			'engine_server_download_policy': '../tests/engine/server_download_policy.cpp',

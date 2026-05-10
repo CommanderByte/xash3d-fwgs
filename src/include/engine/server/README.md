@@ -18,6 +18,8 @@ Current helpers:
   formatting.
 - `resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
   checks, resource matching, and size summaries.
+- `server_resource_catalog.hpp`: server startup resource catalog planning for
+  generic, sound, model, decal, and event precaches.
 - `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
   decisions built from resource snapshots and adapter-supplied sidecar probes.
 - `server_consistency_list.hpp`: consistency-list enable and resource-index

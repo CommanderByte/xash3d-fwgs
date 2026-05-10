@@ -135,6 +135,47 @@ Pop-Location
 On 2026-05-09 this exited with code `0`, printed the expected Steam `valve`
 directory and WAD search paths, and stopped with reason `"command"`.
 
+## Phase Validation Harness
+
+Use `scripts/run-phase-validation.ps1` for repeatable phase evidence instead
+of running each command by hand. The default flow is:
+
+1. optional focused test target;
+2. `.\waf.bat build --targets=xash`;
+3. `.\waf.bat build --alltests`;
+4. refresh `run-win32` with rebuilt engine, filesystem, and OpenGL renderer
+   DLLs;
+5. run `xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`;
+6. parse `engine.log` for `gfx.wad`, first-frame timing, and stop reason.
+
+Example for a phase-specific helper:
+
+```powershell
+.\scripts\run-phase-validation.ps1 `
+  -FocusedTarget test_engine_server_resource_catalog `
+  -StopRunningXash
+```
+
+The script writes a Markdown report under
+`.codex-cache/validation-reports/` unless `-NoReportFile` is supplied. It also
+prints a copy-pasteable `Evidence:` line for `Documentation/codex/tasks.md`.
+
+Options worth knowing:
+
+- `-SkipFullTests`, `-SkipSmoke`, or `-SkipXashBuild` can be used while
+  debugging the harness itself.
+- `-CopyLauncher` also refreshes `run-win32/xash3d.exe`; it is intentionally
+  off by default so ordinary engine DLL phases do not change the launcher.
+- `-AllowSmokeNonZeroExit` records first-frame timing even when the process
+  exits non-zero. Use this only to investigate known post-first-frame shutdown
+  flakes, not as green phase evidence.
+
+On 2026-05-10 one validation run reached first frame and then crashed during
+audio shutdown in `DSOUND.DLL` after `Shutting down audio.` The next strict
+smoke runs exited cleanly, so this is currently treated as a Windows
+DirectSound shutdown/unload flake to investigate later rather than as a Phase
+69 resource-catalog regression.
+
 ## Notes For Later
 
 - CMake was available through Visual Studio, but not on `PATH`.

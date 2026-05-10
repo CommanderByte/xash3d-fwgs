@@ -2243,6 +2243,143 @@ commit, test command, document link, or manual verification note that proves it.
   frame in 0.409 seconds before stopping with reason `command` at May 10 2026
   17:52 local time.
 
+## Phase 69: Server Resource Catalog Builder
+
+- [x] `ENG-RESCAT-001` Baseline `SV_AddResource()`,
+  `SV_CreateResourceList()`, `SV_DetermineResourceType()`, and related
+  resource ordering for generic, sound, model, decal, and event entries.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-RESCAT-002` Implement a target-neutral resource catalog builder
+  that consumes adapter-provided precache, file-size, index, and flag
+  snapshots.
+  Evidence: `src/include/engine/server/server_resource_catalog.hpp`,
+  `src/engine/server/server_resource_catalog.cpp`.
+- [x] `ENG-RESCAT-003` Add golden tests for ordering, empty entries, sound
+  sentinel names, model wildcard size behavior, flags, indexes, and resource
+  type assignment.
+  Evidence: `tests/engine/server_resource_catalog.cpp`.
+- [x] `ENG-RESCAT-004` Route resource entry planning through the helper while
+  keeping filesystem probes, `sv.resources` storage, console output, and
+  precache mutation legacy-owned.
+  Evidence: `engine/server/server_resource_catalog_adapter.h`,
+  `engine/server/server_resource_catalog_adapter.cpp`,
+  `engine/server/sv_init.c`.
+- [x] `ENG-RESCAT-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_resource_catalog`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 80/80 tests, and the fresh
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` smoke copied
+  `build\engine\xash.dll` into `run-win32`, ran with
+  `XASH3D_BASEDIR=C:\git\xash3d-fwgs\run-win32` and
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.413 seconds, and stopped with reason `command` at
+  May 10 2026 18:07 local time.
+
+## Phase 70: Hot Resource Announcement
+
+- [ ] `ENG-HOTRES-001` Baseline `SV_SendSingleResource()` name, size, type,
+  flag, and `svc_resource` behavior.
+  Evidence:
+- [ ] `ENG-HOTRES-002` Implement a target-neutral hot-resource announcement
+  planner that consumes adapter-provided type, index, flags, and file size.
+  Evidence:
+- [ ] `ENG-HOTRES-003` Add tests for model wildcard resources, sound path
+  prefixing, generic resources, empty names, and signed size preservation.
+  Evidence:
+- [ ] `ENG-HOTRES-004` Route `SV_SendSingleResource()` through the helper while
+  keeping `FS_FileSize()`, reliable datagram ownership, and final
+  `SV_SendResource()` delivery legacy-owned.
+  Evidence:
+- [ ] `ENG-HOTRES-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 71: Server Reslist File Policy
+
+- [ ] `ENG-RESLIST-001` Baseline `.res` and `reslist.txt` parsing decisions:
+  safe-download filtering, slash normalization, sound classification, generic
+  fallback, and console reporting.
+  Evidence:
+- [ ] `ENG-RESLIST-002` Implement a target-neutral reslist token classifier
+  that returns normalized path, resource type, and index route intent.
+  Evidence:
+- [ ] `ENG-RESLIST-003` Add tests for empty tokens, unsafe paths, Windows slash
+  input, supported sound formats, unsupported sound paths, and generic
+  fallback.
+  Evidence:
+- [ ] `ENG-RESLIST-004` Route `SV_ReadResourceList()` decisions through the
+  helper while keeping file loading, `COM_ParseFile()`, console output,
+  `SV_SoundIndex()`, and `SV_GenericIndex()` legacy-owned.
+  Evidence:
+- [ ] `ENG-RESLIST-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 72: Client Userinfo Update Message
+
+- [ ] `ENG-USERINFO-001` Baseline `SV_FullClientUpdate()` for name-present,
+  name-missing, sanitized userinfo, user ID, client index, and hashed CD key
+  payload behavior.
+  Evidence:
+- [ ] `ENG-USERINFO-002` Implement a target-neutral update-userinfo payload
+  encoder that consumes adapter-provided sanitized userinfo and MD5 digest
+  snapshots.
+  Evidence:
+- [ ] `ENG-USERINFO-003` Add golden tests for named clients, unnamed clients,
+  digest emission, bit layout, and overflow handling.
+  Evidence:
+- [ ] `ENG-USERINFO-004` Route `SV_FullClientUpdate()` serialization through
+  the helper while keeping `SV_UserinfoChanged()`, prefix stripping, MD5
+  calculation, and destination message ownership legacy-owned unless a smaller
+  extraction is clearly safe.
+  Evidence:
+- [ ] `ENG-USERINFO-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 73: Small Server Service Messages
+
+- [ ] `ENG-SVCMSG-001` Baseline compact service writers including
+  `SV_FailDownload()`, `SV_BuildReconnect()`, `SV_UpdateClientView()`,
+  `SV_TogglePause()`, and `SV_WriteVoiceCodec()`.
+  Evidence:
+- [ ] `ENG-SVCMSG-002` Implement target-neutral service message encoders for
+  file-transfer failure, reconnect command, set-view, pause, and voice-codec
+  payloads.
+  Evidence:
+- [ ] `ENG-SVCMSG-003` Add golden tests for command bytes, signed fields,
+  string payloads, empty codec fallback, and overflow handling.
+  Evidence:
+- [ ] `ENG-SVCMSG-004` Route selected service writers through adapters while
+  keeping cvars, server state checks, client selection, and message buffer
+  ownership legacy-owned.
+  Evidence:
+- [ ] `ENG-SVCMSG-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
+## Phase 74: Server Voice Relay Policy
+
+- [ ] `ENG-VOICE-001` Baseline `SV_ParseVoiceData()` loopback, frame count,
+  size limit, voice enable gates, spawned-client gate, physics callback,
+  listener mask, and per-recipient datagram behavior.
+  Evidence:
+- [ ] `ENG-VOICE-002` Implement a target-neutral voice relay policy helper and,
+  if cleanly separable, a `svc_voicedata` payload writer.
+  Evidence:
+- [ ] `ENG-VOICE-003` Add tests for oversized packets, disabled voice, sender
+  loopback behavior, listener-mask filtering, single-player suppression, and
+  datagram-capacity rejection.
+  Evidence:
+- [ ] `ENG-VOICE-004` Route relay decisions through the helper while keeping
+  message reads, game DLL physics callbacks, recipient iteration, and datagram
+  writes legacy-owned.
+  Evidence:
+- [ ] `ENG-VOICE-005` Run focused tests, full tests, runtime smoke with
+  `+wait +wait`, and record first-frame timing.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current

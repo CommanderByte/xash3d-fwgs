@@ -200,6 +200,7 @@ def build(bld):
 		'server/server_consistency_list_adapter.cpp',
 		'server/server_consistency_policy_adapter.cpp',
 		'server/server_download_policy_adapter.cpp',
+		'server/server_resource_catalog_adapter.cpp',
 		'server/server_customization_message_adapter.cpp',
 		'server/server_resource_message_adapter.cpp',
 		'server/server_upload_queue_adapter.cpp',

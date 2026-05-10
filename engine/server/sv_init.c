@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "library.h"
 #include "voice.h"
 #include "pm_local.h"
+#include "server_resource_catalog_adapter.h"
 
 #if XASH_LOW_MEMORY != 2
 int SV_UPDATE_BACKUP = SINGLEPLAYER_BACKUP;
@@ -58,6 +59,14 @@ static void SV_AddResource( resourcetype_t type, const char *name, int size, byt
 	pResource->ucFlags = flags;
 	pResource->nIndex = index;
 	pResource->type = type;
+}
+
+static void SV_AddCatalogResource( const sv_resource_catalog_entry_t *entry )
+{
+	if( !entry || !entry->should_add )
+		return;
+
+	SV_AddResource( entry->type, entry->name, entry->download_size, entry->flags, entry->index );
 }
 
 /*
@@ -375,18 +384,21 @@ add resources to common list
 */
 static void SV_CreateResourceList( void )
 {
-	qboolean	ffirstsent = false;
+	sv_resource_catalog_state_t catalog;
+	sv_resource_catalog_entry_t entry;
 	int	i, nSize;
 	char	*s;
 
 	sv.num_resources = 0;
+	SV_ResourceCatalog_Init( &catalog );
 
 	for( i = 1; i < MAX_CUSTOM; i++ )
 	{
 		s = sv.files_precache[i];
 		if( COM_StringEmptyOrNULL( s )) break; // end of list
-		nSize = FS_FileSize( s, false );
-		SV_AddResource( t_generic, s, nSize, RES_FATALIFMISSING, i );
+		nSize = SV_ResourceCatalog_NeedsFileSize( t_generic, s ) ? FS_FileSize( s, false ) : 0;
+		entry = SV_ResourceCatalog_AddGeneric( s, i, nSize );
+		SV_AddCatalogResource( &entry );
 	}
 
 	for( i = 1; i < MAX_SOUNDS; i++ )
@@ -395,41 +407,34 @@ static void SV_CreateResourceList( void )
 		if( COM_StringEmptyOrNULL( s ))
 			break; // end of list
 
-		if( s[0] == '!' )
-		{
-			if( !ffirstsent )
-			{
-				SV_AddResource( t_sound, "!", 0, RES_FATALIFMISSING, i );
-				ffirstsent = true;
-			}
-		}
-		else
-		{
-			nSize = FS_FileSize( va( DEFAULT_SOUNDPATH "%s", s ), false );
-			SV_AddResource( t_sound, s, nSize, 0, i );
-		}
+		nSize = SV_ResourceCatalog_NeedsFileSize( t_sound, s ) ? FS_FileSize( va( DEFAULT_SOUNDPATH "%s", s ), false ) : 0;
+		entry = SV_ResourceCatalog_AddSound( &catalog, s, i, nSize );
+		SV_AddCatalogResource( &entry );
 	}
 
 	for( i = 1; i < MAX_MODELS; i++ )
 	{
 		s = sv.model_precache[i];
 		if( COM_StringEmptyOrNULL( s )) break; // end of list
-		nSize = ( s[0] != '*' ) ? FS_FileSize( s, false ) : 0;
-		SV_AddResource( t_model, s, nSize, sv.model_precache_flags[i], i );
+		nSize = SV_ResourceCatalog_NeedsFileSize( t_model, s ) ? FS_FileSize( s, false ) : 0;
+		entry = SV_ResourceCatalog_AddModel( s, i, nSize, sv.model_precache_flags[i] );
+		SV_AddCatalogResource( &entry );
 	}
 
 	// just send names
 	for( i = 0; i < MAX_DECALS && host.draw_decals[i][0]; i++ )
 	{
-		SV_AddResource( t_decal, host.draw_decals[i], 0, 0, i );
+		entry = SV_ResourceCatalog_AddDecal( host.draw_decals[i], i );
+		SV_AddCatalogResource( &entry );
 	}
 
 	for( i = 1; i < MAX_EVENTS; i++ )
 	{
 		s = sv.event_precache[i];
 		if( COM_StringEmptyOrNULL( s )) break; // end of list
-		nSize = FS_FileSize( s, false );
-		SV_AddResource( t_eventscript, s, nSize, RES_FATALIFMISSING, i );
+		nSize = SV_ResourceCatalog_NeedsFileSize( t_eventscript, s ) ? FS_FileSize( s, false ) : 0;
+		entry = SV_ResourceCatalog_AddEventScript( s, i, nSize );
+		SV_AddCatalogResource( &entry );
 	}
 }
 

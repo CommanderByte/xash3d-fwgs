@@ -207,6 +207,41 @@ missing custom decals it builds `!MD5<hash>` and calls `SV_CheckFile()`.
 `pfnPlayerCustomization()` callback, propagates customizations to other spawned
 clients, and marks upload state complete.
 
+## Startup Resource Catalog
+
+`SV_CreateResourceList()` rebuilds `sv.resources[]` before the resource-list
+message is sent. It owns ordering and feeds the same `resource_t` array used by
+downloads, consistency checks, and client startup messages.
+
+Legacy ordering is:
+
+1. generic files from `sv.files_precache[1..]`;
+2. sounds from `sv.sound_precache[1..]`;
+3. models from `sv.model_precache[1..]`;
+4. decals from `host.draw_decals[0..]`;
+5. event scripts from `sv.event_precache[1..]`.
+
+Each precache loop stops at the first empty entry. Generic files and event
+scripts are marked `RES_FATALIFMISSING`; normal sounds are not. Models preserve
+their per-entry `sv.model_precache_flags[]`. Decals are name-only resources with
+zero download size and zero flags.
+
+Download-size rules:
+
+- generic files and event scripts probe the exact precache path;
+- normal sounds probe `sound/<name>` but store only `<name>` in `resource_t`;
+- models probe the model path unless the name begins with `*`;
+- inline model names beginning with `*` report size zero;
+- decals report size zero.
+
+Sentence-style sound names beginning with `!` are a special compatibility
+case. The first such sound emits one `t_sound` resource named exactly `!`, with
+size zero and `RES_FATALIFMISSING`; later sentence entries emit no additional
+resource rows. The index of the first sentence entry is preserved.
+
+`SV_AddResource()` is still the hard legacy boundary for `sv.resources[]`
+mutation and `MAX_RESOURCES` overflow handling.
+
 ## Resource Message Serialization
 
 `SV_SendResources()` writes the server-side resource list into the reliable
