@@ -11,6 +11,8 @@ Current helpers:
 - `save_restore_format.hpp`: read-only save/restore binary fixture parser
   contracts for headers, sections, entity patches, packed short fields, and
   bundled file entries.
+- `client_policy.hpp`: userinfo penalty, rate/update interval, and
+  prediction/lag/local-weapon flag decision contracts.
 - `client_command_dispatch.hpp`: server client-command lookup and routing
   decisions.
 - `netapi_info.hpp`: short `A2A_INFO` and long `A2A_NETINFO` info-string

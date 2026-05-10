@@ -12,6 +12,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [client-command-dispatch-baseline.md](client-command-dispatch-baseline.md)
   documents `SV_ExecuteClientCommand()` built-in, enttools, fullupdate, and game
   DLL fallback routing before Phase 60.
+- [client-rate-userinfo-policy-baseline.md](client-rate-userinfo-policy-baseline.md)
+  documents userinfo penalty timing, rate/update interval decisions, and
+  prediction/lag/local-weapon flags before Phase 85.
 - [command-buffer-baseline.md](command-buffer-baseline.md) documents the
   command-buffer queue, splitter, comment, quote, insertion, and migration
   compatibility rules.

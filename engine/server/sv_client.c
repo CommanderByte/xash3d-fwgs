@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "net_encode.h"
 #include "net_api.h"
 #include "client_command_dispatch_adapter.h"
+#include "client_policy_adapter.h"
 #include "connectionless_classifier_adapter.h"
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
@@ -1852,83 +1853,53 @@ static qboolean SV_Pause_f( sv_client_t *cl )
 
 static qboolean SV_ShouldUpdateUserinfo( sv_client_t *cl )
 {
-	qboolean allow = true; // predict state
+	sv_client_userinfo_penalty_input_t input;
+	sv_client_userinfo_penalty_plan_t plan;
 
-	if( !sv_userinfo_enable_penalty.value )
-		return allow;
+	memset( &input, 0, sizeof( input ));
+	input.penalty_enabled = sv_userinfo_enable_penalty.value != 0.0f;
+	input.fake_client = FBitSet( cl->flags, FCL_FAKECLIENT );
+	input.single_player = Host_IsSinglePlayerGame();
+	input.realtime = host.realtime;
+	input.next_change_time = cl->userinfo_next_changetime;
+	input.penalty = cl->userinfo_penalty;
+	input.base_penalty = sv_userinfo_penalty_time.value;
+	input.penalty_multiplier = sv_userinfo_penalty_multiplier.value;
+	input.change_attempts = cl->userinfo_change_attempts;
+	input.max_attempts = (int)sv_userinfo_penalty_attempts.value;
 
-	if( FBitSet( cl->flags, FCL_FAKECLIENT ))
-		return allow;
+	plan = SV_ClientPolicy_BuildUserinfoPenaltyPlan( &input );
 
-	if( Host_IsSinglePlayerGame( ))
-		return allow;
-
-	// start from 1 second
-	if( !cl->userinfo_penalty )
-		cl->userinfo_penalty = sv_userinfo_penalty_time.value;
-
-	// player changes userinfo after limit time window, but before
-	// next timewindow
-	// he seems to be spammer, so just increase change attempts
-	if( host.realtime < cl->userinfo_next_changetime + cl->userinfo_penalty * sv_userinfo_penalty_multiplier.value )
+	if( plan.report_ignored_update )
 	{
-		// player changes userinfo too quick! ignore!
-		if( host.realtime < cl->userinfo_next_changetime && cl->userinfo_change_attempts > 0 )
-		{
-			Con_Reportf( "%s: ignore userinfo update for %s: penalty %f, attempts %i\n",
-				__func__, cl->name, cl->userinfo_penalty, cl->userinfo_change_attempts );
-			allow = false;
-		}
-
-		cl->userinfo_change_attempts++;
+		Con_Reportf( "%s: ignore userinfo update for %s: penalty %f, attempts %i\n",
+			__func__, cl->name, cl->userinfo_penalty, cl->userinfo_change_attempts );
 	}
 
-	// they spammed too fast, increase penalty
-	if( cl->userinfo_change_attempts >= (int)sv_userinfo_penalty_attempts.value )
-	{
-		cl->userinfo_penalty *= sv_userinfo_penalty_multiplier.value;
-		cl->userinfo_change_attempts = 0;
+	cl->userinfo_penalty = plan.penalty;
+	cl->userinfo_change_attempts = plan.change_attempts;
+	cl->userinfo_next_changetime = plan.next_change_time;
 
+	if( plan.report_penalty_changed )
 		Con_Reportf( "%s: penalty set %f for %s\n", __func__, cl->userinfo_penalty, cl->name );
-	}
 
-	cl->userinfo_next_changetime = host.realtime + cl->userinfo_penalty * sv_userinfo_penalty_multiplier.value;
-
-	return allow;
+	return plan.allow_update ? true : false;
 }
 
 static double SV_CheckUpdateRate( double rate )
 {
-	if( sv_maxupdaterate.value )
-	{
-		if( rate < 1.0f / sv_maxupdaterate.value )
-			return 1.0f / sv_maxupdaterate.value;
-	}
-
-	if( sv_minupdaterate.value )
-	{
-		if( rate > 1.0f / sv_minupdaterate.value )
-			return 1.0f / sv_minupdaterate.value;
-	}
-
-	return rate;
+	return SV_ClientPolicy_ApplyUpdateIntervalLimits(
+		rate,
+		sv_maxupdaterate.value,
+		sv_minupdaterate.value );
 }
 
 static double SV_CheckRate( double rate )
 {
-	if( sv_maxrate.value )
-	{
-		if( rate > sv_maxrate.value )
-			return rate;
-	}
-
-	if( sv_minrate.value )
-	{
-		if( rate < sv_minrate.value )
-			return rate;
-	}
-
-	return rate;
+	return SV_ClientPolicy_ApplyLegacyServerRateLimits(
+		rate,
+		sv_maxrate.value,
+		sv_minrate.value );
 }
 
 /*
@@ -1947,6 +1918,7 @@ static void SV_UserinfoChanged( sv_client_t *cl )
 	sv_client_t	*current;
 	const char		*val;
 	int ival;
+	sv_client_userinfo_flag_plan_t flag_plan;
 
 	if( COM_StringEmptyOrNULL( cl->userinfo ))
 		return;
@@ -2008,33 +1980,32 @@ static void SV_UserinfoChanged( sv_client_t *cl )
 		}
 	}
 
-	// rate command
-	cl->netchan.rate = Q_atoi( Info_ValueForKey( cl->userinfo, "rate" ));
-	if( cl->netchan.rate <= 0 )
-		cl->netchan.rate = DEFAULT_RATE;
-	cl->netchan.rate = bound( MIN_RATE, cl->netchan.rate, MAX_RATE );
+	cl->netchan.rate = SV_ClientPolicy_ResolveRequestedClientRate(
+		Q_atoi( Info_ValueForKey( cl->userinfo, "rate" )),
+		DEFAULT_RATE,
+		MIN_RATE,
+		MAX_RATE );
 
-	// movement prediction
-	if( Q_atoi( Info_ValueForKey( cl->userinfo, "cl_nopred" )))
+	flag_plan = SV_ClientPolicy_BuildUserinfoFlagPlan(
+		Q_atoi( Info_ValueForKey( cl->userinfo, "cl_nopred" )),
+		Q_atoi( Info_ValueForKey( cl->userinfo, "cl_lc" )),
+		Q_atoi( Info_ValueForKey( cl->userinfo, "cl_lw" )));
+
+	if( !flag_plan.predict_movement )
 		ClearBits( cl->flags, FCL_PREDICT_MOVEMENT );
 	else SetBits( cl->flags, FCL_PREDICT_MOVEMENT );
 
-	// lag compensation
-	if( Q_atoi( Info_ValueForKey( cl->userinfo, "cl_lc" )))
+	if( flag_plan.lag_compensation )
 		SetBits( cl->flags, FCL_LAG_COMPENSATION );
 	else ClearBits( cl->flags, FCL_LAG_COMPENSATION );
 
-	// weapon perdiction
-	if( Q_atoi( Info_ValueForKey( cl->userinfo, "cl_lw" )))
+	if( flag_plan.local_weapons )
 		SetBits( cl->flags, FCL_LOCAL_WEAPONS );
 	else ClearBits( cl->flags, FCL_LOCAL_WEAPONS );
 
 	ival = Q_atoi( Info_ValueForKey( cl->userinfo, "cl_updaterate" ));
-
-	if( ival <= 0 )
-		ival = 20; // 20 fps as default
-
-	cl->next_messageinterval = SV_CheckUpdateRate( 1.0 / ival );
+	cl->next_messageinterval = SV_CheckUpdateRate(
+		SV_ClientPolicy_ResolveRequestedUpdateInterval( ival, 20 ));
 	cl->netchan.rate = SV_CheckRate( cl->netchan.rate );
 
 	// call prog code to allow overrides

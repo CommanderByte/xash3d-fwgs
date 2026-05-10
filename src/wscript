@@ -86,6 +86,7 @@ def build(bld):
 			'engine_base_command_registry': '../tests/engine/base_command_registry.cpp',
 			'engine_command_buffer': '../tests/engine/command_buffer.cpp',
 			'engine_client_command_dispatch': '../tests/engine/client_command_dispatch.cpp',
+			'engine_client_policy': '../tests/engine/client_policy.cpp',
 			'engine_connectionless_classifier': '../tests/engine/connectionless_classifier.cpp',
 			'engine_connection_response': '../tests/engine/connection_response.cpp',
 			'engine_filesystem_mount_flags': '../tests/engine/filesystem_mount_flags.cpp',

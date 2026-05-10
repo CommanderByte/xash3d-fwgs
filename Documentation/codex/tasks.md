@@ -2700,25 +2700,31 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 85: Client Rate And Userinfo Policy
 
-- [ ] `ENG-CLIENTPOL-001` Baseline `SV_ShouldUpdateUserinfo()`,
+- [x] `ENG-CLIENTPOL-001` Baseline `SV_ShouldUpdateUserinfo()`,
   `SV_CheckUpdateRate()`, `SV_CheckRate()`, and the low-risk policy portions of
   `SV_UserinfoChanged()`.
   Evidence:
-- [ ] `ENG-CLIENTPOL-002` Implement target-neutral helpers for update-info
+  `Documentation/codex/legacy/engine/client-rate-userinfo-policy-baseline.md`.
+- [x] `ENG-CLIENTPOL-002` Implement target-neutral helpers for update-info
   throttling, client rate validation, and compatible userinfo-derived flags
   that can be fed by legacy snapshots.
-  Evidence:
-- [ ] `ENG-CLIENTPOL-003` Add tests for update intervals, clamped rates,
+  Evidence: `src/include/engine/server/client_policy.hpp` and
+  `src/engine/server/client_policy.cpp`.
+- [x] `ENG-CLIENTPOL-003` Add tests for update intervals, clamped rates,
   missing or malformed userinfo values, and prediction/local-weapons related
   decisions.
-  Evidence:
-- [ ] `ENG-CLIENTPOL-004` Route only the smallest safe legacy decisions
+  Evidence: `tests/engine/client_policy.cpp`.
+- [x] `ENG-CLIENTPOL-004` Route only the smallest safe legacy decisions
   through adapters while keeping cvars, info-string mutation, hashing, logging,
   and client state ownership legacy-owned.
-  Evidence:
-- [ ] `ENG-CLIENTPOL-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/client_policy_adapter.h`,
+  `engine/server/client_policy_adapter.cpp`, and `engine/server/sv_client.c`.
+- [x] `ENG-CLIENTPOL-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_client_policy` and `-StopRunningXash` passed:
+  focused test 1/1, `xash` build, alltests 94/94, runtime smoke first frame
+  0.499 seconds, stop reason `command`.
 
 ## Phase 86: Game DLL Bridge Boundary Audit
 

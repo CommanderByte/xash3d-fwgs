@@ -12,6 +12,8 @@ Current helpers:
 - `save_restore_format.cpp`: read-only save/restore file-format fixture
   parsing for headers, token tables, field sections, `.HL3` entity patches,
   packed short fields, and bundled save files.
+- `client_policy.cpp`: target-neutral userinfo penalty, rate/update interval,
+  and prediction/lag/local-weapon flag decisions.
 - `client_command_dispatch.cpp`: target-neutral client command lookup and
   routing decisions.
 - `netapi_info.cpp`: target-neutral NetAPI info-string construction.

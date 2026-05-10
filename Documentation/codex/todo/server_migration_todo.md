@@ -655,17 +655,20 @@ moving runtime save/load ownership out of `sv_save.c`.
 Goal: extract another narrow `sv_client.c` policy slice before the Game DLL
 audit, keeping info-string mutation and live client state legacy-owned.
 
-- [ ] Baseline `SV_ShouldUpdateUserinfo()`, `SV_CheckUpdateRate()`,
+- [x] Baseline `SV_ShouldUpdateUserinfo()`, `SV_CheckUpdateRate()`,
   `SV_CheckRate()`, and the low-risk policy portions of
   `SV_UserinfoChanged()`.
-- [ ] Implement target-neutral helpers for update-info throttling, rate
+- [x] Implement target-neutral helpers for update-info throttling, rate
   validation, and compatible userinfo-derived flags from legacy snapshots.
-- [ ] Add tests for update intervals, clamped rates, missing or malformed
+- [x] Add tests for update intervals, clamped rates, missing or malformed
   userinfo values, and prediction/local-weapons related decisions.
-- [ ] Route only the smallest safe legacy decisions through adapters while
+- [x] Route only the smallest safe legacy decisions through adapters while
   keeping cvars, info-string mutation, hashing, logging, and client state
   ownership legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: Phase validation passed with focused target
+  `test_engine_client_policy`, alltests 94/94, and runtime smoke first frame
+  0.499 seconds.
 
 ## Phase 86: Game DLL Bridge Boundary Audit
 

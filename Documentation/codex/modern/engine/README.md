@@ -11,6 +11,9 @@ Current implementation notes:
 - `client-command-dispatch-migration.md`: how Phase 60 routes
   `SV_ExecuteClientCommand()` lookup through target-neutral helpers while
   command handlers and client mutation stay legacy-owned.
+- `client-policy-migration.md`: how Phase 85 routes userinfo penalty, rate,
+  update interval, and prediction/lag/local-weapon flag decisions through
+  target-neutral helpers while info-string mutation stays legacy-owned.
 - `command-buffer-migration-guide.md`: how raw `Cbuf_*` buffer mechanics route
   through the private modern command-buffer primitive while dispatch policy
   stays in `cmd.c`.
