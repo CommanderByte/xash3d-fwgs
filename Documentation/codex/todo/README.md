@@ -23,3 +23,5 @@ Active documents:
   tracks deferred non-Windows output backend decisions.
 - [posix_console_backend_todo.md](posix_console_backend_todo.md) tracks POSIX
   console backend validation.
+- [public_folder_sweep_todo.md](public_folder_sweep_todo.md) tracks the
+  intermediary public-folder relocation sweep.

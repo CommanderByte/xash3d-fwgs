@@ -17,6 +17,8 @@ migration phases and decisions.
   ownership boundaries, and compatibility notes.
 - [game-launch/](game-launch/README.md) contains the launcher modernization
   pilot notes and resource layout policy.
+- [public/](public/README.md) contains modernization notes for implementation
+  code currently living behind public C ABI headers.
 - [thread-safe-debugging-utilities.md](thread-safe-debugging-utilities.md)
   describes the shared debugging, snapshot, serialization, and trace utility
   model intended for the rewrite.

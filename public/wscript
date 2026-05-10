@@ -148,8 +148,10 @@ def build(bld):
 	public_sources += [
 		'../src/utilities/compat/checksum_adapter.cpp',
 		'../src/utilities/compat/crclib_hash.cpp',
+		'../src/utilities/compat/crclib_md5.cpp',
 		'../src/utilities/compat/crtlib_conversion.cpp',
 		'../src/utilities/compat/crtlib_path.cpp',
+		'../src/utilities/compat/crtlib_text.cpp',
 	]
 
 	bld.stlib(source = public_sources,

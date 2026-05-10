@@ -43,6 +43,11 @@ static int Test_Strnlwr( void )
 	if( Q_strcmp( s, "qwertyuiop" ))
 		return 2;
 
+	Q_strnlwr( "ABCD", s, 4 );
+
+	if( Q_strcmp( s, "abc" ))
+		return 3;
+
 	return 0;
 }
 
@@ -140,6 +145,20 @@ static int Test_memgets( qboolean include_null_terminator )
 	return 0;
 }
 
+static int Test_memgets_raw_truncation( void )
+{
+	byte data[] = { 'N', 'o', 'N', 'u', 'l', 'l' };
+	char buffer[4];
+	int data_offset = 0;
+	char *p;
+
+	p = Q_memfgets( data, sizeof( data ), &data_offset, buffer, sizeof( buffer ));
+	if( !p || Q_strcmp( buffer, "NoN" ) || data_offset != sizeof( data ))
+		return 1;
+
+	return 0;
+}
+
 int main( void )
 {
 	int ret = Test_Strcpycatcmp();
@@ -171,6 +190,11 @@ int main( void )
 
 	if( ret > 0 )
 		return ret + 64;
+
+	ret = Test_memgets_raw_truncation();
+
+	if( ret > 0 )
+		return ret + 80;
 
 	return 0;
 }

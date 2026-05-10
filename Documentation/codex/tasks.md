@@ -1678,7 +1678,54 @@ commit, test command, document link, or manual verification note that proves it.
   stopped with reason `command` at May 10 2026 12:43:58 local time. The quick
   `+quit` smoke did not emit a first-frame timing marker.
 
-## Phase 48: System User And Runtime Facades
+## Phase 48: Public Folder Relocation Sweep
+
+- [x] `PUB-SWEEP-001` Audit `public/` for small project-owned helper
+  implementations that can move behind `src/utilities` without changing public
+  headers or ABI.
+  Evidence: `Documentation/codex/todo/public_folder_sweep_todo.md`,
+  `Documentation/codex/modern/public/public-folder-sweep-roadmap.md`.
+- [x] `PUB-SWEEP-002` Move the remaining `crclib` MD5 family behind
+  `src/utilities/md5.*` and a public C compatibility export.
+  Evidence: `src/include/utilities/md5.hpp`, `src/utilities/md5.cpp`,
+  `src/utilities/compat/crclib_md5.cpp`, `public/crclib.c`,
+  `tests/utilities/md5.cpp`; `.\waf.bat build --targets=test_crclib,test_utilities_md5 --alltests`
+  passed 2/2 focused tests on 2026-05-10.
+- [x] `PUB-SWEEP-003` Move low-risk `crtlib` text helpers such as
+  `Q_strnlwr` and `Q_memfgets` after modern coverage records legacy edge
+  cases.
+  Evidence: `src/include/utilities/text.hpp`, `src/utilities/text.cpp`,
+  `src/utilities/compat/crtlib_text.cpp`, `public/crtlib.c`,
+  `public/tests/test_strings.c`, `tests/utilities/text.cpp`;
+  `.\waf.bat build --targets=test_strings,test_utilities_text --alltests`
+  passed 2/2 focused tests on 2026-05-10.
+- [ ] `PUB-SWEEP-004` Move the atlas block allocator implementation behind
+  `src/utilities/atlas.*` while preserving `atlas_t` and `Atlas_*`.
+  Evidence:
+- [ ] `PUB-SWEEP-005` Split pure build-number calculation from generated VCS
+  data without changing `Q_buildnum_iso` or `Q_buildnum`.
+  Evidence:
+- [ ] `PUB-SWEEP-006` Add focused UTF helper tests before any `utflib`
+  migration.
+  Evidence:
+- [x] `PUB-SWEEP-007` Defer `getopt`, `miniz`, math, matrix, and swap helpers
+  unless a dedicated later phase owns their risks.
+  Evidence: `Documentation/codex/todo/public_folder_sweep_todo.md`,
+  `Documentation/codex/modern/public/public-folder-sweep-roadmap.md`.
+- [x] `PUB-SWEEP-008` Run focused public tests, modern utility tests,
+  `.\waf.bat build --alltests`, and a smoke test when runtime-linked public
+  helpers change.
+  Evidence: focused MD5 and CRT text commands above passed; `.\waf.bat build --alltests`
+  passed 59/59 tests; Windows runtime smoke copied `build\engine\xash.dll`,
+  `build\filesystem\filesystem_stdio.dll`, and `build\ref\gl\ref_gl.dll` into
+  `run-win32`, then ran `.\xash3d.exe -dev 2 -log +fs_path +quit` from
+  `run-win32` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  The smoke log `run-win32\engine.log` reached renderer initialization and
+  stopped with reason `command` at May 10 2026 13:00:35 local time. The quick
+  `+quit` smoke did not emit a first-frame timing marker.
+
+## Phase 49: System User And Runtime Facades
 
 - [ ] `ENG-SYSUSER-001` Audit `Sys_GetCurrentUser`, `Sys_GetNativeObject`, and
   small runtime/platform helpers left in `engine/common/system.c`.
@@ -1690,7 +1737,7 @@ commit, test command, document link, or manual verification note that proves it.
   series when they cannot be tested locally.
   Evidence:
 
-## Phase 49: Filesystem Bridge And Logging Follow-Up
+## Phase 50: Filesystem Bridge And Logging Follow-Up
 
 - [ ] `ENG-FSBRIDGE-001` Revisit `engine/common/filesystem_engine.c` after the
   system console/backend phase to see whether any logging or mount bridge code
@@ -1813,3 +1860,5 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-10 | DEC-046 | Put a low-risk standalone straggler sweep at the top of the next roadmap, with CRC32 table/constant consolidation as the first target and broader CRT/platform work queued behind it. | `done/todo/low_risk_stragglers_todo.md`, `modern/engine/standalone-stragglers-roadmap.md`, `public/crclib.c`, `src/utilities/checksum.cpp` |
 | 2026-05-10 | DEC-047 | Centralize CRC32 table ownership in `src/utilities/checksum.cpp` and expose a private C table adapter so public `CRC32_*` loops keep their ABI and table-lookup performance. | `src/include/utilities/compat/checksum_adapter.h`, `src/utilities/compat/checksum_adapter.cpp`, `public/crclib.c`, `public/tests/test_crclib.c` |
 | 2026-05-10 | DEC-048 | Move public CRT numeric conversion implementations behind `src/utilities/conversion.*`, preserving the C ABI and legacy parsing quirks through a private compatibility export. | `done/todo/engine_crt_todo.md`, `modern/engine/public-crt-conversion-guide.md`, `src/utilities/compat/crtlib_conversion.cpp`, `public/tests/test_atoi.c` |
+| 2026-05-10 | DEC-049 | Insert a public-folder relocation sweep before system runtime work, using the public-header/compat-adapter pattern to move remaining project-owned helper islands while deferring vendored, platform fallback, and broad math/parser surfaces. | `todo/public_folder_sweep_todo.md`, `modern/public/public-folder-sweep-roadmap.md`, `public/crclib.c`, `public/crtlib.c`, `public/atlas.c`, `public/build.c` |
+| 2026-05-10 | DEC-050 | Move remaining MD5 and low-risk CRT text helper bodies into `src/utilities` with C compatibility exports, preserving public headers while adding bounded memory-line copy behavior for `Q_memfgets`. | `src/utilities/md5.cpp`, `src/utilities/text.cpp`, `src/utilities/compat/crclib_md5.cpp`, `src/utilities/compat/crtlib_text.cpp`, `public/tests/test_crclib.c`, `public/tests/test_strings.c` |
