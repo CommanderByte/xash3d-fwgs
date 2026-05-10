@@ -2850,23 +2850,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 90: Game DLL Text, Command, And Alert Output Policy
 
-- [ ] `ENG-GAMEDLL-OUTPUT-001` Baseline `pfnServerCommand()`,
+- [x] `ENG-GAMEDLL-OUTPUT-001` Baseline `pfnServerCommand()`,
   `pfnClientCommand()`, `pfnClientPrintf()`, `pfnServerPrint()`,
   `pfnAlertMessage()`, and `pfnEndSection()`.
   Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-OUTPUT-002` Extract command validation and
+- [x] `ENG-GAMEDLL-OUTPUT-002` Extract command validation and
   output-classification helpers where they can stay target-neutral.
-  Evidence:
-- [ ] `ENG-GAMEDLL-OUTPUT-003` Add tests for fake-client skips, invalid
+  Evidence: `src/include/engine/server/game_dll_output_policy.hpp` and
+  `src/engine/server/game_dll_output_policy.cpp`.
+- [x] `ENG-GAMEDLL-OUTPUT-003` Add tests for fake-client skips, invalid
   commands, developer verbosity, multiplayer `at_logged`, and aiconsole
   suppression.
-  Evidence:
-- [ ] `ENG-GAMEDLL-OUTPUT-004` Route safe decisions while keeping command
+  Evidence: `tests/engine/game_dll_output_policy.cpp`.
+- [x] `ENG-GAMEDLL-OUTPUT-004` Route safe decisions while keeping command
   queues, command execution, console sinks, and log files legacy-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-OUTPUT-005` Run focused tests, full tests, and smoke
+  Evidence: `engine/server/game_dll_output_policy_adapter.cpp` and
+  `engine/server/sv_game.c` route command, client print, server print, alert,
+  and end-section decisions through the modern helper while preserving legacy
+  sinks and side effects.
+- [x] `ENG-GAMEDLL-OUTPUT-005` Run focused tests, full tests, and smoke
   timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_output_policy -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 98/98, and `run-win32\xash3d.exe -dev 2 -log +fs_path
+  +wait +wait +quit` reached first frame in 0.512 seconds and stopped with
+  reason `command`.
 
 ## Phase 91: Game DLL Resource And Precache Callback Policy
 

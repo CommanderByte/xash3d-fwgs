@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
 #include "game_dll_message_session_adapter.h"
+#include "game_dll_output_policy_adapter.h"
 #include "game_dll_user_message_registry_adapter.h"
 #include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
@@ -2427,8 +2428,11 @@ pfnServerCommand
 */
 static void GAME_EXPORT pfnServerCommand( const char* str )
 {
-	if( !SV_IsValidCmd( str ))
+	if( SV_GameDllOutput_BuildServerCommandAction( SV_IsValidCmd( str )) ==
+		SV_GAMEDLL_SERVER_COMMAND_PRINT_BAD_COMMAND )
+	{
 		Con_Printf( S_ERROR "bad server command %s\n", str );
+	}
 	else Cbuf_AddText( str );
 }
 
@@ -2455,24 +2459,47 @@ void GAME_EXPORT pfnClientCommand( edict_t* pEdict, char* szFmt, ... )
 	sv_client_t	*cl;
 	string		buffer;
 	va_list		args;
+	int		action;
 
-	if( sv.state != ss_active )
+	action = SV_GameDllOutput_BuildClientCommandAction(
+		sv.state == ss_active,
+		true,
+		false,
+		true );
+	if( action == SV_GAMEDLL_CLIENT_COMMAND_SKIP_INACTIVE_SERVER )
 		return; // early out
 
-	if(( cl = SV_ClientFromEdict( pEdict, false )) == NULL )
+	cl = SV_ClientFromEdict( pEdict, false );
+	action = SV_GameDllOutput_BuildClientCommandAction(
+		true,
+		cl != NULL,
+		false,
+		true );
+	if( action == SV_GAMEDLL_CLIENT_COMMAND_PRINT_CLIENT_NOT_SPAWNED )
 	{
 		Con_Printf( S_ERROR "stuffcmd: client is not spawned!\n" );
 		return;
 	}
 
-	if( FBitSet( cl->flags, FCL_FAKECLIENT ))
+	action = SV_GameDllOutput_BuildClientCommandAction(
+		true,
+		true,
+		FBitSet( cl->flags, FCL_FAKECLIENT ),
+		true );
+	if( action == SV_GAMEDLL_CLIENT_COMMAND_SKIP_FAKE_CLIENT )
 		return;
 
 	va_start( args, szFmt );
 	Q_vsnprintf( buffer, MAX_STRING, szFmt, args );
 	va_end( args );
 
-	if( SV_IsValidCmd( buffer ))
+	action = SV_GameDllOutput_BuildClientCommandAction(
+		true,
+		true,
+		false,
+		SV_IsValidCmd( buffer ));
+
+	if( action == SV_GAMEDLL_CLIENT_COMMAND_STUFF_TEXT )
 	{
 		SV_WriteClientStuffTextMessage( &cl->netchan.message, buffer );
 	}
@@ -2946,43 +2973,46 @@ static void GAME_EXPORT pfnAlertMessage( ALERT_TYPE type, char *szFmt, ... )
 {
 	char	buffer[2048];
 	va_list	args;
+	int	action;
 
-	if( type == at_logged && svs.maxclients > 1 )
+	action = SV_GameDllOutput_BuildAlertAction(
+		type,
+		svs.maxclients,
+		host_developer.value );
+
+	if( action == SV_GAMEDLL_ALERT_SUPPRESS_DEVELOPER ||
+		action == SV_GAMEDLL_ALERT_SUPPRESS_AI_CONSOLE ||
+		action == SV_GAMEDLL_ALERT_IGNORE )
 	{
-		va_start( args, szFmt );
-		Q_vsnprintf( buffer, sizeof( buffer ), szFmt, args );
-		va_end( args );
-		Log_Printf( "%s", buffer );
 		return;
 	}
-
-	if( host_developer.value <= DEV_NONE )
-		return;
-
-	// g-cont: some mods have wrong aiconsole messages that crash the engine
-	if( type == at_aiconsole && host_developer.value < DEV_EXTENDED )
-		return;
 
 	va_start( args, szFmt );
 	Q_vsnprintf( buffer, sizeof( buffer ), szFmt, args );
 	va_end( args );
 
-	// check message for pass
-	switch( type )
+	if( action == SV_GAMEDLL_ALERT_LOG )
 	{
-	case at_notice:
+		Log_Printf( "%s", buffer );
+		return;
+	}
+
+	// check message for pass
+	switch( action )
+	{
+	case SV_GAMEDLL_ALERT_PRINT_NOTICE:
 		Con_Printf( S_NOTE "%s", buffer );
 		break;
-	case at_console:
+	case SV_GAMEDLL_ALERT_PRINT_CONSOLE:
 		Con_Printf( "%s", buffer );
 		break;
-	case at_aiconsole:
+	case SV_GAMEDLL_ALERT_PRINT_AI_CONSOLE:
 		Con_DPrintf( "%s", buffer );
 		break;
-	case at_warning:
+	case SV_GAMEDLL_ALERT_PRINT_WARNING:
 		Con_Printf( S_WARN "%s", buffer );
 		break;
-	case at_error:
+	case SV_GAMEDLL_ALERT_PRINT_ERROR:
 		Con_Printf( S_ERROR "%s", buffer );
 		break;
 	}
@@ -3684,23 +3714,29 @@ pfnClientPrintf
 static void GAME_EXPORT pfnClientPrintf( edict_t* pEdict, PRINT_TYPE ptype, const char *szMsg )
 {
 	sv_client_t	*client;
+	int		action;
 
-	if(( client = SV_ClientFromEdict( pEdict, false )) == NULL )
+	client = SV_ClientFromEdict( pEdict, false );
+	action = SV_GameDllOutput_BuildClientPrintfAction(
+		client != NULL,
+		client ? FBitSet( client->flags, FCL_FAKECLIENT ) : false,
+		ptype );
+
+	if( action == SV_GAMEDLL_CLIENT_PRINTF_PRINT_NON_CLIENT_ERROR )
 	{
 		Con_Printf( "tried to sprint to a non-client\n" );
 		return;
 	}
 
-	if( FBitSet( client->flags, FCL_FAKECLIENT ))
+	if( action == SV_GAMEDLL_CLIENT_PRINTF_SKIP_FAKE_CLIENT )
 		return;
 
-	switch( ptype )
+	switch( action )
 	{
-	case print_console:
-	case print_chat:
+	case SV_GAMEDLL_CLIENT_PRINTF_CLIENT_PRINTF:
 		SV_ClientPrintf( client, "%s", szMsg );
 		break;
-	case print_center:
+	case SV_GAMEDLL_CLIENT_PRINTF_CENTER_PRINT:
 		MSG_BeginServerCmd( &client->netchan.message, svc_centerprint );
 		MSG_WriteString( &client->netchan.message, szMsg );
 		break;
@@ -3716,8 +3752,12 @@ print to the server console
 */
 static void GAME_EXPORT pfnServerPrint( const char *szMsg )
 {
-	if( FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ))
+	if( SV_GameDllOutput_BuildServerPrintAction(
+		FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE )) ==
+		SV_GAMEDLL_SERVER_PRINT_BROADCAST_PRINT )
+	{
 		SV_BroadcastPrintf( NULL, "%s", szMsg );
+	}
 	else Con_Printf( "%s", szMsg );
 }
 
@@ -4547,8 +4587,11 @@ pfnEndSection
 */
 static void GAME_EXPORT pfnEndSection( const char *pszSection )
 {
-	if( !Q_stricmp( "oem_end_credits", pszSection ))
+	if( SV_GameDllOutput_BuildEndSectionAction( pszSection ) ==
+		SV_GAMEDLL_END_SECTION_SHOW_CREDITS )
+	{
 		Host_Credits ();
+	}
 	else Cbuf_AddText( "\ndisconnect\n" );
 }
 

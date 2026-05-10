@@ -13,6 +13,8 @@ Current helpers:
   `enginefuncs_t` game DLL callback table.
 - `game_dll_message_session.cpp`: mockable game DLL message-session state
   machine for payload accounting and low-risk compatibility decisions.
+- `game_dll_output_policy.cpp`: mockable game DLL command and output routing
+  policy for callback decisions that do not own live sinks.
 - `game_dll_user_message_registry.cpp`: mockable game DLL user-message
   registration policy for validation, duplicate handling, and active-server
   resend planning.

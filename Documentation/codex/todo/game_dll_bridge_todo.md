@@ -86,15 +86,32 @@ phase.
 
 ## Phase 90: Game DLL Text, Command, And Alert Output Policy
 
-- [ ] Baseline `pfnServerCommand()`, `pfnClientCommand()`,
+- [x] Baseline `pfnServerCommand()`, `pfnClientCommand()`,
   `pfnClientPrintf()`, `pfnServerPrint()`, `pfnAlertMessage()`, and
   `pfnEndSection()`.
-- [ ] Extract command validation and output-classification decisions where
+  Evidence: `pfnServerCommand()` queues only valid commands. `pfnClientCommand()`
+  skips inactive servers and fake clients, reports missing clients, and writes
+  valid stufftext only. `pfnClientPrintf()` rejects non-clients, skips fake
+  clients, maps console/chat to `SV_ClientPrintf()`, and maps center text to
+  `svc_centerprint`. `pfnServerPrint()` broadcasts in Quake-compatible mode
+  and otherwise prints to console. `pfnAlertMessage()` logs multiplayer
+  `at_logged`, suppresses output at developer `0`, gates `at_aiconsole` on
+  extended developer level, and maps remaining alert classes to existing
+  console/log sinks. `pfnEndSection()` opens credits only for
+  `oem_end_credits`, otherwise queues disconnect.
+- [x] Extract command validation and output-classification decisions where
   they do not depend on live sinks.
-- [ ] Add tests for fake-client skips, invalid commands, developer verbosity,
+  Evidence: `src/include/engine/server/game_dll_output_policy.hpp` and
+  `src/engine/server/game_dll_output_policy.cpp`.
+- [x] Add tests for fake-client skips, invalid commands, developer verbosity,
   multiplayer `at_logged`, and aiconsole suppression.
-- [ ] Keep `Cbuf_AddText()`, command execution, print sinks, and log files
+  Evidence: `tests/engine/game_dll_output_policy.cpp`.
+- [x] Keep `Cbuf_AddText()`, command execution, print sinks, and log files
   legacy-owned.
+  Evidence: `engine/server/game_dll_output_policy_adapter.cpp` returns routing
+  decisions; `sv_game.c` still calls `Cbuf_AddText()`, `SV_ClientPrintf()`,
+  `Con_Printf()`, `Con_DPrintf()`, `Log_Printf()`, `Host_Credits()`, and
+  `SV_WriteClientStuffTextMessage()`.
 
 ## Phase 91: Resource And Precache Callback Policy
 

@@ -1,0 +1,78 @@
+#ifndef XASH_ENGINE_SERVER_GAME_DLL_OUTPUT_POLICY_ADAPTER_H
+#define XASH_ENGINE_SERVER_GAME_DLL_OUTPUT_POLICY_ADAPTER_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum
+{
+	SV_GAMEDLL_SERVER_COMMAND_QUEUE_COMMAND = 0,
+	SV_GAMEDLL_SERVER_COMMAND_PRINT_BAD_COMMAND = 1
+};
+
+enum
+{
+	SV_GAMEDLL_CLIENT_COMMAND_SKIP_INACTIVE_SERVER = 0,
+	SV_GAMEDLL_CLIENT_COMMAND_PRINT_CLIENT_NOT_SPAWNED = 1,
+	SV_GAMEDLL_CLIENT_COMMAND_SKIP_FAKE_CLIENT = 2,
+	SV_GAMEDLL_CLIENT_COMMAND_STUFF_TEXT = 3,
+	SV_GAMEDLL_CLIENT_COMMAND_PRINT_BAD_COMMAND = 4
+};
+
+enum
+{
+	SV_GAMEDLL_CLIENT_PRINTF_PRINT_NON_CLIENT_ERROR = 0,
+	SV_GAMEDLL_CLIENT_PRINTF_SKIP_FAKE_CLIENT = 1,
+	SV_GAMEDLL_CLIENT_PRINTF_CLIENT_PRINTF = 2,
+	SV_GAMEDLL_CLIENT_PRINTF_CENTER_PRINT = 3,
+	SV_GAMEDLL_CLIENT_PRINTF_IGNORE = 4
+};
+
+enum
+{
+	SV_GAMEDLL_SERVER_PRINT_CONSOLE_PRINT = 0,
+	SV_GAMEDLL_SERVER_PRINT_BROADCAST_PRINT = 1
+};
+
+enum
+{
+	SV_GAMEDLL_ALERT_SUPPRESS_DEVELOPER = 0,
+	SV_GAMEDLL_ALERT_SUPPRESS_AI_CONSOLE = 1,
+	SV_GAMEDLL_ALERT_LOG = 2,
+	SV_GAMEDLL_ALERT_PRINT_NOTICE = 3,
+	SV_GAMEDLL_ALERT_PRINT_CONSOLE = 4,
+	SV_GAMEDLL_ALERT_PRINT_AI_CONSOLE = 5,
+	SV_GAMEDLL_ALERT_PRINT_WARNING = 6,
+	SV_GAMEDLL_ALERT_PRINT_ERROR = 7,
+	SV_GAMEDLL_ALERT_IGNORE = 8
+};
+
+enum
+{
+	SV_GAMEDLL_END_SECTION_SHOW_CREDITS = 0,
+	SV_GAMEDLL_END_SECTION_DISCONNECT = 1
+};
+
+int SV_GameDllOutput_BuildServerCommandAction(int command_valid);
+int SV_GameDllOutput_BuildClientCommandAction(
+	int server_active,
+	int has_client,
+	int fake_client,
+	int command_valid);
+int SV_GameDllOutput_BuildClientPrintfAction(
+	int has_client,
+	int fake_client,
+	int print_type);
+int SV_GameDllOutput_BuildServerPrintAction(int quake_compatible);
+int SV_GameDllOutput_BuildAlertAction(
+	int alert_type,
+	int max_clients,
+	float developer_level);
+int SV_GameDllOutput_BuildEndSectionAction(const char *section_name);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

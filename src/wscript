@@ -92,6 +92,7 @@ def build(bld):
 			'engine_filesystem_mount_flags': '../tests/engine/filesystem_mount_flags.cpp',
 			'engine_game_dll_enginefuncs': '../tests/engine/game_dll_enginefuncs.cpp',
 			'engine_game_dll_message_session': '../tests/engine/game_dll_message_session.cpp',
+			'engine_game_dll_output_policy': '../tests/engine/game_dll_output_policy.cpp',
 			'engine_game_dll_user_message_registry': '../tests/engine/game_dll_user_message_registry.cpp',
 			'engine_info_string': '../tests/engine/info_string.cpp',
 			'engine_network_buffer': '../tests/engine/network_buffer.cpp',
