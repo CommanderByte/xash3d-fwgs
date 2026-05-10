@@ -47,6 +47,8 @@ Current helpers:
   set-pause, and voice-init.
 - `server_sound_message.cpp`: target-neutral `svc_sound` / `svc_restoresound`
   command planning and bit-packed payload serialization.
+- `server_static_messages.cpp`: target-neutral `svc_bspdecal` payload
+  serialization and safe static-entity admission checks.
 - `server_text_messages.cpp`: target-neutral payload serialization for
   `svc_print` and `svc_stufftext` NUL-terminated text messages.
 - `server_voice_relay.cpp`: target-neutral voice relay gates, recipient

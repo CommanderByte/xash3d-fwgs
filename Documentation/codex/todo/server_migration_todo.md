@@ -549,13 +549,14 @@ ownership.
 
 Goal: extract stable signon/reliable payloads for decals and static entities.
 
-- [ ] Baseline decal/static entity writers and restart flows.
-- [ ] Implement `svc_bspdecal` and `svc_spawnstatic` payload helpers.
-- [ ] Add golden tests for indexes, flags, scale, static baseline fields, and
+- [x] Baseline decal/static entity writers and restart flows.
+- [x] Implement `svc_bspdecal` payload helpers plus safe `svc_spawnstatic`
+  command/admission helpers while leaving delta payloads legacy-owned.
+- [x] Add golden tests for indexes, flags, scale, static admission gates, and
   overflow.
-- [ ] Route payloads while keeping entity validation and signon ownership
+- [x] Route payloads while keeping entity validation and signon ownership
   legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 78: Server Multicast Routing Policy
 

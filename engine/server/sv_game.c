@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include "ref_common.h" // decals
 #include "server_service_messages_adapter.h"
 #include "server_sound_message_adapter.h"
+#include "server_static_messages_adapter.h"
 #include "server_text_messages_adapter.h"
 
 // GameAPI functions declarations
@@ -55,6 +56,13 @@ static void SV_WriteClientStuffTextMessage( sizebuf_t *msg, const char *command_
 }
 
 static void SV_ApplySoundMessageWriteResult( sizebuf_t *msg, sv_sound_message_write_result_t result )
+{
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
+}
+
+static void SV_ApplyStaticMessageWriteResult( sizebuf_t *msg, sv_static_message_write_result_t result )
 {
 	msg->iCurBit = result.current_bit;
 	if( result.overflow )
@@ -536,6 +544,8 @@ NOTE: static decals only accepted when game is loading
 */
 void SV_CreateDecal( sizebuf_t *msg, const float *origin, int decalIndex, int entityIndex, int modelIndex, int flags, float scale )
 {
+	sv_static_message_write_result_t result;
+
 	if( msg == &sv.signon && sv.state != ss_loading )
 		return;
 
@@ -548,13 +558,24 @@ void SV_CreateDecal( sizebuf_t *msg, const float *origin, int decalIndex, int en
 
 	// static decals are posters, it's always reliable
 	MSG_BeginServerCmd( msg, svc_bspdecal );
-	MSG_WriteVec3Coord( msg, origin );
-	MSG_WriteWord( msg, decalIndex );
-	MSG_WriteShort( msg, entityIndex );
-	if( entityIndex > 0 )
-		MSG_WriteWord( msg, modelIndex );
-	MSG_WriteByte( msg, flags );
-	MSG_WriteWord( msg, scale * 4096 );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_StaticMessage_WriteBspDecalPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		origin[0],
+		origin[1],
+		origin[2],
+		decalIndex,
+		entityIndex,
+		modelIndex,
+		flags,
+		scale,
+		FBitSet( host.features, ENGINE_WRITE_LARGE_COORD ));
+
+	SV_ApplyStaticMessageWriteResult( msg, result );
 }
 
 /*
@@ -568,9 +589,15 @@ qboolean SV_CreateStaticEntity( sizebuf_t *msg, int index )
 {
 	entity_state_t	nullstate, *baseline;
 	entity_state_t	*state;
+	sv_spawn_static_decision_t decision;
 	int		offset;
 
-	if( index >= ( MAX_STATIC_ENTITIES - 1 ))
+	decision = SV_StaticMessage_BuildSpawnStaticDecision(
+		index,
+		MAX_STATIC_ENTITIES,
+		MSG_GetNumBytesLeft( msg ));
+
+	if( decision.reason == SV_SPAWN_STATIC_REASON_TOO_MANY_STATIC_ENTITIES )
 	{
 		if( !sv.static_ents_overflow )
 		{
@@ -583,7 +610,7 @@ qboolean SV_CreateStaticEntity( sizebuf_t *msg, int index )
 	}
 
 	// this can happens if serialized map contain too many static entities...
-	if( MSG_GetNumBytesLeft( msg ) < 50 )
+	if( decision.reason == SV_SPAWN_STATIC_REASON_BUFFER_TOO_SMALL )
 	{
 		sv.ignored_static_ents++;
 		return false;

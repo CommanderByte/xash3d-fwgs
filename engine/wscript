@@ -215,6 +215,7 @@ def build(bld):
 		'server/server_voice_relay_adapter.cpp',
 		'server/server_text_messages_adapter.cpp',
 		'server/server_sound_message_adapter.cpp',
+		'server/server_static_messages_adapter.cpp',
 	]
 	libs += ['modern_engine']
 

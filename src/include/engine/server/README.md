@@ -46,6 +46,8 @@ Current helpers:
 - `server_sound_message.hpp`: `svc_sound` / `svc_restoresound` constants,
   network flag planning, stream-channel handling, and bit-packed payload
   writers.
+- `server_static_messages.hpp`: `svc_bspdecal` payload writer constants and
+  static-entity admission decisions.
 - `server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
   and NUL-terminated text payload writers.
 - `server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and

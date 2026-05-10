@@ -2480,23 +2480,38 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 77: Decal And Static Entity Messages
 
-- [ ] `ENG-STATICMSG-001` Baseline `SV_CreateDecal()`, `SV_CreateStaticEntity()`,
+- [x] `ENG-STATICMSG-001` Baseline `SV_CreateDecal()`, `SV_CreateStaticEntity()`,
   `SV_RestartStaticEnts()`, `SV_RestartDecals()`, and permanent decal restore
   behavior.
-  Evidence:
-- [ ] `ENG-STATICMSG-002` Implement target-neutral `svc_bspdecal` and
-  `svc_spawnstatic` payload helpers for stable message layout.
-  Evidence:
-- [ ] `ENG-STATICMSG-003` Add golden tests for entity/model indexes, decal
-  flags, scale, static entity baseline fields, and overflow handling.
-  Evidence:
-- [ ] `ENG-STATICMSG-004` Route selected message payloads through helpers while
+  Evidence: `Documentation/codex/legacy/engine/server-static-decal-baseline.md`.
+- [x] `ENG-STATICMSG-002` Implement target-neutral `svc_bspdecal` and
+  `svc_spawnstatic` helpers for stable message layout.
+  Evidence: `src/include/engine/server/server_static_messages.hpp`,
+  `src/engine/server/server_static_messages.cpp`,
+  `engine/server/server_static_messages_adapter.h`, and
+  `engine/server/server_static_messages_adapter.cpp`. Note: `svc_spawnstatic`
+  delta payload serialization remains legacy-owned because it depends on active
+  delta tables and `MSG_WriteDeltaEntity()`.
+- [x] `ENG-STATICMSG-003` Add golden tests for entity/model indexes, decal
+  flags, scale, static entity admission gates, and overflow handling.
+  Evidence: `tests/engine/server_static_messages.cpp` covers decal payload
+  layout, model-index omission for world decals, scale encoding, coordinate
+  modes, append-after-command behavior, static-entity admission gates, and
+  overflow.
+- [x] `ENG-STATICMSG-004` Route selected message payloads through helpers while
   keeping entity validation, resource indexes, signon buffer ownership, and map
   restart iteration legacy-owned.
-  Evidence:
-- [ ] `ENG-STATICMSG-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/sv_game.c` keeps signon/reliable buffer ownership,
+  renderer/game DLL restore decisions, resource/index lookup, and
+  `MSG_WriteDeltaEntity()` legacy-owned while routing `SV_CreateDecal()` payload
+  serialization and `SV_CreateStaticEntity()` admission checks through the
+  modern helper.
+- [x] `ENG-STATICMSG-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_static_messages` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 88/88, runtime smoke first
+  frame 0.488 seconds, stop reason `command`.
 
 ## Phase 78: Server Multicast Routing Policy
 
