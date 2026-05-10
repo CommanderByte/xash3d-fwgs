@@ -16,6 +16,7 @@ GNU General Public License for more details.
 #include "common.h"
 #include "server.h"
 #include "server_consistency_list_adapter.h"
+#include "server_consistency_policy_adapter.h"
 #include "server_customization_message_adapter.h"
 #include "server_resource_message_adapter.h"
 #include "server_upload_queue_adapter.h"
@@ -92,19 +93,12 @@ static qboolean SV_FileInConsistencyList( const char *filename, consistency_t **
 
 void SV_ParseConsistencyResponse( sv_client_t *cl, sizebuf_t *msg )
 {
-	int		i, c, idx, value;
-	byte		readbuffer[32];
-	byte		nullbuffer[32];
-	byte		resbuffer[32];
-	qboolean		invalid_type;
+	int		c, idx, value;
 	vec3_t		cmins, cmaxs;
 	int		badresindex;
-	vec3_t		mins, maxs;
-	FORCE_TYPE	ft;
 	resource_t	*r;
+	sv_consistency_entry_decision_t decision;
 
-	memset( nullbuffer, 0, sizeof( nullbuffer ));
-	invalid_type = false;
 	badresindex = 0;
 	c = 0;
 
@@ -119,60 +113,40 @@ void SV_ParseConsistencyResponse( sv_client_t *cl, sizebuf_t *msg )
 		if( !FBitSet( r->ucFlags, RES_CHECKFILE ))
 			break;
 
-		memcpy( readbuffer, r->rguc_reserved, 32 );
-
-		if( !memcmp( readbuffer, nullbuffer, 32 ))
+		if( SV_ConsistencyPolicy_ReservedDataIsEmpty( r->rguc_reserved ))
 		{
 			value = MSG_ReadUBitLong( msg, 32 );
 
 			LittleLongSW( value );
 
-			// will be compare only first 4 bytes
-			if( memcmp( &value, r->rgucMD5_hash, 4 ))
-				badresindex = idx + 1;
+			decision = SV_ConsistencyPolicy_EvaluateChecksum(
+				idx,
+				r->rgucMD5_hash,
+				(const byte *)&value,
+				sizeof( value ));
 		}
 		else
 		{
 			MSG_ReadBytes( msg, cmins, sizeof( cmins ));
 			MSG_ReadBytes( msg, cmaxs, sizeof( cmaxs ));
 
-			memcpy( resbuffer, r->rguc_reserved, 32 );
-			ft = resbuffer[0];
-
-			switch( ft )
-			{
-			case force_model_samebounds:
-				memcpy( mins, &resbuffer[0x01], sizeof( mins ));
-				memcpy( maxs, &resbuffer[0x0D], sizeof( maxs ));
-
-				if( !VectorCompare( cmins, mins ) || !VectorCompare( cmaxs, maxs ))
-					badresindex = idx + 1;
-				break;
-			case force_model_specifybounds:
-				memcpy( mins, &resbuffer[0x01], sizeof( mins ));
-				memcpy( maxs, &resbuffer[0x0D], sizeof( maxs ));
-
-				for( i = 0; i < 3; i++ )
-				{
-					if( cmins[i] < mins[i] || cmaxs[i] > maxs[i] )
-					{
-						badresindex = idx + 1;
-						break;
-					}
-				}
-				break;
-			default:
-				invalid_type = true;
-				break;
-			}
+			decision = SV_ConsistencyPolicy_EvaluateBounds(
+				idx,
+				r->rguc_reserved,
+				cmins,
+				cmaxs );
 		}
 
-		if( invalid_type )
+		if( decision.status == SV_CONSISTENCY_ENTRY_INVALID_TYPE )
 			break;
+
+		if( decision.status == SV_CONSISTENCY_ENTRY_BAD_RESOURCE )
+			badresindex = decision.resource_index + 1;
+
 		c++;
 	}
 
-	if( sv.num_consistency != c )
+	if( !SV_ConsistencyPolicy_ResponseCountMatches( sv.num_consistency, c ))
 	{
 		Con_Printf( S_WARN "%s:%s sent bad file data\n", cl->name, NET_AdrToString( cl->netchan.remote_address ));
 		SV_DropClient( cl, false );
@@ -199,21 +173,23 @@ void SV_ParseConsistencyResponse( sv_client_t *cl, sizebuf_t *msg )
 
 void SV_TransferConsistencyInfo( void )
 {
-	vec3_t		mins, maxs;
+	vec3_t		mins = { 0 }, maxs = { 0 };
+	qboolean	bounds_available;
 	int		i, total = 0;
 	resource_t	*pResource;
 	string		filepath;
 	consistency_t	*pc;
+	sv_consistency_reservation_result_t reservation;
 
 	for( i = 0; i < sv.num_resources; i++ )
 	{
 		pResource = &sv.resources[i];
 
-		if( FBitSet( pResource->ucFlags, RES_CHECKFILE ))
-			continue;	// already checked?
-
 		if( !SV_FileInConsistencyList( pResource->szFileName, &pc ))
 			continue;
+
+		if( !SV_ConsistencyPolicy_ResourceNeedsSetup( FBitSet( pResource->ucFlags, RES_CHECKFILE ), true ))
+			continue;	// already checked?
 
 		SetBits( pResource->ucFlags, RES_CHECKFILE );
 
@@ -223,27 +199,26 @@ void SV_TransferConsistencyInfo( void )
 
 		MD5_HashFile( pResource->rgucMD5_hash, filepath, NULL );
 
-		if( pResource->type == t_model )
+		bounds_available = false;
+		if( SV_ConsistencyPolicy_RequiresModelBounds( pResource->type, pc->check_type ))
 		{
-			switch( pc->check_type )
-			{
-			case force_exactfile:
-				// only MD5 hash compare
-				break;
-			case force_model_samebounds:
-				if( !Mod_GetStudioBounds( filepath, mins, maxs ))
-					Host_Error( "%s: couldn't get bounds for %s\n", __func__, filepath );
-				memcpy( &pResource->rguc_reserved[0x01], mins, sizeof( mins ));
-				memcpy( &pResource->rguc_reserved[0x0D], maxs, sizeof( maxs ));
-				pResource->rguc_reserved[0] = pc->check_type;
-				break;
-			case force_model_specifybounds:
-				memcpy( &pResource->rguc_reserved[0x01], pc->mins, sizeof( pc->mins ));
-				memcpy( &pResource->rguc_reserved[0x0D], pc->maxs, sizeof( pc->maxs ));
-				pResource->rguc_reserved[0] = pc->check_type;
-				break;
-			}
+			if( !Mod_GetStudioBounds( filepath, mins, maxs ))
+				Host_Error( "%s: couldn't get bounds for %s\n", __func__, filepath );
+			bounds_available = true;
 		}
+
+		reservation = SV_ConsistencyPolicy_BuildReservation(
+			pResource->type,
+			pc->check_type,
+			pc->mins,
+			pc->maxs,
+			mins,
+			maxs,
+			bounds_available );
+
+		if( reservation.has_reserved_data )
+			memcpy( pResource->rguc_reserved, reservation.reserved_data, sizeof( pResource->rguc_reserved ));
+
 		total++;
 	}
 

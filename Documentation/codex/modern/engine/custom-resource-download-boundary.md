@@ -158,6 +158,14 @@ Audit and extract the pure parts of `SV_TransferConsistencyInfo()` and
 - invalid force type handling;
 - game DLL `pfnInconsistentFile()` ownership.
 
+Phase 68 implementation note: consistency setup and response policy now live in
+`src/engine/server/server_consistency_policy.cpp`, with the legacy bridge in
+`engine/server/server_consistency_policy_adapter.cpp`. The helper decides setup
+gates, reserved bounds payloads, MD5-prefix matches, bounds validation, invalid
+force types, and response-count matches. Legacy code still owns file path
+construction, hashing, model bounds probes, message reads, client drops,
+`SV_ClientPrintf()`, and the game DLL `pfnInconsistentFile()` hook.
+
 ## Acceptance Standard
 
 For each follow-up phase:

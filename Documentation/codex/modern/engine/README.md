@@ -42,6 +42,10 @@ Current implementation notes:
 - `server_consistency_list.hpp` / `server_consistency_list.cpp`: Phase 67's
   implemented consistency-list encoder; legacy code still owns cvars, client
   flags, `resource_t`, and the destination message.
+- `server_consistency_policy.hpp` / `server_consistency_policy.cpp`: Phase
+  68's implemented consistency setup and response validation policy; legacy
+  code still owns file hashing, model bounds probes, message reads, drops, and
+  the game DLL consistency callback.
 - `server_customization_message.hpp` / `server_customization_message.cpp`:
   Phase 66's implemented customization payload encoder; legacy code still owns
   `svc_customization`, client netchan routing, and customization propagation.

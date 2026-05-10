@@ -276,6 +276,38 @@ the resource-list payload. Legacy ownership is split:
 `sv.num_consistency` is an enable gate, but the actual transmitted indexes are
 derived from the `RES_CHECKFILE` flags in `sv.resources[]`.
 
+## Consistency Resource Policy
+
+`SV_TransferConsistencyInfo()` prepares server-side resources before clients
+receive the list:
+
+- skips resources already marked `RES_CHECKFILE`;
+- matches resources against `sv.consistency_list[]` by filename;
+- marks matched resources with `RES_CHECKFILE`;
+- hashes the adapter-owned path into `rgucMD5_hash`;
+- for sounds, hashes `sound/<resource name>`;
+- for models with `force_model_samebounds`, asks the model loader for studio
+  bounds and stores the force type plus mins/maxs in `rguc_reserved`;
+- for models with `force_model_specifybounds`, stores the force type plus the
+  game DLL supplied mins/maxs in `rguc_reserved`;
+- leaves `force_exactfile` as MD5-only, with no reserved bounds payload;
+- current legacy behavior also leaves `force_model_specifybounds_if_avail` as
+  MD5-only on the server side.
+
+`SV_ParseConsistencyResponse()` validates client responses:
+
+- invalid resource indexes, unchecked resources, invalid reserved force types,
+  or early terminators reduce the parsed count and trigger the generic
+  "sent bad file data" drop path;
+- exact-file checks compare only the first four MD5 bytes after legacy endian
+  handling;
+- same-bounds checks require all mins/maxs components to match exactly;
+- specified-bounds checks require client mins to be no smaller than the stored
+  mins and client maxs to be no larger than the stored maxs;
+- bad-resource decisions call the game DLL `pfnInconsistentFile()` hook, which
+  still decides whether the client is dropped and may provide a message;
+- clean responses clear `FCL_FORCE_UNMODIFIED`.
+
 ## HPAK And Temp Files
 
 The server-side custom resource path depends on `engine/common/hpak.c`, but HPAK

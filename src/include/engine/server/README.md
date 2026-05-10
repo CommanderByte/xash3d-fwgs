@@ -22,6 +22,8 @@ Current helpers:
   decisions built from resource snapshots and adapter-supplied sidecar probes.
 - `server_consistency_list.hpp`: consistency-list enable and resource-index
   serialization for server resource checks.
+- `server_consistency_policy.hpp`: consistency setup, reserved bounds payload,
+  and response validation policy.
 - `server_customization_message.hpp`: propagated customization payload
   serialization for `svc_customization`.
 - `server_resource_message.hpp`: resource-list row serialization using modern

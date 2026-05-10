@@ -2217,20 +2217,31 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 68: Consistency Resource Policy
 
-- [ ] `ENG-CONSIST-001` Baseline `SV_TransferConsistencyInfo()` and
+- [x] `ENG-CONSIST-001` Baseline `SV_TransferConsistencyInfo()` and
   `SV_ParseConsistencyResponse()` for exact-file, same-bounds,
   specified-bounds, invalid type, and bad-resource handling.
-  Evidence:
-- [ ] `ENG-CONSIST-002` Implement target-neutral consistency request/response
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-CONSIST-002` Implement target-neutral consistency request/response
   policy helpers that consume MD5 and bounds snapshots.
-  Evidence:
-- [ ] `ENG-CONSIST-003` Add tests for MD5 prefix comparison, bounds validation,
+  Evidence: `src/include/engine/server/server_consistency_policy.hpp`,
+  `src/engine/server/server_consistency_policy.cpp`.
+- [x] `ENG-CONSIST-003` Add tests for MD5 prefix comparison, bounds validation,
   invalid force types, and response-count mismatch.
-  Evidence:
-- [ ] `ENG-CONSIST-004` Route consistency decisions through the helper while
+  Evidence: `tests/engine/server_consistency_policy.cpp`.
+- [x] `ENG-CONSIST-004` Route consistency decisions through the helper while
   keeping file hashing, model bounds, drops, client messages, and game DLL
   callbacks legacy-owned.
-  Evidence:
+  Evidence: `engine/server/server_consistency_policy_adapter.h`,
+  `engine/server/server_consistency_policy_adapter.cpp`,
+  `engine/server/sv_custom.c`.
+- [x] `ENG-CONSIST-005` Run focused tests, full tests, runtime smoke, and
+  record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_consistency_policy`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 79/79 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.409 seconds before stopping with reason `command` at May 10 2026
+  17:52 local time.
 
 ## Phase 800: POSIX Console Backend Validation
 
