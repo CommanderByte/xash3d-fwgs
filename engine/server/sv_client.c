@@ -22,6 +22,7 @@ GNU General Public License for more details.
 #include "connectionless_classifier_adapter.h"
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
+#include "server_download_policy_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
 #define CHALLENGE_WINDOW_SECONDS 5
@@ -2073,75 +2074,71 @@ SV_DownloadFile_f
 static qboolean SV_DownloadFile_f( sv_client_t *cl )
 {
 	const char	*name;
+	const char	*model_texture_name = NULL;
+	qboolean	model_texture_available = false;
+	sv_download_policy_decision_t decision;
 
 	if( Cmd_Argc() < 2 )
 		return true;
 
 	name = Cmd_Argv( 1 );
-
-	if( COM_StringEmptyOrNULL( name ))
-		return true;
-
-	if( !COM_IsSafeFileToDownload( name ) || !sv_allow_download.value )
+	if( SV_ServerDownloadPolicy_NeedsModelTextureProbe(
+		name,
+		sv_allow_download.value != 0.0f,
+		sv_send_resources.value != 0.0f,
+		sv.resources,
+		sv.num_resources ))
 	{
-		SV_FailDownload( cl, name );
-		return true;
+		model_texture_name = Mod_StudioTexName( name );
+		model_texture_available = FS_FileExists( model_texture_name, false ) > 0;
 	}
 
-	// g-cont. now we supports hot precache
-	if( name[0] != '!' )
+	decision = SV_ServerDownloadPolicy_Decide(
+		name,
+		sv_allow_download.value != 0.0f,
+		sv_send_resources.value != 0.0f,
+		sv_send_logos.value != 0.0f,
+		sv.resources,
+		sv.num_resources,
+		model_texture_name,
+		model_texture_available );
+
+	switch( decision.action )
 	{
-		if( sv_send_resources.value )
+	case SV_DOWNLOAD_POLICY_IGNORE:
+		return true;
+
+	case SV_DOWNLOAD_POLICY_REJECT:
+		SV_FailDownload( cl, name );
+		return true;
+
+	case SV_DOWNLOAD_POLICY_SEND_FILE_WITH_MODEL_TEXTURE:
+		if( decision.model_texture_name )
+			Netchan_CreateFileFragments( &cl->netchan, decision.model_texture_name );
+		// fall through
+	case SV_DOWNLOAD_POLICY_SEND_FILE:
+	{
+		const char *file_name = decision.file_name ? decision.file_name : name;
+
+		if( Netchan_CreateFileFragments( &cl->netchan, file_name ))
 		{
-			int i;
-
-			// security: allow download only precached resources
-			for( i = 0; i < sv.num_resources; i++ )
-			{
-				const char *cmpname = name;
-
-				if( sv.resources[i].type == t_sound )
-					cmpname += sizeof( DEFAULT_SOUNDPATH ) - 1; // cut "sound/" off
-
-				if( !Q_strncmp( sv.resources[i].szFileName, cmpname, 64 ) )
-					break;
-			}
-
-			if( i == sv.num_resources )
-			{
-				SV_FailDownload( cl, name );
-				return true;
-			}
-
-			// also check the model textures
-			if( !Q_stricmp( COM_FileExtension( name ), "mdl" ))
-			{
-				if( FS_FileExists( Mod_StudioTexName( name ), false ) > 0 )
-					Netchan_CreateFileFragments( &cl->netchan, Mod_StudioTexName( name ));
-			}
-
-			if( Netchan_CreateFileFragments( &cl->netchan, name ))
-			{
-				Netchan_FragSend( &cl->netchan );
-				return true;
-			}
+			Netchan_FragSend( &cl->netchan );
+			return true;
 		}
 
 		SV_FailDownload( cl, name );
 		return true;
 	}
 
-	if( Q_strlen( name ) == 36 && !Q_strnicmp( name, "!MD5", 4 ) && sv_send_logos.value )
+	case SV_DOWNLOAD_POLICY_LOOKUP_CUSTOM_LOGO:
 	{
 		resource_t	custResource;
-		byte		md5[32];
 		byte		*pbuf;
 		int		size;
 
 		memset( &custResource, 0, sizeof( custResource ));
-		COM_HexConvert( name + 4, 32, md5 );
 
-		if( HPAK_ResourceForHash( hpk_custom_file.string, md5, &custResource ))
+		if( HPAK_ResourceForHash( hpk_custom_file.string, decision.custom_hash, &custResource ))
 		{
 			if( HPAK_GetDataPointer( hpk_custom_file.string, &custResource, &pbuf, &size ))
 			{
@@ -2153,10 +2150,11 @@ static qboolean SV_DownloadFile_f( sv_client_t *cl )
 				}
 			}
 		}
+		return true;
 	}
-	else
-	{
+	default:
 		SV_FailDownload( cl, name );
+		return true;
 	}
 
 	return true;

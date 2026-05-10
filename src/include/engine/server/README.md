@@ -18,6 +18,8 @@ Current helpers:
   formatting.
 - `resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
   checks, resource matching, and size summaries.
+- `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
+  decisions built from resource snapshots and adapter-supplied sidecar probes.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `server_event_log.hpp`: server event log line and stock message formatting.
 - `source_query.hpp`: GoldSrc source-query response byte builders.

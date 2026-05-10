@@ -2081,20 +2081,30 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 63: Server Download Policy Helper
 
-- [ ] `ENG-DL-001` Baseline `SV_DownloadFile_f()` decision ordering, including
+- [x] `ENG-DL-001` Baseline `SV_DownloadFile_f()` decision ordering, including
   safe-file rejection, `sv_allow_download`, precached-resource enforcement,
   model texture side downloads, custom logo/HPAK handling, and fail responses.
-  Evidence:
-- [ ] `ENG-DL-002` Implement a target-neutral download decision helper that
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`,
+  `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] `ENG-DL-002` Implement a target-neutral download decision helper that
   describes allow/fail/sidecar outcomes without opening files or creating
   netchan fragments.
-  Evidence:
-- [ ] `ENG-DL-003` Add tests for unsafe paths, disabled downloads, missing
+  Evidence: `src/include/engine/server/server_download_policy.hpp`,
+  `src/engine/server/server_download_policy.cpp`.
+- [x] `ENG-DL-003` Add tests for unsafe paths, disabled downloads, missing
   precache entries, model texture sidecars, and custom logo names.
-  Evidence:
-- [ ] `ENG-DL-004` Route policy decisions through the helper while keeping
+  Evidence: `tests/engine/server_download_policy.cpp`.
+- [x] `ENG-DL-004` Route policy decisions through the helper while keeping
   `FS_*`, HPAK reads, and `Netchan_*` fragment creation legacy-owned.
-  Evidence:
+  Evidence: `engine/server/server_download_policy_adapter.h`,
+  `engine/server/server_download_policy_adapter.cpp`, `engine/server/sv_client.c`.
+- [x] `ENG-DL-005` Run focused tests, full tests, runtime smoke, and record
+  timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_download_policy`
+  passed 1/1, `.\waf.bat build --alltests` passed 74/74 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.412 seconds before stopping with reason `command` at May 10 2026
+  16:47 local time.
 
 ## Phase 64: Client Resource Upload Queue Helper
 

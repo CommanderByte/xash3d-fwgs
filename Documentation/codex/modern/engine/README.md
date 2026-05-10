@@ -36,6 +36,9 @@ Current implementation notes:
   legacy client sink until a later router/client-rendering phase.
 - `resource_identity.hpp` / `resource_identity.cpp`: Phase 62's implemented
   target-neutral custom resource identity helpers under `src/engine/server`.
+- `server_download_policy.hpp` / `server_download_policy.cpp`: Phase 63's
+  implemented `SV_DownloadFile_f()` policy helper; legacy code still owns
+  filesystem probes, HPAK reads, fail responses, and netchan fragments.
 - `server-migration-guide.md`: how server-side helpers should move into
   `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
   surfaces remain compatibility boundaries.

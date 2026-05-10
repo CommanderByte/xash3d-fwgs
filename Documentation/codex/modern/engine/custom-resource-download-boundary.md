@@ -77,6 +77,13 @@ request can currently do nothing when HPAK lookup fails. Model that explicitly
 as `LookupCustomLogo` followed by an adapter-owned no-op on missing data, unless
 we deliberately choose to change behavior in a later compatibility phase.
 
+Phase 63 implementation note: this policy now lives in
+`src/engine/server/server_download_policy.cpp`, with the legacy bridge in
+`engine/server/server_download_policy_adapter.cpp`. The adapter supplies cvar
+values and `sv.resources[]`; `sv_client.c` asks the helper whether a model
+texture sidecar probe is needed before calling `FS_FileExists()`. Legacy code
+still owns `FS_*`, HPAK, fail messages, and `Netchan_*` calls.
+
 ## Later Phase Candidates
 
 ### Phase 64: Client Resource Upload Queue Helper

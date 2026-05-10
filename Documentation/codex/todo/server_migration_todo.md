@@ -249,10 +249,30 @@ the main phase tracker until they are selected.
   frame in 0.427 seconds before stopping with reason `command` at May 10 2026
   15:58 local time.
 
+## Phase 63: Server Download Policy Helper
+
+- [x] Baseline `SV_DownloadFile_f()` decision ordering.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`,
+  `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] Implement target-neutral allow/reject/send/logo download policy.
+  Evidence: `src/include/engine/server/server_download_policy.hpp`,
+  `src/engine/server/server_download_policy.cpp`.
+- [x] Add tests for unsafe paths, disabled downloads, precache misses, model
+  sidecar downloads, and custom logo names.
+  Evidence: `tests/engine/server_download_policy.cpp`.
+- [x] Route `SV_DownloadFile_f()` through the helper while keeping filesystem
+  probes, HPAK reads, fail messages, and netchan fragments legacy-owned.
+  Evidence: `engine/server/server_download_policy_adapter.h`,
+  `engine/server/server_download_policy_adapter.cpp`, `engine/server/sv_client.c`.
+- [x] Run focused tests, full tests, runtime smoke, and record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_download_policy`
+  passed 1/1, `.\waf.bat build --alltests` passed 74/74, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.412 seconds before stopping with reason `command` at May 10 2026
+  16:47 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 63: server download decision policy helper after resource identity
-  fixtures exist.
 - [ ] Phase 64: client resource upload queue helper after identity/download
   policy fixtures exist.
 - [ ] Phase 65: resource message serialization helper using golden row tests.
