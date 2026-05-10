@@ -3156,17 +3156,31 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 102: Server Challenge Window Policy
 
-- [ ] `ENG-SVCHAL-001` Baseline challenge-window behavior in `sv_client.c`.
-  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
-- [ ] `ENG-SVCHAL-002` Extract challenge time-window calculation as a pure
+- [x] `ENG-SVCHAL-001` Baseline challenge-window behavior in `sv_client.c`.
+  Evidence:
+  `Documentation/codex/modern/engine/server-challenge-window-policy.md`,
+  `Documentation/codex/todo/server_constants_todo.md`.
+- [x] `ENG-SVCHAL-002` Extract challenge time-window calculation as a pure
   helper.
-  Evidence:
-- [ ] `ENG-SVCHAL-003` Add tests for boundary seconds and repeat-window
+  Evidence: `src/include/engine/server/server_challenge_policy.hpp`,
+  `src/engine/server/server_challenge_policy.cpp`,
+  `engine/server/server_challenge_policy_adapter.h`,
+  `engine/server/server_challenge_policy_adapter.cpp`,
+  `engine/server/sv_client.c`.
+- [x] `ENG-SVCHAL-003` Add tests for boundary seconds and repeat-window
   behavior.
-  Evidence:
-- [ ] `ENG-SVCHAL-004` Keep challenge salt storage, hashing, packets, and
+  Evidence: `tests/engine/server_challenge_policy.cpp`.
+- [x] `ENG-SVCHAL-004` Keep challenge salt storage, hashing, packets, and
   rejection output legacy-owned.
   Evidence:
+  `Documentation/codex/modern/engine/server-challenge-window-policy.md`.
+- [x] `ENG-SVCHAL-005` Run focused tests and full validation after the
+  challenge-window route-through.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_challenge_policy -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 110/110;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.498 seconds and stopped with reason `command`.
 
 ## Phase 103: Server Lifecycle Limits Policy
 

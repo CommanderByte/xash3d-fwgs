@@ -96,6 +96,9 @@ Current implementation notes:
 - `server-constants-constraints.md`: how Phase 101 mirrors server-only limits,
   flags, and private constants into a typed modern contract without replacing
   layout-sensitive legacy macros.
+- `server-challenge-window-policy.md`: how Phase 102 routes challenge
+  time-window calculation through a target-neutral helper while keeping
+  address hashing, salts, packets, and rejection effects legacy-owned.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

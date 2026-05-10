@@ -33,11 +33,23 @@ before route-through work touches live server ownership.
 
 ## Phase 102: Server Challenge Window Policy
 
-- [ ] Baseline challenge-window behavior in `sv_client.c`.
-- [ ] Extract time-window calculation as a pure helper.
-- [ ] Add tests for boundary seconds and repeat-window behavior.
-- [ ] Keep challenge salt storage, hashing, packets, and rejection output
+- [x] Baseline challenge-window behavior in `sv_client.c`.
+  Evidence: `Documentation/codex/modern/engine/server-challenge-window-policy.md`.
+- [x] Extract time-window calculation as a pure helper.
+  Evidence: `src/include/engine/server/server_challenge_policy.hpp`,
+  `src/engine/server/server_challenge_policy.cpp`.
+- [x] Add tests for boundary seconds and repeat-window behavior.
+  Evidence: `tests/engine/server_challenge_policy.cpp`.
+- [x] Keep challenge salt storage, hashing, packets, and rejection output
   legacy-owned.
+  Evidence: only `SV_ChallengePolicy_TimeWindow()` and
+  `SV_ChallengePolicy_PreviousTimeWindow()` route through modern code;
+  `SV_GetChallenge()`, `Netchan_OutOfBandPrint()`, and
+  `SV_RejectConnection()` remain in `engine/server/sv_client.c`.
+- [x] Run focused tests and full validation after the route-through.
+  Evidence: Phase 102 validation passed with
+  `test_engine_server_challenge_policy`, `xash`, 110/110 tests, and a 0.498s
+  first-frame smoke.
 
 ## Phase 103: Server Lifecycle Limits Policy
 

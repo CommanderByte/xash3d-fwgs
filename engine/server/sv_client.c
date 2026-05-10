@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "connectionless_classifier_adapter.h"
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
+#include "server_challenge_policy_adapter.h"
 #include "server_download_policy_adapter.h"
 #include "server_upload_queue_adapter.h"
 #include "server_service_messages_adapter.h"
@@ -30,8 +31,8 @@ GNU General Public License for more details.
 #include "server_userinfo_message_adapter.h"
 #include "server_voice_relay_adapter.h"
 
-// challenges are valid for two consecutive windows of this size (max lifetime ~10s).
-#define CHALLENGE_WINDOW_SECONDS 5
+// Challenge hashing, salts, packets, and rejection output remain legacy-owned.
+// The time-window calculation routes through a target-neutral helper.
 
 typedef struct ucmd_s
 {
@@ -204,7 +205,7 @@ static void SV_SendChallenge( netadr_t from, qboolean skip_bandwidth_test )
 {
 	char response[64];
 	qboolean error = false;
-	uint32_t time_window = (uint32_t)( host.realtime / CHALLENGE_WINDOW_SECONDS );
+	uint32_t time_window = SV_ChallengePolicy_TimeWindow( host.realtime );
 	int challenge = SV_GetChallenge( from, time_window, &error );
 
 	if( error )
@@ -319,14 +320,16 @@ Make sure connecting client is not spoofing
 static int SV_CheckChallenge( netadr_t from, int challenge )
 {
 	qboolean error = false;
-	uint32_t time_window = (uint32_t)( host.realtime / CHALLENGE_WINDOW_SECONDS );
+	uint32_t time_window = SV_ChallengePolicy_TimeWindow( host.realtime );
 
-	// accept the current window and the previous one so challenges issued just
-	// before a window boundary remain valid for the full expected lifetime
+	// Accept the current window and the previous one. A challenge issued just
+	// after a boundary can therefore remain valid for nearly two windows.
 	if( SV_GetChallenge( from, time_window, &error ) == challenge && !error )
 		return true;
 
-	if( SV_GetChallenge( from, time_window - 1, &error ) == challenge && !error )
+	if( SV_GetChallenge( from,
+		SV_ChallengePolicy_PreviousTimeWindow( time_window ),
+		&error ) == challenge && !error )
 		return true;
 
 	SV_RejectConnection( from, "no challenge for your address\n" );
