@@ -23,6 +23,9 @@ Current implementation notes:
 - `connection-response-migration.md`: how Phase 59 routes server challenge and
   rejection response text through target-neutral helpers while validation and
   packet sends stay legacy-owned.
+- `custom-resource-download-boundary.md`: how custom resource identity,
+  download policy, upload queues, resource messages, and consistency checks
+  should be split after the Phase 61 audit.
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.

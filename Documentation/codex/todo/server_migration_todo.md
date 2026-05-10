@@ -212,14 +212,30 @@ the main phase tracker until they are selected.
   14:55 local time. A visible `run-win32\xash3d.exe -dev 2 -log` game process
   was launched for manual new-game validation.
 
+## Phase 61: Custom Resource And Download Boundary Audit
+
+- [x] Audit custom resource ownership across `engine/common/custom.c`,
+  `engine/server/sv_custom.c`, and `SV_DownloadFile_f()`.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] Identify the extractable target-neutral resource identity and download
+  policy pieces.
+  Evidence: `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] Capture baseline notes for custom MD5 names, HPAK temp-file behavior,
+  download allow/fail rules, precache checks, and upload queue flow.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] Define follow-up migration slices and test fixtures.
+  Evidence: `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+
 ## Deferred Server Items
 
-- [ ] Phase 61: custom resource and download boundary audit across
-  `engine/common/custom.c`, `engine/server/sv_custom.c`, and
-  `SV_DownloadFile_f()`.
 - [ ] Phase 62: custom resource identity helpers after the resource audit.
 - [ ] Phase 63: server download decision policy helper after resource identity
   fixtures exist.
+- [ ] Phase 64: client resource upload queue helper after identity/download
+  policy fixtures exist.
+- [ ] Phase 65: resource message serialization helper using golden row tests.
+- [ ] Phase 66: consistency resource policy helper after resource message
+  encoding is documented.
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
 - [ ] Save/restore migration after binary compatibility fixtures exist.

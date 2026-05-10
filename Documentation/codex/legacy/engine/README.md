@@ -24,6 +24,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [connection-response-baseline.md](connection-response-baseline.md) documents
   `SV_SendChallenge()` and `SV_RejectConnection()` response formatting before
   Phase 59.
+- [custom-resource-download-baseline.md](custom-resource-download-baseline.md)
+  documents server custom-resource, HPAK, upload, and download decision
+  behavior for Phase 61.
 - [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated

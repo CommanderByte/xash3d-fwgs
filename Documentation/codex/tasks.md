@@ -2037,20 +2037,20 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 61: Custom Resource And Download Boundary Audit
 
-- [ ] `ENG-RES-001` Audit `engine/common/custom.c`, `engine/server/sv_custom.c`,
+- [x] `ENG-RES-001` Audit `engine/common/custom.c`, `engine/server/sv_custom.c`,
   and the `SV_DownloadFile_f()` path in `sv_client.c` to map resource identity,
   customization, HPAK, and download responsibilities.
-  Evidence:
-- [ ] `ENG-RES-002` Identify which parts can become target-neutral resource
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-RES-002` Identify which parts can become target-neutral resource
   value/policy helpers without moving file I/O, network fragments, or game DLL
   callbacks.
-  Evidence:
-- [ ] `ENG-RES-003` Add baseline notes for custom resource hashes, temp-file
+  Evidence: `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] `ENG-RES-003` Add baseline notes for custom resource hashes, temp-file
   behavior, download allow/fail rules, and precache checks.
-  Evidence:
-- [ ] `ENG-RES-004` Define the first resource/download migration slice and test
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-RES-004` Define the first resource/download migration slice and test
   fixtures.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
 
 ## Phase 62: Custom Resource Identity Helpers
 
@@ -2083,6 +2083,58 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence:
 - [ ] `ENG-DL-004` Route policy decisions through the helper while keeping
   `FS_*`, HPAK reads, and `Netchan_*` fragment creation legacy-owned.
+  Evidence:
+
+## Phase 64: Client Resource Upload Queue Helper
+
+- [ ] `ENG-UPLOADQ-001` Baseline `SV_ParseResourceList()`,
+  `SV_EstimateNeededResources()`, `SV_BatchUploadRequest()`, and
+  `SV_CheckFile()` ordering, including rate limiting, upload-size limits, HPAK
+  presence checks, and `upload "!MD5..."` command generation.
+  Evidence:
+- [ ] `ENG-UPLOADQ-002` Implement target-neutral upload queue decision helpers
+  that operate on resource snapshots and adapter-supplied HPAK presence.
+  Evidence:
+- [ ] `ENG-UPLOADQ-003` Add tests for invalid descriptors, too-frequent
+  updates, missing custom decals, disabled uploads, and max-upload rejection.
+  Evidence:
+- [ ] `ENG-UPLOADQ-004` Route the smallest safe upload queue decision through
+  the helper while keeping `MSG_*`, allocation, HPAK, and client mutation
+  legacy-owned.
+  Evidence:
+
+## Phase 65: Resource Message Serialization Helper
+
+- [ ] `ENG-RESMSG-001` Baseline `SV_SendResource()` and `SV_SendResources()`
+  wire output, including custom hash bytes, reserved data bit, and resource
+  count limits.
+  Evidence:
+- [ ] `ENG-RESMSG-002` Implement a target-neutral resource-row encoder that can
+  write into modern network-buffer primitives or caller-provided byte sinks.
+  Evidence:
+- [ ] `ENG-RESMSG-003` Add golden tests for resource rows with and without
+  custom hashes and reserved consistency payloads.
+  Evidence:
+- [ ] `ENG-RESMSG-004` Route row encoding through the helper while keeping
+  `MSG_BeginServerCmd()`, resource-location messages, and netchan fragments
+  legacy-owned.
+  Evidence:
+
+## Phase 66: Consistency Resource Policy
+
+- [ ] `ENG-CONSIST-001` Baseline `SV_TransferConsistencyInfo()` and
+  `SV_ParseConsistencyResponse()` for exact-file, same-bounds,
+  specified-bounds, invalid type, and bad-resource handling.
+  Evidence:
+- [ ] `ENG-CONSIST-002` Implement target-neutral consistency request/response
+  policy helpers that consume MD5 and bounds snapshots.
+  Evidence:
+- [ ] `ENG-CONSIST-003` Add tests for MD5 prefix comparison, bounds validation,
+  invalid force types, and response-count mismatch.
+  Evidence:
+- [ ] `ENG-CONSIST-004` Route consistency decisions through the helper while
+  keeping file hashing, model bounds, drops, client messages, and game DLL
+  callbacks legacy-owned.
   Evidence:
 
 ## Phase 800: POSIX Console Backend Validation
