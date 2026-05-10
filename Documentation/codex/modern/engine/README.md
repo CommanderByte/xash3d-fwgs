@@ -103,6 +103,9 @@ Current implementation notes:
   update-backup, packet-entity capacity, game-entity count, and spawn settling
   calculations through target-neutral helpers while keeping allocation and
   activation side effects legacy-owned.
+- `server-movement-constraints.md`: how Phase 104 names server monster
+  movement modes and fly-move clip-plane constraints separately from trace,
+  walkmove, and `pm_shared` constants.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

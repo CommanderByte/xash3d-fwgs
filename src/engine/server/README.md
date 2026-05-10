@@ -88,6 +88,8 @@ Current helpers:
 - `server_lifecycle_limits.cpp`: target-neutral maxclient, update-backup,
   packet-entity capacity, game-entity count, and spawn settling policy
   calculations.
+- `server_movement_constraints.cpp`: target-neutral server monster movement
+  mode classification and fly-move clip-plane constraint helpers.
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
   serialization for client slot, user ID, active bit, sanitized userinfo, and
   hashed CD key digest bytes.

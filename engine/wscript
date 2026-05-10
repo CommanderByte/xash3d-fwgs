@@ -230,6 +230,7 @@ def build(bld):
 		'server/server_command_lifecycle_adapter.cpp',
 		'server/server_spawn_handshake_adapter.cpp',
 		'server/server_frame_datagram_adapter.cpp',
+		'server/server_movement_constraints_adapter.cpp',
 	]
 	libs += ['modern_engine']
 

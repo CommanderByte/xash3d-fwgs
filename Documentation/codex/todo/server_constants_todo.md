@@ -75,12 +75,26 @@ before route-through work touches live server ownership.
 
 ## Phase 104: Server Movement Constraint Constants
 
-- [ ] Baseline server movement type constants, clip-plane limit, and movement
+- [x] Baseline server movement type constants, clip-plane limit, and movement
   epsilon.
-- [ ] Add modern constants/tests that make server physics constraints distinct
+  Evidence: `Documentation/codex/modern/engine/server-movement-constraints.md`.
+- [x] Add modern constants/tests that make server physics constraints distinct
   from GL and pm_shared constants with similar names.
-- [ ] Keep `SV_MoveStep`, `SV_FlyMove`, world collision, and player movement
+  Evidence: `src/include/engine/server/server_movement_constraints.hpp`,
+  `src/engine/server/server_movement_constraints.cpp`,
+  `tests/engine/server_movement_constraints.cpp`.
+- [x] Route the safe monster movement mode check through the legacy adapter.
+  Evidence: `engine/server/server_movement_constraints_adapter.h`,
+  `engine/server/server_movement_constraints_adapter.cpp`,
+  `engine/server/sv_move.c`.
+- [x] Keep `SV_MoveStep`, `SV_FlyMove`, world collision, and player movement
   loops legacy-owned.
+  Evidence: `sv_phys.c` keeps `MAX_CLIP_PLANES` local because it sizes a stack
+  array, and movement execution/collision loops remain in legacy files.
+- [x] Run focused tests and full validation after the route-through.
+  Evidence: Phase 104 validation passed with
+  `test_engine_server_movement_constraints`, `xash`, 112/112 tests, and a
+  0.510s first-frame smoke.
 
 ## Phase 105: Visibility Leaf And View Constraint Policy
 

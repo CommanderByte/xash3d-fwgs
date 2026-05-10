@@ -18,9 +18,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "const.h"
 #include "pm_defs.h"
-
-#define MOVE_NORMAL		0	// normal move in the direction monster is facing
-#define MOVE_STRAFE		1	// moves in direction specified, no matter which way monster is facing
+#include "server_movement_constraints_adapter.h"
 
 /*
 =============
@@ -525,7 +523,7 @@ void SV_MoveToOrigin( edict_t *ent, const vec3_t pflGoal, float dist, int iMoveT
 
 	if( ent->v.flags & ( FL_FLY|FL_SWIM|FL_ONGROUND ))
 	{
-		if( iMoveType == MOVE_NORMAL )
+		if( SV_MovementConstraints_IsMonsterNormalMoveType( iMoveType ))
 		{
 			if( !SV_StepDirection( ent, ent->v.ideal_yaw, dist ))
 			{

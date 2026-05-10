@@ -3213,15 +3213,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 104: Server Movement Constraint Constants
 
-- [ ] `ENG-SVMOVE-001` Baseline server movement type constants, clip-plane
+- [x] `ENG-SVMOVE-001` Baseline server movement type constants, clip-plane
   limit, and movement epsilon.
-  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
-- [ ] `ENG-SVMOVE-002` Add modern constants/tests that distinguish server
-  physics constraints from GL and `pm_shared` constants with similar names.
   Evidence:
-- [ ] `ENG-SVMOVE-003` Keep `SV_MoveStep`, `SV_FlyMove`, world collision, and
+  `Documentation/codex/modern/engine/server-movement-constraints.md`,
+  `Documentation/codex/todo/server_constants_todo.md`.
+- [x] `ENG-SVMOVE-002` Add modern constants/tests that distinguish server
+  physics constraints from GL and `pm_shared` constants with similar names.
+  Evidence: `src/include/engine/server/server_movement_constraints.hpp`,
+  `src/engine/server/server_movement_constraints.cpp`,
+  `tests/engine/server_movement_constraints.cpp`.
+- [x] `ENG-SVMOVE-003` Route the safe monster movement mode check through a
+  tiny C adapter.
+  Evidence: `engine/server/server_movement_constraints_adapter.h`,
+  `engine/server/server_movement_constraints_adapter.cpp`,
+  `engine/server/sv_move.c`.
+- [x] `ENG-SVMOVE-004` Keep `SV_MoveStep`, `SV_FlyMove`, world collision, and
   player movement loops legacy-owned.
   Evidence:
+  `Documentation/codex/modern/engine/server-movement-constraints.md`.
+- [x] `ENG-SVMOVE-005` Run focused tests and full validation after the
+  movement-constraints route-through.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_movement_constraints -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, full tests passed
+  112/112; `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`
+  reached first frame in 0.510 seconds and stopped with reason `command`.
 
 ## Phase 105: Visibility Leaf And View Constraint Policy
 
