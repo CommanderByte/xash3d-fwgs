@@ -41,5 +41,7 @@ Current helpers:
 - `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
   for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
   digest bytes.
+- `server_service_messages.hpp`: compact service-message payload writers for
+  file-transfer failure, reconnect, set-view, set-pause, and voice-init.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
 - `user_agent_policy.hpp`: connection UUID and input-device validation policy.

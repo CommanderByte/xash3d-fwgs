@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
+#include "server_service_messages_adapter.h"
 
 // GameAPI functions declarations
 static int GAME_EXPORT pfnModelIndex( const char *m );
@@ -3703,7 +3704,18 @@ static void GAME_EXPORT pfnSetView( const edict_t *pClient, const edict_t *pView
 	else viewEnt = NUM_FOR_EDICT( client->edict );
 
 	MSG_BeginServerCmd( &client->netchan.message, svc_setview );
-	MSG_WriteWord( &client->netchan.message, viewEnt );
+	if( !client->netchan.message.bOverflow )
+	{
+		sv_service_message_write_result_t result = SV_ServiceMessage_WriteSetViewPayload(
+			client->netchan.message.pData,
+			client->netchan.message.nDataBits,
+			client->netchan.message.iCurBit,
+			viewEnt );
+
+		client->netchan.message.iCurBit = result.current_bit;
+		if( result.overflow )
+			client->netchan.message.bOverflow = true;
+	}
 }
 
 /*

@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "netapi_info_adapter.h"
 #include "server_download_policy_adapter.h"
 #include "server_upload_queue_adapter.h"
+#include "server_service_messages_adapter.h"
 #include "server_userinfo_message_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
@@ -38,6 +39,80 @@ static int	g_userid = 1;
 
 static void SV_UserinfoChanged( sv_client_t *cl );
 static void SV_ExecuteClientCommand( sv_client_t *cl, const char *s );
+
+static void SV_ApplyServiceMessageWriteResult( sizebuf_t *msg, sv_service_message_write_result_t result )
+{
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
+}
+
+static void SV_WriteFileTransferFailedMessage( sizebuf_t *msg, const char *filename )
+{
+	sv_service_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_filetxferfailed );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_ServiceMessage_WriteFileTransferFailedPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		filename );
+
+	SV_ApplyServiceMessageWriteResult( msg, result );
+}
+
+static void SV_WriteReconnectMessage( sizebuf_t *msg )
+{
+	sv_service_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_stufftext );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_ServiceMessage_WriteReconnectPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit );
+
+	SV_ApplyServiceMessageWriteResult( msg, result );
+}
+
+static void SV_WriteSetViewMessage( sizebuf_t *msg, int viewEnt )
+{
+	sv_service_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_setview );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_ServiceMessage_WriteSetViewPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		viewEnt );
+
+	SV_ApplyServiceMessageWriteResult( msg, result );
+}
+
+static void SV_WriteSetPauseMessage( sizebuf_t *msg, qboolean paused )
+{
+	sv_service_message_write_result_t result;
+
+	MSG_BeginServerCmd( msg, svc_setpause );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_ServiceMessage_WriteSetPausePayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		paused );
+
+	SV_ApplyServiceMessageWriteResult( msg, result );
+}
 
 /*
 =================
@@ -221,8 +296,7 @@ static void SV_FailDownload( sv_client_t *cl, const char *filename )
 	if( COM_StringEmptyOrNULL( filename ))
 		return;
 
-	MSG_BeginServerCmd( &cl->netchan.message, svc_filetxferfailed );
-	MSG_WriteString( &cl->netchan.message, filename );
+	SV_WriteFileTransferFailedMessage( &cl->netchan.message, filename );
 }
 
 /*
@@ -1495,8 +1569,7 @@ static void SV_PutClientInServer( sv_client_t *cl )
 			viewEnt = NUM_FOR_EDICT( cl->pViewEntity );
 		else viewEnt = NUM_FOR_EDICT( cl->edict );
 
-		MSG_BeginServerCmd( &msg, svc_setview );
-		MSG_WriteWord( &msg, viewEnt );
+		SV_WriteSetViewMessage( &msg, viewEnt );
 
 		MSG_BeginServerCmd( &msg, svc_signonnum );
 		MSG_WriteByte( &msg, 1 );
@@ -1531,8 +1604,7 @@ static void SV_UpdateClientView( sv_client_t *cl )
 		viewEnt = NUM_FOR_EDICT( cl->pViewEntity );
 	else viewEnt = NUM_FOR_EDICT( cl->edict );
 
-	MSG_BeginServerCmd( &cl->netchan.message, svc_setview );
-	MSG_WriteWord( &cl->netchan.message, viewEnt );
+	SV_WriteSetViewMessage( &cl->netchan.message, viewEnt );
 }
 
 /*
@@ -1550,8 +1622,7 @@ void SV_TogglePause( const char *msg )
 		SV_BroadcastPrintf( NULL, "%s", msg );
 
 	// send notification to all clients
-	MSG_BeginServerCmd( &sv.reliable_datagram, svc_setpause );
-	MSG_WriteOneBit( &sv.reliable_datagram, sv.paused );
+	SV_WriteSetPauseMessage( &sv.reliable_datagram, sv.paused );
 }
 
 /*
@@ -1563,8 +1634,7 @@ Tell all the clients that the server is changing levels
 */
 void SV_BuildReconnect( sizebuf_t *msg )
 {
-	MSG_BeginServerCmd( msg, svc_stufftext );
-	MSG_WriteString( msg, "reconnect\n" );
+	SV_WriteReconnectMessage( msg );
 }
 
 /*
@@ -2211,8 +2281,7 @@ static qboolean SV_Spawn_f( sv_client_t *cl )
 	// if we are paused, tell the clients
 	if( sv.paused )
 	{
-		MSG_BeginServerCmd( &sv.reliable_datagram, svc_setpause );
-		MSG_WriteOneBit( &sv.reliable_datagram, sv.paused );
+		SV_WriteSetPauseMessage( &sv.reliable_datagram, sv.paused );
 		SV_ClientPrintf( cl, "Server is paused.\n" );
 	}
 	return true;

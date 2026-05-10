@@ -42,5 +42,8 @@ Current helpers:
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
   serialization for client slot, user ID, active bit, sanitized userinfo, and
   hashed CD key digest bytes.
+- `server_service_messages.cpp`: target-neutral payload serialization for
+  compact service messages such as file-transfer failure, reconnect, set-view,
+  set-pause, and voice-init.
 - `source_query.cpp`: target-neutral GoldSrc query payload construction.
 - `user_agent_policy.cpp`: target-neutral connection user-agent validation.

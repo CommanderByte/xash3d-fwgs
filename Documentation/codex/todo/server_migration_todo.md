@@ -487,16 +487,16 @@ preserving legacy userinfo mutation and hashing.
 Goal: remove a set of tiny service-message writers from legacy code without
 creating a broad serverdata rewrite.
 
-- [ ] Baseline `SV_FailDownload()`, `SV_BuildReconnect()`,
+- [x] Baseline `SV_FailDownload()`, `SV_BuildReconnect()`,
   `SV_UpdateClientView()`, `SV_TogglePause()`, and `SV_WriteVoiceCodec()`.
-- [ ] Implement target-neutral encoders for `svc_filetxferfailed`,
+- [x] Implement target-neutral encoders for `svc_filetxferfailed`,
   `svc_stufftext reconnect`, `svc_setview`, `svc_setpause`, and
   `svc_voiceinit`.
-- [ ] Keep cvars, state checks, client selection, and destination buffer
+- [x] Keep cvars, state checks, client selection, and destination buffer
   ownership in legacy code.
-- [ ] Add golden tests for command bytes, strings, signed fields, fallback
+- [x] Add golden tests for command bytes, strings, word/bit fields, fallback
   codec behavior, and overflow handling.
-- [ ] Route the selected writers through adapters and verify focused tests,
+- [x] Route the selected writers through adapters and verify focused tests,
   full tests, and `+wait +wait` smoke timing.
 
 ## Phase 74: Server Voice Relay Policy

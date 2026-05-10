@@ -2360,24 +2360,33 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 73: Small Server Service Messages
 
-- [ ] `ENG-SVCMSG-001` Baseline compact service writers including
+- [x] `ENG-SVCMSG-001` Baseline compact service writers including
   `SV_FailDownload()`, `SV_BuildReconnect()`, `SV_UpdateClientView()`,
   `SV_TogglePause()`, and `SV_WriteVoiceCodec()`.
-  Evidence:
-- [ ] `ENG-SVCMSG-002` Implement target-neutral service message encoders for
+  Evidence: `Documentation/codex/legacy/engine/server-service-message-baseline.md`.
+- [x] `ENG-SVCMSG-002` Implement target-neutral service message encoders for
   file-transfer failure, reconnect command, set-view, pause, and voice-codec
   payloads.
-  Evidence:
-- [ ] `ENG-SVCMSG-003` Add golden tests for command bytes, signed fields,
+  Evidence: `src/include/engine/server/server_service_messages.hpp`,
+  `src/engine/server/server_service_messages.cpp`,
+  `engine/server/server_service_messages_adapter.h`, and
+  `engine/server/server_service_messages_adapter.cpp`.
+- [x] `ENG-SVCMSG-003` Add golden tests for command bytes, word/bit fields,
   string payloads, empty codec fallback, and overflow handling.
-  Evidence:
-- [ ] `ENG-SVCMSG-004` Route selected service writers through adapters while
+  Evidence: `tests/engine/server_service_messages.cpp`.
+- [x] `ENG-SVCMSG-004` Route selected service writers through adapters while
   keeping cvars, server state checks, client selection, and message buffer
   ownership legacy-owned.
-  Evidence:
-- [ ] `ENG-SVCMSG-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/sv_client.c`, `engine/server/sv_init.c`, and
+  `engine/server/sv_game.c` keep legacy command begins, state/cvar/entity
+  decisions, and destination buffers while routing payload bits through
+  `SV_ServiceMessage_*Payload()`.
+- [x] `ENG-SVCMSG-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_service_messages` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 84/84, runtime smoke first
+  frame 0.493 seconds, stop reason `command`.
 
 ## Phase 74: Server Voice Relay Policy
 

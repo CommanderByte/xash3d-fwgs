@@ -22,6 +22,7 @@ GNU General Public License for more details.
 #include "server_hot_resource_adapter.h"
 #include "server_reslist_policy_adapter.h"
 #include "server_resource_catalog_adapter.h"
+#include "server_service_messages_adapter.h"
 
 #if XASH_LOW_MEMORY != 2
 int SV_UPDATE_BACKUP = SINGLEPLAYER_BACKUP;
@@ -433,9 +434,22 @@ SV_WriteVoiceCodec
 */
 static void SV_WriteVoiceCodec( sizebuf_t *msg )
 {
+	sv_service_message_write_result_t result;
+
 	MSG_BeginServerCmd( msg, svc_voiceinit );
-	MSG_WriteString( msg, VOICE_DEFAULT_CODEC );
-	MSG_WriteByte( msg, (int)sv_voicequality.value );
+	if( msg->bOverflow )
+		return;
+
+	result = SV_ServiceMessage_WriteVoiceInitPayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		VOICE_DEFAULT_CODEC,
+		(int)sv_voicequality.value );
+
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
 }
 
 /*
