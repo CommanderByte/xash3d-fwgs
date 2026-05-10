@@ -2643,21 +2643,32 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 83: Save/Restore Compatibility Fixtures
 
-- [ ] `ENG-SAVE-001` Audit `sv_save.c` binary formats, token tables, landmark
+- [x] `ENG-SAVE-001` Audit `sv_save.c` binary formats, token tables, landmark
   handling, global state, entity fields, and known compatibility quirks.
-  Evidence:
-- [ ] `ENG-SAVE-002` Create tiny save/restore fixtures or generated binary
+  Evidence: Added
+  `Documentation/codex/legacy/engine/save-restore-format-baseline.md`.
+- [x] `ENG-SAVE-002` Create tiny save/restore fixtures or generated binary
   fixtures that can be tested without shipping game assets.
-  Evidence:
-- [ ] `ENG-SAVE-003` Add read-only parser tests for header, token table, entity
+  Evidence: Added `src/engine/server/save_restore_format.cpp`,
+  `src/include/engine/server/save_restore_format.hpp`, and generated fixtures
+  in `tests/engine/save_restore_format.cpp`.
+- [x] `ENG-SAVE-003` Add read-only parser tests for header, token table, entity
   section, lightstyles, and rejected malformed data.
-  Evidence:
-- [ ] `ENG-SAVE-004` Decide the safe modernization boundary for save/restore
+  Evidence: `test_engine_save_restore_format` covers `VALV`/`JSAV` headers,
+  token-table rebasing, `ETABLE`, `Save Header`, `LIGHTSTYLE`, bundled save
+  file entries, and malformed magic/version/count/token/section cases.
+- [x] `ENG-SAVE-004` Decide the safe modernization boundary for save/restore
   before moving implementation code.
-  Evidence:
-- [ ] `ENG-SAVE-005` Run focused tests, full tests, runtime smoke with
+  Evidence: Added
+  `Documentation/codex/modern/engine/save-restore-migration-boundary.md`;
+  runtime save/load remains legacy-owned until real-save fixtures and game DLL
+  field serialization coverage exist.
+- [x] `ENG-SAVE-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_save_restore_format` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 93/93, runtime smoke first
+  frame 0.713 seconds, stop reason `command`.
 
 ## Phase 84: Game DLL Bridge Boundary Audit
 

@@ -147,6 +147,7 @@ def build(bld):
 			'engine_server_command_lifecycle': '../tests/engine/server_command_lifecycle.cpp',
 			'engine_server_spawn_handshake': '../tests/engine/server_spawn_handshake.cpp',
 			'engine_server_frame_datagram': '../tests/engine/server_frame_datagram.cpp',
+			'engine_save_restore_format': '../tests/engine/save_restore_format.cpp',
 		}
 
 		for i in tests:

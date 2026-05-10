@@ -626,12 +626,12 @@ construction.
 
 Goal: stop treating save/restore as a black box before attempting migration.
 
-- [ ] Audit `sv_save.c` binary formats and compatibility quirks.
-- [ ] Create tiny generated fixtures or read-only parser fixtures.
-- [ ] Add tests for headers, token tables, entities, lightstyles, and malformed
+- [x] Audit `sv_save.c` binary formats and compatibility quirks.
+- [x] Create tiny generated fixtures or read-only parser fixtures.
+- [x] Add tests for headers, token tables, entities, lightstyles, and malformed
   data.
-- [ ] Decide the safe modernization boundary.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Decide the safe modernization boundary.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 84: Game DLL Bridge Boundary Audit
 
@@ -648,6 +648,7 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
-- [ ] Save/restore migration after binary compatibility fixtures exist.
+- [ ] Runtime save/restore migration after real-save fixtures and game DLL field
+  serialization coverage exist.
 - [ ] Game DLL bridge migration after explicit ABI and licensing review.
 - [ ] Physics/world migration after movement and trace fixtures exist.

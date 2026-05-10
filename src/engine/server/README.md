@@ -9,6 +9,8 @@ code until a later compatibility phase changes those boundaries.
 
 Current helpers:
 
+- `save_restore_format.cpp`: read-only save/restore file-format fixture
+  parsing for headers, token tables, field sections, and bundled save files.
 - `client_command_dispatch.cpp`: target-neutral client command lookup and
   routing decisions.
 - `netapi_info.cpp`: target-neutral NetAPI info-string construction.
