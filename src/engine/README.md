@@ -22,8 +22,11 @@ slice should be added only when it has:
 - `network/`: future net buffer/channel/protocol helpers after protocol tests.
 - `platform/`: engine-side platform facade helpers behind existing `Sys_*`
   contracts.
+- `server/`: target-neutral server policies and builders behind existing
+  `SV_*` and `Log_*` compatibility surfaces.
 
 Build-wired lanes now include commands, system-console helpers, engine
-filesystem bridge policy, network buffers, and small platform facades. New work
-should still enter as a narrow, tested slice with a legacy ownership note and a
-C-compatible adapter wherever legacy callers keep the public surface.
+filesystem bridge policy, network buffers, small platform facades, and the
+first server filter policy helpers. New work should still enter as a narrow,
+tested slice with a legacy ownership note and a C-compatible adapter wherever
+legacy callers keep the public surface.

@@ -25,6 +25,9 @@ Current implementation notes:
 - `server-migration-guide.md`: how server-side helpers should move into
   `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
   surfaces remain compatibility boundaries.
+- `server-filter-migration.md`: how Phase 53 routes ID/IP filter policy through
+  target-neutral modern server helpers while legacy command/file ownership
+  stays in `sv_filter.c`.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports
   should delegate into `src/utilities` without making hash/checksum helpers
   engine-owned.

@@ -1824,18 +1824,29 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 53: Server Filter Pilot
 
-- [ ] `ENG-SVFILTER-001` Capture baseline behavior for IP filters, ID filters,
+- [x] `ENG-SVFILTER-001` Capture baseline behavior for IP filters, ID filters,
   command surfaces, file persistence, and existing embedded tests.
-  Evidence:
-- [ ] `ENG-SVFILTER-002` Extract pure filter parsing and matching policy into
+  Evidence: `Documentation/codex/legacy/engine/server-filter-baseline.md`.
+- [x] `ENG-SVFILTER-002` Extract pure filter parsing and matching policy into
   `src/engine/server` with focused tests under `tests/engine`.
-  Evidence:
-- [ ] `ENG-SVFILTER-003` Route legacy `sv_filter.c` through a C-compatible
+  Evidence: `src/include/engine/server/server_filter.hpp`,
+  `src/engine/server/server_filter.cpp`,
+  `tests/engine/server_filter.cpp`;
+  `.\waf.bat build --targets=test_engine_server_filter` passed 1/1.
+- [x] `ENG-SVFILTER-003` Route legacy `sv_filter.c` through a C-compatible
   adapter without changing command names, file formats, or ban-list behavior.
-  Evidence:
-- [ ] `ENG-SVFILTER-004` Run focused tests, `.\waf.bat build --alltests`, and
+  Evidence: `engine/server/server_filter_adapter.h`,
+  `engine/server/server_filter_adapter.cpp`, `engine/server/sv_filter.c`,
+  `Documentation/codex/modern/engine/server-filter-migration.md`.
+- [x] `ENG-SVFILTER-004` Run focused tests, `.\waf.bat build --alltests`, and
   a server/runtime smoke test.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_server_filter` passed 1/1;
+  `.\waf.bat build --alltests` passed 65/65; Windows runtime smoke copied the
+  rebuilt engine/filesystem/ref DLLs into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.512 seconds, and stopped with reason `command` at
+  May 10 2026 14:00:54 local time.
 
 ## Phase 54: Server Query Response Builder
 
@@ -2010,3 +2021,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-10 | DEC-053 | Extract only pure filesystem bridge mount flag policy into `src/engine/filesystem`, while keeping `fs_interface_t` logging callbacks and rendered-console routing at the legacy boundary until an engine router/sink phase exists. | `legacy/engine/filesystem-bridge-audit.md`, `modern/engine/filesystem-bridge-migration-guide.md`, `src/engine/filesystem/mount_flags.cpp`, `engine/common/filesystem_engine.c`, `deferred/todo/filesystem_logging_todo.md` |
 | 2026-05-10 | DEC-054 | After the Phase 50 milestone, use server-side engine code as the next coherent migration lane, starting with `sv_filter.c` and then source-query response building, while deferring renderer, memory, savegame, and rendered-console work. | `modern/milestone-50-structure-audit.md` |
 | 2026-05-10 | DEC-055 | Treat `server.h`, `SV_*`, `Log_*`, `sv`, `svs`, `svgame`, command/cvar names, save/config files, and packet payloads as server compatibility boundaries; pure modern server logic should live under `src/engine/server` and receive snapshots or plain values from legacy adapters. | `legacy/engine/server-boundary-audit.md`, `modern/engine/server-migration-guide.md` |
+| 2026-05-10 | DEC-056 | For the first server filter migration, keep legacy linked lists, commands, file writes, client iteration, and `host.realtime` ownership in `sv_filter.c`; route only rule activity, ID prefix matching, IP matching, and IP removal-selector policy through modern server helpers. | `legacy/engine/server-filter-baseline.md`, `modern/engine/server-filter-migration.md`, `src/engine/server/server_filter.cpp`, `engine/server/server_filter_adapter.cpp` |

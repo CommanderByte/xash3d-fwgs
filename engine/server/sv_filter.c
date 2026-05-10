@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_filter_adapter.h"
 
 
 /*
@@ -66,10 +67,7 @@ qboolean SV_CheckID( const char *id )
 
 	for( filter = cidfilter; filter; filter = filter->next )
 	{
-		int len1 = Q_strlen( id ), len2 = Q_strlen( filter->id );
-		int len = Q_min( len1, len2 );
-
-		while( filter->endTime && host.realtime > filter->endTime )
+		while( !SV_ServerFilter_RuleIsActive( filter->endTime, host.realtime ))
 		{
 			char *fid = filter->id;
 			filter = filter->next;
@@ -78,7 +76,7 @@ qboolean SV_CheckID( const char *id )
 				return false;
 		}
 
-		if( !Q_strncmp( id, filter->id, len ))
+		if( SV_ServerFilter_IdRuleMatches( id, filter->id ))
 		{
 			ret = true;
 			break;
@@ -302,17 +300,11 @@ static int SV_FilterToString( char *dest, size_t size, qboolean config, ipfilter
 
 static qboolean SV_IPFilterIncludesIPFilter( ipfilter_t *a, ipfilter_t *b )
 {
-	if( NET_NetadrType( &a->adr ) != NET_NetadrType( &b->adr ))
-		return false;
-
-	// can't include bigger subnet in small
-	if( a->prefixlen < b->prefixlen )
-		return false;
-
-	if( a->prefixlen == b->prefixlen )
-		return NET_CompareAdr( a->adr, b->adr );
-
-	return NET_CompareAdrByMask( a->adr, b->adr, b->prefixlen );
+	return SV_ServerFilter_IpRemovalSelectorMatchesRule(
+		&a->adr,
+		a->prefixlen,
+		&b->adr,
+		b->prefixlen );
 }
 
 static void SV_RemoveIPFilter( ipfilter_t *toremove, qboolean removeAll, qboolean verbose )
@@ -356,14 +348,14 @@ qboolean SV_CheckIP( netadr_t *adr )
 
 	for( ; entry; entry = entry->next )
 	{
-		if( entry->endTime && host.realtime > entry->endTime )
+		if( !SV_ServerFilter_RuleIsActive( entry->endTime, host.realtime ))
 			continue; // expired
 
 		switch( NET_NetadrType( &entry->adr ))
 		{
 		case NA_IP:
 		case NA_IP6:
-			if( NET_CompareAdrByMask( *adr, entry->adr, entry->prefixlen ))
+			if( SV_ServerFilter_IpRuleMatchesAddress( &entry->adr, entry->prefixlen, adr ))
 				return true;
 			break;
 		}

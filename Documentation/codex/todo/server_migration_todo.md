@@ -18,17 +18,28 @@ the main phase tracker until they are selected.
 
 ## Phase 53: Server Filter Pilot
 
-- [ ] Capture focused baseline behavior for existing `sv_filter.c` tests and
+- [x] Capture focused baseline behavior for existing `sv_filter.c` tests and
   command/file surfaces.
-- [ ] Add modern tests for IP filter inclusion, removal, active/expired rules,
+  Evidence: `Documentation/codex/legacy/engine/server-filter-baseline.md`.
+- [x] Add modern tests for IP filter inclusion, removal, active/expired rules,
   and config/human formatting.
-- [ ] Add modern tests for ID filter prefix matching and expiration.
-- [ ] Implement target-neutral filter value types and lists under
+  Evidence: `tests/engine/server_filter.cpp`.
+- [x] Add modern tests for ID filter prefix matching and expiration.
+  Evidence: `tests/engine/server_filter.cpp`.
+- [x] Implement target-neutral filter value types and lists under
   `src/engine/server`.
-- [ ] Add a legacy adapter that supplies current time and translates legacy
+  Evidence: `src/include/engine/server/server_filter.hpp`,
+  `src/engine/server/server_filter.cpp`.
+- [x] Add a legacy adapter that supplies current time and translates legacy
   filter records without moving command handlers yet.
-- [ ] Route the smallest safe part of `sv_filter.c` through the adapter.
-- [ ] Run focused tests, `.\waf.bat build --alltests`, and a runtime smoke.
+  Evidence: `engine/server/server_filter_adapter.h`,
+  `engine/server/server_filter_adapter.cpp`.
+- [x] Route the smallest safe part of `sv_filter.c` through the adapter.
+  Evidence: `engine/server/sv_filter.c`.
+- [x] Run focused tests, `.\waf.bat build --alltests`, and a runtime smoke.
+  Evidence: `.\waf.bat build --targets=test_engine_server_filter` passed 1/1;
+  `.\waf.bat build --alltests` passed 65/65; Windows runtime smoke reached
+  first frame in 0.512 seconds and quit by command on May 10 2026.
 
 ## Phase 54: Server Query Response Builder
 
