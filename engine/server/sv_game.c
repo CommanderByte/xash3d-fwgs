@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
+#include "game_dll_client_info_policy_adapter.h"
 #include "game_dll_message_session_adapter.h"
 #include "game_dll_output_policy_adapter.h"
 #include "game_dll_payload_policy_adapter.h"
@@ -4026,17 +4027,25 @@ pfnGetInfoKeyBuffer
 static char *GAME_EXPORT pfnGetInfoKeyBuffer( edict_t *e )
 {
 	sv_client_t	*cl;
+	int		valid = SV_IsValidEdict( e );
+	int		route;
 
-	// NULL passes localinfo
-	if( !SV_IsValidEdict( e ))
+	cl = NULL;
+	if( valid && e != svgame.edicts )
+		cl = SV_ClientFromEdict( e, false );
+
+	route = SV_GameDllClientInfo_BuildInfoBufferRoute(
+		valid,
+		e == svgame.edicts,
+		cl != NULL );
+
+	if( route == SV_GAMEDLL_INFO_BUFFER_LOCALINFO )
 		return svs.localinfo;
 
-	// world passes serverinfo
-	if( e == svgame.edicts )
+	if( route == SV_GAMEDLL_INFO_BUFFER_SERVERINFO )
 		return svs.serverinfo;
 
-	// userinfo for specified edict
-	if(( cl = SV_ClientFromEdict( e, false )) != NULL )
+	if( route == SV_GAMEDLL_INFO_BUFFER_CLIENT_USERINFO )
 		return cl->userinfo;
 
 	return (char*)""; // assume error
@@ -4050,10 +4059,19 @@ pfnSetValueForKey
 */
 static void GAME_EXPORT pfnSetValueForKey( char *infobuffer, char *key, char *value )
 {
-	if( infobuffer == svs.localinfo )
-		Info_SetValueForStarKey( infobuffer, key, value, MAX_LOCALINFO_STRING );
-	else if( infobuffer == svs.serverinfo )
-		Info_SetValueForStarKey( infobuffer, key, value, MAX_SERVERINFO_STRING );
+	sv_gamedll_set_value_plan_t plan;
+
+	plan = SV_GameDllClientInfo_BuildSetValuePlan(
+		infobuffer == svs.localinfo,
+		infobuffer == svs.serverinfo,
+		MAX_LOCALINFO_STRING,
+		MAX_SERVERINFO_STRING );
+
+	if( plan.action == SV_GAMEDLL_SET_VALUE_LOCALINFO ||
+		plan.action == SV_GAMEDLL_SET_VALUE_SERVERINFO )
+	{
+		Info_SetValueForStarKey( infobuffer, key, value, plan.max_length );
+	}
 	else Con_Printf( S_ERROR "can't set client keys with SetValueForKey\n" );
 }
 
@@ -4065,21 +4083,34 @@ pfnSetClientKeyValue
 */
 static void GAME_EXPORT pfnSetClientKeyValue( int clientIndex, char *infobuffer, char *key, char *value )
 {
+	sv_gamedll_client_key_value_plan_t plan;
 	sv_client_t	*cl;
+	int	valueChanged = true;
 
-	if( infobuffer == svs.localinfo || infobuffer == svs.serverinfo )
-		return;
+	plan = SV_GameDllClientInfo_BuildClientKeyValuePlan(
+		infobuffer == svs.localinfo || infobuffer == svs.serverinfo,
+		svs.clients != NULL,
+		clientIndex,
+		svs.maxclients,
+		true );
 
-	clientIndex -= 1;
-
-	if( !svs.clients || clientIndex < 0 || clientIndex >= svs.maxclients )
+	if( plan.action == SV_GAMEDLL_CLIENT_KEY_SKIP_PROTECTED_INFO ||
+		plan.action == SV_GAMEDLL_CLIENT_KEY_SKIP_INVALID_CLIENT )
 		return;
 
 	// value not changed?
-	if( !Q_strcmp( Info_ValueForKey( infobuffer, key ), value ))
+	valueChanged = Q_strcmp( Info_ValueForKey( infobuffer, key ), value ) != 0;
+	plan = SV_GameDllClientInfo_BuildClientKeyValuePlan(
+		false,
+		true,
+		clientIndex,
+		svs.maxclients,
+		valueChanged );
+
+	if( plan.action == SV_GAMEDLL_CLIENT_KEY_SKIP_UNCHANGED )
 		return;
 
-	cl = &svs.clients[clientIndex];
+	cl = &svs.clients[plan.client_index];
 
 	Info_SetValueForStarKey( infobuffer, key, value, MAX_INFO_STRING );
 	SetBits( cl->flags, FCL_RESEND_USERINFO );
@@ -4095,9 +4126,12 @@ pfnGetPhysicsKeyValue
 static const char *GAME_EXPORT pfnGetPhysicsKeyValue( const edict_t *pClient, const char *key )
 {
 	sv_client_t	*cl;
+	int	action;
 
 	// pfnUserInfoChanged passed
-	if(( cl = SV_ClientFromEdict( pClient, false )) == NULL )
+	cl = SV_ClientFromEdict( pClient, false );
+	action = SV_GameDllClientInfo_BuildClientStringAction( cl != NULL );
+	if( action == SV_GAMEDLL_CLIENT_STRING_PRINT_NON_CLIENT_RETURN_EMPTY )
 	{
 		Con_Printf( S_ERROR "%s: tried to a non-client!\n", __func__ );
 		return "";
@@ -4115,9 +4149,12 @@ pfnSetPhysicsKeyValue
 static void GAME_EXPORT pfnSetPhysicsKeyValue( const edict_t *pClient, const char *key, const char *value )
 {
 	sv_client_t	*cl;
+	int	action;
 
 	// pfnUserInfoChanged passed
-	if(( cl = SV_ClientFromEdict( pClient, false )) == NULL )
+	cl = SV_ClientFromEdict( pClient, false );
+	action = SV_GameDllClientInfo_BuildClientMutationAction( cl != NULL );
+	if( action == SV_GAMEDLL_CLIENT_STRING_PRINT_NON_CLIENT_SKIP )
 	{
 		Con_Printf( S_ERROR "%s: tried to a non-client!\n", __func__ );
 		return;
@@ -4135,9 +4172,12 @@ pfnGetPhysicsInfoString
 static const char *GAME_EXPORT pfnGetPhysicsInfoString( const edict_t *pClient )
 {
 	sv_client_t	*cl;
+	int	action;
 
 	// pfnUserInfoChanged passed
-	if(( cl = SV_ClientFromEdict( pClient, false )) == NULL )
+	cl = SV_ClientFromEdict( pClient, false );
+	action = SV_GameDllClientInfo_BuildClientStringAction( cl != NULL );
+	if( action == SV_GAMEDLL_CLIENT_STRING_PRINT_NON_CLIENT_RETURN_EMPTY )
 	{
 		Con_Printf( S_ERROR "%s: tried to a non-client!\n", __func__ );
 		return "";
@@ -4603,9 +4643,10 @@ static int GAME_EXPORT pfnGetPlayerUserId( edict_t *e )
 {
 	sv_client_t	*cl;
 
-	if(( cl = SV_ClientFromEdict( e, false )) == NULL )
-		return -1;
-	return cl->userid;
+	cl = SV_ClientFromEdict( e, false );
+	return SV_GameDllClientInfo_BuildPlayerUserId(
+		cl != NULL,
+		cl ? cl->userid : -1 );
 }
 
 /*
@@ -4616,16 +4657,17 @@ pfnGetPlayerStats
 */
 static void GAME_EXPORT pfnGetPlayerStats( const edict_t *pClient, int *ping, int *packet_loss )
 {
+	sv_gamedll_player_stats_t stats;
 	sv_client_t	*cl;
 
-	if( packet_loss ) *packet_loss = 0;
-	if( ping ) *ping = 0;
+	cl = SV_ClientFromEdict( pClient, false );
+	stats = SV_GameDllClientInfo_BuildPlayerStats(
+		cl != NULL,
+		cl ? cl->latency : 0.0f,
+		cl ? cl->packet_loss : 0 );
 
-	if(( cl = SV_ClientFromEdict( pClient, false )) == NULL )
-		return;
-
-	if( packet_loss ) *packet_loss = cl->packet_loss;
-	if( ping ) *ping = cl->latency * 1000;
+	if( packet_loss ) *packet_loss = stats.packet_loss;
+	if( ping ) *ping = stats.ping;
 }
 
 static void GAME_EXPORT Cmd_AddServerCommand( const char *cmd_name, xcommand_t function )
@@ -4728,7 +4770,13 @@ return nullstring for now
 */
 static const char *GAME_EXPORT pfnGetPlayerAuthId( edict_t *e )
 {
-	return SV_GetClientIDString( SV_ClientFromEdict( e, false ));
+	sv_client_t *cl = SV_ClientFromEdict( e, false );
+
+	if( SV_GameDllClientInfo_BuildClientStringAction( cl != NULL ) !=
+		SV_GAMEDLL_CLIENT_STRING_RETURN_VALUE )
+		return "";
+
+	return SV_GetClientIDString( cl );
 }
 
 /*
@@ -4741,11 +4789,16 @@ request client cvar value
 static void GAME_EXPORT pfnQueryClientCvarValue( const edict_t *player, const char *cvarName )
 {
 	sv_client_t *cl;
+	int action;
 
-	if( COM_StringEmptyOrNULL( cvarName ))
+	action = SV_GameDllClientInfo_BuildQueryCvarAction( cvarName, false );
+	if( action == SV_GAMEDLL_QUERY_CVAR_SKIP_EMPTY_NAME )
 		return;
 
-	if(( cl = SV_ClientFromEdict( player, false )) != NULL )
+	cl = SV_ClientFromEdict( player, false );
+	action = SV_GameDllClientInfo_BuildQueryCvarAction( cvarName, cl != NULL );
+
+	if( action == SV_GAMEDLL_QUERY_CVAR_SEND_QUERY )
 	{
 		MSG_BeginServerCmd( &cl->netchan.message, svc_querycvarvalue );
 		MSG_WriteString( &cl->netchan.message, cvarName );
@@ -4768,11 +4821,16 @@ request client cvar value (bugfixed)
 static void GAME_EXPORT pfnQueryClientCvarValue2( const edict_t *player, const char *cvarName, int requestID )
 {
 	sv_client_t *cl;
+	int action;
 
-	if( COM_StringEmptyOrNULL( cvarName ))
+	action = SV_GameDllClientInfo_BuildQueryCvarAction( cvarName, false );
+	if( action == SV_GAMEDLL_QUERY_CVAR_SKIP_EMPTY_NAME )
 		return;
 
-	if(( cl = SV_ClientFromEdict( player, false )) != NULL )
+	cl = SV_ClientFromEdict( player, false );
+	action = SV_GameDllClientInfo_BuildQueryCvarAction( cvarName, cl != NULL );
+
+	if( action == SV_GAMEDLL_QUERY_CVAR_SEND_QUERY )
 	{
 		MSG_BeginServerCmd( &cl->netchan.message, svc_querycvarvalue2 );
 		MSG_WriteLong( &cl->netchan.message, requestID );
@@ -4825,25 +4883,29 @@ static int GAME_EXPORT pfnGetTimesTutorMessageShown( int mid )
 static void GAME_EXPORT pfnGetGameDir( char *out )
 {
 	char rootdir[MAX_SYSPATH];
+	char fullpath[256];
+	qboolean root_available = false;
+	qboolean full_path_fits = false;
+	int action;
 
 	if( !out )
 		return;
 
-	if( !FBitSet( host.bugcomp, BUGCOMP_GET_GAME_DIR_FULL_PATH ))
+	if( FBitSet( host.bugcomp, BUGCOMP_GET_GAME_DIR_FULL_PATH ))
 	{
-		Q_strncpy( out, GI->gamefolder, 256 );
+		root_available = g_fsapi.GetRootDirectory( rootdir, sizeof( rootdir ));
+		full_path_fits = root_available &&
+			Q_snprintf( fullpath, sizeof( fullpath ), "%s/%s", rootdir, GI->gamefolder ) >= 0;
 	}
-	else
-	{
-		// in GoldSrc pre-1.1.1.1, it's a full path to game directory, limited by 256 characters
-		// however the full path might easily overflow that limitation
-		// here we check if it would overflow and just return game folder in that case
-		if( !g_fsapi.GetRootDirectory( rootdir, sizeof( rootdir ))
-			|| Q_snprintf( out, 256, "%s/%s", rootdir, GI->gamefolder ) < 0 )
-		{
-			Q_strncpy( out, GI->gamefolder, 256 );
-		}
-	}
+
+	action = SV_GameDllClientInfo_BuildGameDirAction(
+		FBitSet( host.bugcomp, BUGCOMP_GET_GAME_DIR_FULL_PATH ),
+		root_available,
+		full_path_fits );
+
+	if( action == SV_GAMEDLL_GAME_DIR_WRITE_FULL_PATH )
+		Q_strncpy( out, fullpath, 256 );
+	else Q_strncpy( out, GI->gamefolder, 256 );
 }
 
 // engine callbacks

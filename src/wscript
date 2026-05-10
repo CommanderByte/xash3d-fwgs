@@ -90,6 +90,7 @@ def build(bld):
 			'engine_connectionless_classifier': '../tests/engine/connectionless_classifier.cpp',
 			'engine_connection_response': '../tests/engine/connection_response.cpp',
 			'engine_filesystem_mount_flags': '../tests/engine/filesystem_mount_flags.cpp',
+			'engine_game_dll_client_info_policy': '../tests/engine/game_dll_client_info_policy.cpp',
 			'engine_game_dll_enginefuncs': '../tests/engine/game_dll_enginefuncs.cpp',
 			'engine_game_dll_message_session': '../tests/engine/game_dll_message_session.cpp',
 			'engine_game_dll_output_policy': '../tests/engine/game_dll_output_policy.cpp',

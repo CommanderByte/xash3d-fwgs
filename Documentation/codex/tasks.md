@@ -2933,22 +2933,29 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 93: Game DLL Client Info-Key And Query Callback Policy
 
-- [ ] `ENG-GAMEDLL-INFO-001` Baseline info-key buffers, client key-value
+- [x] `ENG-GAMEDLL-INFO-001` Baseline info-key buffers, client key-value
   mutation, physics info strings, auth/user ID callbacks, stats, cvar query
   callbacks, and game-dir compatibility.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-INFO-002` Extract safe admission and fallback-result
+  Evidence: `Documentation/codex/modern/engine/game-dll-client-info-policy.md`.
+- [x] `ENG-GAMEDLL-INFO-002` Extract safe admission and fallback-result
   policies.
-  Evidence:
-- [ ] `ENG-GAMEDLL-INFO-003` Add tests for local/serverinfo selection,
+  Evidence: `src/include/engine/server/game_dll_client_info_policy.hpp` and
+  `src/engine/server/game_dll_client_info_policy.cpp`.
+- [x] `ENG-GAMEDLL-INFO-003` Add tests for local/serverinfo selection,
   unchanged key-values, resend-flag decisions, bad-player query results,
   invalid cvar names, and full-path game-dir fallback.
-  Evidence:
-- [ ] `ENG-GAMEDLL-INFO-004` Route safe decisions while keeping `Info_*`
+  Evidence: `tests/engine/game_dll_client_info_policy.cpp`.
+- [x] `ENG-GAMEDLL-INFO-004` Route safe decisions while keeping `Info_*`
   mutation and live client fields adapter-owned.
-  Evidence:
-- [ ] `ENG-GAMEDLL-INFO-005` Run focused tests, full tests, and smoke timing.
-  Evidence:
+  Evidence: `engine/server/game_dll_client_info_policy_adapter.cpp` and
+  `engine/server/sv_game.c`.
+- [x] `ENG-GAMEDLL-INFO-005` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_client_info_policy -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 101/101, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.520 seconds and
+  stopped with reason `command`.
 
 ## Phase 94: Game DLL String Pool Compatibility Fixtures
 

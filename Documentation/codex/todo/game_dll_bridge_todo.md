@@ -135,13 +135,13 @@ phase.
 
 ## Phase 93: Client Info-Key And Query Callback Policy
 
-- [ ] Baseline `pfnGetInfoKeyBuffer()`, `pfnSetValueForKey()`,
+- [x] Baseline `pfnGetInfoKeyBuffer()`, `pfnSetValueForKey()`,
   `pfnSetClientKeyValue()`, physics info callbacks, auth/user ID callbacks,
   and cvar query callbacks.
-- [ ] Extract safe admission and fallback-result policies.
-- [ ] Add tests for local/serverinfo selection, unchanged key-values,
+- [x] Extract safe admission and fallback-result policies.
+- [x] Add tests for local/serverinfo selection, unchanged key-values,
   resend-flag decisions, bad player query results, and game-dir compatibility.
-- [ ] Keep `Info_*` mutation and live client fields adapter-owned.
+- [x] Keep `Info_*` mutation and live client fields adapter-owned.
 
 ## Phase 94: String Pool Compatibility Fixtures
 
