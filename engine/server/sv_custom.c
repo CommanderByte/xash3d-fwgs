@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_upload_queue_adapter.h"
 
 static void SV_CreateCustomizationList( sv_client_t *cl )
 {
@@ -288,27 +289,15 @@ static void SV_SendConsistencyList( sv_client_t *cl, sizebuf_t *msg )
 	MSG_WriteOneBit( msg, 0 );
 }
 
-static qboolean SV_CheckFile( sizebuf_t *msg, const char *filename )
+static qboolean SV_CustomResourceDataExists( resource_t *pResource )
 {
-	resource_t	p;
+	return HPAK_GetDataPointer( hpk_custom_file.string, pResource, NULL, NULL );
+}
 
-	memset( &p, 0, sizeof( resource_t ));
-
-	if( Q_strlen( filename ) == 36 && !Q_strnicmp( filename, "!MD5", 4 ))
-	{
-		COM_HexConvert( filename + 4, 32, p.rgucMD5_hash );
-
-		if( HPAK_GetDataPointer( hpk_custom_file.string, &p, NULL, NULL ))
-			return true;
-	}
-
-	if( !sv_allow_upload.value )
-		return true;
-
+static void SV_RequestCustomUpload( sizebuf_t *msg, resource_t *pResource )
+{
 	MSG_BeginServerCmd( msg, svc_stufftext );
-	MSG_WriteStringf( msg, "upload \"!MD5%s\"\n", MD5_Print( p.rgucMD5_hash ));
-
-	return false;
+	MSG_WriteStringf( msg, "upload \"!MD5%s\"\n", MD5_Print( pResource->rgucMD5_hash ));
 }
 
 void SV_MoveToOnHandList( sv_client_t *cl, resource_t *pResource )
@@ -384,26 +373,24 @@ void SV_ClearResourceLists( sv_client_t *cl )
 
 int SV_EstimateNeededResources( sv_client_t *cl )
 {
-	int		missing = 0;
 	int		size = 0;
 	resource_t	*p;
 
 	for( p = cl->resourcesneeded.pNext; p != &cl->resourcesneeded; p = p->pNext )
 	{
-		if( p->type != t_decal )
+		sv_upload_estimate_decision_t decision;
+
+		if( !SV_UploadQueue_ShouldEstimateUploadNeed( p ))
 			continue;
 
-		if( !HPAK_ResourceForHash( hpk_custom_file.string, p->rgucMD5_hash, NULL ))
+		decision = SV_UploadQueue_DecideUploadEstimate(
+			p,
+			HPAK_ResourceForHash( hpk_custom_file.string, p->rgucMD5_hash, NULL ));
+
+		if( decision.action == SV_UPLOAD_ESTIMATE_MARK_MISSING )
 		{
-			if( p->nDownloadSize != 0 )
-			{
-				SetBits( p->ucFlags, RES_WASMISSING );
-				size += p->nDownloadSize;
-			}
-			else
-			{
-				missing++;
-			}
+			SetBits( p->ucFlags, RES_WASMISSING );
+			size += decision.upload_size;
 		}
 	}
 
@@ -502,33 +489,38 @@ void SV_RequestMissingResources( void )
 
 void SV_BatchUploadRequest( sv_client_t *cl )
 {
-	string		filename;
 	resource_t	*p, *n;
 
 	for( p = cl->resourcesneeded.pNext; p != &cl->resourcesneeded; p = n )
 	{
+		enum sv_upload_batch_action_e action;
+		qboolean custom_data_exists = false;
+
 		n = p->pNext;
 
-		if( !FBitSet( p->ucFlags, RES_WASMISSING ))
+		if( SV_UploadQueue_BatchNeedsCustomDataProbe( p ))
+			custom_data_exists = SV_CustomResourceDataExists( p );
+
+		action = SV_UploadQueue_DecideBatchAction(
+			p,
+			custom_data_exists,
+			sv_allow_upload.value != 0.0f );
+
+		switch( action )
 		{
+		case SV_UPLOAD_BATCH_MOVE_TO_ON_HAND:
 			SV_MoveToOnHandList( cl, p );
-			continue;
-		}
-
-		if( p->type == t_decal )
-		{
-			if( FBitSet( p->ucFlags, RES_CUSTOM ))
-			{
-				Q_snprintf( filename, sizeof( filename ), "!MD5%s", MD5_Print( p->rgucMD5_hash ));
-
-				if( SV_CheckFile( &cl->netchan.message, filename ))
-					SV_MoveToOnHandList( cl, p );
-			}
-			else
-			{
-				Con_Reportf( S_ERROR "Non customization in upload queue!\n" );
-				SV_MoveToOnHandList( cl, p );
-			}
+			break;
+		case SV_UPLOAD_BATCH_REQUEST_CUSTOM_UPLOAD:
+			SV_RequestCustomUpload( &cl->netchan.message, p );
+			break;
+		case SV_UPLOAD_BATCH_REPORT_NON_CUSTOM_AND_MOVE:
+			Con_Reportf( S_ERROR "Non customization in upload queue!\n" );
+			SV_MoveToOnHandList( cl, p );
+			break;
+		case SV_UPLOAD_BATCH_KEEP_IN_NEEDED:
+		default:
+			break;
 		}
 	}
 }

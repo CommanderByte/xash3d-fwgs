@@ -20,6 +20,8 @@ Current helpers:
   checks, resource matching, and size summaries.
 - `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
   decisions built from resource snapshots and adapter-supplied sidecar probes.
+- `server_upload_queue.hpp`: client resource-list admission, missing custom
+  decal estimation, upload-limit, and upload batch action decisions.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `server_event_log.hpp`: server event log line and stock message formatting.
 - `source_query.hpp`: GoldSrc source-query response byte builders.

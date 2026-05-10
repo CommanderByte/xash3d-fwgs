@@ -271,10 +271,34 @@ the main phase tracker until they are selected.
   frame in 0.412 seconds before stopping with reason `command` at May 10 2026
   16:47 local time.
 
+## Phase 64: Client Resource Upload Queue Helper
+
+- [x] Baseline `SV_ParseResourceList()`, `SV_EstimateNeededResources()`,
+  `SV_BatchUploadRequest()`, and `SV_CheckFile()` ordering.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`,
+  `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] Implement target-neutral upload queue decisions for descriptor validity,
+  rate limiting, missing decal estimation, upload limits, and batch actions.
+  Evidence: `src/include/engine/server/server_upload_queue.hpp`,
+  `src/engine/server/server_upload_queue.cpp`.
+- [x] Add tests for invalid descriptors, too-frequent updates, missing decals,
+  disabled uploads, max-upload rejection, and batch action selection.
+  Evidence: `tests/engine/server_upload_queue.cpp`.
+- [x] Route legacy upload queue decisions through the helper while keeping
+  `MSG_*`, allocation, HPAK probes, upload command emission, and client/list
+  mutation legacy-owned.
+  Evidence: `engine/server/server_upload_queue_adapter.h`,
+  `engine/server/server_upload_queue_adapter.cpp`, `engine/server/sv_client.c`,
+  `engine/server/sv_custom.c`.
+- [x] Run focused tests, full tests, runtime smoke, and record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_upload_queue`
+  passed 1/1, `.\waf.bat build --alltests` passed 75/75, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.410 seconds before stopping with reason `command` at May 10 2026
+  17:06 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 64: client resource upload queue helper after identity/download
-  policy fixtures exist.
 - [ ] Phase 65: resource message serialization helper using golden row tests.
 - [ ] Phase 66: consistency resource policy helper after resource message
   encoding is documented.

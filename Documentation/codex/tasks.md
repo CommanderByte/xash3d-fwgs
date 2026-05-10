@@ -2108,21 +2108,32 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 64: Client Resource Upload Queue Helper
 
-- [ ] `ENG-UPLOADQ-001` Baseline `SV_ParseResourceList()`,
+- [x] `ENG-UPLOADQ-001` Baseline `SV_ParseResourceList()`,
   `SV_EstimateNeededResources()`, `SV_BatchUploadRequest()`, and
   `SV_CheckFile()` ordering, including rate limiting, upload-size limits, HPAK
   presence checks, and `upload "!MD5..."` command generation.
-  Evidence:
-- [ ] `ENG-UPLOADQ-002` Implement target-neutral upload queue decision helpers
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`,
+  `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] `ENG-UPLOADQ-002` Implement target-neutral upload queue decision helpers
   that operate on resource snapshots and adapter-supplied HPAK presence.
-  Evidence:
-- [ ] `ENG-UPLOADQ-003` Add tests for invalid descriptors, too-frequent
+  Evidence: `src/include/engine/server/server_upload_queue.hpp`,
+  `src/engine/server/server_upload_queue.cpp`.
+- [x] `ENG-UPLOADQ-003` Add tests for invalid descriptors, too-frequent
   updates, missing custom decals, disabled uploads, and max-upload rejection.
-  Evidence:
-- [ ] `ENG-UPLOADQ-004` Route the smallest safe upload queue decision through
+  Evidence: `tests/engine/server_upload_queue.cpp`.
+- [x] `ENG-UPLOADQ-004` Route the smallest safe upload queue decision through
   the helper while keeping `MSG_*`, allocation, HPAK, and client mutation
   legacy-owned.
-  Evidence:
+  Evidence: `engine/server/server_upload_queue_adapter.h`,
+  `engine/server/server_upload_queue_adapter.cpp`, `engine/server/sv_client.c`,
+  `engine/server/sv_custom.c`.
+- [x] `ENG-UPLOADQ-005` Run focused tests, full tests, runtime smoke, and
+  record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_upload_queue`
+  passed 1/1, `.\waf.bat build --alltests` passed 75/75 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.410 seconds before stopping with reason `command` at May 10 2026
+  17:06 local time.
 
 ## Phase 65: Resource Message Serialization Helper
 

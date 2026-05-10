@@ -39,6 +39,9 @@ Current implementation notes:
 - `server_download_policy.hpp` / `server_download_policy.cpp`: Phase 63's
   implemented `SV_DownloadFile_f()` policy helper; legacy code still owns
   filesystem probes, HPAK reads, fail responses, and netchan fragments.
+- `server_upload_queue.hpp` / `server_upload_queue.cpp`: Phase 64's
+  implemented upload queue policy helper; legacy code still owns `MSG_*`,
+  HPAK probes, upload command emission, allocation, and resource-list mutation.
 - `server-migration-guide.md`: how server-side helpers should move into
   `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
   surfaces remain compatibility boundaries.

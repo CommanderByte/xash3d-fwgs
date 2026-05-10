@@ -99,6 +99,14 @@ Keep message reads, node allocation, HPAK lookups, upload command writes, and
 - should the server request an upload for this custom decal?
 - does the upload total exceed the configured limit?
 
+Phase 64 implementation note: this policy now lives in
+`src/engine/server/server_upload_queue.cpp`, with the legacy bridge in
+`engine/server/server_upload_queue_adapter.cpp`. The helper validates client
+resource descriptors, gates too-frequent updates, decides which decals should
+be marked missing, checks the upload byte limit, and chooses batch actions.
+Legacy code still owns `MSG_*`, allocation, HPAK probes, upload command
+emission, `sv_client_t` mutation, and intrusive resource-list mutation.
+
 ### Phase 65: Resource Message Serialization Helper
 
 Baseline and then isolate the stable `SV_SendResource()` resource-row encoding.

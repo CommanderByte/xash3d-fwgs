@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
 #include "server_download_policy_adapter.h"
+#include "server_upload_queue_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
 #define CHALLENGE_WINDOW_SECONDS 5
@@ -3473,7 +3474,7 @@ static void SV_ParseResourceList( sv_client_t *cl, sizebuf_t *msg )
 		if( FBitSet( resource->ucFlags, RES_CUSTOM ))
 			MSG_ReadBytes( msg, resource->rgucMD5_hash, 16 );
 
-		if( resource->type > t_world || resource->nDownloadSize > 1024 * 1024 * 1024 )
+		if( !SV_UploadQueue_IsClientResourceDescriptorValid( resource ))
 		{
 			SV_ClearResourceList( &cl->resourcesneeded );
 			SV_ClearResourceList( &cl->resourcesonhand );
@@ -3482,7 +3483,7 @@ static void SV_ParseResourceList( sv_client_t *cl, sizebuf_t *msg )
 		SV_AddToResourceList( resource, &cl->resourcesneeded );
 	}
 
-	if( host.realtime < cl->resourcelist_next_changetime )
+	if( SV_UploadQueue_ResourceListUpdateIsTooSoon( host.realtime, cl->resourcelist_next_changetime ))
 	{
 		Con_Reportf( "%s: ignoring resource list update from %s: too soon\n", __func__, cl->name );
 		SV_ClearResourceList( &cl->resourcesneeded );
@@ -3525,7 +3526,7 @@ static void SV_ParseResourceList( sv_client_t *cl, sizebuf_t *msg )
 
 		totalsize = SV_EstimateNeededResources( cl );
 
-		if( totalsize > sv_uploadmax.value * 1024 * 1024 )
+		if( SV_UploadQueue_UploadTotalExceedsLimit( totalsize, sv_uploadmax.value ))
 		{
 			SV_ClearResourceList( &cl->resourcesneeded );
 			SV_ClearResourceList( &cl->resourcesonhand );
