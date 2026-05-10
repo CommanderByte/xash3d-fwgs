@@ -2330,25 +2330,33 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 72: Client Userinfo Update Message
 
-- [ ] `ENG-USERINFO-001` Baseline `SV_FullClientUpdate()` for name-present,
+- [x] `ENG-USERINFO-001` Baseline `SV_FullClientUpdate()` for name-present,
   name-missing, sanitized userinfo, user ID, client index, and hashed CD key
   payload behavior.
-  Evidence:
-- [ ] `ENG-USERINFO-002` Implement a target-neutral update-userinfo payload
+  Evidence: `Documentation/codex/legacy/engine/server-userinfo-message-baseline.md`.
+- [x] `ENG-USERINFO-002` Implement a target-neutral update-userinfo payload
   encoder that consumes adapter-provided sanitized userinfo and MD5 digest
   snapshots.
-  Evidence:
-- [ ] `ENG-USERINFO-003` Add golden tests for named clients, unnamed clients,
+  Evidence: `src/include/engine/server/server_userinfo_message.hpp`,
+  `src/engine/server/server_userinfo_message.cpp`,
+  `engine/server/server_userinfo_message_adapter.h`, and
+  `engine/server/server_userinfo_message_adapter.cpp`.
+- [x] `ENG-USERINFO-003` Add golden tests for named clients, unnamed clients,
   digest emission, bit layout, and overflow handling.
-  Evidence:
-- [ ] `ENG-USERINFO-004` Route `SV_FullClientUpdate()` serialization through
+  Evidence: `tests/engine/server_userinfo_message.cpp`.
+- [x] `ENG-USERINFO-004` Route `SV_FullClientUpdate()` serialization through
   the helper while keeping `SV_UserinfoChanged()`, prefix stripping, MD5
   calculation, and destination message ownership legacy-owned unless a smaller
   extraction is clearly safe.
-  Evidence:
-- [ ] `ENG-USERINFO-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/sv_client.c` routes the payload through
+  `SV_UserinfoMessage_WritePayload()` after `MSG_BeginServerCmd()` and after
+  legacy userinfo sanitization/hash calculation.
+- [x] `ENG-USERINFO-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_userinfo_message` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 83/83, runtime smoke first
+  frame 0.517 seconds, stop reason `command`.
 
 ## Phase 73: Small Server Service Messages
 

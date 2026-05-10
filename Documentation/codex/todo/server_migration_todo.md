@@ -470,16 +470,16 @@ legacy file loading or parse ownership yet.
 Goal: move the `svc_updateuserinfo` payload shape into modern tested code while
 preserving legacy userinfo mutation and hashing.
 
-- [ ] Baseline `SV_FullClientUpdate()` for named clients, unnamed clients,
+- [x] Baseline `SV_FullClientUpdate()` for named clients, unnamed clients,
   client indexes, user IDs, sanitized info strings, and hashed CD key payloads.
-- [ ] Implement a target-neutral update-userinfo encoder that consumes
+- [x] Implement a target-neutral update-userinfo encoder that consumes
   adapter-provided sanitized userinfo and digest bytes.
-- [ ] Keep `SV_UserinfoChanged()`, `Info_RemovePrefixedKeys()`, MD5
+- [x] Keep `SV_UserinfoChanged()`, `Info_RemovePrefixedKeys()`, MD5
   calculation, and destination message ownership legacy-owned unless a smaller
   extraction proves safe.
-- [ ] Add golden tests for name-present bit behavior, unnamed clients, digest
+- [x] Add golden tests for name-present bit behavior, unnamed clients, digest
   emission, exact byte layout, and overflow handling.
-- [ ] Route serialization through the helper and verify focused tests, full
+- [x] Route serialization through the helper and verify focused tests, full
   tests, and `+wait +wait` smoke timing.
 
 ## Phase 73: Small Server Service Messages

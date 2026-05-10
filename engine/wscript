@@ -210,6 +210,7 @@ def build(bld):
 		'server/netapi_info_adapter.cpp',
 		'server/server_hot_resource_adapter.cpp',
 		'server/server_reslist_policy_adapter.cpp',
+		'server/server_userinfo_message_adapter.cpp',
 	]
 	libs += ['modern_engine']
 

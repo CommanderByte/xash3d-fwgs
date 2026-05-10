@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "netapi_info_adapter.h"
 #include "server_download_policy_adapter.h"
 #include "server_upload_queue_adapter.h"
+#include "server_userinfo_message_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
 #define CHALLENGE_WINDOW_SECONDS 5
@@ -1258,8 +1259,9 @@ Writes all update values to a bitbuf
 void SV_FullClientUpdate( sv_client_t *cl, sizebuf_t *msg )
 {
 	char		info[MAX_INFO_STRING];
-	char		digest[16];
+	byte		digest[16];
 	MD5Context_t	ctx;
+	sv_userinfo_message_write_result_t result;
 	int		i;
 
 	// process userinfo before updating
@@ -1267,27 +1269,51 @@ void SV_FullClientUpdate( sv_client_t *cl, sizebuf_t *msg )
 
 	i = cl - svs.clients;
 
+	if( msg->bOverflow )
+		return;
+
 	MSG_BeginServerCmd( msg, svc_updateuserinfo );
-	MSG_WriteUBitLong( msg, i, MAX_CLIENT_BITS );
-	MSG_WriteLong( msg, cl->userid );
+
+	if( msg->bOverflow )
+		return;
 
 	if( cl->name[0] )
 	{
-		MSG_WriteOneBit( msg, 1 );
-
 		Q_strncpy( info, cl->userinfo, sizeof( info ));
 
 		// remove server passwords, etc.
 		Info_RemovePrefixedKeys( info, '_' );
-		MSG_WriteString( msg, info );
 
 		MD5Init( &ctx );
 		MD5Update( &ctx, (byte *)cl->hashedcdkey, sizeof( cl->hashedcdkey ));
 		MD5Final( digest, &ctx );
 
-		MSG_WriteBytes( msg, digest, sizeof( digest ));
+		result = SV_UserinfoMessage_WritePayload(
+			msg->pData,
+			msg->nDataBits,
+			msg->iCurBit,
+			i,
+			cl->userid,
+			true,
+			info,
+			digest );
 	}
-	else MSG_WriteOneBit( msg, 0 );
+	else
+	{
+		result = SV_UserinfoMessage_WritePayload(
+			msg->pData,
+			msg->nDataBits,
+			msg->iCurBit,
+			i,
+			cl->userid,
+			false,
+			NULL,
+			NULL );
+	}
+
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
 }
 
 /*

@@ -35,5 +35,12 @@ Current helpers:
 - `server_filter.cpp`: target-neutral ban filter policy.
 - `server_event_log.cpp`: target-neutral server event log line and stock
   message formatting.
+- `server_hot_resource.cpp`: target-neutral hot-resource announcement
+  planning for resources added after server startup.
+- `server_reslist_policy.cpp`: target-neutral `.res` and `reslist.txt` token
+  classification for safe-download filtering and resource indexing.
+- `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
+  serialization for client slot, user ID, active bit, sanitized userinfo, and
+  hashed CD key digest bytes.
 - `source_query.cpp`: target-neutral GoldSrc query payload construction.
 - `user_agent_policy.cpp`: target-neutral connection user-agent validation.

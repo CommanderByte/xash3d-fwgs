@@ -34,5 +34,12 @@ Current helpers:
   decal estimation, upload-limit, and upload batch action decisions.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `server_event_log.hpp`: server event log line and stock message formatting.
+- `server_hot_resource.hpp`: hot-resource announcement planning for resources
+  added after server startup.
+- `server_reslist_policy.hpp`: `.res` and `reslist.txt` token classification
+  for safe-download filtering and resource indexing.
+- `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
+  for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
+  digest bytes.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
 - `user_agent_policy.hpp`: connection UUID and input-device validation policy.
