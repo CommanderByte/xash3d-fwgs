@@ -1652,17 +1652,31 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 47: Public CRT Micro-Seams
 
-- [ ] `ENG-CRT-001` Audit `public/crtlib.c` and `public/crtlib.h` for narrow
+- [x] `ENG-CRT-001` Audit `public/crtlib.c` and `public/crtlib.h` for narrow
   helper families with existing tests.
-  Evidence:
-- [ ] `ENG-CRT-002` Pick one parser or conversion helper family only after its
+  Evidence: `Documentation/codex/done/todo/engine_crt_todo.md`.
+- [x] `ENG-CRT-002` Pick one parser or conversion helper family only after its
   golden behavior is explicit.
-  Evidence:
-- [ ] `ENG-CRT-003` Keep public inline/header ABI stable while moving any
+  Evidence: selected numeric conversion family: `Q_atoi_hex`, `Q_atoi`,
+  `Q_atof`, and `Q_atov`; see
+  `Documentation/codex/modern/engine/public-crt-conversion-guide.md`.
+- [x] `ENG-CRT-003` Keep public inline/header ABI stable while moving any
   implementation behind modern utilities or compat bridges.
-  Evidence:
-- [ ] `ENG-CRT-004` Run focused public tests plus `.\waf.bat build --alltests`.
-  Evidence:
+  Evidence: `src/include/utilities/conversion.hpp`,
+  `src/utilities/conversion.cpp`,
+  `src/utilities/compat/crtlib_conversion.cpp`, `public/crtlib.c`,
+  `public/wscript`.
+- [x] `ENG-CRT-004` Run focused public tests plus `.\waf.bat build --alltests`.
+  Evidence: `.\waf.bat build --targets=test_atoi,test_utilities_conversion --alltests`
+  passed 2/2 focused tests, `.\waf.bat build --alltests` passed 57/57 tests,
+  and Windows runtime smoke copied `build\engine\xash.dll`,
+  `build\filesystem\filesystem_stdio.dll`, and `build\ref\gl\ref_gl.dll` into
+  `run-win32`, then ran `.\xash3d.exe -dev 2 -log +fs_path +quit` from
+  `run-win32` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`.
+  The smoke log `run-win32\engine.log` reached renderer initialization and
+  stopped with reason `command` at May 10 2026 12:43:58 local time. The quick
+  `+quit` smoke did not emit a first-frame timing marker.
 
 ## Phase 48: System User And Runtime Facades
 
@@ -1798,3 +1812,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-10 | DEC-045 | Consolidate engine command-line lookup behind a stateless modern view and C adapter, while leaving startup parsing in the launcher and legacy copying/numeric parsing in `system.c`. | `done/todo/engine_command_line_todo.md`, `modern/engine/command-line-facade-plan.md`, `src/engine/platform/command_line.cpp` |
 | 2026-05-10 | DEC-046 | Put a low-risk standalone straggler sweep at the top of the next roadmap, with CRC32 table/constant consolidation as the first target and broader CRT/platform work queued behind it. | `done/todo/low_risk_stragglers_todo.md`, `modern/engine/standalone-stragglers-roadmap.md`, `public/crclib.c`, `src/utilities/checksum.cpp` |
 | 2026-05-10 | DEC-047 | Centralize CRC32 table ownership in `src/utilities/checksum.cpp` and expose a private C table adapter so public `CRC32_*` loops keep their ABI and table-lookup performance. | `src/include/utilities/compat/checksum_adapter.h`, `src/utilities/compat/checksum_adapter.cpp`, `public/crclib.c`, `public/tests/test_crclib.c` |
+| 2026-05-10 | DEC-048 | Move public CRT numeric conversion implementations behind `src/utilities/conversion.*`, preserving the C ABI and legacy parsing quirks through a private compatibility export. | `done/todo/engine_crt_todo.md`, `modern/engine/public-crt-conversion-guide.md`, `src/utilities/compat/crtlib_conversion.cpp`, `public/tests/test_atoi.c` |

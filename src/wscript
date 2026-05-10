@@ -109,6 +109,7 @@ def build(bld):
 			'launcher_application': '../tests/launcher/application.cpp',
 			'launcher_engine_library': '../tests/launcher/engine_library.cpp',
 			'launcher_launch_settings': '../tests/launcher/launch_settings.cpp',
+			'utilities_conversion': '../tests/utilities/conversion.cpp',
 			'utilities_hash': '../tests/utilities/hash.cpp',
 			'utilities_path': '../tests/utilities/path.cpp',
 			'utilities_registry': '../tests/utilities/registry.cpp',

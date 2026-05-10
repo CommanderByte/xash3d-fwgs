@@ -7,8 +7,12 @@ static int Test_Atoi( void )
 		const char *str;
 		int result;
 	} test_data[] = {
+		{ NULL, 0 },
 		{ "", 0 },
 		{ "   123", 123 },
+		{ "   ", 0 },
+		{ "\t123", 0 },
+		{ "+123", 0 },
 		{ "-123", -123 },
 		{ "0xa1ba", 0xa1ba },
 		{ "-0xa1ba", -0xa1ba },
@@ -25,6 +29,9 @@ static int Test_Atoi( void )
 			return i + 1;
 	}
 
+	if( Q_atoi_hex( 1, "a1ba" ) != 0xa1ba )
+		return 32;
+
 	return 0;
 }
 
@@ -34,8 +41,12 @@ static int Test_Atof( void )
 		const char *str;
 		float result;
 	} test_data[] = {
+		{ NULL, 0 },
 		{ "", 0 },
 		{ "   123.123", 123.123 },
+		{ "\t123.0", 0 },
+		{ "+123.0", 0 },
+		{ "1.2.3", 12.3 },
 		{ "-123.13   ", -123.13 },
 		{ "0xa1ba", 0xa1ba },
 		{ "-0xa1ba", -0xa1ba },
@@ -62,25 +73,26 @@ static int Test_Atov( void )
 	struct {
 		const char *str;
 		int N;
-		float result[3];
+		float result[4];
 	} test_data[] = {
-		{ "1.0 1.2 3", 3, { 1.0f, 1.2f, 3.0f }},
-		{ "1.234 1.32", 2, { 1.234f, 1.32f }},
+		{ "1.0 1.2 3", 4, { 1.0f, 1.2f, 3.0f, 0.0f }},
+		{ "1.234 1.32", 2, { 1.234f, 1.32f, 0.0f, 0.0f }},
+		{ "1  3", 3, { 1.0f, 3.0f, 3.0f, 0.0f }},
 	};
 	int i;
 
 	for( i = 0; i < sizeof( test_data ) / sizeof( test_data[0] ); i++ )
 	{
-		float result[3];
+		float result[4];
 		int j;
 
 		memset( result, 0, sizeof( result ));
 		Q_atov( result, test_data[i].str, test_data[i].N );
 
-		for( j = 0; j < 3; j++ ) // check that Q_atov didn't parsed more than requested
+		for( j = 0; j < 4; j++ ) // check that Q_atov didn't parsed more than requested
 		{
 			if( !Q_equal( result[j], test_data[i].result[j] ))
-				return i * 4 + j + 1;
+				return i * 5 + j + 1;
 		}
 	}
 

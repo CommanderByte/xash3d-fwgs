@@ -17,6 +17,9 @@ Current implementation notes:
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.
+- `public-crt-conversion-guide.md`: how public `Q_atoi*`, `Q_atof`, and
+  `Q_atov` route through modern conversion helpers while preserving parsing
+  quirks.
 - `rendered-console-sink.md`: why the in-game rendered console remains a
   legacy client sink until a later router/client-rendering phase.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports

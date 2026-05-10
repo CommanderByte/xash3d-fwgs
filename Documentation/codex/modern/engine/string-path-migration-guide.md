@@ -14,6 +14,12 @@ state, command/cvar ownership, filesystem handles, or console output.
 ```text
 public/crtlib.h
         |
+        +-- numeric conversion C symbols
+        |       |
+        |       +-- src/utilities/compat/crtlib_conversion.cpp
+        |               |
+        |               +-- src/utilities/conversion.cpp
+        |
         +-- path helper C symbols
                 |
                 +-- src/utilities/compat/crtlib_path.cpp
@@ -33,11 +39,17 @@ when it does not need the C surface.
 - Preserve path parsing quirks unless a task explicitly declares a behavior
   cleanup.
 - Keep formatting, parsing, and wildcard matching out of the path helper module.
+- Keep numeric conversion quirks in `src/utilities/conversion.*`, not in path
+  helpers.
 - Add public C tests for ABI behavior and `tests/utilities` coverage for modern
   helper behavior.
 
 ## Deferred Helpers
 
-The next safe candidates are probably bounded copy/concat or case-insensitive
-comparison helpers. `COM_ParseFileSafe`, wildcard matching, and `Q_vsnprintf`
-should be separate phases because they are config, script, and console sensitive.
+The numeric conversion family moved in Phase 47; see
+`public-crt-conversion-guide.md`.
+
+The next safe candidates are probably `Q_strnlwr` or `Q_memfgets`. Bounded
+copy/concat remain inline ABI helpers. `COM_ParseFileSafe`, wildcard matching,
+and `Q_vsnprintf` should be separate phases because they are config, script,
+and console sensitive.

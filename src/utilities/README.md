@@ -9,6 +9,8 @@ Current implementation files:
   C compatibility exports.
 - `checksum.cpp`: CRC32 helpers and the shared CRC32 table used by modern code
   and public C compatibility exports.
+- `conversion.cpp`: legacy-compatible numeric conversion helpers shared by
+  public C compatibility exports and modern tests.
 - `path.cpp`: legacy-compatible path component and extension helpers shared by
   public C compatibility exports.
 
