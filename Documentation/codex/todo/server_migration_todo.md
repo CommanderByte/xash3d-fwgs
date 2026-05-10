@@ -600,14 +600,14 @@ the command system itself.
 
 Goal: prepare a safer boundary for the larger new/spawn/serverdata flow.
 
-- [ ] Baseline serverdata, signon fragments, resend flags, and signon number
+- [x] Baseline serverdata, signon fragments, resend flags, and signon number
   behavior.
-- [ ] Implement serverdata payload and spawn-handshake planning helpers.
-- [ ] Add golden tests for serverdata fields, bounds, overflow/drop, and
+- [x] Implement serverdata payload and spawn-handshake planning helpers.
+- [x] Add golden tests for serverdata fields, bounds, overflow/drop, and
   single-player versus multiplayer branches.
-- [ ] Route decisions while keeping fragmentation and state mutation
+- [x] Route decisions while keeping fragmentation and state mutation
   legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 82: Server Frame Datagram Assembly
 
@@ -648,8 +648,6 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
-- [ ] Serverdata handshake migration after the smaller service-message writers
-  are stable and a baseline fixture exists.
 - [ ] Save/restore migration after binary compatibility fixtures exist.
 - [ ] Game DLL bridge migration after explicit ABI and licensing review.
 - [ ] Physics/world migration after movement and trace fixtures exist.

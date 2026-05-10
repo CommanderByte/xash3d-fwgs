@@ -30,6 +30,8 @@ Current helpers:
   serialization for `svc_customization`.
 - `server_command_lifecycle.hpp`: server lifecycle command request
   normalization and action planning.
+- `server_spawn_handshake.hpp`: fixed `svc_serverdata` payload constants,
+  signon-number payload writer, and new/spawn/begin handshake decisions.
 - `server_resource_message.hpp`: resource-list row serialization using modern
   bit-buffer primitives.
 - `server_upload_queue.hpp`: client resource-list admission, missing custom

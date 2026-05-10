@@ -25,6 +25,7 @@ GNU General Public License for more details.
 #include "server_download_policy_adapter.h"
 #include "server_upload_queue_adapter.h"
 #include "server_service_messages_adapter.h"
+#include "server_spawn_handshake_adapter.h"
 #include "server_userinfo_message_adapter.h"
 #include "server_voice_relay_adapter.h"
 
@@ -42,6 +43,13 @@ static void SV_UserinfoChanged( sv_client_t *cl );
 static void SV_ExecuteClientCommand( sv_client_t *cl, const char *s );
 
 static void SV_ApplyServiceMessageWriteResult( sizebuf_t *msg, sv_service_message_write_result_t result )
+{
+	msg->iCurBit = result.current_bit;
+	if( result.overflow )
+		msg->bOverflow = true;
+}
+
+static void SV_ApplySpawnHandshakeWriteResult( sizebuf_t *msg, sv_spawn_handshake_write_result_t result )
 {
 	msg->iCurBit = result.current_bit;
 	if( result.overflow )
@@ -1552,16 +1560,18 @@ static void SV_PutClientInServer( sv_client_t *cl )
 #endif
 	// refresh the userinfo and movevars
 	// NOTE: because movevars can be changed during the connection process
-	SetBits( cl->flags, FCL_RESEND_USERINFO|FCL_RESEND_MOVEVARS );
+	SetBits( cl->flags, SV_SpawnHandshake_BuildResendFlags() );
 
 	// reset client times
 	cl->connecttime = 0.0;
 	cl->ignorecmdtime = 0.0;
 	cl->cmdtime = 0.0;
 
-	if( !FBitSet( cl->flags, FCL_FAKECLIENT ))
+	if( SV_SpawnHandshake_ShouldSendSignon( FBitSet( cl->flags, FCL_FAKECLIENT )))
 	{
 		int	viewEnt;
+		sv_spawn_handshake_write_result_t result;
+		enum sv_spawn_overflow_action_e overflow_action;
 
 		// NOTE: it's will be fragmented automatically in right ordering
 		MSG_WriteBits( &msg, MSG_GetData( &sv.signon ), MSG_GetNumBitsWritten( &sv.signon ));
@@ -1572,12 +1582,17 @@ static void SV_PutClientInServer( sv_client_t *cl )
 
 		SV_WriteSetViewMessage( &msg, viewEnt );
 
-		MSG_BeginServerCmd( &msg, svc_signonnum );
-		MSG_WriteByte( &msg, 1 );
+		result = SV_SpawnHandshake_WriteSignonNumberMessage(
+			msg.pData,
+			msg.nDataBits,
+			msg.iCurBit,
+			1 );
+		SV_ApplySpawnHandshakeWriteResult( &msg, result );
 
-		if( MSG_CheckOverflow( &msg ))
+		overflow_action = SV_SpawnHandshake_BuildSignonOverflowAction( MSG_CheckOverflow( &msg ), svs.maxclients );
+		if( overflow_action != SV_SPAWN_OVERFLOW_NONE )
 		{
-			if( svs.maxclients == 1 )
+			if( overflow_action == SV_SPAWN_OVERFLOW_HOST_ERROR )
 				Host_Error( "spawn player: overflowed\n" );
 			else SV_DropClient( cl, false );
 		}
@@ -1649,37 +1664,39 @@ This will be sent on the initial connection and upon each server load.
 void SV_SendServerdata( sizebuf_t *msg, sv_client_t *cl )
 {
 	string	message;
+	sv_spawn_handshake_write_result_t result;
 	int	i;
 
 	// Only send this message to developer console, or multiplayer clients.
-	if(( host_developer.value ) || ( svs.maxclients > 1 ))
+	if( SV_Serverdata_ShouldEmitPrint( host_developer.value != 0.0f, svs.maxclients ))
 	{
 		MSG_BeginServerCmd( msg, svc_print );
-		Q_snprintf( message, sizeof( message ), "\n^3BUILD %d SERVER (%i CRC)\nServer #%i\n", Q_buildnum(), sv.progsCRC, svs.spawncount );
+		SV_Serverdata_FormatPrintText( message, sizeof( message ), Q_buildnum(), sv.progsCRC, svs.spawncount );
 		MSG_WriteString( msg, message );
 	}
 
 	// send the serverdata
 	MSG_BeginServerCmd( msg, svc_serverdata );
-	MSG_WriteLong( msg, PROTOCOL_VERSION );
-	MSG_WriteLong( msg, svs.spawncount );
-	MSG_WriteLong( msg, sv.worldmapCRC );
-	MSG_WriteByte( msg, cl - svs.clients );
-	MSG_WriteByte( msg, svs.maxclients );
-	MSG_WriteWord( msg, GI->max_edicts );
-	MSG_WriteWord( msg, MAX_MODELS );
-	MSG_WriteString( msg, sv.name );
-	MSG_WriteString( msg, SV_GetString( svgame.edicts->v.message )); // Map Message
-	MSG_WriteOneBit( msg, sv.background ); // tell client about background map
-	MSG_WriteString( msg, GI->gamefolder );
-	MSG_WriteLong( msg, host.features );
-
-	// send the player hulls
-	for( i = 0; i < MAX_MAP_HULLS * 3; i++ )
-	{
-		MSG_WriteChar( msg, host.player_mins[i/3][i%3] );
-		MSG_WriteChar( msg, host.player_maxs[i/3][i%3] );
-	}
+	result = SV_Serverdata_WritePayload(
+		msg->pData,
+		msg->nDataBits,
+		msg->iCurBit,
+		PROTOCOL_VERSION,
+		svs.spawncount,
+		sv.worldmapCRC,
+		cl - svs.clients,
+		svs.maxclients,
+		GI->max_edicts,
+		MAX_MODELS,
+		sv.name,
+		SV_GetString( svgame.edicts->v.message ), // Map Message
+		sv.background,
+		GI->gamefolder,
+		host.features,
+		&host.player_mins[0][0],
+		&host.player_maxs[0][0],
+		MAX_MAP_HULLS );
+	SV_ApplySpawnHandshakeWriteResult( msg, result );
 
 	// send delta-encoding
 	Delta_WriteDescriptionToClient( msg );
@@ -1731,7 +1748,7 @@ static qboolean SV_New_f( sv_client_t *cl )
 	memset( msg_buf, 0, sizeof( msg_buf ));
 	MSG_Init( &msg, "New", msg_buf, sizeof( msg_buf ));
 
-	if( cl->state != cs_connected )
+	if( SV_SpawnHandshake_BuildNewCommandAction( cl->state == cs_connected ) != SV_SPAWN_COMMAND_SEND_SERVERDATA )
 		return false;
 
 	// send the serverdata
@@ -2265,11 +2282,18 @@ SV_Spawn_f
 */
 static qboolean SV_Spawn_f( sv_client_t *cl )
 {
-	if( cl->state != cs_connected )
+	enum sv_spawn_command_action_e action;
+
+	action = SV_SpawnHandshake_BuildSpawnCommandAction(
+		cl->state == cs_connected,
+		Q_atoi( Cmd_Argv( 1 )),
+		svs.spawncount );
+
+	if( action == SV_SPAWN_COMMAND_REJECT )
 		return false;
 
 	// handle the case of a level changing while a client was connecting
-	if( Q_atoi( Cmd_Argv( 1 )) != svs.spawncount )
+	if( action == SV_SPAWN_COMMAND_RESEND_NEW )
 	{
 		SV_New_f( cl );
 		return true;
@@ -2296,7 +2320,7 @@ SV_Begin_f
 static qboolean SV_Begin_f( sv_client_t *cl )
 {
 	// make sure client has passed connection process correctly
-	if( cl->state != cs_spawning )
+	if( SV_SpawnHandshake_BuildBeginCommandAction( cl->state == cs_spawning ) != SV_SPAWN_COMMAND_MARK_SPAWNED )
 		return false;
 
 	// now client is spawned

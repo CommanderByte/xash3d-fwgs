@@ -2585,24 +2585,33 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 81: Serverdata And Spawn Handshake
 
-- [ ] `ENG-SERVERDATA-001` Baseline `SV_SendServerdata()`, `SV_New_f()`,
+- [x] `ENG-SERVERDATA-001` Baseline `SV_SendServerdata()`, `SV_New_f()`,
   `SV_Spawn_f()`, signon fragments, movevars/userinfo resend flags, and
   developer/multiplayer print behavior.
-  Evidence:
-- [ ] `ENG-SERVERDATA-002` Implement target-neutral serverdata payload and
+  Evidence: Added
+  `Documentation/codex/legacy/engine/serverdata-spawn-handshake-baseline.md`.
+- [x] `ENG-SERVERDATA-002` Implement target-neutral serverdata payload and
   spawn-handshake planning helpers.
-  Evidence:
-- [ ] `ENG-SERVERDATA-003` Add golden tests for serverdata fields, player box
+  Evidence: Added `src/engine/server/server_spawn_handshake.cpp` and
+  `src/include/engine/server/server_spawn_handshake.hpp`.
+- [x] `ENG-SERVERDATA-003` Add golden tests for serverdata fields, player box
   bounds, signon number, reconnect fallback, overflow/drop behavior, and
   single-player versus multiplayer branches.
-  Evidence:
-- [ ] `ENG-SERVERDATA-004` Route helper decisions while keeping fragmentation,
+  Evidence: Added `tests/engine/server_spawn_handshake.cpp`; focused target
+  `test_engine_server_spawn_handshake` passes.
+- [x] `ENG-SERVERDATA-004` Route helper decisions while keeping fragmentation,
   client state mutation, `SV_PutClientInServer()`, and reliable buffer ownership
   legacy-owned.
-  Evidence:
-- [ ] `ENG-SERVERDATA-005` Run focused tests, full tests, runtime smoke with
+  Evidence: Added `engine/server/server_spawn_handshake_adapter.cpp` and routed
+  `SV_SendServerdata()`, `SV_New_f()`, `SV_Spawn_f()`, `SV_Begin_f()`, and the
+  signon-number write through it while leaving fragmentation and mutation in
+  `engine/server/sv_client.c`.
+- [x] `ENG-SERVERDATA-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_spawn_handshake` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 91/91, runtime smoke first
+  frame 1.839 seconds, stop reason `command`.
 
 ## Phase 82: Server Frame Datagram Assembly
 
