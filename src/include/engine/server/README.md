@@ -66,6 +66,8 @@ Current helpers:
   added after server startup.
 - `server_reslist_policy.hpp`: `.res` and `reslist.txt` token classification
   for safe-download filtering and resource indexing.
+- `server_limits.hpp`: server-only limits, flags, and private constants
+  mirrored as typed modern values with compatibility-role metadata.
 - `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
   for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
   digest bytes.

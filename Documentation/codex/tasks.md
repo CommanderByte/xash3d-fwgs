@@ -3128,6 +3128,94 @@ Phase 89 covers user-message registry policy.
   `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
   first frame in 0.507 seconds and stopped with reason `command`.
 
+## Phase 101: Server Constants And Constraints Inventory
+
+- [x] `ENG-SVCONST-001` Inventory server-only constants and classify them by
+  ABI/layout, protocol/wire, save-format, gameplay, or private implementation
+  role.
+  Evidence: `Documentation/codex/modern/engine/milestone-100-server-modernization-audit.md`,
+  `Documentation/codex/modern/engine/server-constants-constraints.md`,
+  `Documentation/codex/todo/server_constants_todo.md`.
+- [x] `ENG-SVCONST-002` Add a modern `server_limits` contract for safe mirror
+  constants.
+  Evidence: `src/include/engine/server/server_limits.hpp` and
+  `src/engine/server/server_limits.cpp`.
+- [x] `ENG-SVCONST-003` Add tests that compare modern constants to legacy
+  values through a tiny adapter where needed.
+  Evidence: `tests/engine/server_limits.cpp`.
+- [x] `ENG-SVCONST-004` Document which legacy macros are layout-sensitive and
+  should not be replaced directly.
+  Evidence: `Documentation/codex/modern/engine/server-constants-constraints.md`.
+- [x] `ENG-SVCONST-005` Run focused tests and full validation after the
+  constants contract.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_limits -StopRunningXash` passed; focused test passed,
+  `.\waf.bat build --targets=xash` passed, full tests passed 109/109;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.533 seconds and stopped with reason `command`.
+
+## Phase 102: Server Challenge Window Policy
+
+- [ ] `ENG-SVCHAL-001` Baseline challenge-window behavior in `sv_client.c`.
+  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
+- [ ] `ENG-SVCHAL-002` Extract challenge time-window calculation as a pure
+  helper.
+  Evidence:
+- [ ] `ENG-SVCHAL-003` Add tests for boundary seconds and repeat-window
+  behavior.
+  Evidence:
+- [ ] `ENG-SVCHAL-004` Keep challenge salt storage, hashing, packets, and
+  rejection output legacy-owned.
+  Evidence:
+
+## Phase 103: Server Lifecycle Limits Policy
+
+- [ ] `ENG-SVLIFE-001` Baseline maxclient bounds,
+  singleplayer/multiplayer update-backup selection, `SV_SPAWN_TIME`, and
+  client entity count calculation.
+  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
+- [ ] `ENG-SVLIFE-002` Add pure helpers and tests for lifecycle limits.
+  Evidence:
+- [ ] `ENG-SVLIFE-003` Keep spawn, activate/deactivate, baselines, and entity
+  allocation legacy-owned.
+  Evidence:
+
+## Phase 104: Server Movement Constraint Constants
+
+- [ ] `ENG-SVMOVE-001` Baseline server movement type constants, clip-plane
+  limit, and movement epsilon.
+  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
+- [ ] `ENG-SVMOVE-002` Add modern constants/tests that distinguish server
+  physics constraints from GL and `pm_shared` constants with similar names.
+  Evidence:
+- [ ] `ENG-SVMOVE-003` Keep `SV_MoveStep`, `SV_FlyMove`, world collision, and
+  player movement loops legacy-owned.
+  Evidence:
+
+## Phase 105: Visibility Leaf And View Constraint Policy
+
+- [ ] `ENG-SVVIS-001` Baseline `MAX_ENT_LEAFS(ext)`, `MAX_VIEWENTS`, and
+  related visibility capacity behavior.
+  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
+- [ ] `ENG-SVVIS-002` Add a shared modern capacity helper and tests.
+  Evidence:
+- [ ] `ENG-SVVIS-003` Keep edict leaf arrays, PVS/PAS, packet entity
+  selection, and world linking legacy-owned.
+  Evidence:
+
+## Phase 106: Runtime Route-Through Review
+
+- [ ] `ENG-SVROUTE-001` Review constants mirrored in Phases 101-105.
+  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
+- [ ] `ENG-SVROUTE-002` Choose the safest small route-through call sites.
+  Evidence:
+- [ ] `ENG-SVROUTE-003` Explicitly mark layout-sensitive macros as
+  legacy-owned.
+  Evidence:
+- [ ] `ENG-SVROUTE-004` Run focused tests, full tests, and runtime smoke before
+  any route-through commit.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current

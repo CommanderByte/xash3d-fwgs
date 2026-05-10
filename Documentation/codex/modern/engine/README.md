@@ -51,6 +51,9 @@ Current implementation notes:
   movement callback admission, yaw/pitch stepping, walkmove routing,
   maxspeed clamping, and fake-client command snapshots while leaving
   physics and player command execution legacy-owned.
+- `milestone-100-server-modernization-audit.md`: how the modern server helper
+  layer looks after the game DLL bridge lane, and why server constants and
+  constraints are the next low-risk migration target.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of
@@ -90,6 +93,9 @@ Current implementation notes:
 - `server-migration-guide.md`: how server-side helpers should move into
   `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
   surfaces remain compatibility boundaries.
+- `server-constants-constraints.md`: how Phase 101 mirrors server-only limits,
+  flags, and private constants into a typed modern contract without replacing
+  layout-sensitive legacy macros.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

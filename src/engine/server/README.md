@@ -81,6 +81,8 @@ Current helpers:
   planning for resources added after server startup.
 - `server_reslist_policy.cpp`: target-neutral `.res` and `reslist.txt` token
   classification for safe-download filtering and resource indexing.
+- `server_limits.cpp`: target-neutral server-only limit and flag mirrors plus
+  compatibility classification metadata for later route-through decisions.
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
   serialization for client slot, user ID, active bit, sanitized userinfo, and
   hashed CD key digest bytes.
