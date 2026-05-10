@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "custom.h"
+#include "custom_resource_identity_adapter.h"
 #include "ref_common.h"
 #include "hpak.h" // be aware of HPK limits
 
@@ -157,19 +158,5 @@ CustomizationError:
 
 int COM_SizeofResourceList( resource_t *pList, resourceinfo_t *ri )
 {
-	int		nSize = 0;
-	resource_t	*p;
-
-	memset( ri, 0, sizeof( *ri ));
-
-	for( p = pList->pNext; p != pList; p = p->pNext )
-	{
-		nSize += p->nDownloadSize;
-
-		if( p->type == t_model && p->nIndex == 1 )
-			ri->info[t_world].size += p->nDownloadSize;
-		else ri->info[p->type].size += p->nDownloadSize;
-	}
-
-	return nSize;
+	return ResourceIdentityAdapter_SizeofResourceList( pList, ri );
 }

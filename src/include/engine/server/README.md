@@ -16,6 +16,8 @@ Current helpers:
   classification.
 - `connection_response.hpp`: challenge and rejection response string
   formatting.
+- `resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
+  checks, resource matching, and size summaries.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `server_event_log.hpp`: server event log line and stock message formatting.
 - `source_query.hpp`: GoldSrc source-query response byte builders.

@@ -95,6 +95,7 @@ def build(bld):
 			'engine_platform_console_backend': '../tests/engine/platform_console_backend.cpp',
 			'engine_platform_command_line': '../tests/engine/platform_command_line.cpp',
 			'engine_platform_current_user': '../tests/engine/platform_current_user.cpp',
+			'engine_resource_identity': '../tests/engine/resource_identity.cpp',
 			'engine_server_filter': '../tests/engine/server_filter.cpp',
 			'engine_server_event_log': '../tests/engine/server_event_log.cpp',
 			'engine_source_query': '../tests/engine/source_query.cpp',

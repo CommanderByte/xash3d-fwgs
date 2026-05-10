@@ -34,6 +34,8 @@ Current implementation notes:
   quirks.
 - `rendered-console-sink.md`: why the in-game rendered console remains a
   legacy client sink until a later router/client-rendering phase.
+- `resource_identity.hpp` / `resource_identity.cpp`: Phase 62's implemented
+  target-neutral custom resource identity helpers under `src/engine/server`.
 - `server-migration-guide.md`: how server-side helpers should move into
   `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
   surfaces remain compatibility boundaries.

@@ -2054,19 +2054,30 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 62: Custom Resource Identity Helpers
 
-- [ ] `ENG-RESID-001` Baseline resource descriptor comparison, hash/key
+- [x] `ENG-RESID-001` Baseline resource descriptor comparison, hash/key
   formatting, and custom resource lookup helpers that do not require live file
   or network state.
-  Evidence:
-- [ ] `ENG-RESID-002` Implement target-neutral resource identity helpers under
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`,
+  `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] `ENG-RESID-002` Implement target-neutral resource identity helpers under
   `src/engine/server` or a shared resource namespace if the audit shows client
   reuse.
-  Evidence:
-- [ ] `ENG-RESID-003` Add tests for resource names, hashes, type handling, and
+  Evidence: `src/include/engine/server/resource_identity.hpp`,
+  `src/engine/server/resource_identity.cpp`.
+- [x] `ENG-RESID-003` Add tests for resource names, hashes, type handling, and
   legacy edge cases.
-  Evidence:
-- [ ] `ENG-RESID-004` Route the smallest safe legacy caller through the helper.
-  Evidence:
+  Evidence: `tests/engine/resource_identity.cpp`.
+- [x] `ENG-RESID-004` Route the smallest safe legacy caller through the helper.
+  Evidence: `engine/common/custom_resource_identity_adapter.h`,
+  `engine/common/custom_resource_identity_adapter.cpp`,
+  `engine/common/custom.c`.
+- [x] `ENG-RESID-005` Run focused tests, full tests, and runtime smoke after
+  routing the legacy caller.
+  Evidence: `.\waf.bat build --targets=test_engine_resource_identity` passed
+  1/1, `.\waf.bat build --alltests` passed 73/73, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.427 seconds before stopping with reason `command` at May 10 2026
+  15:58 local time.
 
 ## Phase 63: Server Download Policy Helper
 

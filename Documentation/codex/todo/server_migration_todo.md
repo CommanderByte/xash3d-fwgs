@@ -226,9 +226,31 @@ the main phase tracker until they are selected.
 - [x] Define follow-up migration slices and test fixtures.
   Evidence: `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
 
+## Phase 62: Custom Resource Identity Helpers
+
+- [x] Baseline resource descriptor comparison, hash/key formatting, and custom
+  resource lookup helpers.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`,
+  `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
+- [x] Implement target-neutral resource identity helpers.
+  Evidence: `src/include/engine/server/resource_identity.hpp`,
+  `src/engine/server/resource_identity.cpp`.
+- [x] Add tests for `!MD5` names, safe download names, sound-resource matching,
+  resource lookup, type names, and size summaries.
+  Evidence: `tests/engine/resource_identity.cpp`.
+- [x] Route the smallest safe legacy caller through the helper.
+  Evidence: `engine/common/custom_resource_identity_adapter.h`,
+  `engine/common/custom_resource_identity_adapter.cpp`,
+  `engine/common/custom.c`.
+- [x] Run focused tests, full tests, runtime smoke, and record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_resource_identity` passed
+  1/1, `.\waf.bat build --alltests` passed 73/73, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.427 seconds before stopping with reason `command` at May 10 2026
+  15:58 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 62: custom resource identity helpers after the resource audit.
 - [ ] Phase 63: server download decision policy helper after resource identity
   fixtures exist.
 - [ ] Phase 64: client resource upload queue helper after identity/download
