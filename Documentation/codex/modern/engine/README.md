@@ -47,6 +47,9 @@ Current implementation notes:
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of
   `sv_game.c`.
+- `game-dll-visibility-trace-boundary.md`: how Phase 98 models trace and
+  visibility callback admission, fallback, and result-code decisions while
+  deferring collision, BSP, PVS/PAS, and leaf ownership to a later world phase.
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.

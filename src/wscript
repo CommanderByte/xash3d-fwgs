@@ -101,6 +101,7 @@ def build(bld):
 			'engine_game_dll_resource_policy': '../tests/engine/game_dll_resource_policy.cpp',
 			'engine_game_dll_string_pool_compat': '../tests/engine/game_dll_string_pool_compat.cpp',
 			'engine_game_dll_user_message_registry': '../tests/engine/game_dll_user_message_registry.cpp',
+			'engine_game_dll_visibility_trace_policy': '../tests/engine/game_dll_visibility_trace_policy.cpp',
 			'engine_info_string': '../tests/engine/info_string.cpp',
 			'engine_network_buffer': '../tests/engine/network_buffer.cpp',
 			'engine_netapi_info': '../tests/engine/netapi_info.cpp',

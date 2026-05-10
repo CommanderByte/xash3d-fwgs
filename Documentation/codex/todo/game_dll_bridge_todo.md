@@ -200,11 +200,19 @@ phase.
 
 ## Phase 98: Visibility And Trace Callback Boundary
 
-- [ ] Baseline trace and visibility callback wrappers after world/trace
+- [x] Baseline trace and visibility callback wrappers after world/trace
   fixtures are available.
-- [ ] Add pure tests for admission and result conversion only.
-- [ ] Keep actual hull, BSP, leaf, PVS/PAS, and collision work in legacy code
+  Evidence: `Documentation/codex/modern/engine/game-dll-visibility-trace-boundary.md`.
+- [x] Add pure tests for admission and result conversion only.
+  Evidence: `tests/engine/game_dll_visibility_trace_policy.cpp`.
+- [x] Keep actual hull, BSP, leaf, PVS/PAS, and collision work in legacy code
   until a broader world migration phase.
+  Evidence: Phase 98 adds no live route-through; `engine/server/sv_game.c` and
+  `engine/server/sv_world.c` still own trace execution, BSP traversal,
+  visibility masks, and leaf mutation.
+- [x] Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_visibility_trace_policy -StopRunningXash` passed.
 
 ## Phase 99: Movement And Fake-Client Callback Boundary
 

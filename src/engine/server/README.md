@@ -30,6 +30,9 @@ Current helpers:
 - `game_dll_user_message_registry.cpp`: mockable game DLL user-message
   registration policy for validation, duplicate handling, and active-server
   resend planning.
+- `game_dll_visibility_trace_policy.cpp`: target-neutral game DLL trace and
+  visibility admission, fallback, result-code, and route-choice decisions
+  while collision and PVS/PAS remain legacy-owned.
 - `save_restore_format.cpp`: read-only save/restore file-format fixture
   parsing for headers, token tables, field sections, `.HL3` entity patches,
   packed short fields, and bundled save files.

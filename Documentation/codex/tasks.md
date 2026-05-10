@@ -3058,15 +3058,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 98: Game DLL Visibility And Trace Boundary
 
-- [ ] `ENG-GAMEDLL-VIS-001` Baseline trace and visibility callback wrappers
+- [x] `ENG-GAMEDLL-VIS-001` Baseline trace and visibility callback wrappers
   after world/trace fixtures are available.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-VIS-002` Add pure admission and result-conversion tests
+  Evidence: `Documentation/codex/modern/engine/game-dll-visibility-trace-boundary.md`.
+- [x] `ENG-GAMEDLL-VIS-002` Add pure admission and result-conversion tests
   without moving BSP, hull, leaf, PVS/PAS, or collision ownership.
-  Evidence:
-- [ ] `ENG-GAMEDLL-VIS-003` Decide whether to defer route-through until a
+  Evidence: `tests/engine/game_dll_visibility_trace_policy.cpp`.
+- [x] `ENG-GAMEDLL-VIS-003` Decide whether to defer route-through until a
   broader world/trace phase.
-  Evidence:
+  Evidence: Deferred. Phase 98 adds
+  `src/include/engine/server/game_dll_visibility_trace_policy.hpp` and
+  `src/engine/server/game_dll_visibility_trace_policy.cpp` only; live
+  trace/visibility callbacks remain in `engine/server/sv_game.c` and
+  collision/PVS/PAS ownership remains in `engine/server/sv_world.c`.
+- [x] `ENG-GAMEDLL-VIS-004` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_visibility_trace_policy -StopRunningXash` passed;
+  focused test passed, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 106/106, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.517 seconds and stopped with reason `command`.
 
 ## Phase 99: Game DLL Movement And Fake-Client Boundary
 
