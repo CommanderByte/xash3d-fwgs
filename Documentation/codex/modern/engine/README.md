@@ -43,6 +43,10 @@ Current implementation notes:
   key-value parsing, `angle` rewrite, custom entity fallback, and spawn
   rejection decisions without moving live `pfnKeyValue()`/`pfnSpawn()`
   ordering out of `sv_game.c`.
+- `game-dll-movement-fake-client-boundary.md`: how Phase 99 models
+  movement callback admission, yaw/pitch stepping, walkmove routing,
+  maxspeed clamping, and fake-client command snapshots while leaving
+  physics and player command execution legacy-owned.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of

@@ -14,6 +14,9 @@ Current helpers:
 - `game_dll_message_session.hpp`: target-neutral model for game DLL
   message begin/write/end state, payload accounting, rewrite admission, and
   destination bounds.
+- `game_dll_movement_policy.hpp`: target-neutral movement and fake-client
+  callback plans for angle stepping, walkmove routing, maxspeed clamping, and
+  fake-client command snapshots.
 - `game_dll_output_policy.hpp`: target-neutral policy for game DLL command,
   client print, server print, alert, and end-section callback routing.
 - `game_dll_user_message_registry.hpp`: target-neutral policy for game DLL

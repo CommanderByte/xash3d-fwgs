@@ -216,12 +216,16 @@ phase.
 
 ## Phase 99: Movement And Fake-Client Callback Boundary
 
-- [ ] Baseline yaw, pitch, move-to-origin, walkmove, set-origin, maxspeed, and
+- [x] Baseline yaw, pitch, move-to-origin, walkmove, set-origin, maxspeed, and
   fake-client `pfnRunPlayerMove()` behavior.
-- [ ] Add tests for pure movement-policy values only after movement fixtures
+- [x] Add tests for pure movement-policy values only after movement fixtures
   exist.
-- [ ] Keep `SV_RunCmd()`, `playermove_t`, `sv.current_client`, and physics
+- [x] Keep `SV_RunCmd()`, `playermove_t`, `sv.current_client`, and physics
   callbacks legacy-owned.
+- [x] Run focused tests, full tests, and smoke timing.
+  Evidence: Phase 99 validation passed with
+  `test_engine_game_dll_movement_policy`, `xash`, 107/107 tests, and a
+  0.509s first-frame smoke.
 
 ## Phase 100: DLL Load/Unload Facade Plan
 

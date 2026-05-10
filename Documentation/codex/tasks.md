@@ -3081,15 +3081,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 99: Game DLL Movement And Fake-Client Boundary
 
-- [ ] `ENG-GAMEDLL-MOVE-001` Baseline yaw, pitch, move-to-origin, walkmove,
+- [x] `ENG-GAMEDLL-MOVE-001` Baseline yaw, pitch, move-to-origin, walkmove,
   set-origin, maxspeed, and fake-client `pfnRunPlayerMove()` behavior.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
-- [ ] `ENG-GAMEDLL-MOVE-002` Add pure movement-policy tests only after
+  Evidence: `Documentation/codex/modern/engine/game-dll-movement-fake-client-boundary.md`.
+- [x] `ENG-GAMEDLL-MOVE-002` Add pure movement-policy tests only after
   movement fixtures exist.
-  Evidence:
-- [ ] `ENG-GAMEDLL-MOVE-003` Keep `SV_RunCmd()`, `playermove_t`,
+  Evidence: `src/include/engine/server/game_dll_movement_policy.hpp`,
+  `src/engine/server/game_dll_movement_policy.cpp`, and
+  `tests/engine/game_dll_movement_policy.cpp`.
+- [x] `ENG-GAMEDLL-MOVE-003` Keep `SV_RunCmd()`, `playermove_t`,
   `sv.current_client`, and physics callbacks legacy-owned.
-  Evidence:
+  Evidence: Phase 99 adds no live route-through; live movement, collision,
+  fake-client setup, and command execution remain in `engine/server/sv_game.c`,
+  `engine/server/sv_move.c`, `engine/server/sv_pmove.c`, and
+  `engine/server/sv_client.c`.
+- [x] `ENG-GAMEDLL-MOVE-004` Run focused tests, full tests, and smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_movement_policy -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 107/107;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
+  first frame in 0.509 seconds and stopped with reason `command`.
 
 ## Phase 100: Game DLL Load/Unload Facade Plan
 
