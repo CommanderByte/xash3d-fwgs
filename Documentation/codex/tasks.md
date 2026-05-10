@@ -2011,18 +2011,78 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 60: Server Client Command Dispatch Table
 
-- [ ] `ENG-SVCMDTABLE-001` Baseline the `ucmd_t` table and
+- [x] `ENG-SVCMDTABLE-001` Baseline the `ucmd_t` table and
   `SV_ExecuteClientCommand()` lookup behavior, including command case
   sensitivity, unknown-command handling, and state-gated handlers.
-  Evidence:
-- [ ] `ENG-SVCMDTABLE-002` Decide whether the first route-through should be a
+  Evidence: `Documentation/codex/legacy/engine/client-command-dispatch-baseline.md`.
+- [x] `ENG-SVCMDTABLE-002` Decide whether the first route-through should be a
   target-neutral command metadata table or only a lookup/classification helper.
-  Evidence:
-- [ ] `ENG-SVCMDTABLE-003` Add tests for command lookup and dispatch decisions
+  Evidence: `Documentation/codex/modern/engine/client-command-dispatch-migration.md`.
+- [x] `ENG-SVCMDTABLE-003` Add tests for command lookup and dispatch decisions
   without invoking live `sv_client_t` effects.
-  Evidence:
-- [ ] `ENG-SVCMDTABLE-004` Route lookup/classification through modern helpers
+  Evidence: `tests/engine/client_command_dispatch.cpp`.
+- [x] `ENG-SVCMDTABLE-004` Route lookup/classification through modern helpers
   while keeping handler functions and client mutation legacy-owned.
+  Evidence: `engine/server/client_command_dispatch_adapter.h`,
+  `engine/server/client_command_dispatch_adapter.cpp`,
+  `engine/server/sv_client.c`.
+- [x] `ENG-SVCMDTABLE-005` Run focused tests, full tests, runtime smoke, and
+  launch the visible game for manual new-game validation.
+  Evidence: `.\waf.bat build --targets=test_engine_client_command_dispatch`
+  passed, `.\waf.bat build --alltests` passed 72/72 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.414 seconds before stopping with reason `command` at May 10 2026
+  14:55 local time. A visible `run-win32\xash3d.exe -dev 2 -log` game process
+  was launched for manual new-game validation.
+
+## Phase 61: Custom Resource And Download Boundary Audit
+
+- [ ] `ENG-RES-001` Audit `engine/common/custom.c`, `engine/server/sv_custom.c`,
+  and the `SV_DownloadFile_f()` path in `sv_client.c` to map resource identity,
+  customization, HPAK, and download responsibilities.
+  Evidence:
+- [ ] `ENG-RES-002` Identify which parts can become target-neutral resource
+  value/policy helpers without moving file I/O, network fragments, or game DLL
+  callbacks.
+  Evidence:
+- [ ] `ENG-RES-003` Add baseline notes for custom resource hashes, temp-file
+  behavior, download allow/fail rules, and precache checks.
+  Evidence:
+- [ ] `ENG-RES-004` Define the first resource/download migration slice and test
+  fixtures.
+  Evidence:
+
+## Phase 62: Custom Resource Identity Helpers
+
+- [ ] `ENG-RESID-001` Baseline resource descriptor comparison, hash/key
+  formatting, and custom resource lookup helpers that do not require live file
+  or network state.
+  Evidence:
+- [ ] `ENG-RESID-002` Implement target-neutral resource identity helpers under
+  `src/engine/server` or a shared resource namespace if the audit shows client
+  reuse.
+  Evidence:
+- [ ] `ENG-RESID-003` Add tests for resource names, hashes, type handling, and
+  legacy edge cases.
+  Evidence:
+- [ ] `ENG-RESID-004` Route the smallest safe legacy caller through the helper.
+  Evidence:
+
+## Phase 63: Server Download Policy Helper
+
+- [ ] `ENG-DL-001` Baseline `SV_DownloadFile_f()` decision ordering, including
+  safe-file rejection, `sv_allow_download`, precached-resource enforcement,
+  model texture side downloads, custom logo/HPAK handling, and fail responses.
+  Evidence:
+- [ ] `ENG-DL-002` Implement a target-neutral download decision helper that
+  describes allow/fail/sidecar outcomes without opening files or creating
+  netchan fragments.
+  Evidence:
+- [ ] `ENG-DL-003` Add tests for unsafe paths, disabled downloads, missing
+  precache entries, model texture sidecars, and custom logo names.
+  Evidence:
+- [ ] `ENG-DL-004` Route policy decisions through the helper while keeping
+  `FS_*`, HPAK reads, and `Netchan_*` fragment creation legacy-owned.
   Evidence:
 
 ## Phase 800: POSIX Console Backend Validation

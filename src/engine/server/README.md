@@ -9,6 +9,8 @@ code until a later compatibility phase changes those boundaries.
 
 Current helpers:
 
+- `client_command_dispatch.cpp`: target-neutral client command lookup and
+  routing decisions.
 - `netapi_info.cpp`: target-neutral NetAPI info-string construction.
 - `connectionless_classifier.cpp`: target-neutral server connectionless command
   classification.

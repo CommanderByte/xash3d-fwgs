@@ -8,6 +8,9 @@ Current implementation notes:
 
 - `basecmd-migration-guide.md`: how the legacy `BaseCmd_*` registry should move
   toward `src/engine/commands/` without changing the public C surface.
+- `client-command-dispatch-migration.md`: how Phase 60 routes
+  `SV_ExecuteClientCommand()` lookup through target-neutral helpers while
+  command handlers and client mutation stay legacy-owned.
 - `command-buffer-migration-guide.md`: how raw `Cbuf_*` buffer mechanics route
   through the private modern command-buffer primitive while dispatch policy
   stays in `cmd.c`.

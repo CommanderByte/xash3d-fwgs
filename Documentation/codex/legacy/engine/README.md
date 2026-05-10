@@ -9,6 +9,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
   `engine/common/`.
 - [command-cvar-baseline.md](command-cvar-baseline.md) documents the current
   command/cvar ownership, lifecycle, tests, and migration seams.
+- [client-command-dispatch-baseline.md](client-command-dispatch-baseline.md)
+  documents `SV_ExecuteClientCommand()` built-in, enttools, fullupdate, and game
+  DLL fallback routing before Phase 60.
 - [command-buffer-baseline.md](command-buffer-baseline.md) documents the
   command-buffer queue, splitter, comment, quote, insertion, and migration
   compatibility rules.

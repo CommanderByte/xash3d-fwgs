@@ -193,6 +193,7 @@ def build(bld):
 	source = bld.path.ant_glob(['common/*.c', 'common/imagelib/*.c', 'common/soundlib/*.c', 'server/*.c'])
 	source += ['common/base_cmd_adapter.cpp', 'common/command_buffer_adapter.cpp', 'common/network_buffer_adapter.cpp', 'common/infostring.cpp']
 	source += [
+		'server/client_command_dispatch_adapter.cpp',
 		'server/connectionless_classifier_adapter.cpp',
 		'server/connection_response_adapter.cpp',
 		'server/server_filter_adapter.cpp',

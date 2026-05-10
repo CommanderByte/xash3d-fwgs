@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "net_encode.h"
 #include "net_api.h"
+#include "client_command_dispatch_adapter.h"
 #include "connectionless_classifier_adapter.h"
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
@@ -27,7 +28,6 @@ GNU General Public License for more details.
 
 typedef struct ucmd_s
 {
-	const char	*name;
 	qboolean		(*func)( sv_client_t *cl );
 } ucmd_t;
 
@@ -3087,33 +3087,32 @@ static qboolean SV_EntGetVars_f( sv_client_t *cl )
 	return true;
 }
 
-// keep it sorted
 static const ucmd_t ucmds[] =
 {
-{ "_sv_build_info", SV_SendBuildInfo_f },
-{ "begin", SV_Begin_f },
-{ "disconnect", SV_Disconnect_f },
-{ "dlfile", SV_DownloadFile_f },
-{ "god", SV_Godmode_f },
-{ "info", SV_ShowServerinfo_f },
-{ "kill", SV_Kill_f },
-{ "new", SV_New_f },
-{ "noclip", SV_Noclip_f },
-{ "notarget", SV_Notarget_f },
-{ "pause", SV_Pause_f },
-{ "sendres", SV_SendRes_f },
-{ "setinfo", SV_SetInfo_f },
-{ "spawn", SV_Spawn_f },
-{ "status", SV_ClientStatus_f },
+{ SV_SendBuildInfo_f },
+{ SV_Begin_f },
+{ SV_Disconnect_f },
+{ SV_DownloadFile_f },
+{ SV_Godmode_f },
+{ SV_ShowServerinfo_f },
+{ SV_Kill_f },
+{ SV_New_f },
+{ SV_Noclip_f },
+{ SV_Notarget_f },
+{ SV_Pause_f },
+{ SV_SendRes_f },
+{ SV_SetInfo_f },
+{ SV_Spawn_f },
+{ SV_ClientStatus_f },
 };
 
 static const ucmd_t enttoolscmds[] =
 {
-{ "ent_create", SV_EntCreate_f },
-{ "ent_fire", SV_EntFire_f },
-{ "ent_getvars", SV_EntGetVars_f },
-{ "ent_info", SV_EntInfo_f },
-{ "ent_list", SV_EntList_f },
+{ SV_EntCreate_f },
+{ SV_EntFire_f },
+{ SV_EntGetVars_f },
+{ SV_EntInfo_f },
+{ SV_EntList_f },
 };
 
 /*
@@ -3123,67 +3122,81 @@ SV_ExecuteUserCommand
 */
 static void SV_ExecuteClientCommand( sv_client_t *cl, const char *s )
 {
-	int i;
+	sv_client_command_decision_t decision;
+	qboolean fullupdate = false;
 
 	Cmd_TokenizeString( s );
 
-	for( i = 0; i < ARRAYSIZE( ucmds ); i++ )
-	{
-		if( !Q_strcmp( Cmd_Argv( 0 ), ucmds[i].name ))
-		{
-			if( !ucmds[i].func( cl ))
-				Con_Printf( "'%s' is not valid from the console\n", ucmds[i].name );
-			else
-				Con_Reportf( "ucmd->%s()\n", ucmds[i].name );
+	decision = SV_ClientCommandDispatch_Classify(
+		Cmd_Argv( 0 ),
+		sv.state == ss_active,
+		cl->state == cs_spawned,
+		sv_enttools_enable.value > 0.0f,
+		sv.background,
+		sv_fullupdate_penalty_time.value != 0.0f && host.realtime < cl->fullupdate_next_calltime );
 
+	switch( decision.route )
+	{
+	case SV_CLIENT_COMMAND_BUILTIN:
+	{
+		const char *name;
+
+		if( decision.command_index < 0 || decision.command_index >= ARRAYSIZE( ucmds ))
 			return;
-		}
+
+		name = SV_ClientCommandDispatch_BuiltinName( decision.command_index );
+		if( !name )
+			return;
+
+		if( !ucmds[decision.command_index].func( cl ))
+			Con_Printf( "'%s' is not valid from the console\n", name );
+		else
+			Con_Reportf( "ucmd->%s()\n", name );
+
+		return;
+	}
+	case SV_CLIENT_COMMAND_ENTTOOLS:
+	{
+		const char *name;
+
+		if( decision.command_index < 0 || decision.command_index >= ARRAYSIZE( enttoolscmds ))
+			return;
+
+		name = SV_ClientCommandDispatch_EntToolsName( decision.command_index );
+		if( !name )
+			return;
+
+		Con_Reportf( "enttools->%s(): %s\n", name, s );
+		Log_Printf( "\"%s<%i><%s><>\" performed: %s\n", Info_ValueForKey( cl->userinfo, "name" ),
+			cl->userid, SV_GetClientIDString( cl ), s );
+		enttoolscmds[decision.command_index].func( cl );
+		return;
+	}
+	case SV_CLIENT_COMMAND_FULLUPDATE:
+		fullupdate = true;
+		break;
+	case SV_CLIENT_COMMAND_GAME_DLL:
+		break;
+	case SV_CLIENT_COMMAND_IGNORE:
+	default:
+		return;
 	}
 
-	if( sv.state == ss_active )
+	svgame.dllFuncs.pfnClientCommand( cl->edict );
+
+	if( fullupdate )
 	{
-		qboolean fullupdate;
+		// resend the ambient sounds for demo recording
+		SV_RestartAmbientSounds();
+		// resend all the decals for demo recording
+		SV_RestartDecals();
+		// resend all the static ents for demo recording
+		SV_RestartStaticEnts();
+		// resend the viewentity
+		SV_UpdateClientView( cl );
 
-		if( cl->state == cs_spawned && sv_enttools_enable.value > 0.0f && !sv.background )
-		{
-			for( i = 0; i < ARRAYSIZE( enttoolscmds ); i++ )
-			{
-				if( !Q_strcmp( Cmd_Argv( 0 ), enttoolscmds[i].name ))
-				{
-					Con_Reportf( "enttools->%s(): %s\n", enttoolscmds[i].name, s );
-					Log_Printf( "\"%s<%i><%s><>\" performed: %s\n", Info_ValueForKey( cl->userinfo, "name" ),
-						cl->userid, SV_GetClientIDString( cl ), s );
-					enttoolscmds[i].func( cl );
-					return;
-				}
-			}
-		}
-
-		fullupdate = !Q_strcmp( Cmd_Argv( 0 ), "fullupdate" );
-
-		if( fullupdate )
-		{
-			if( sv_fullupdate_penalty_time.value && host.realtime < cl->fullupdate_next_calltime )
-				return;
-		}
-
-		// custom client commands
-		svgame.dllFuncs.pfnClientCommand( cl->edict );
-
-		if( fullupdate )
-		{
-			// resend the ambient sounds for demo recording
-			SV_RestartAmbientSounds();
-			// resend all the decals for demo recording
-			SV_RestartDecals();
-			// resend all the static ents for demo recording
-			SV_RestartStaticEnts();
-			// resend the viewentity
-			SV_UpdateClientView( cl );
-
-			if( sv_fullupdate_penalty_time.value )
-				cl->fullupdate_next_calltime = host.realtime + sv_fullupdate_penalty_time.value;
-		}
+		if( sv_fullupdate_penalty_time.value )
+			cl->fullupdate_next_calltime = host.realtime + sv_fullupdate_penalty_time.value;
 	}
 }
 

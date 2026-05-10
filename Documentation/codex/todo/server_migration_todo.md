@@ -187,10 +187,39 @@ the main phase tracker until they are selected.
   reached first frame in 0.427 seconds, and stopped with reason `command` at
   May 10 2026 14:46:31 local time.
 
+## Phase 60: Server Client Command Dispatch Table
+
+- [x] Baseline `SV_ExecuteClientCommand()` built-in, enttools, fullupdate, and
+  game DLL fallback routing.
+  Evidence: `Documentation/codex/legacy/engine/client-command-dispatch-baseline.md`.
+- [x] Implement a target-neutral command metadata table and first routing
+  decision helper.
+  Evidence: `src/include/engine/server/client_command_dispatch.hpp`,
+  `src/engine/server/client_command_dispatch.cpp`.
+- [x] Add tests for exact/case-sensitive lookup, built-ins before active-server
+  gating, enttools gates, fullupdate throttling, and game DLL fallback.
+  Evidence: `tests/engine/client_command_dispatch.cpp`.
+- [x] Route `SV_ExecuteClientCommand()` through the adapter while keeping
+  command handlers, logging, game DLL calls, and client mutation legacy-owned.
+  Evidence: `engine/server/client_command_dispatch_adapter.h`,
+  `engine/server/client_command_dispatch_adapter.cpp`,
+  `engine/server/sv_client.c`.
+- [x] Run focused tests, full tests, runtime smoke, and manual launch.
+  Evidence: `.\waf.bat build --targets=test_engine_client_command_dispatch`
+  passed, `.\waf.bat build --alltests` passed 72/72 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.414 seconds before stopping with reason `command` at May 10 2026
+  14:55 local time. A visible `run-win32\xash3d.exe -dev 2 -log` game process
+  was launched for manual new-game validation.
+
 ## Deferred Server Items
 
-- [ ] Phase 60: client command dispatch table lookup in `sv_client.c`, keeping
-  command handlers and client mutation legacy-owned.
+- [ ] Phase 61: custom resource and download boundary audit across
+  `engine/common/custom.c`, `engine/server/sv_custom.c`, and
+  `SV_DownloadFile_f()`.
+- [ ] Phase 62: custom resource identity helpers after the resource audit.
+- [ ] Phase 63: server download decision policy helper after resource identity
+  fixtures exist.
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
 - [ ] Save/restore migration after binary compatibility fixtures exist.
