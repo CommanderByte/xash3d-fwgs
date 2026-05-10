@@ -2161,7 +2161,50 @@ commit, test command, document link, or manual verification note that proves it.
   frame in 0.404 seconds before stopping with reason `command` at May 10 2026
   17:18 local time.
 
-## Phase 66: Consistency Resource Policy
+## Phase 66: Customization Message Serialization Helper
+
+- [x] `ENG-CUSTOMMSG-001` Baseline `SV_SendCustomization()` wire output,
+  including player number, resource descriptor fields, full flags byte, and
+  optional custom MD5 hash.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] `ENG-CUSTOMMSG-002` Implement a target-neutral customization payload
+  encoder that writes through modern network-buffer primitives.
+  Evidence: `src/include/engine/server/server_customization_message.hpp`,
+  `src/engine/server/server_customization_message.cpp`.
+- [x] `ENG-CUSTOMMSG-003` Add golden tests for custom and non-custom
+  customization payloads, signed fields, and overflow.
+  Evidence: `tests/engine/server_customization_message.cpp`.
+- [x] `ENG-CUSTOMMSG-004` Route `SV_SendCustomization()` through the helper
+  while keeping `svc_customization` and netchan message ownership in legacy
+  code.
+  Evidence: `engine/server/server_customization_message_adapter.h`,
+  `engine/server/server_customization_message_adapter.cpp`,
+  `engine/server/sv_custom.c`.
+- [x] `ENG-CUSTOMMSG-005` Run focused tests, full tests, runtime smoke, and
+  record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_customization_message`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 77/77 tests, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.408 seconds before stopping with reason `command` at May 10 2026
+  17:40 local time.
+
+## Phase 67: Consistency List Serialization Helper
+
+- [ ] `ENG-CONSLIST-001` Baseline `SV_SendConsistencyList()` enable/disable
+  conditions, delta encoding, and list terminator behavior.
+  Evidence:
+- [ ] `ENG-CONSLIST-002` Implement a target-neutral consistency-list encoder
+  for resource-index snapshots.
+  Evidence:
+- [ ] `ENG-CONSLIST-003` Add golden tests for empty lists, HLTV/single-player
+  suppression, small deltas, large deltas, and terminators.
+  Evidence:
+- [ ] `ENG-CONSLIST-004` Route consistency-list serialization through the
+  helper while keeping client flags and `resource_t` ownership in legacy code.
+  Evidence:
+
+## Phase 68: Consistency Resource Policy
 
 - [ ] `ENG-CONSIST-001` Baseline `SV_TransferConsistencyInfo()` and
   `SV_ParseConsistencyResponse()` for exact-file, same-bounds,

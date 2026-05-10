@@ -120,7 +120,28 @@ resource row into a caller-provided bit buffer; legacy code still owns
 `svc_resourcerequest`, `svc_resourcelocation`, `svc_resourcelist`,
 `sv.num_resources`, consistency-list serialization, and netchan delivery.
 
-### Phase 66: Consistency Resource Policy
+### Phase 66: Customization Message Serialization Helper
+
+Baseline and then isolate the stable `SV_SendCustomization()` payload encoding.
+The helper should write player number, resource type, name, index, download
+size, flags, and optional custom MD5 bytes into a caller-provided bit buffer.
+Legacy code should continue to own `svc_customization` and the destination
+client netchan message.
+
+Phase 66 implementation note: the payload encoder now lives in
+`src/engine/server/server_customization_message.cpp`, with the legacy bridge in
+`engine/server/server_customization_message_adapter.cpp`. The helper writes only
+the `svc_customization` payload; legacy code still owns client selection,
+customization propagation, the server command byte, and netchan delivery.
+
+### Phase 67: Consistency List Serialization Helper
+
+Baseline and then isolate the stable `SV_SendConsistencyList()` bitstream
+encoding. The helper should consume a snapshot of checkable resource indexes and
+produce the same small-delta or absolute-index encoding, while legacy code owns
+client flags, cvar checks, `resource_t`, and message destination state.
+
+### Phase 68: Consistency Resource Policy
 
 Audit and extract the pure parts of `SV_TransferConsistencyInfo()` and
 `SV_ParseConsistencyResponse()`. This must wait until tests cover:

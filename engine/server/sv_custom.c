@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_customization_message_adapter.h"
 #include "server_resource_message_adapter.h"
 #include "server_upload_queue_adapter.h"
 
@@ -329,16 +330,23 @@ void SV_AddToResourceList( resource_t *pResource, resource_t *pList )
 
 static void SV_SendCustomization( sv_client_t *cl, int playernum, resource_t *pResource )
 {
-	MSG_BeginServerCmd( &cl->netchan.message, svc_customization );
-	MSG_WriteByte( &cl->netchan.message, playernum );	// playernum
-	MSG_WriteByte( &cl->netchan.message, pResource->type );
-	MSG_WriteString( &cl->netchan.message, pResource->szFileName );
-	MSG_WriteShort( &cl->netchan.message, pResource->nIndex );
-	MSG_WriteLong( &cl->netchan.message, pResource->nDownloadSize );
-	MSG_WriteByte( &cl->netchan.message, pResource->ucFlags );
+	sv_customization_message_write_result_t result;
 
-	if( FBitSet( pResource->ucFlags, RES_CUSTOM ))
-		MSG_WriteBytes( &cl->netchan.message, pResource->rgucMD5_hash, 16 );
+	if( cl->netchan.message.bOverflow )
+		return;
+
+	MSG_BeginServerCmd( &cl->netchan.message, svc_customization );
+
+	result = SV_CustomizationMessage_WritePayload(
+		pResource,
+		playernum,
+		cl->netchan.message.pData,
+		cl->netchan.message.nDataBits,
+		cl->netchan.message.iCurBit );
+
+	cl->netchan.message.iCurBit = result.current_bit;
+	if( result.overflow )
+		cl->netchan.message.bOverflow = true;
 }
 
 void SV_RemoveFromResourceList( resource_t *pResource )

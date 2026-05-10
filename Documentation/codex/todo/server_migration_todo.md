@@ -321,9 +321,35 @@ the main phase tracker until they are selected.
   frame in 0.404 seconds before stopping with reason `command` at May 10 2026
   17:18 local time.
 
+## Phase 66: Customization Message Serialization Helper
+
+- [x] Baseline `SV_SendCustomization()` payload and legacy ownership.
+  Evidence: `Documentation/codex/legacy/engine/custom-resource-download-baseline.md`.
+- [x] Implement a target-neutral customization payload encoder on top of
+  modern `NetworkBitBuffer`.
+  Evidence: `src/include/engine/server/server_customization_message.hpp`,
+  `src/engine/server/server_customization_message.cpp`.
+- [x] Add golden tests for custom and non-custom payloads, signed fields, and
+  overflow.
+  Evidence: `tests/engine/server_customization_message.cpp`.
+- [x] Route `SV_SendCustomization()` through the helper while keeping
+  `svc_customization`, client selection, and netchan message ownership legacy.
+  Evidence: `engine/server/server_customization_message_adapter.h`,
+  `engine/server/server_customization_message_adapter.cpp`,
+  `engine/server/sv_custom.c`.
+- [x] Run focused tests, full tests, runtime smoke, and record timing.
+  Evidence: `.\waf.bat build --targets=test_engine_server_customization_message`
+  passed 1/1, `.\waf.bat build --targets=xash` passed,
+  `.\waf.bat build --alltests` passed 77/77, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.408 seconds before stopping with reason `command` at May 10 2026
+  17:40 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 66: consistency resource policy helper after resource message
+- [ ] Phase 67: consistency list serialization helper after customization
+  message payloads are routed.
+- [ ] Phase 68: consistency resource policy helper after consistency-list
   encoding is documented.
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.

@@ -238,6 +238,24 @@ startup/resource message stream:
 The row writer does not write the surrounding server command byte, resource
 count, resource-location URL, consistency records, or netchan fragments.
 
+## Customization Message Serialization
+
+`SV_SendCustomization()` writes one propagated customization record into a
+client's reliable netchan message:
+
+1. starts `svc_customization`;
+2. writes the owning player number as a byte;
+3. writes the resource type as a byte;
+4. writes `szFileName` as null-terminated string bytes;
+5. writes `nIndex` as a signed short;
+6. writes `nDownloadSize` as a signed long;
+7. writes the full `ucFlags` byte without the resource-list mask used by
+   `SV_SendResource()`;
+8. writes the 16-byte `rgucMD5_hash` only when `RES_CUSTOM` is set.
+
+The message does not include `rguc_reserved`; model consistency metadata is
+owned by the server resource-list and consistency-list paths.
+
 ## HPAK And Temp Files
 
 The server-side custom resource path depends on `engine/common/hpak.c`, but HPAK
