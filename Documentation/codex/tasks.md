@@ -2560,22 +2560,28 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 80: Server Command Lifecycle Policy
 
-- [ ] `ENG-SVCMD-001` Baseline map/load/save/changelevel/restart command
+- [x] `ENG-SVCMD-001` Baseline map/load/save/changelevel/restart command
   validation in `sv_cmds.c`, including argument parsing and console output.
-  Evidence:
-- [ ] `ENG-SVCMD-002` Implement target-neutral command decision helpers for
+  Evidence: `Documentation/codex/legacy/engine/server-command-lifecycle-baseline.md`.
+- [x] `ENG-SVCMD-002` Implement target-neutral command decision helpers for
   map validation, save/load request classification, and lifecycle action plans.
-  Evidence:
-- [ ] `ENG-SVCMD-003` Add tests for missing args, invalid maps, background
+  Evidence: `src/include/engine/server/server_command_lifecycle.hpp` and
+  `src/engine/server/server_command_lifecycle.cpp`.
+- [x] `ENG-SVCMD-003` Add tests for missing args, invalid maps, background
   maps, save names, quickload/quicksave aliases, and rejected transitions.
-  Evidence:
-- [ ] `ENG-SVCMD-004` Route selected command decision trees through helpers
+  Evidence: `tests/engine/server_command_lifecycle.cpp`.
+- [x] `ENG-SVCMD-004` Route selected command decision trees through helpers
   while keeping `Cmd_Argv()`, filesystem probes, cvar mutation, and host command
   execution legacy-owned.
-  Evidence:
-- [ ] `ENG-SVCMD-005` Run focused tests, full tests, runtime smoke with
+  Evidence: `engine/server/server_command_lifecycle_adapter.h`,
+  `engine/server/server_command_lifecycle_adapter.cpp`, and
+  `engine/server/sv_cmds.c`.
+- [x] `ENG-SVCMD-005` Run focused tests, full tests, runtime smoke with
   `+wait +wait`, and record first-frame timing.
-  Evidence:
+  Evidence: `scripts/run-phase-validation.ps1` with
+  `-FocusedTarget test_engine_server_command_lifecycle` and `-StopRunningXash`
+  passed: focused test 1/1, `xash` build, alltests 90/90, runtime smoke first
+  frame 0.503 seconds, stop reason `command`.
 
 ## Phase 81: Serverdata And Spawn Handshake
 

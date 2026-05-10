@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "server_command_lifecycle_adapter.h"
 #include "server_text_messages_adapter.h"
 
 static void SV_ApplyTextMessageWriteResult( sizebuf_t *msg, sv_text_message_write_result_t result )
@@ -212,19 +213,19 @@ static qboolean SV_ValidateMap( const char *pMapName )
 
 	flags = SV_MapIsValid( pMapName, NULL );
 
-	if( FBitSet( flags, MAP_INVALID_VERSION ))
+	switch( SV_Lifecycle_ClassifyMapValidation( flags ))
 	{
+	case SV_LIFECYCLE_MAP_VALID:
+		return true;
+	case SV_LIFECYCLE_MAP_INVALID_VERSION:
 		Con_Printf( S_ERROR "map %s is invalid or not supported\n", pMapName );
 		return false;
-	}
-
-	if( !FBitSet( flags, MAP_IS_EXIST ))
-	{
+	case SV_LIFECYCLE_MAP_MISSING:
 		Con_Printf( S_ERROR "map %s doesn't exist\n", pMapName );
 		return false;
 	}
 
-	return true;
+	return false;
 }
 
 /*
@@ -237,23 +238,24 @@ For development work
 */
 static void SV_Map_f( void )
 {
-	char	mapname[MAX_QPATH];
+	sv_lifecycle_plan_t plan;
 
-	if( Cmd_Argc() != 2 )
+	plan = SV_Lifecycle_BuildMapCommandPlan( Cmd_Argc(), Cmd_Argv( 1 ));
+
+	if( plan.action == SV_LIFECYCLE_ACTION_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "map <mapname>\n" );
 		return;
 	}
 
-	// hold mapname to other place
-	Q_strncpy( mapname, Cmd_Argv( 1 ), sizeof( mapname ));
-	COM_StripExtension( mapname );
-
-	if( !SV_ValidateMap( mapname ))
+	if( plan.action != SV_LIFECYCLE_ACTION_VALIDATE_MAP )
 		return;
 
-	Cvar_DirectSet( &sv_hostmap, mapname );
-	COM_LoadLevel( mapname, false );
+	if( !SV_ValidateMap( plan.map_name ))
+		return;
+
+	Cvar_DirectSet( &sv_hostmap, plan.map_name );
+	COM_LoadLevel( plan.map_name, plan.background );
 }
 
 /*
@@ -302,32 +304,38 @@ Set background map (enable physics in menu)
 */
 static void SV_MapBackground_f( void )
 {
-	char	mapname[MAX_QPATH];
+	sv_lifecycle_plan_t plan;
 
-	if( Host_IsDedicated( ))
+	plan = SV_Lifecycle_BuildBackgroundMapCommandPlan(
+		Cmd_Argc(),
+		Cmd_Argv( 1 ),
+		Host_IsDedicated(),
+		SV_Active(),
+		sv.background,
+		GameState->nextstate == STATE_RUNFRAME );
+
+	if( plan.action == SV_LIFECYCLE_ACTION_BACKGROUND_DEDICATED_ERROR )
 	{
 		Con_Printf( S_ERROR "no background maps are allowed in dedicated mode" );
 		return;
 	}
 
-	if( Cmd_Argc() != 2 )
+	if( plan.action == SV_LIFECYCLE_ACTION_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "map_background <mapname>\n" );
 		return;
 	}
 
-	if( SV_Active() && !sv.background )
+	if( plan.action == SV_LIFECYCLE_ACTION_BACKGROUND_ACTIVE_ERROR )
 	{
-		if( GameState->nextstate == STATE_RUNFRAME )
-			Con_Printf( S_ERROR "can't set background map while game is active\n" );
+		Con_Printf( S_ERROR "can't set background map while game is active\n" );
 		return;
 	}
 
-	// hold mapname to other place
-	Q_strncpy( mapname, Cmd_Argv( 1 ), sizeof( mapname ));
-	COM_StripExtension( mapname );
+	if( plan.action != SV_LIFECYCLE_ACTION_VALIDATE_MAP )
+		return;
 
-	if( !SV_ValidateMap( mapname ))
+	if( !SV_ValidateMap( plan.map_name ))
 		return;
 
 	// background map is always run as singleplayer
@@ -335,7 +343,7 @@ static void SV_MapBackground_f( void )
 	Cvar_FullSet( "deathmatch", "0", FCVAR_LATCH|FCVAR_SERVER );
 	Cvar_FullSet( "coop", "0", FCVAR_LATCH|FCVAR_SERVER );
 
-	COM_LoadLevel( mapname, true );
+	COM_LoadLevel( plan.map_name, plan.background );
 }
 
 /*
@@ -438,16 +446,18 @@ SV_Load_f
 */
 static void SV_Load_f( void )
 {
-	char	path[MAX_QPATH];
+	sv_lifecycle_plan_t plan;
 
-	if( Cmd_Argc() != 2 )
+	plan = SV_Lifecycle_BuildLoadCommandPlan( Cmd_Argc(), Cmd_Argv( 1 ));
+
+	if( plan.action == SV_LIFECYCLE_ACTION_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "load <savename>\n" );
 		return;
 	}
 
-	Q_snprintf( path, sizeof( path ), DEFAULT_SAVE_DIRECTORY "%s.sav", Cmd_Argv( 1 ));
-	SV_LoadGame( path );
+	if( plan.action == SV_LIFECYCLE_ACTION_LOAD_GAME )
+		SV_LoadGame( plan.save_path );
 }
 
 /*
@@ -458,7 +468,11 @@ SV_QuickLoad_f
 */
 static void SV_QuickLoad_f( void )
 {
-	Cbuf_AddText( "echo Quick Loading...; wait; load quick\n" );
+	sv_lifecycle_plan_t plan;
+
+	plan = SV_Lifecycle_BuildQuickLoadCommandPlan();
+	if( plan.action == SV_LIFECYCLE_ACTION_ADD_COMMAND_TEXT )
+		Cbuf_AddText( plan.command_text );
 }
 
 /*
@@ -469,18 +483,20 @@ SV_Save_f
 */
 static void SV_Save_f( void )
 {
+	sv_lifecycle_plan_t plan;
 	qboolean ret = false;
 
-	switch( Cmd_Argc( ))
+	plan = SV_Lifecycle_BuildSaveCommandPlan( Cmd_Argc(), Cmd_Argv( 1 ));
+
+	switch( plan.action )
 	{
-	case 1:
-		ret = SV_SaveGame( "new" );
+	case SV_LIFECYCLE_ACTION_SAVE_GAME:
+		ret = SV_SaveGame( plan.save_name );
 		break;
-	case 2:
-		ret = SV_SaveGame( Cmd_Argv( 1 ));
+	case SV_LIFECYCLE_ACTION_PRINT_USAGE:
+		Con_Printf( S_USAGE "save <savename>\n" );
 		break;
 	default:
-		Con_Printf( S_USAGE "save <savename>\n" );
 		break;
 	}
 
@@ -496,7 +512,11 @@ SV_QuickSave_f
 */
 static void SV_QuickSave_f( void )
 {
-	Cbuf_AddText( "echo Quick Saving...; wait; save quick\n" );
+	sv_lifecycle_plan_t plan;
+
+	plan = SV_Lifecycle_BuildQuickSaveCommandPlan();
+	if( plan.action == SV_LIFECYCLE_ACTION_ADD_COMMAND_TEXT )
+		Cbuf_AddText( plan.command_text );
 }
 
 /*
@@ -526,14 +546,18 @@ SV_AutoSave_f
 */
 static void SV_AutoSave_f( void )
 {
-	if( Cmd_Argc() != 1 )
+	sv_lifecycle_plan_t plan;
+
+	plan = SV_Lifecycle_BuildAutosaveCommandPlan( Cmd_Argc(), sv_autosave.value != 0.0f );
+
+	if( plan.action == SV_LIFECYCLE_ACTION_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "autosave\n" );
 		return;
 	}
 
-	if( sv_autosave.value )
-		SV_SaveGame( "autosave" );
+	if( plan.action == SV_LIFECYCLE_ACTION_SAVE_GAME )
+		SV_SaveGame( plan.save_name );
 }
 
 /*
@@ -545,10 +569,12 @@ restarts current level
 */
 static void SV_Restart_f( void )
 {
+	sv_lifecycle_plan_t plan;
+
 	// because restart can be multiple issued
-	if( sv.state != ss_active )
-		return;
-	COM_LoadLevel( sv.name, sv.background );
+	plan = SV_Lifecycle_BuildRestartCommandPlan( sv.state == ss_active, sv.name, sv.background );
+	if( plan.action == SV_LIFECYCLE_ACTION_LOAD_CURRENT_MAP )
+		COM_LoadLevel( plan.map_name, plan.background );
 }
 
 /*
@@ -560,8 +586,11 @@ continue from latest savedgame
 */
 static void SV_Reload_f( void )
 {
+	sv_lifecycle_plan_t plan;
+
 	// because reload can be multiple issued
-	if( GameState->nextstate != STATE_RUNFRAME )
+	plan = SV_Lifecycle_BuildReloadCommandPlan( GameState->nextstate == STATE_RUNFRAME );
+	if( plan.action != SV_LIFECYCLE_ACTION_RELOAD_LATEST_SAVE )
 		return;
 
 	if( !SV_LoadGame( SV_GetLatestSave( )))
@@ -577,13 +606,22 @@ classic change level
 */
 static void SV_ChangeLevel_f( void )
 {
-	if( Cmd_Argc() < 2 ) // allow extra arguments, for compatibility
+	sv_lifecycle_plan_t plan;
+
+	plan = SV_Lifecycle_BuildChangeLevelCommandPlan(
+		false,
+		Cmd_Argc(),
+		Cmd_Argv( 1 ),
+		NULL );
+
+	if( plan.action == SV_LIFECYCLE_ACTION_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "changelevel <mapname>\n" );
 		return;
 	}
 
-	SV_QueueChangeLevel( Cmd_Argv( 1 ), NULL );
+	if( plan.action == SV_LIFECYCLE_ACTION_QUEUE_CHANGELEVEL )
+		SV_QueueChangeLevel( plan.map_name, NULL );
 }
 
 /*
@@ -595,15 +633,24 @@ smooth change level
 */
 static void SV_ChangeLevel2_f( void )
 {
-	if( Cmd_Argc() < 2 ) // allow extra arguments, for compatibility
+	sv_lifecycle_plan_t plan;
+
+	plan = SV_Lifecycle_BuildChangeLevelCommandPlan(
+		true,
+		Cmd_Argc(),
+		Cmd_Argv( 1 ),
+		Cmd_Argv( 2 ));
+
+	if( plan.action == SV_LIFECYCLE_ACTION_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "changelevel2 <mapname> [landmark]\n" );
 		return;
 	}
 
-	if( Cmd_Argc() == 2 ) // with single argument, behaves like usual changelevel
-		SV_QueueChangeLevel( Cmd_Argv( 1 ), NULL );
-	else SV_QueueChangeLevel( Cmd_Argv( 1 ), Cmd_Argv( 2 ));
+	if( plan.action == SV_LIFECYCLE_ACTION_QUEUE_CHANGELEVEL )
+		SV_QueueChangeLevel(
+			plan.map_name,
+			plan.landmark_name[0] ? plan.landmark_name : NULL );
 }
 
 /*

@@ -28,6 +28,8 @@ Current helpers:
   and response validation policy.
 - `server_customization_message.hpp`: propagated customization payload
   serialization for `svc_customization`.
+- `server_command_lifecycle.hpp`: server lifecycle command request
+  normalization and action planning.
 - `server_resource_message.hpp`: resource-list row serialization using modern
   bit-buffer primitives.
 - `server_upload_queue.hpp`: client resource-list admission, missing custom

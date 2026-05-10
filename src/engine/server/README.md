@@ -28,6 +28,8 @@ Current helpers:
   reserved bounds payload, and response validation policy.
 - `server_customization_message.cpp`: target-neutral propagated customization
   payload serialization for `svc_customization`.
+- `server_command_lifecycle.cpp`: target-neutral server lifecycle command
+  argument, alias, and validation routing decisions.
 - `server_resource_message.cpp`: target-neutral resource-list row
   serialization using modern bit-buffer primitives.
 - `server_upload_queue.cpp`: target-neutral client resource upload queue

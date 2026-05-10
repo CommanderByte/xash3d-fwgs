@@ -588,13 +588,13 @@ work.
 Goal: make map/load/save/changelevel command decisions testable without moving
 the command system itself.
 
-- [ ] Baseline lifecycle commands in `sv_cmds.c`.
-- [ ] Implement target-neutral command decision helpers.
-- [ ] Add tests for missing args, invalid maps, saves, aliases, and rejected
+- [x] Baseline lifecycle commands in `sv_cmds.c`.
+- [x] Implement target-neutral command decision helpers.
+- [x] Add tests for missing args, invalid maps, saves, aliases, and rejected
   transitions.
-- [ ] Route selected decisions while keeping `Cmd_Argv()`, filesystem probes,
+- [x] Route selected decisions while keeping `Cmd_Argv()`, filesystem probes,
   cvars, and host command execution legacy-owned.
-- [ ] Verify focused tests, full tests, and `+wait +wait` smoke timing.
+- [x] Verify focused tests, full tests, and `+wait +wait` smoke timing.
 
 ## Phase 81: Serverdata And Spawn Handshake
 
