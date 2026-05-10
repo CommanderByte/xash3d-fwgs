@@ -60,6 +60,10 @@ Prefer the local scripts for repeated phase mechanics:
 - `scripts/run-phase-validation.ps1`: run focused validation, build `xash`,
   run full tests, refresh runtime DLLs, run the `+wait +wait` smoke, and print
   a copy-pasteable evidence line.
+- `scripts/ask-local-model.ps1`: ask a local LM Studio model for read-only
+  analysis and write the scratch report under `.codex-cache/local-agent/`.
+- `scripts/lmstudio-mcp-server.py`: expose the same local LM Studio helper as
+  a read-only stdio MCP server for clients that can register local MCP tools.
 
 Use the scripts as helpers, not as a substitute for judgment. Bugs, crashes,
 ABI questions, and compatibility surprises still require a focused deep dive.
@@ -67,6 +71,12 @@ Do not use `-AllowSmokeNonZeroExit` as green evidence; it is for investigating
 known post-first-frame shutdown flakes only.
 Do not run helpers that mutate the same document, such as
 `append-phase-evidence.ps1`, in parallel.
+Use local LM Studio output as scratch analysis only; never treat it as test
+evidence or a replacement for direct code inspection.
+When LM Studio is running with a large context window, such as 64K, prefer using
+it asynchronously for bounded sidecar scouting while continuing direct code
+inspection locally. Keep prompts file-scoped, and do not put local-model output
+on the critical path unless the task is explicitly exploratory.
 
 ## Filesystem Modernization Rules
 
