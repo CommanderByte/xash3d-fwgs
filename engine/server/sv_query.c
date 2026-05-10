@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "source_query_adapter.h"
 
 /*
 ==================
@@ -23,45 +24,33 @@ SV_SourceQuery_Details
 */
 static void SV_SourceQuery_Details( netadr_t from )
 {
-	sizebuf_t buf;
 	char answer[2048];
+	sv_source_query_details_t details;
 	int bot_count, client_count;
+	int total;
 
 	SV_GetPlayerCount( &client_count, &bot_count );
 	client_count += bot_count; // bots are counted as players in this reply
 
-	MSG_Init( &buf, "TSourceEngineQuery", answer, sizeof( answer ));
+	memset( &details, 0, sizeof( details ));
+	details.protocol_version = PROTOCOL_VERSION;
+	details.hostname = hostname.string;
+	details.map_name = sv.name;
+	details.game_folder = GI->gamefolder;
+	details.game_description = svgame.dllFuncs.pfnGetGameDescription( );
+	details.app_id = 0;
+	details.player_count = client_count;
+	details.max_players = svs.maxclients;
+	details.bot_count = bot_count;
+	details.server_type = Host_IsDedicated( ) ? 'd' : 'l';
+	details.platform = SV_SourceQueryAdapter_PlatformCode( );
+	details.password_protected = SV_HavePassword( );
+	details.secure = GI->secure;
+	details.version = XASH_VERSION;
 
-	MSG_WriteDword( &buf, 0xFFFFFFFFU );
-	MSG_WriteByte( &buf, S2A_GOLDSRC_INFO );
-	MSG_WriteByte( &buf, PROTOCOL_VERSION );
-
-	MSG_WriteString( &buf, hostname.string );
-	MSG_WriteString( &buf, sv.name );
-	MSG_WriteString( &buf, GI->gamefolder );
-	MSG_WriteString( &buf, svgame.dllFuncs.pfnGetGameDescription( ));
-
-	MSG_WriteShort( &buf, 0 );
-	MSG_WriteByte( &buf, client_count );
-	MSG_WriteByte( &buf, svs.maxclients );
-	MSG_WriteByte( &buf, bot_count );
-
-	MSG_WriteByte( &buf, Host_IsDedicated( ) ? 'd' : 'l' );
-#if XASH_WIN32
-	MSG_WriteByte( &buf, 'w' );
-#elif XASH_APPLE
-	MSG_WriteByte( &buf, 'm' );
-#else
-	MSG_WriteByte( &buf, 'l' );
-#endif
-
-	if( SV_HavePassword( ))
-		MSG_WriteByte( &buf, 1 );
-	else MSG_WriteByte( &buf, 0 );
-	MSG_WriteByte( &buf, GI->secure );
-	MSG_WriteString( &buf, XASH_VERSION );
-
-	NET_SendPacket( NS_SERVER, MSG_GetNumBytesWritten( &buf ), MSG_GetData( &buf ), from );
+	total = SV_SourceQueryAdapter_BuildDetails( answer, sizeof( answer ), &details );
+	if( total > 0 )
+		NET_SendPacket( NS_SERVER, total, answer, from );
 }
 
 /*
@@ -72,45 +61,41 @@ SV_SourceQuery_Rules
 static void SV_SourceQuery_Rules( netadr_t from )
 {
 	const cvar_t *cvar;
-	sizebuf_t buf;
 	char answer[MAX_PRINT_MSG - 4];
-	int pos;
+	int total;
 	uint cvar_count = 0;
 
-	MSG_Init( &buf, "TSourceEngineQueryRules", answer, sizeof( answer ));
-
-	MSG_WriteDword( &buf, 0xFFFFFFFFU );
-	MSG_WriteByte( &buf, S2A_GOLDSRC_RULES );
-
-	pos = MSG_GetNumBitsWritten( &buf );
-	MSG_WriteShort( &buf, 0 );
+	total = SV_SourceQueryAdapter_BeginRules( answer, sizeof( answer ));
+	if( total <= 0 )
+		return;
 
 	for( cvar = Cvar_GetList( ); cvar; cvar = cvar->next )
 	{
+		int next;
+
 		if( !FBitSet( cvar->flags, FCVAR_SERVER ))
 			continue;
 
-		MSG_WriteString( &buf, cvar->name );
+		next = SV_SourceQueryAdapter_AppendRule(
+			answer,
+			sizeof( answer ),
+			total,
+			cvar->name,
+			cvar->string,
+			FBitSet( cvar->flags, FCVAR_PROTECTED ));
 
-		if( FBitSet( cvar->flags, FCVAR_PROTECTED ))
-		{
-			if( !COM_StringEmpty( cvar->string ) && Q_stricmp( cvar->string, "none" ))
-				MSG_WriteString( &buf, "1" );
-			else MSG_WriteString( &buf, "0" );
-		}
-		else MSG_WriteString( &buf, cvar->string );
+		if( next <= 0 )
+			break;
 
+		total = next;
 		cvar_count++;
 	}
 
 	if( cvar_count != 0 )
 	{
-		int total = MSG_GetNumBytesWritten( &buf );
-
-		MSG_SeekToBit( &buf, pos, SEEK_SET );
-		MSG_WriteShort( &buf, cvar_count );
-
-		NET_SendPacket( NS_SERVER, total, MSG_GetData( &buf ), from );
+		total = SV_SourceQueryAdapter_FinishRules( answer, sizeof( answer ), total, cvar_count );
+		if( total > 0 )
+			NET_SendPacket( NS_SERVER, total, answer, from );
 	}
 }
 
@@ -121,48 +106,52 @@ SV_SourceQuery_Players
 */
 static void SV_SourceQuery_Players( netadr_t from )
 {
-	sizebuf_t buf;
 	char answer[MAX_PRINT_MSG - 4];
 	int i, count = 0;
-	int pos;
+	int total;
 
 	// respect players privacy
-	if( !sv_expose_player_list.value || SV_HavePassword( ))
+	if( !SV_SourceQueryAdapter_AllowsPlayerList( sv_expose_player_list.value != 0.0f, SV_HavePassword( )))
 		return;
 
-	MSG_Init( &buf, "TSourceEngineQueryPlayers", answer, sizeof( answer ));
-
-	MSG_WriteDword( &buf, 0xFFFFFFFFU );
-	MSG_WriteByte( &buf, S2A_GOLDSRC_PLAYERS );
-
-	pos = MSG_GetNumBitsWritten( &buf );
-	MSG_WriteByte( &buf, 0 );
+	total = SV_SourceQueryAdapter_BeginPlayers( answer, sizeof( answer ));
+	if( total <= 0 )
+		return;
 
 	for( i = 0; i < svs.maxclients; i++ )
 	{
 		const sv_client_t *cl = &svs.clients[i];
+		float duration;
+		int next;
 
 		if( cl->state < cs_connected )
 			continue;
 
-		MSG_WriteByte( &buf, count );
-		MSG_WriteString( &buf, cl->name );
-		MSG_WriteLong( &buf, cl->edict->v.frags );
 		if( FBitSet( cl->flags, FCL_FAKECLIENT ))
-			MSG_WriteFloat( &buf, -1.0f );
-		else MSG_WriteFloat( &buf, host.realtime - cl->connection_started );
+			duration = -1.0f;
+		else duration = host.realtime - cl->connection_started;
 
+		next = SV_SourceQueryAdapter_AppendPlayer(
+			answer,
+			sizeof( answer ),
+			total,
+			count,
+			cl->name,
+			cl->edict->v.frags,
+			duration );
+
+		if( next <= 0 )
+			break;
+
+		total = next;
 		count++;
 	}
 
 	if( count != 0 )
 	{
-		int total = MSG_GetNumBytesWritten( &buf );
-
-		MSG_SeekToBit( &buf, pos, SEEK_SET );
-		MSG_WriteByte( &buf, count );
-
-		NET_SendPacket( NS_SERVER, total, MSG_GetData( &buf ), from );
+		total = SV_SourceQueryAdapter_FinishPlayers( answer, sizeof( answer ), total, count );
+		if( total > 0 )
+			NET_SendPacket( NS_SERVER, total, answer, from );
 	}
 }
 

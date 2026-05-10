@@ -43,20 +43,58 @@ the main phase tracker until they are selected.
 
 ## Phase 54: Server Query Response Builder
 
-- [ ] Capture byte-level baseline payloads for details, rules, and players.
-- [ ] Add tests for password-protected player-list suppression and protected
+- [x] Capture byte-level baseline payloads for details, rules, and players.
+  Evidence: `Documentation/codex/legacy/engine/source-query-baseline.md`.
+- [x] Add tests for password-protected player-list suppression and protected
   cvar value masking.
-- [ ] Implement `SourceQuerySnapshot` and response builder under
+  Evidence: `tests/engine/source_query.cpp`.
+- [x] Implement source-query value rows and response builder under
   `src/engine/server`.
-- [ ] Keep `NET_SendPacket` and live server-state reads in the legacy adapter.
-- [ ] Run focused golden tests, `.\waf.bat build --alltests`, and a runtime
+  Evidence: `src/include/engine/server/source_query.hpp`,
+  `src/engine/server/source_query.cpp`.
+- [x] Keep `NET_SendPacket` and live server-state reads in the legacy adapter.
+  Evidence: `engine/server/source_query_adapter.h`,
+  `engine/server/source_query_adapter.cpp`, `engine/server/sv_query.c`.
+- [x] Run focused golden tests, `.\waf.bat build --alltests`, and a runtime
   smoke.
+  Evidence: `.\waf.bat build --targets=test_engine_source_query` passed 1/1;
+  `.\waf.bat build --alltests` passed 66/66; Windows runtime smoke copied the
+  rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.424 seconds, and stopped with reason `command` at
+  May 10 2026 14:15:26 local time.
+
+## Phase 55: Server User-Agent And Input Policy
+
+- [x] Capture current `SV_ProcessUserAgent()` behavior.
+  Evidence: `Documentation/codex/legacy/engine/user-agent-policy-baseline.md`.
+- [x] Implement target-neutral user-agent validation inputs and result codes.
+  Evidence: `src/include/engine/server/user_agent_policy.hpp`,
+  `src/engine/server/user_agent_policy.cpp`.
+- [x] Add tests for valid/invalid UUIDs, banned IDs, missing input-device
+  lists, and touch/mouse/joystick/VR disallow cases.
+  Evidence: `tests/engine/user_agent_policy.cpp`.
+- [x] Route `SV_ProcessUserAgent()` through the modern validator while keeping
+  `SV_RejectConnection()`, cvar reads, and `SV_CheckID()` legacy-owned.
+  Evidence: `engine/server/user_agent_policy_adapter.h`,
+  `engine/server/user_agent_policy_adapter.cpp`, `engine/server/sv_main.c`.
+- [x] Run focused tests, `.\waf.bat build --alltests`, and a runtime smoke.
+  Evidence: `.\waf.bat build --targets=test_engine_user_agent_policy` passed
+  1/1; `.\waf.bat build --alltests` passed 67/67; Windows runtime smoke copied
+  the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.426 seconds, and stopped with reason `command` at
+  May 10 2026 14:20:42 local time.
 
 ## Deferred Server Items
 
+- [ ] Phase 56 candidate: legacy NetAPI info/rules/player string responses in
+  `sv_client.c::SV_Info()`, especially the duplicated details path that says it
+  should match `SV_SourceQuery_Details`.
 - [ ] Server event logging service after console/log sink ownership is clearer.
 - [ ] Declarative server command registration after filter/query pilots.
-- [ ] User-agent/input-device policy extraction after connection tests exist.
 - [ ] Save/restore migration after binary compatibility fixtures exist.
 - [ ] Game DLL bridge migration after explicit ABI and licensing review.
 - [ ] Physics/world migration after movement and trace fixtures exist.

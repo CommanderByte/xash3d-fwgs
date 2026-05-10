@@ -1850,17 +1850,72 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 54: Server Query Response Builder
 
-- [ ] `ENG-SVQUERY-001` Capture baseline source-query response behavior and
+- [x] `ENG-SVQUERY-001` Capture baseline source-query response behavior and
   identify byte-stable payloads suitable for golden tests.
-  Evidence:
-- [ ] `ENG-SVQUERY-002` Extract query response payload construction into a
-  modern helper that can use the network buffer primitives.
-  Evidence:
-- [ ] `ENG-SVQUERY-003` Preserve legacy query entry points and packet routing
+  Evidence: `Documentation/codex/legacy/engine/source-query-baseline.md`,
+  `tests/engine/source_query.cpp`.
+- [x] `ENG-SVQUERY-002` Extract query response payload construction into a
+  modern helper with byte-stable protocol encoding.
+  Evidence: `src/include/engine/server/source_query.hpp`,
+  `src/engine/server/source_query.cpp`,
+  `Documentation/codex/modern/engine/source-query-migration.md`.
+- [x] `ENG-SVQUERY-003` Preserve legacy query entry points and packet routing
   while switching construction to the modern helper.
-  Evidence:
-- [ ] `ENG-SVQUERY-004` Run focused golden-payload tests, full tests, and a
+  Evidence: `engine/server/source_query_adapter.h`,
+  `engine/server/source_query_adapter.cpp`, `engine/server/sv_query.c`.
+- [x] `ENG-SVQUERY-004` Run focused golden-payload tests, full tests, and a
   server/runtime smoke test.
+  Evidence: focused `.\waf.bat build --targets=test_engine_source_query`
+  passed 1/1; `.\waf.bat build --alltests` passed 66/66; Windows runtime smoke
+  copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.424 seconds, and stopped with reason `command` at
+  May 10 2026 14:15:26 local time.
+
+## Phase 55: Server User-Agent And Input Policy
+
+- [x] `ENG-SVUA-001` Capture current `SV_ProcessUserAgent()` behavior:
+  32-character lowercase hex UUID requirement, ban ID rejection, optional input
+  device list requirement, and per-device rejection messages.
+  Evidence: `Documentation/codex/legacy/engine/user-agent-policy-baseline.md`.
+- [x] `ENG-SVUA-002` Implement target-neutral user-agent validation inputs and
+  result codes under `src/engine/server`.
+  Evidence: `src/include/engine/server/user_agent_policy.hpp`,
+  `src/engine/server/user_agent_policy.cpp`,
+  `Documentation/codex/modern/engine/user-agent-policy-migration.md`.
+- [x] `ENG-SVUA-003` Add tests for valid/invalid UUIDs, banned IDs, missing
+  input-device lists, and touch/mouse/joystick/VR disallow cases.
+  Evidence: `tests/engine/user_agent_policy.cpp`.
+- [x] `ENG-SVUA-004` Route `SV_ProcessUserAgent()` through the modern validator
+  while keeping `SV_RejectConnection()`, cvar reads, and `SV_CheckID()` legacy
+  adapter-owned.
+  Evidence: `engine/server/user_agent_policy_adapter.h`,
+  `engine/server/user_agent_policy_adapter.cpp`, `engine/server/sv_main.c`.
+- [x] `ENG-SVUA-005` Run focused tests, `.\waf.bat build --alltests`, and a
+  runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_user_agent_policy`
+  passed 1/1; `.\waf.bat build --alltests` passed 67/67; Windows runtime smoke
+  copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.426 seconds, and stopped with reason `command` at
+  May 10 2026 14:20:42 local time.
+
+## Phase 56: Legacy NetAPI Query String Builder
+
+- [ ] `ENG-SVNETINFO-001` Baseline `sv_client.c::SV_Info()` string response
+  behavior for details, rules, players, ping, errors, and forbidden player
+  lists.
+  Evidence:
+- [ ] `ENG-SVNETINFO-002` Decide whether to reuse Phase 54 source-query value
+  rows or create a sibling NetAPI info-string builder.
+  Evidence:
+- [ ] `ENG-SVNETINFO-003` Add tests for protected cvar masking and the details
+  response that currently comments it should match `SV_SourceQuery_Details`.
+  Evidence:
+- [ ] `ENG-SVNETINFO-004` Route string construction through modern helpers
+  while keeping `Netchan_OutOfBandPrint()` and live state reads legacy-owned.
   Evidence:
 
 ## Phase 800: POSIX Console Backend Validation

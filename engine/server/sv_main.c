@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "net_encode.h"
 #include "platform/platform.h"
+#include "user_agent_policy_adapter.h"
 
 // server cvars
 CVAR_DEFINE_AUTO( sv_lan, "0", 0, "server is a lan server ( no heartbeat, no authentication, no non-class C addresses, 9999.0 rate, etc." );
@@ -788,62 +789,22 @@ qboolean SV_ProcessUserAgent( netadr_t from, const char *useragent )
 {
 	const char *input_devices_str = Info_ValueForKey( useragent, "d" );
 	const char *id = Info_ValueForKey( useragent, "uuid" );
-	size_t len, i;
+	sv_user_agent_policy_t policy;
+	int result;
 
-	len = Q_strlen( id );
-	if( len != 32 )
+	memset( &policy, 0, sizeof( policy ));
+	policy.allow_no_input_devices = sv_allow_noinputdevices.value != 0.0f;
+	policy.allow_touch = sv_allow_touch.value != 0.0f;
+	policy.allow_mouse = sv_allow_mouse.value != 0.0f;
+	policy.allow_joystick = sv_allow_joystick.value != 0.0f;
+	policy.allow_vr = sv_allow_vr.value != 0.0f;
+	policy.banned_id = SV_UserAgentPolicy_UuidIsValid( id ) && SV_CheckID( id );
+
+	result = SV_UserAgentPolicy_Validate( id, input_devices_str, &policy );
+	if( result != SV_USER_AGENT_ACCEPTED )
 	{
-		SV_RejectConnection( from, "invalid authentication certificate\n" );
+		SV_RejectConnection( from, SV_UserAgentPolicy_RejectionMessage( result ));
 		return false;
-	}
-
-	for( i = 0; i < len; i++ )
-	{
-		char c = id[i];
-
-		if( !isdigit((byte)id[i] ) && !( c >= 'a' && c <= 'f' ))
-		{
-			SV_RejectConnection( from, "invalid authentication certificate\n" );
-			return false;
-		}
-	}
-
-	if( SV_CheckID( id ))
-	{
-		SV_RejectConnection( from, "You are banned!\n" );
-		return false;
-	}
-
-	if( !sv_allow_noinputdevices.value && ( !input_devices_str || !input_devices_str[0] ) )
-	{
-		SV_RejectConnection( from, "This server does not allow\nconnect without input devices list.\nPlease update your engine.\n" );
-		return false;
-	}
-
-	if( input_devices_str )
-	{
-		int input_devices = Q_atoi( input_devices_str );
-
-		if( !sv_allow_touch.value && ( input_devices & INPUT_DEVICE_TOUCH ) )
-		{
-			SV_RejectConnection( from, "This server does not allow touch\nDisable it (touch_enable 0)\nto play on this server\n" );
-			return false;
-		}
-		if( !sv_allow_mouse.value && ( input_devices & INPUT_DEVICE_MOUSE) )
-		{
-			SV_RejectConnection( from, "This server does not allow mouse\nDisable it(m_ignore 1)\nto play on this server\n" );
-			return false;
-		}
-		if( !sv_allow_joystick.value && ( input_devices & INPUT_DEVICE_JOYSTICK) )
-		{
-			SV_RejectConnection( from, "This server does not allow joystick\nDisable it(joy_enable 0)\nto play on this server\n" );
-			return false;
-		}
-		if( !sv_allow_vr.value && ( input_devices & INPUT_DEVICE_VR) )
-		{
-			SV_RejectConnection( from, "This server does not allow VR\n" );
-			return false;
-		}
 	}
 
 	return true;

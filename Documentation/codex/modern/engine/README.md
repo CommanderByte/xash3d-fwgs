@@ -28,6 +28,12 @@ Current implementation notes:
 - `server-filter-migration.md`: how Phase 53 routes ID/IP filter policy through
   target-neutral modern server helpers while legacy command/file ownership
   stays in `sv_filter.c`.
+- `source-query-migration.md`: how Phase 54 routes GoldSrc source-query payload
+  bytes through target-neutral builders while live server state and
+  `NET_SendPacket` stay legacy-owned.
+- `user-agent-policy-migration.md`: how Phase 55 routes connection user-agent
+  validation through target-neutral policy while cvars, ID bans, and rejection
+  sends stay legacy-owned.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports
   should delegate into `src/utilities` without making hash/checksum helpers
   engine-owned.
