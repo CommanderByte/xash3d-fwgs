@@ -39,8 +39,8 @@ Implemented files:
 
 - Phase 45 extends the command-line seam to `Sys_CheckParm`,
   `Sys_GetParmFromCmdLine`, and `Sys_GetIntFromCmdLine`.
-- Username lookup can move behind platform-selected implementations after
-  platform validation.
+- Username lookup has a first Windows-selected implementation in Phase 49;
+  POSIX, Vita, Android, and Switch validation remains deferred.
 - Win32 console print normalization can move behind a tested system-console
   formatter when we are ready to route more of `Sys_Print`.
 - Restart and fatal-error paths should stay in legacy common code until their

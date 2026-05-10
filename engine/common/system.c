@@ -55,6 +55,7 @@ GNU General Public License for more details.
 #include "library.h"
 #include "whereami.h"
 #include "engine/platform/command_line_adapter.h"
+#include "engine/platform/current_user_adapter.h"
 
 int error_on_exit = 0;	// arg for exit();
 
@@ -136,19 +137,8 @@ returns username for current profile
 */
 const char *Sys_GetCurrentUser( void )
 {
-	// TODO: move to platform
 #if XASH_WIN32
-	static wchar_t sw_userName[MAX_STRING];
-	DWORD size = ARRAYSIZE( sw_userName );
-
-	if( GetUserNameW( sw_userName, &size ) && sw_userName[0] != 0 )
-	{
-		static char s_userName[MAX_STRING * 4];
-
-		// set length to -1, so it will null terminate
-		WideCharToMultiByte( CP_UTF8, 0, sw_userName, -1, s_userName, sizeof( s_userName ), NULL, NULL );
-		return s_userName;
-	}
+	return Xash_GetCurrentUserName();
 #elif XASH_PSVITA
 	static string username;
 	sceAppUtilSystemParamGetString( SCE_SYSTEM_PARAM_ID_USERNAME, username, sizeof( username ) - 1 );

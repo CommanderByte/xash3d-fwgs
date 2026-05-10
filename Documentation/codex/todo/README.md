@@ -21,5 +21,7 @@ Active documents:
   migration.
 - [non_windows_console_backend_todo.md](non_windows_console_backend_todo.md)
   tracks deferred non-Windows output backend decisions.
+- [non_windows_system_runtime_todo.md](non_windows_system_runtime_todo.md)
+  tracks deferred non-Windows `system.c` runtime validation.
 - [posix_console_backend_todo.md](posix_console_backend_todo.md) tracks POSIX
   console backend validation.

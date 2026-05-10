@@ -1735,15 +1735,29 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 49: System User And Runtime Facades
 
-- [ ] `ENG-SYSUSER-001` Audit `Sys_GetCurrentUser`, `Sys_GetNativeObject`, and
+- [x] `ENG-SYSUSER-001` Audit `Sys_GetCurrentUser`, `Sys_GetNativeObject`, and
   small runtime/platform helpers left in `engine/common/system.c`.
-  Evidence:
-- [ ] `ENG-SYSUSER-002` Extract only a platform-selected helper that can be
+  Evidence: `Documentation/codex/legacy/engine/system-user-runtime-audit.md`,
+  `Documentation/codex/modern/engine/system-user-runtime-facade-plan.md`.
+- [x] `ENG-SYSUSER-002` Extract only a platform-selected helper that can be
   verified on Windows without blocking POSIX validation.
-  Evidence:
-- [ ] `ENG-SYSUSER-003` Defer POSIX/Vita/Switch validation details to the 800
+  Evidence: `src/include/engine/platform/current_user.hpp`,
+  `src/include/engine/platform/current_user_adapter.h`,
+  `src/engine/platform/current_user.cpp`,
+  `src/engine/platform/current_user_adapter.cpp`,
+  `engine/common/system.c`, `tests/engine/platform_current_user.cpp`;
+  `.\waf.bat build --targets=test_engine_platform_current_user` passed 1/1
+  focused tests on 2026-05-10; `.\waf.bat build --alltests` passed 63/63;
+  the Windows `run-win32\xash3d.exe -dev 2 -log +fs_path +quit` smoke reached
+  renderer initialization and stopped with reason `command` at May 10 2026
+  13:19:22 local time; the follow-up
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` smoke logged
+  time to first frame as 0.501 seconds and stopped with reason `command` at
+  May 10 2026 13:20:56 local time.
+- [x] `ENG-SYSUSER-003` Defer POSIX/Vita/Switch validation details to the 800
   series when they cannot be tested locally.
-  Evidence:
+  Evidence: `Documentation/codex/todo/non_windows_system_runtime_todo.md`,
+  Phase 802.
 
 ## Phase 50: Filesystem Bridge And Logging Follow-Up
 
@@ -1788,6 +1802,25 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence:
 - [ ] `ENG-NONWIN-CON-004` Record manual validation expectations for platforms
   that cannot be built in the current Windows environment.
+  Evidence:
+
+## Phase 802: Non-Windows System Runtime Validation
+
+- [ ] `ENG-NONWIN-SYS-001` Build a POSIX/Linux target and verify
+  `Sys_GetCurrentUser` still returns the effective user name when available.
+  Evidence: `Documentation/codex/todo/non_windows_system_runtime_todo.md`.
+- [ ] `ENG-NONWIN-SYS-002` Validate the POSIX fallback to `Player` when the
+  password database lookup fails or returns an empty name, using a safe test
+  harness if practical.
+  Evidence:
+- [ ] `ENG-NONWIN-SYS-003` Validate Vita username lookup manually before moving
+  it behind the modern current-user adapter.
+  Evidence:
+- [ ] `ENG-NONWIN-SYS-004` Validate Android `Sys_GetNativeObject` provider
+  order: filesystem provider first, Android provider second.
+  Evidence:
+- [ ] `ENG-NONWIN-SYS-005` Revisit `Sys_CanRestart` and `Sys_NewInstance` only
+  after the target can run restart/change-game smoke tests.
   Evidence:
 
 ## Phase 990: Memory Pools And Allocation
@@ -1871,3 +1904,4 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-10 | DEC-049 | Insert a public-folder relocation sweep before system runtime work, using the public-header/compat-adapter pattern to move remaining project-owned helper islands while deferring vendored, platform fallback, and broad math/parser surfaces. | `done/todo/public_folder_sweep_todo.md`, `modern/public/public-folder-sweep-roadmap.md`, `public/crclib.c`, `public/crtlib.c`, `public/atlas.c`, `public/build.c` |
 | 2026-05-10 | DEC-050 | Move remaining MD5 and low-risk CRT text helper bodies into `src/utilities` with C compatibility exports, preserving public headers while adding bounded memory-line copy behavior for `Q_memfgets`. | `src/utilities/md5.cpp`, `src/utilities/text.cpp`, `src/utilities/compat/crclib_md5.cpp`, `src/utilities/compat/crtlib_text.cpp`, `public/tests/test_crclib.c`, `public/tests/test_strings.c` |
 | 2026-05-10 | DEC-051 | Finish the public-folder sweep by moving atlas and pure build-number logic behind `src/utilities` while keeping UTF helpers in public until their new focused baseline can guide a later migration. | `done/todo/public_folder_sweep_todo.md`, `src/utilities/atlas.cpp`, `src/utilities/build_number.cpp`, `src/utilities/compat/atlas_adapter.cpp`, `src/utilities/compat/build_number_adapter.cpp`, `public/tests/test_utflib.c` |
+| 2026-05-10 | DEC-052 | Route only the Windows-verifiable `Sys_GetCurrentUser` branch through a modern platform adapter, preserving POSIX/Vita/Android legacy behavior until non-Windows runtime validation exists. | `legacy/engine/system-user-runtime-audit.md`, `modern/engine/system-user-runtime-facade-plan.md`, `src/engine/platform/current_user.cpp`, `src/engine/platform/current_user_adapter.cpp`, `todo/non_windows_system_runtime_todo.md` |
