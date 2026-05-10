@@ -25,3 +25,5 @@ Active documents:
   tracks deferred non-Windows `system.c` runtime validation.
 - [posix_console_backend_todo.md](posix_console_backend_todo.md) tracks POSIX
   console backend validation.
+- [server_migration_todo.md](server_migration_todo.md) tracks the active
+  server-side migration lane opened by Phase 52.

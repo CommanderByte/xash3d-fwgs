@@ -11,12 +11,15 @@ migration phases and decisions.
 
 - [debugging/](debugging/README.md) contains detailed architecture notes for
   the modern shared debugging utility layer.
-- [engine/](engine/README.md) contains modern engine migration notes, starting
-  with the BaseCmd registry pilot.
+- [engine/](engine/README.md) contains modern engine migration notes for
+  command, console, platform, network, filesystem bridge, and future server
+  slices.
 - [filesystem/](filesystem/) contains filesystem modernization audits,
   ownership boundaries, and compatibility notes.
 - [game-launch/](game-launch/README.md) contains the launcher modernization
   pilot notes and resource layout policy.
+- [milestone-50-structure-audit.md](milestone-50-structure-audit.md) records
+  the Phase 50 source-tree audit and recommended next migration lane.
 - [public/](public/README.md) contains modernization notes for implementation
   code currently living behind public C ABI headers.
 - [thread-safe-debugging-utilities.md](thread-safe-debugging-utilities.md)

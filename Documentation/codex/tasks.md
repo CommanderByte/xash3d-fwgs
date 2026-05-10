@@ -1783,6 +1783,75 @@ commit, test command, document link, or manual verification note that proves it.
   seconds, and stopped with reason `command` at May 10 2026 13:28:25 local
   time.
 
+## Phase 51: Milestone Structure Audit And Roadmap Reset
+
+- [x] `MILESTONE-050-001` Audit the modern and legacy source tree after the
+  Phase 50 milestone.
+  Evidence: `Documentation/codex/modern/milestone-50-structure-audit.md`.
+- [x] `MILESTONE-050-002` Identify whether the current migration path is still
+  coherent or has drifted into disconnected helper extraction.
+  Decision: The existing patterns are healthy, but the next work should follow
+  a coherent server-side engine lane rather than another miscellaneous helper
+  sweep.
+  Evidence: `Documentation/codex/modern/milestone-50-structure-audit.md`.
+- [x] `MILESTONE-050-003` Refresh stale onboarding and modern engine notes that
+  still describe the early filesystem and command pilots as future work.
+  Evidence: `Documentation/codex/README.md`, `src/engine/README.md`.
+
+## Phase 52: Server Boundary Audit
+
+- [x] `ENG-SERVER-AUDIT-001` Map `engine/server/` ownership, public entry
+  points, command/cvar dependencies, save/config outputs, and network payload
+  boundaries.
+  Evidence: `Documentation/codex/legacy/engine/server-boundary-audit.md`,
+  `Documentation/codex/todo/server_migration_todo.md`.
+- [x] `ENG-SERVER-AUDIT-002` Rank server files by migration risk and coupling,
+  separating pure policy helpers from game DLL, physics, world, and savegame
+  logic.
+  Evidence: `Documentation/codex/legacy/engine/server-boundary-audit.md`.
+- [x] `ENG-SERVER-AUDIT-003` Decide the first server pilot scope and acceptance
+  criteria before moving implementation code.
+  Decision: Use `sv_filter.c` as the first server pilot, extracting pure filter
+  policy into `src/engine/server` while command parsing, file writes, client
+  iteration, and `host.realtime` stay adapter-owned.
+  Evidence: `Documentation/codex/modern/engine/server-migration-guide.md`,
+  `Documentation/codex/todo/server_migration_todo.md`.
+- [x] `ENG-SERVER-AUDIT-004` Record smoke-test expectations for dedicated and
+  listen-server paths, including time-to-first-frame logging when a full game
+  smoke is used.
+  Evidence: `Documentation/codex/legacy/engine/server-boundary-audit.md`,
+  `Documentation/codex/modern/engine/server-migration-guide.md`.
+
+## Phase 53: Server Filter Pilot
+
+- [ ] `ENG-SVFILTER-001` Capture baseline behavior for IP filters, ID filters,
+  command surfaces, file persistence, and existing embedded tests.
+  Evidence:
+- [ ] `ENG-SVFILTER-002` Extract pure filter parsing and matching policy into
+  `src/engine/server` with focused tests under `tests/engine`.
+  Evidence:
+- [ ] `ENG-SVFILTER-003` Route legacy `sv_filter.c` through a C-compatible
+  adapter without changing command names, file formats, or ban-list behavior.
+  Evidence:
+- [ ] `ENG-SVFILTER-004` Run focused tests, `.\waf.bat build --alltests`, and
+  a server/runtime smoke test.
+  Evidence:
+
+## Phase 54: Server Query Response Builder
+
+- [ ] `ENG-SVQUERY-001` Capture baseline source-query response behavior and
+  identify byte-stable payloads suitable for golden tests.
+  Evidence:
+- [ ] `ENG-SVQUERY-002` Extract query response payload construction into a
+  modern helper that can use the network buffer primitives.
+  Evidence:
+- [ ] `ENG-SVQUERY-003` Preserve legacy query entry points and packet routing
+  while switching construction to the modern helper.
+  Evidence:
+- [ ] `ENG-SVQUERY-004` Run focused golden-payload tests, full tests, and a
+  server/runtime smoke test.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current
@@ -1864,6 +1933,25 @@ commit, test command, document link, or manual verification note that proves it.
 - [ ] `REVIEW-004` Review each implementation PR for public ABI drift.
   Evidence:
 
+## Phase 1100: Licensing And Attribution Audit
+
+- [ ] `LICENSE-001` Inventory repository license files, third-party notices,
+  file headers, and copied/vendor-derived source islands.
+  Evidence:
+- [ ] `LICENSE-002` Build a per-area attribution map for GPL, BSD-style,
+  Unlicense/public-domain, and other license families present in the tree.
+  Evidence:
+- [ ] `LICENSE-003` Verify migrated or rewritten files preserve required
+  copyright notices, origin attribution, and license text from their source
+  material.
+  Evidence:
+- [ ] `LICENSE-004` Check that new dependencies and modernization utilities
+  are compatible with the project license and distribution model.
+  Evidence:
+- [ ] `LICENSE-005` Produce a release/PR checklist for license compliance
+  before publishing modernization work beyond the fork.
+  Evidence:
+
 ## Decision Log
 
 | Date | ID | Decision | Evidence |
@@ -1920,3 +2008,5 @@ commit, test command, document link, or manual verification note that proves it.
 | 2026-05-10 | DEC-051 | Finish the public-folder sweep by moving atlas and pure build-number logic behind `src/utilities` while keeping UTF helpers in public until their new focused baseline can guide a later migration. | `done/todo/public_folder_sweep_todo.md`, `src/utilities/atlas.cpp`, `src/utilities/build_number.cpp`, `src/utilities/compat/atlas_adapter.cpp`, `src/utilities/compat/build_number_adapter.cpp`, `public/tests/test_utflib.c` |
 | 2026-05-10 | DEC-052 | Route only the Windows-verifiable `Sys_GetCurrentUser` branch through a modern platform adapter, preserving POSIX/Vita/Android legacy behavior until non-Windows runtime validation exists. | `legacy/engine/system-user-runtime-audit.md`, `modern/engine/system-user-runtime-facade-plan.md`, `src/engine/platform/current_user.cpp`, `src/engine/platform/current_user_adapter.cpp`, `todo/non_windows_system_runtime_todo.md` |
 | 2026-05-10 | DEC-053 | Extract only pure filesystem bridge mount flag policy into `src/engine/filesystem`, while keeping `fs_interface_t` logging callbacks and rendered-console routing at the legacy boundary until an engine router/sink phase exists. | `legacy/engine/filesystem-bridge-audit.md`, `modern/engine/filesystem-bridge-migration-guide.md`, `src/engine/filesystem/mount_flags.cpp`, `engine/common/filesystem_engine.c`, `deferred/todo/filesystem_logging_todo.md` |
+| 2026-05-10 | DEC-054 | After the Phase 50 milestone, use server-side engine code as the next coherent migration lane, starting with `sv_filter.c` and then source-query response building, while deferring renderer, memory, savegame, and rendered-console work. | `modern/milestone-50-structure-audit.md` |
+| 2026-05-10 | DEC-055 | Treat `server.h`, `SV_*`, `Log_*`, `sv`, `svs`, `svgame`, command/cvar names, save/config files, and packet payloads as server compatibility boundaries; pure modern server logic should live under `src/engine/server` and receive snapshots or plain values from legacy adapters. | `legacy/engine/server-boundary-audit.md`, `modern/engine/server-migration-guide.md` |

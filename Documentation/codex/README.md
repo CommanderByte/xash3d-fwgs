@@ -31,6 +31,9 @@ in upstream-facing user documentation yet.
   filesystem architecture with Mermaid diagrams.
 - [modern/](modern/README.md) documents intended modernized internal
   architecture and shared utility contracts for the rewrite.
+- [modern/milestone-50-structure-audit.md](modern/milestone-50-structure-audit.md)
+  is the current Phase 50 structure checkpoint and recommended next-roadmap
+  reset.
 - [todo/](todo/README.md) contains focused implementation checklists derived
   from the modernization docs.
 - [deferred/](deferred/README.md) contains paused work that waits on broader
@@ -66,9 +69,9 @@ Large dependency and packaging surfaces live in:
 ## Suggested Next Onboarding Steps
 
 1. Build once with tests enabled on the fork's primary development platform.
-2. Generate a compile database through the existing Waf support and use it for
-   static analysis.
-3. Pick one low-risk subsystem, preferably filesystem search-path internals or a
-   renderer support utility, and make a narrow C++ wrapper proof of concept.
+2. Read the Phase 50 structure audit to see which migration lanes are mature
+   and which legacy areas still need ownership decisions.
+3. Use the server-side engine lane as the next coherent pilot, starting with a
+   boundary audit and then the filter/query helpers.
 4. Document every compatibility boundary before refactoring it: engine to game
    DLL, engine to client DLL, engine to renderer DLL, and filesystem module ABI.

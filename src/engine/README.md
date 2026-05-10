@@ -23,5 +23,7 @@ slice should be added only when it has:
 - `platform/`: engine-side platform facade helpers behind existing `Sys_*`
   contracts.
 
-The first build-wired implementation lane is `commands/`, starting with a
-private `BaseCommandRegistry` helper for the legacy `BaseCmd_*` table.
+Build-wired lanes now include commands, system-console helpers, engine
+filesystem bridge policy, network buffers, and small platform facades. New work
+should still enter as a narrow, tested slice with a legacy ownership note and a
+C-compatible adapter wherever legacy callers keep the public surface.

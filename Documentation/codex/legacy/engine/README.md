@@ -22,6 +22,8 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [network-buffer-baseline.md](network-buffer-baseline.md) documents `MSG_*`
   bit/byte buffer behavior, overflow quirks, GoldSrc sign mode, and the first
   safe routing boundary.
+- [server-boundary-audit.md](server-boundary-audit.md) audits `engine/server/`
+  ownership, compatibility surfaces, and near-term migration candidates.
 - [string-path-baseline.md](string-path-baseline.md) documents shared
   `crtlib` string/path helpers, path quirks, and the Phase 40 migration scope.
 - [system-platform-facade-audit.md](system-platform-facade-audit.md) audits

@@ -22,6 +22,9 @@ Current implementation notes:
   quirks.
 - `rendered-console-sink.md`: why the in-game rendered console remains a
   legacy client sink until a later router/client-rendering phase.
+- `server-migration-guide.md`: how server-side helpers should move into
+  `src/engine/server` while `SV_*`, `Log_*`, game DLL callbacks, and protocol
+  surfaces remain compatibility boundaries.
 - `hash-checksum-migration-guide.md`: how public `crclib` compatibility exports
   should delegate into `src/utilities` without making hash/checksum helpers
   engine-owned.
