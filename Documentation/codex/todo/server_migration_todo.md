@@ -162,10 +162,33 @@ the main phase tracker until they are selected.
   reached first frame in 0.422 seconds, and stopped with reason `command` at
   May 10 2026 14:42:16 local time.
 
+## Phase 59: Server Challenge And Rejection Response Formatter
+
+- [x] Baseline `SV_SendChallenge()`, `SV_RejectConnection()`, and stock
+  `SV_ConnectClient()` rejection text.
+  Evidence: `Documentation/codex/legacy/engine/connection-response-baseline.md`.
+- [x] Document the boundary: response text is target-neutral, while challenge
+  generation, address handling, validation, reporting, and packet sends remain
+  legacy-owned.
+  Evidence: `Documentation/codex/modern/engine/connection-response-migration.md`.
+- [x] Add tests for challenge response formatting, the three rejection packet
+  bodies, console report text, null safety, and truncation termination.
+  Evidence: `tests/engine/connection_response.cpp`.
+- [x] Route `SV_SendChallenge()` and `SV_RejectConnection()` through the adapter
+  while keeping side effects and validation legacy-owned.
+  Evidence: `engine/server/connection_response_adapter.h`,
+  `engine/server/connection_response_adapter.cpp`, `engine/server/sv_client.c`.
+- [x] Run focused tests, full tests, and a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_connection_response`
+  passed 1/1; `.\waf.bat build --alltests` passed 71/71; Windows runtime
+  smoke copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.427 seconds, and stopped with reason `command` at
+  May 10 2026 14:46:31 local time.
+
 ## Deferred Server Items
 
-- [ ] Phase 59: challenge and rejection response formatting in `sv_client.c`,
-  keeping challenge generation and packet sends legacy-owned.
 - [ ] Phase 60: client command dispatch table lookup in `sv_client.c`, keeping
   command handlers and client mutation legacy-owned.
 - [ ] Server event logging service after console/log sink ownership is clearer.

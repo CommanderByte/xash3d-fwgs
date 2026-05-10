@@ -12,6 +12,8 @@ Current helpers:
   response builders.
 - `connectionless_classifier.hpp`: server connectionless command
   classification.
+- `connection_response.hpp`: challenge and rejection response string
+  formatting.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `server_event_log.hpp`: server event log line and stock message formatting.
 - `source_query.hpp`: GoldSrc source-query response byte builders.

@@ -12,6 +12,8 @@ Current helpers:
 - `netapi_info.cpp`: target-neutral NetAPI info-string construction.
 - `connectionless_classifier.cpp`: target-neutral server connectionless command
   classification.
+- `connection_response.cpp`: target-neutral challenge and rejection response
+  string formatting.
 - `server_filter.cpp`: target-neutral ban filter policy.
 - `server_event_log.cpp`: target-neutral server event log line and stock
   message formatting.

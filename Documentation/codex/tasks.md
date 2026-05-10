@@ -1984,21 +1984,30 @@ commit, test command, document link, or manual verification note that proves it.
 
 ## Phase 59: Server Challenge And Rejection Response Formatter
 
-- [ ] `ENG-SVCHAL-001` Baseline `SV_SendChallenge()`,
+- [x] `ENG-SVCHAL-001` Baseline `SV_SendChallenge()`,
   `SV_RejectConnection()`, and connection refusal text emitted during
   `SV_ConnectClient()` validation.
-  Evidence:
-- [ ] `ENG-SVCHAL-002` Decide the safe boundary between challenge-number
+  Evidence: `Documentation/codex/legacy/engine/connection-response-baseline.md`.
+- [x] `ENG-SVCHAL-002` Decide the safe boundary between challenge-number
   generation, which still depends on `netadr_t`, MD5, and server salt, and
   target-neutral response text formatting.
-  Evidence:
-- [ ] `ENG-SVCHAL-003` Add tests for challenge response formatting and the
+  Evidence: `Documentation/codex/modern/engine/connection-response-migration.md`.
+- [x] `ENG-SVCHAL-003` Add tests for challenge response formatting and the
   three legacy rejection packet strings.
-  Evidence:
-- [ ] `ENG-SVCHAL-004` Route response formatting through modern helpers while
+  Evidence: `tests/engine/connection_response.cpp`.
+- [x] `ENG-SVCHAL-004` Route response formatting through modern helpers while
   keeping `SV_GetChallenge()`, `SV_CheckChallenge()`, `Con_Reportf()`, and
   `Netchan_OutOfBandPrint()` legacy-owned.
-  Evidence:
+  Evidence: `engine/server/connection_response_adapter.h`,
+  `engine/server/connection_response_adapter.cpp`, `engine/server/sv_client.c`.
+- [x] `ENG-SVCHAL-005` Run focused tests, full tests, and a runtime smoke.
+  Evidence: focused `.\waf.bat build --targets=test_engine_connection_response`
+  passed 1/1; `.\waf.bat build --alltests` passed 71/71; Windows runtime
+  smoke copied the rebuilt engine DLL into `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` with
+  `XASH3D_RODIR=C:\Program Files (x86)\Steam\steamapps\common\Half-Life`,
+  reached first frame in 0.427 seconds, and stopped with reason `command` at
+  May 10 2026 14:46:31 local time.
 
 ## Phase 60: Server Client Command Dispatch Table
 

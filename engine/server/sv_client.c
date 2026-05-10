@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "net_encode.h"
 #include "net_api.h"
 #include "connectionless_classifier_adapter.h"
+#include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
 
 // challenges are valid for two consecutive windows of this size (max lifetime ~10s).
@@ -113,6 +114,7 @@ static int SV_GetChallenge( netadr_t from, uint32_t time_window, qboolean *error
 
 static void SV_SendChallenge( netadr_t from, qboolean skip_bandwidth_test )
 {
+	char response[64];
 	qboolean error = false;
 	uint32_t time_window = (uint32_t)( host.realtime / CHALLENGE_WINDOW_SECONDS );
 	int challenge = SV_GetChallenge( from, time_window, &error );
@@ -120,8 +122,11 @@ static void SV_SendChallenge( netadr_t from, qboolean skip_bandwidth_test )
 	if( error )
 		return;
 
+	if( !SV_ConnectionResponse_FormatChallenge( response, sizeof( response ), challenge, skip_bandwidth_test ))
+		return;
+
 	// send it back
-	Netchan_OutOfBandPrint( NS_SERVER, from, S2C_CHALLENGE" %i %i", challenge, skip_bandwidth_test ? 0 : 1 );
+	Netchan_OutOfBandPrint( NS_SERVER, from, "%s", response );
 }
 
 static int SV_GetFragmentSize( void *pcl, fragsize_t mode )
@@ -177,16 +182,27 @@ Rejects connection request and sends back a message
 void SV_RejectConnection( netadr_t from, const char *fmt, ... )
 {
 	char	text[1024];
+	char	report[MAX_PRINT_MSG];
+	char	errorMessage[MAX_PRINT_MSG];
+	char	printMessage[MAX_PRINT_MSG];
+	char	disconnectMessage[64];
 	va_list	argptr;
 
 	va_start( argptr, fmt );
 	Q_vsnprintf( text, sizeof( text ), fmt, argptr );
 	va_end( argptr );
 
-	Con_Reportf( "%s connection refused. Reason: %s\n", NET_AdrToString( from ), text );
-	Netchan_OutOfBandPrint( NS_SERVER, from, S2C_ERRORMSG"\n^1Server was reject the connection:^7 %s", text );
-	Netchan_OutOfBandPrint( NS_SERVER, from, A2C_PRINT"\n^1Server was reject the connection:^7 %s", text );
-	Netchan_OutOfBandPrint( NS_SERVER, from, S2C_REJECT"\n" );
+	if( SV_ConnectionResponse_FormatRejectReport( report, sizeof( report ), NET_AdrToString( from ), text ))
+		Con_Reportf( "%s", report );
+
+	if( SV_ConnectionResponse_FormatRejectError( errorMessage, sizeof( errorMessage ), text ))
+		Netchan_OutOfBandPrint( NS_SERVER, from, "%s", errorMessage );
+
+	if( SV_ConnectionResponse_FormatRejectPrint( printMessage, sizeof( printMessage ), text ))
+		Netchan_OutOfBandPrint( NS_SERVER, from, "%s", printMessage );
+
+	if( SV_ConnectionResponse_FormatRejectDisconnect( disconnectMessage, sizeof( disconnectMessage )))
+		Netchan_OutOfBandPrint( NS_SERVER, from, "%s", disconnectMessage );
 }
 
 /*

@@ -18,6 +18,9 @@ It focuses on real ownership, coupling, global state, and migration risk.
 - [connectionless-packet-baseline.md](connectionless-packet-baseline.md)
   documents current `SV_ConnectionlessPacket()` command classification and
   dispatch ordering.
+- [connection-response-baseline.md](connection-response-baseline.md) documents
+  `SV_SendChallenge()` and `SV_RejectConnection()` response formatting before
+  Phase 59.
 - [hash-checksum-baseline.md](hash-checksum-baseline.md) documents the public
   `crclib` hash/checksum surface, callers, and migration constraints.
 - [info-string-baseline.md](info-string-baseline.md) documents the migrated

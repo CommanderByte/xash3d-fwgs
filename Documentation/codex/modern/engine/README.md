@@ -17,6 +17,9 @@ Current implementation notes:
 - `connectionless-classifier-migration.md`: how Phase 57 routes
   `SV_ConnectionlessPacket()` command classification through target-neutral
   server helpers while reads and handler effects stay legacy-owned.
+- `connection-response-migration.md`: how Phase 59 routes server challenge and
+  rejection response text through target-neutral helpers while validation and
+  packet sends stay legacy-owned.
 - `platform-console-backends.md`: how background console backends should model
   Win32, POSIX, mobile log-only, and null-console capabilities before a broader
   console router exists.
