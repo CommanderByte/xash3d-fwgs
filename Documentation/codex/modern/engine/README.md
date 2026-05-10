@@ -106,6 +106,9 @@ Current implementation notes:
 - `server-movement-constraints.md`: how Phase 104 names server monster
   movement modes and fly-move clip-plane constraints separately from trace,
   walkmove, and `pm_shared` constants.
+- `server-visibility-constraints.md`: how Phase 105 routes entity leaf and
+  portal viewentity capacity policy through target-neutral helpers while
+  keeping BSP traversal, PVS/PAS, and packet ownership legacy-owned.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

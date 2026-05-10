@@ -74,6 +74,8 @@ Current helpers:
   capacity, game-entity count, and spawn settling policy contracts.
 - `server_movement_constraints.hpp`: server monster movement mode and
   fly-move clip-plane constraint contracts.
+- `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,
+  cached leaf index, and portal viewentity capacity contracts.
 - `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
   for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
   digest bytes.

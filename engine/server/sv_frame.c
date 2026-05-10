@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "net_encode.h"
 #include "server_frame_datagram_adapter.h"
+#include "server_visibility_constraints_adapter.h"
 
 typedef struct
 {
@@ -132,7 +133,7 @@ static void SV_AddEntitiesToPacket( edict_t *pViewEnt, edict_t *pClient, client_
 
 			if( SV_IsValidEdict( ent->v.aiment ) && FBitSet( ent->v.aiment->v.effects, EF_MERGE_VISIBILITY ))
 			{
-				if( cl->num_viewents < MAX_VIEWENTS )
+				if( SV_Visibility_CanAddViewEntity( cl->num_viewents ))
 				{
 					cl->viewentity[cl->num_viewents] = ent->v.aiment;
 					cl->num_viewents++;

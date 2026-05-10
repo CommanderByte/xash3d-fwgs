@@ -3242,14 +3242,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 105: Visibility Leaf And View Constraint Policy
 
-- [ ] `ENG-SVVIS-001` Baseline `MAX_ENT_LEAFS(ext)`, `MAX_VIEWENTS`, and
+- [x] `ENG-SVVIS-001` Baseline `MAX_ENT_LEAFS(ext)`, `MAX_VIEWENTS`, and
   related visibility capacity behavior.
-  Evidence: `Documentation/codex/todo/server_constants_todo.md`.
-- [ ] `ENG-SVVIS-002` Add a shared modern capacity helper and tests.
   Evidence:
-- [ ] `ENG-SVVIS-003` Keep edict leaf arrays, PVS/PAS, packet entity
+  `Documentation/codex/modern/engine/server-visibility-constraints.md`,
+  `Documentation/codex/todo/server_constants_todo.md`.
+- [x] `ENG-SVVIS-002` Add a shared modern capacity helper and tests.
+  Evidence: `src/include/engine/server/server_visibility_constraints.hpp`,
+  `src/engine/server/server_visibility_constraints.cpp`,
+  `tests/engine/server_visibility_constraints.cpp`.
+- [x] `ENG-SVVIS-003` Route safe visibility capacity checks through a tiny C
+  adapter.
+  Evidence: `engine/server/server_visibility_constraints_adapter.h`,
+  `engine/server/server_visibility_constraints_adapter.cpp`,
+  `engine/server/sv_world.c`, `engine/server/sv_frame.c`,
+  `engine/server/sv_game.c`.
+- [x] `ENG-SVVIS-004` Keep edict leaf arrays, PVS/PAS, packet entity
   selection, and world linking legacy-owned.
   Evidence:
+  `Documentation/codex/modern/engine/server-visibility-constraints.md`.
+- [x] `ENG-SVVIS-005` Run focused tests and full validation after the
+  visibility-constraints route-through.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_visibility_constraints -StopRunningXash` passed; focused
+  test passed, `.\waf.bat build --targets=xash` passed, full tests passed
+  113/113; `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`
+  reached first frame in 0.513 seconds and stopped with reason `command`.
 
 ## Phase 106: Runtime Route-Through Review
 

@@ -98,11 +98,26 @@ before route-through work touches live server ownership.
 
 ## Phase 105: Visibility Leaf And View Constraint Policy
 
-- [ ] Baseline `MAX_ENT_LEAFS(ext)`, `MAX_VIEWENTS`, and related visibility
+- [x] Baseline `MAX_ENT_LEAFS(ext)`, `MAX_VIEWENTS`, and related visibility
   capacity behavior.
-- [ ] Add a shared modern capacity helper and tests.
-- [ ] Keep edict leaf arrays, PVS/PAS, packet entity selection, and world
+  Evidence: `Documentation/codex/modern/engine/server-visibility-constraints.md`.
+- [x] Add a shared modern capacity helper and tests.
+  Evidence: `src/include/engine/server/server_visibility_constraints.hpp`,
+  `src/engine/server/server_visibility_constraints.cpp`,
+  `tests/engine/server_visibility_constraints.cpp`.
+- [x] Route safe visibility capacity checks through the legacy adapter.
+  Evidence: `engine/server/server_visibility_constraints_adapter.h`,
+  `engine/server/server_visibility_constraints_adapter.cpp`,
+  `engine/server/sv_world.c`, `engine/server/sv_frame.c`,
+  `engine/server/sv_game.c`.
+- [x] Keep edict leaf arrays, PVS/PAS, packet entity selection, and world
   linking legacy-owned.
+  Evidence: BSP recursion, edict arrays, PVS/PAS generation, packet entity
+  selection, and game-DLL visibility callbacks remain in legacy files.
+- [x] Run focused tests and full validation after the route-through.
+  Evidence: Phase 105 validation passed with
+  `test_engine_server_visibility_constraints`, `xash`, 113/113 tests, and a
+  0.513s first-frame smoke.
 
 ## Phase 106: Runtime Route-Through Review
 

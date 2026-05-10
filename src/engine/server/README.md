@@ -90,6 +90,8 @@ Current helpers:
   calculations.
 - `server_movement_constraints.cpp`: target-neutral server monster movement
   mode classification and fly-move clip-plane constraint helpers.
+- `server_visibility_constraints.cpp`: target-neutral entity leaf capacity,
+  overflow marker, cached leaf index, and portal viewentity capacity helpers.
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
   serialization for client slot, user ID, active bit, sanitized userinfo, and
   hashed CD key digest bytes.

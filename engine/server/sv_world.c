@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "pm_local.h"
 #include "studio.h"
+#include "server_visibility_constraints_adapter.h"
 
 typedef struct moveclip_s
 {
@@ -601,16 +602,18 @@ static void SV_FindTouchedLeafs( edict_t *ent, model_t *mod, mnode_t *node, int 
 	// add an efrag if the node is a leaf
 	if( node->contents < 0 )
 	{
-		if( ent->num_leafs >= MAX_ENT_LEAFS( FBitSet( mod->flags, MODEL_QBSP2 )))
+		qboolean large_leafs = FBitSet( mod->flags, MODEL_QBSP2 );
+
+		if( !SV_Visibility_CanStoreEntityLeaf( ent->num_leafs, large_leafs ))
 		{
 			// continue counting leafs,
 			// so we know how many it's overrun
-			ent->num_leafs = (MAX_ENT_LEAFS( FBitSet( mod->flags, MODEL_QBSP2 )) + 1);
+			ent->num_leafs = SV_Visibility_EntityLeafOverflowMarker( large_leafs );
 		}
 		else
 		{
 			leaf = (mleaf_t *)node;
-			if( FBitSet( mod->flags, MODEL_QBSP2 ))
+			if( large_leafs )
 				ent->leafnums32[ent->num_leafs] = leaf->cluster;
 			else
 				ent->leafnums16[ent->num_leafs] = leaf->cluster;
@@ -665,7 +668,9 @@ void GAME_EXPORT SV_LinkEdict( edict_t *ent, qboolean touch_triggers )
 		if( ent->v.modelindex )
 			SV_FindTouchedLeafs( ent, sv.worldmodel, sv.worldmodel->nodes, &headnode );
 
-		if( ent->num_leafs > MAX_ENT_LEAFS( FBitSet( sv.worldmodel->flags, MODEL_QBSP2 )))
+		if( SV_Visibility_EntityLeafOverflowed(
+			ent->num_leafs,
+			FBitSet( sv.worldmodel->flags, MODEL_QBSP2 )))
 		{
 			memset( ent->leafnums32, -1, sizeof( ent->leafnums32 ));
 			ent->num_leafs = 0;	// so we use headnode instead

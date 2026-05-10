@@ -35,6 +35,7 @@ GNU General Public License for more details.
 #include "server_sound_message_adapter.h"
 #include "server_static_messages_adapter.h"
 #include "server_text_messages_adapter.h"
+#include "server_visibility_constraints_adapter.h"
 
 // GameAPI functions declarations
 static int GAME_EXPORT pfnModelIndex( const char *m );
@@ -4563,7 +4564,7 @@ static int GAME_EXPORT pfnCheckVisibility( const edict_t *ent, byte *pset )
 	}
 	else
 	{
-		for( i = 0; i < MAX_ENT_LEAFS( large_leafs ); i++ )
+		for( i = 0; i < SV_Visibility_EntityLeafCapacity( large_leafs ); i++ )
 		{
 			if( large_leafs )
 				leafnum = ent->leafnums32[i];
@@ -4584,7 +4585,8 @@ static int GAME_EXPORT pfnCheckVisibility( const edict_t *ent, byte *pset )
 		else
 			((edict_t *)ent)->leafnums16[ent->num_leafs] = leafnum;
 
-		((edict_t *)ent)->num_leafs = (ent->num_leafs + 1) % MAX_ENT_LEAFS( large_leafs );
+		((edict_t *)ent)->num_leafs =
+			SV_Visibility_NextCachedLeafIndex( ent->num_leafs, large_leafs );
 
 		return 2;	// visible passed by headnode
 	}
