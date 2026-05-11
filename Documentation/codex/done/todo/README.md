@@ -37,6 +37,7 @@ auditability and evidence lookup while active migration work continues under
 - [search_results_todo.md](search_results_todo.md)
 - [server_consolidation_roadmap_todo.md](server_consolidation_roadmap_todo.md)
 - [server_constants_todo.md](server_constants_todo.md)
+- [server_module_cleanup_todo.md](server_module_cleanup_todo.md)
 - [server_post_134_consolidation_todo.md](server_post_134_consolidation_todo.md)
 - [utilities_todo.md](utilities_todo.md)
 - [wad_backend_todo.md](wad_backend_todo.md)

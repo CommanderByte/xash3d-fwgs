@@ -27,5 +27,3 @@ Active documents:
   console backend validation.
 - [server_migration_todo.md](server_migration_todo.md) tracks the active
   server-side migration lane opened by Phase 52.
-- [server_module_cleanup_todo.md](server_module_cleanup_todo.md) tracks the
-  post-160 server module cleanup and test-collapse lane.

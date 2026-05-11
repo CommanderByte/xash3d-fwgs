@@ -114,9 +114,14 @@ Phase 165 decisions are recorded in
 Goal: pause after the ambitious cleanup lane and decide whether it actually
 made the tree simpler.
 
-- [ ] Recount modern server files, headers, adapters, and tests.
-- [ ] Compare before/after readability, validation cost, and target noise.
-- [ ] Record whether the next lane should continue server cleanup or switch to
+- [x] Recount modern server files, headers, adapters, and tests.
+- [x] Compare before/after readability, validation cost, and target noise.
+- [x] Record whether the next lane should continue server cleanup or switch to
   client/render fixtures.
-- [ ] Run full validation and runtime smoke timing.
-- [ ] Move completed cleanup TODOs to `done/` where sensible.
+- [x] Run full validation and runtime smoke timing.
+- [x] Move completed cleanup TODOs to `done/` where sensible.
+
+Phase 166 decisions are recorded in
+`Documentation/codex/modern/engine/module-cleanup-checkpoint.md`.
+
+Validation passed with 127/127 tests and runtime smoke first frame at 0.513s.

@@ -102,6 +102,10 @@ Current implementation notes:
   world/PMove fixture harnesses and runtime checkpoint, including what is
   modern-owned, what is still adapter-routed, and the recommended next domain
   consolidation order.
+- `module-cleanup-checkpoint.md`: how Phase 166 closes the post-160 cleanup
+  lane, counts the resulting server source/header/adapter/test shape, and
+  recommends switching next to deliberate client/render fixture work instead
+  of further cosmetic server file-count reduction.
 - `model-visibility-service-boundary.md`: how Phase 113 audits BSP model,
   hull, PVS/PAS, trace, physics, and game DLL visibility ownership before any
   runtime route-through.

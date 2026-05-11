@@ -4542,7 +4542,7 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/modern/engine/server-module-cleanup-plan.md`.
 - [x] `ENG-MODCLEAN-005` Add the next cleanup phases to this task list.
   Evidence: Phases 162-166 below;
-  `Documentation/codex/todo/server_module_cleanup_todo.md`.
+  `Documentation/codex/done/todo/server_module_cleanup_todo.md`.
 
 ## Phase 162: Flat Server Module Rehome
 
@@ -4674,19 +4674,25 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 166: Module Cleanup Checkpoint
 
-- [ ] `ENG-MODCHECK-001` Recount modern server files, headers, adapters, and
+- [x] `ENG-MODCHECK-001` Recount modern server files, headers, adapters, and
   tests after the cleanup lane.
-  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
-- [ ] `ENG-MODCHECK-002` Compare before/after readability and validation cost.
-  Evidence:
-- [ ] `ENG-MODCHECK-003` Decide whether to continue server cleanup or switch
+  Evidence: `Documentation/codex/modern/engine/module-cleanup-checkpoint.md`.
+- [x] `ENG-MODCHECK-002` Compare before/after readability and validation cost.
+  Evidence: `Documentation/codex/modern/engine/module-cleanup-checkpoint.md`.
+- [x] `ENG-MODCHECK-003` Decide whether to continue server cleanup or switch
   to client/render fixtures.
-  Evidence:
-- [ ] `ENG-MODCHECK-004` Run full validation and runtime smoke timing.
-  Evidence:
-- [ ] `ENG-MODCHECK-005` Move completed cleanup TODOs to `done/` where
+  Evidence: `Documentation/codex/modern/engine/module-cleanup-checkpoint.md`
+  recommends switching to deliberate client/render fixture work and returning
+  to server only for fixture-backed live-state phases.
+- [x] `ENG-MODCHECK-004` Run full validation and runtime smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -SkipFocused
+  -StopRunningXash -CopyLauncher` passed; `.\waf.bat build --targets=xash`
+  passed; `.\waf.bat build --alltests` passed 127/127; runtime smoke reached
+  first frame in 0.513 seconds and stopped with reason `command`.
+- [x] `ENG-MODCHECK-005` Move completed cleanup TODOs to `done/` where
   sensible.
-  Evidence:
+  Evidence: `Documentation/codex/done/todo/server_module_cleanup_todo.md` and
+  `Documentation/codex/done/todo/README.md`.
 
 ## Phase 800: POSIX Console Backend Validation
 
