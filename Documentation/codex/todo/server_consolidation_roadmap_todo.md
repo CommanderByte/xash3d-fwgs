@@ -71,6 +71,20 @@ Planned path:
 - Phase 120 reviews whether a grouped messaging adapter is clearer than many
   small payload adapters.
 
+Phase 118 outcome:
+
+- Server messaging is a real future domain, but it should split into payload
+  and envelope writers, destination and recipient policies, and game DLL bridge
+  session state rather than one broad module.
+- The rendered in-game console stays out of scope until a client/rendering
+  console sink phase exists.
+- Phase 119 should start with aggregate tests around representative complete
+  messages plus destination/recipient vocabulary. Game DLL
+  `pfnMessageBegin()` / `pfnMessageEnd()` and user-message rewrites stay for
+  the game DLL bridge phases.
+  Evidence:
+  `Documentation/codex/modern/engine/server-messaging-consolidation-audit.md`.
+
 ## Phase 121-123: Game DLL Bridge Domain
 
 Legacy spread:

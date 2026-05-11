@@ -3543,18 +3543,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 118: Server Messaging Consolidation Audit
 
-- [ ] `ENG-MSGGROUP-001` Audit text, service, sound, static, voice, multicast,
+- [x] `ENG-MSGGROUP-001` Audit text, service, sound, static, voice, multicast,
   event, frame-datagram, and spawn-handshake message ownership.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-MSGGROUP-002` Separate payload writers, recipient routing, reliable
+  Evidence: `Documentation/codex/modern/engine/server-messaging-consolidation-audit.md`
+  maps legacy ownership across `sv_cmds.c`, `sv_client.c`, `sv_game.c`, and
+  `sv_frame.c`; `Documentation/codex/todo/server_consolidation_roadmap_todo.md`
+  now records the Phase 118 outcome.
+- [x] `ENG-MSGGROUP-002` Separate payload writers, recipient routing, reliable
   buffer selection, and rendered-console concerns.
-  Evidence:
-- [ ] `ENG-MSGGROUP-003` Identify common envelope or destination concepts that
+  Evidence: the audit separates payload/envelope writers, destination and
+  recipient policies, game DLL session state, legacy buffer ownership, and the
+  rendered-console sink boundary.
+- [x] `ENG-MSGGROUP-003` Identify common envelope or destination concepts that
   deserve aggregate tests.
-  Evidence:
-- [ ] `ENG-MSGGROUP-004` Decide whether messaging should consolidate before or
+  Evidence: Phase 119 should start with aggregate tests around representative
+  complete message envelopes and destination/recipient vocabulary before any
+  adapter regrouping.
+- [x] `ENG-MSGGROUP-004` Decide whether messaging should consolidate before or
   after game DLL bridge regrouping.
-  Evidence:
+  Evidence: do one small messaging aggregate pass before game DLL bridge
+  regrouping, but defer `pfnMessageBegin()` / `pfnMessageEnd()`, user-message
+  rewrite logic, and bridge session consolidation to Phase 121 or later.
 
 ## Phase 119: Server Messaging Aggregate Helper Pilot
 
