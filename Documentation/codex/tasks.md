@@ -3916,18 +3916,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 132: World Trace And Physics Fixture Audit
 
-- [ ] `ENG-WORLDPHYS-001` Audit `sv_world.c`, `sv_phys.c`, and `sv_move.c` for
+- [x] `ENG-WORLDPHYS-001` Audit `sv_world.c`, `sv_phys.c`, and `sv_move.c` for
   trace, hull, clip, pusher, toss, step, gravity, and monster-move ownership.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-WORLDPHYS-002` Define synthetic or golden fixtures required before
+  Evidence: `Documentation/codex/modern/engine/server-world-physics-fixture-audit.md`
+  and `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [x] `ENG-WORLDPHYS-002` Define synthetic or golden fixtures required before
   route-through of traces or physics loops.
-  Evidence:
-- [ ] `ENG-WORLDPHYS-003` Add tests for any pure constraints or route
+  Evidence: `Documentation/codex/modern/engine/server-world-physics-fixture-audit.md`
+  lists trace, physics, monster movement, and callback fixture requirements.
+- [x] `ENG-WORLDPHYS-003` Add tests for any pure constraints or route
   decisions discovered during the audit.
-  Evidence:
-- [ ] `ENG-WORLDPHYS-004` Defer live collision, hull traversal, and physics API
+  Evidence: `tests/engine/server_physics_routing_policy.cpp` covers
+  `MOVETYPE_*` physics dispatch, pusher candidate filtering, and pushed-entity
+  precise-blocking predicates; focused test passed 1/1.
+- [x] `ENG-WORLDPHYS-004` Defer live collision, hull traversal, and physics API
   callback ownership until fixtures exist.
-  Evidence:
+  Evidence: `engine/server/sv_world.c` still owns exact hull tracing, `SV_Move()`, and
+  trace globals; `engine/server/sv_phys.c` still owns live fly/toss/step/
+  pusher physics and the external physics API table; validation passed
+  `test_engine_server_physics_routing_policy`, built `xash`, passed 128/128
+  full tests, and smoke reached first frame in 0.475 seconds with reason
+  `command`.
 
 ## Phase 133: Player Move Bridge Boundary Audit
 

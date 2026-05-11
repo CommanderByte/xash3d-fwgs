@@ -128,6 +128,7 @@ def build(bld):
 			'engine_server_message_envelope': '../tests/engine/server_message_envelope.cpp',
 			'engine_server_event_playback_policy': '../tests/engine/server_event_playback_policy.cpp',
 			'engine_server_movement_constraints': '../tests/engine/server_movement_constraints.cpp',
+			'engine_server_physics_routing_policy': '../tests/engine/server_physics_routing_policy.cpp',
 			'engine_server_visibility_constraints': '../tests/engine/server_visibility_constraints.cpp',
 			'engine_server_world_link_policy': '../tests/engine/server_world_link_policy.cpp',
 			'engine_server_reslist_policy': '../tests/engine/server_reslist_policy.cpp',

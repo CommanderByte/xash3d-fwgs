@@ -91,6 +91,8 @@ Current helpers:
   writers and plain recipient-facts adapters for aggregate messaging tests.
 - `server_movement_constraints.hpp`: server monster movement mode and
   fly-move clip-plane constraint contracts.
+- `server_physics_routing_policy.hpp`: server `MOVETYPE_*` handler routing,
+  pusher-candidate, and precise-blocking predicates.
 - `server_operator_command_policy.hpp`: `kick`, `serverinfo`, and `localinfo`
   argument classification while command registration, console output, lookup,
   cvar mutation, and info-string mutation stay legacy-owned.

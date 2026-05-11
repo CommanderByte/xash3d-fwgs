@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "triangleapi.h"
 #include "ref_common.h"
 #include "server_group_filter_adapter.h"
+#include "server_physics_routing_policy_adapter.h"
 
 typedef int (*PHYSICAPI)( int, server_physics_api_t*, physics_interface_t* );
 #if !XASH_DEDICATED
@@ -824,9 +825,7 @@ static trace_t SV_PushEntity( edict_t *ent, const vec3_t lpush, const vec3_t apu
 
 	SV_LinkEdict( ent, true );
 
-	if( ent->v.movetype == MOVETYPE_WALK || ent->v.movetype == MOVETYPE_STEP || ent->v.movetype == MOVETYPE_PUSHSTEP )
-		monsterBlock = true;
-	else monsterBlock = false;
+	monsterBlock = SV_PhysicsRouting_PushedEntityUsesPreciseBlocking( ent->v.movetype );
 
 	if( blocked )
 	{
@@ -852,17 +851,7 @@ filter entities for push
 */
 static qboolean SV_CanPushed( edict_t *ent )
 {
-	// filter movetypes to collide with
-	switch( ent->v.movetype )
-	{
-	case MOVETYPE_NONE:
-	case MOVETYPE_PUSH:
-	case MOVETYPE_FOLLOW:
-	case MOVETYPE_NOCLIP:
-	case MOVETYPE_COMPOUND:
-		return false;
-	}
-	return true;
+	return SV_PhysicsRouting_PusherConsidersMoveType( ent->v.movetype );
 }
 
 /*
@@ -1742,36 +1731,34 @@ static void SV_Physics_Entity( edict_t *ent )
 		SV_LinkEdict( ent, true );
 	}
 
-	switch( ent->v.movetype )
+	switch( SV_PhysicsRouting_SelectHandler( ent->v.movetype ))
 	{
-	case MOVETYPE_NONE:
+	case SV_PHYSICS_HANDLER_NONE:
 		SV_Physics_None( ent );
 		break;
-	case MOVETYPE_NOCLIP:
+	case SV_PHYSICS_HANDLER_NOCLIP:
 		SV_Physics_Noclip( ent );
 		break;
-	case MOVETYPE_FOLLOW:
+	case SV_PHYSICS_HANDLER_FOLLOW:
 		SV_Physics_Follow( ent );
 		break;
-	case MOVETYPE_COMPOUND:
+	case SV_PHYSICS_HANDLER_COMPOUND:
 		SV_Physics_Compound( ent );
 		break;
-	case MOVETYPE_STEP:
-	case MOVETYPE_PUSHSTEP:
+	case SV_PHYSICS_HANDLER_STEP:
 		SV_Physics_Step( ent );
 		break;
-	case MOVETYPE_FLY:
-	case MOVETYPE_TOSS:
-	case MOVETYPE_BOUNCE:
-	case MOVETYPE_FLYMISSILE:
-	case MOVETYPE_BOUNCEMISSILE:
+	case SV_PHYSICS_HANDLER_TOSS:
 		SV_Physics_Toss( ent );
 		break;
-	case MOVETYPE_PUSH:
+	case SV_PHYSICS_HANDLER_PUSHER:
 		SV_Physics_Pusher( ent );
 		break;
-	case MOVETYPE_WALK:
+	case SV_PHYSICS_HANDLER_INVALID_WALK:
 		Host_Error( "%s: bad movetype %i\n", __func__, ent->v.movetype );
+		break;
+	case SV_PHYSICS_HANDLER_UNSUPPORTED:
+	default:
 		break;
 	}
 

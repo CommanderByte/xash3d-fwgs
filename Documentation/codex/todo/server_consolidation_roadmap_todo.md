@@ -331,6 +331,26 @@ Phase 131 outcome:
   Evidence:
   `Documentation/codex/modern/engine/server-world-link-boundary.md`.
 
+Phase 132 outcome:
+
+- `sv_world.c` still owns exact hull selection, brush/studio/custom clipping,
+  portal CSG, `SV_Move()`, `SV_MoveNoEnts()`, trace globals, and area-list
+  collision traversal.
+- `sv_phys.c` still owns live think/touch/blocked callbacks, fly/toss/step/
+  pusher physics, velocity mutation, water transitions, and the external
+  physics API table.
+- `sv_move.c` still owns bottom checks, monster stepping, chase-direction
+  ordering, world-only movement, point-contents checks, relinking, and
+  partial-ground compatibility.
+- `server_physics_routing_policy` now owns only `MOVETYPE_*` to physics
+  handler dispatch, pusher candidate, and pushed-entity precise-blocking
+  predicates.
+- Further route-through needs synthetic trace fixtures, hull/model fixtures,
+  pusher restore-stack fixtures, water/velocity fixtures, and game DLL/physics
+  callback mocks.
+  Evidence:
+  `Documentation/codex/modern/engine/server-world-physics-fixture-audit.md`.
+
 ## Phase 134: Runtime Save/Restore Owner Audit
 
 Legacy spread:

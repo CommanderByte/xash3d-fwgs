@@ -171,6 +171,10 @@ Current implementation notes:
   storage, edict links, trigger callbacks, water brushes, and collision
   traversal legacy-owned while routing split-axis and child traversal policy
   through a plain helper.
+- `server-world-physics-fixture-audit.md`: how Phase 132 keeps exact hull
+  tracing, live physics loops, and physics API callbacks legacy-owned while
+  routing `MOVETYPE_*` physics dispatch and pusher predicates through a plain
+  helper.
 - `server-route-through-review.md`: how Phase 106 reviews the Phase 101-105
   constants lane, confirms no extra broad route-through should be made, and
   lists the next behavior-owner phases.

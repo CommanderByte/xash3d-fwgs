@@ -104,6 +104,8 @@ Current helpers:
   writers and plain recipient-facts adapters for aggregate messaging tests.
 - `server_movement_constraints.cpp`: target-neutral server monster movement
   mode classification and fly-move clip-plane constraint helpers.
+- `server_physics_routing_policy.cpp`: target-neutral `MOVETYPE_*` to server
+  physics handler routing plus pusher-candidate predicates.
 - `server_visibility_constraints.cpp`: target-neutral entity leaf capacity,
   overflow marker, cached leaf index, and portal viewentity capacity helpers.
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
