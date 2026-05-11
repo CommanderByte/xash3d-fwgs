@@ -3442,21 +3442,25 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 114: C++ Ownership Consolidation Checkpoint
 
-- [ ] `ENG-CPPOWN-001` Review the modern server and engine helpers created
+- [x] `ENG-CPPOWN-001` Review the modern server and engine helpers created
   since Phase 101 and classify each as temporary facade, behavior owner, or
   reusable domain concept.
   Evidence: `Documentation/codex/modern/cpp-ownership-target.md`,
-  `Documentation/codex/todo/engine_next_migration_todo.md`.
-- [ ] `ENG-CPPOWN-002` Identify files that should be renamed, regrouped,
+  `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`.
+- [x] `ENG-CPPOWN-002` Identify files that should be renamed, regrouped,
   merged, or split so modern layout follows concepts instead of old C file
   boundaries.
-  Evidence:
-- [ ] `ENG-CPPOWN-003` Identify adapters that can shrink after related concepts
+  Evidence: `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`.
+- [x] `ENG-CPPOWN-003` Identify adapters that can shrink after related concepts
   move into one modern module.
-  Evidence:
-- [ ] `ENG-CPPOWN-004` Keep compatibility tests intact while adding or updating
+  Evidence: grouped adapter candidates are documented for game DLL bridge,
+  resource transfer, server messaging, client/session, and world boundaries in
+  `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`.
+- [x] `ENG-CPPOWN-004` Keep compatibility tests intact while adding or updating
   concept-level tests where wrappers have become real owners.
-  Evidence:
+  Evidence: documentation-only audit phase; existing focused tests remain
+  intact, concept-level aggregate tests are deferred until files actually move,
+  and `git diff --check` passed.
 
 ## Phase 800: POSIX Console Backend Validation
 
@@ -3625,3 +3629,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-062 | Route server event playback decisions through `server_event_playback_policy` while keeping event argument mutation, visibility masks, queue mutation, and wire serialization in legacy server code. | `modern/engine/server-event-playback-policy.md`, `engine/server/sv_game.c`, `engine/server/sv_frame.c` |
 | 2026-05-11 | DEC-063 | Introduce read-only cvar snapshots as plain values for modern policy helpers, starting with `SV_ProcessUserAgent()` input-device booleans, while keeping cvar registration, mutation, callbacks, command bindings, and archive persistence legacy-owned. | `modern/engine/read-only-cvar-snapshot.md`, `src/include/engine/cvar_snapshot.hpp`, `engine/server/sv_main.c` |
 | 2026-05-11 | DEC-064 | Defer any broad model/visibility route-through until synthetic or golden fixtures cover BSP visibility and hull traversal; in the meantime, use only small request/route snapshot helpers around legacy-owned `model_t`, PVS/PAS, edict leaf, and trace state. | `modern/engine/model-visibility-service-boundary.md` |
+| 2026-05-11 | DEC-065 | Keep the current one-helper-per-seam layout as migration scaffolding, but use resource transfer, server messaging, game DLL bridge, client/session, and world/runtime concepts as the next consolidation boundaries; do not collapse adapters unless the grouped file maps to one of those domains. | `modern/engine/server-cpp-ownership-consolidation.md`, `modern/cpp-ownership-target.md` |

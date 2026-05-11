@@ -70,6 +70,9 @@ Current implementation notes:
   next roadmap, why group filtering, map validation flags, client flags, event
   playback, and read-only cvar snapshots are better next enablers than another
   broad server sweep.
+- `server-cpp-ownership-consolidation.md`: how Phase 114 classifies the modern
+  server helper surface as reusable concepts, behavior owners, or temporary
+  facades, and where the old `sv_*.c` grouping should eventually split.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of

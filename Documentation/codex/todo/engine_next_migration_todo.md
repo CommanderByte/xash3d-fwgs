@@ -141,10 +141,33 @@ enablers that make future server and engine migrations less adapter-heavy.
   Evidence: `Documentation/codex/modern/engine/model-visibility-service-boundary.md`;
   documentation-only audit phase, `git diff --check` passed.
 
+## Phase 114: C++ Ownership Consolidation Checkpoint
+
+- [x] Review modern server helpers since the server constants lane and classify
+  them as temporary facade, behavior owner, or reusable domain concept.
+  Evidence: `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`.
+- [x] Identify where old `sv_*.c` grouping still helps and where it mixes
+  separate concepts.
+  Evidence: `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`.
+- [x] Identify adapter-reduction candidates without creating a single
+  catch-all adapter layer.
+  Evidence: grouped game DLL bridge, server resource, server messaging,
+  client/session, and world adapter candidates are listed in
+  `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`.
+- [x] Keep existing compatibility tests intact and defer aggregate concept-level
+  tests until grouped files actually move.
+  Evidence: documentation-only audit phase, `git diff --check` passed.
+
 ## Later Candidates
 
-- C++ ownership and module consolidation checkpoint after several enabler
-  phases have landed.
+- Resource transfer consolidation once catalog, reslist, consistency,
+  download, upload, customization, and hot-resource helpers are ready to group.
+- Server messaging consolidation once text, service, sound, static, voice,
+  multicast, event, and frame-datagram helpers are ready to group.
+- Game DLL bridge consolidation once callback, message, resource, entity,
+  string-pool, visibility, and load/lifecycle helpers are ready to group.
+- Client/session consolidation once admission, userinfo, command, transfer,
+  voice, and remote-admin helpers are ready to group.
 - Runtime save/restore owner audit after map and entity policies mature.
 - Rendered console sink/router work after client/render ownership is selected.
 - Memory pool modernization in Phase 990.
