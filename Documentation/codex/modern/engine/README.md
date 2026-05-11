@@ -114,6 +114,9 @@ Current implementation notes:
   server helper layer to future `shared`, `resources`, `messaging`,
   `game_dll`, `client`, `runtime`, `world`, and `save` domains before any
   physical file moves.
+- `server-header-boundary-audit.md`: how Phase 143 classifies
+  `engine/server/server.h`, maps modern helper coverage, and proposes a
+  constants/cvars-first split plan while preserving current include behavior.
 - `server-messaging-domain-pilot.md`: how Phase 138 physically groups modern
   message payload, recipient, frame send-gate, and packet-entity cursor helpers
   under `src/engine/server/messaging/` while keeping flat forwarding headers

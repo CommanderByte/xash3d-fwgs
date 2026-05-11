@@ -4156,18 +4156,19 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 143: Server Header Boundary Audit
 
-- [ ] `ENG-SERVER-HDR-001` Classify `server.h` contents as ABI-facing structs,
+- [x] `ENG-SERVER-HDR-001` Classify `server.h` contents as ABI-facing structs,
   private flags, declarations, constants, or runtime globals.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-HDR-002` Identify declarations already replaced by modern
+  Evidence: `Documentation/codex/modern/engine/server-header-boundary-audit.md`.
+- [x] `ENG-SERVER-HDR-002` Identify declarations already replaced by modern
   private headers.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-HDR-003` Propose a split plan that does not change struct
+  Evidence: `Documentation/codex/modern/engine/server-header-boundary-audit.md`.
+- [x] `ENG-SERVER-HDR-003` Propose a split plan that does not change struct
   layout or public include behavior.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-HDR-004` Defer actual splitting unless tests and build
+  Evidence: `Documentation/codex/modern/engine/server-header-boundary-audit.md`.
+- [x] `ENG-SERVER-HDR-004` Defer actual splitting unless tests and build
   fallout are understood.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: documentation-only phase; `git diff --check` passed and
+  `scripts/phase-status.ps1 -PhaseNumber 143` reported 4 done, 0 open.
 
 ## Phase 144: World Trace Fixture Harness Plan
 

@@ -182,12 +182,21 @@ not required.
 
 Goal: understand how to reduce `server.h` gravitational pull safely.
 
-- [ ] Classify `server.h` contents as ABI-facing structs, private flags,
+- [x] Classify `server.h` contents as ABI-facing structs, private flags,
   declarations, constants, or runtime globals.
-- [ ] Identify declarations already replaced by modern private headers.
-- [ ] Propose a split plan that does not change struct layout or public
+- [x] Identify declarations already replaced by modern private headers.
+- [x] Propose a split plan that does not change struct layout or public
   include behavior.
-- [ ] Defer actual splitting unless tests and build fallout are understood.
+- [x] Defer actual splitting unless tests and build fallout are understood.
+
+Evidence:
+`Documentation/codex/modern/engine/server-header-boundary-audit.md`.
+
+Validation:
+Documentation-only phase. `git diff --check` passed and
+`scripts/phase-status.ps1 -PhaseNumber 143` reported 4 done, 0 open. No
+header split was performed; the recommended first real split is a
+constants-only compatibility header, followed by a cvar extern header.
 
 ## Phase 144: World Trace Fixture Harness Plan
 
