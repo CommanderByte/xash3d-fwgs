@@ -153,6 +153,10 @@ Current implementation notes:
   `SV_MapIsValid()` flag interpretation, changelevel landmark compatibility,
   save/load admission, and game DLL existence behavior while map probing and
   entity parsing stay legacy-owned.
+- `server-operator-command-boundary.md`: how Phase 128 keeps
+  `sv_cmds.c` command registration, console output, filesystem probes,
+  save/load effects, and info-string mutation legacy-owned while routing
+  `kick`, `serverinfo`, and `localinfo` argument policy through a modern helper.
 - `server-movement-constraints.md`: how Phase 104 names server monster
   movement modes and fly-move clip-plane constraints separately from trace,
   walkmove, and `pm_shared` constants.

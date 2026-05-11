@@ -240,6 +240,19 @@ Phase 127 outcome:
   Evidence:
   `Documentation/codex/modern/engine/server-runtime-configuration-boundary.md`.
 
+Phase 128 outcome:
+
+- `sv_cmds.c` command registration, command callbacks, console output,
+  filesystem probes, save/load/map effects, info-string mutation, cvar
+  mutation, client lookup, and shutdown effects remain legacy-owned.
+- `server_operator_command_policy` now routes only argument-policy decisions
+  for `kick`, `serverinfo`, and `localinfo`.
+- The selected seam is reusable because it models operator command admission
+  and target classification without owning `Cmd_*` registration or command
+  execution side effects.
+  Evidence:
+  `Documentation/codex/modern/engine/server-operator-command-boundary.md`.
+
 ## Phase 129-130: Frame Snapshot Domain
 
 Legacy spread:

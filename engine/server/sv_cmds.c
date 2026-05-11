@@ -16,6 +16,7 @@ GNU General Public License for more details.
 #include "common.h"
 #include "server.h"
 #include "server_command_lifecycle_adapter.h"
+#include "server_operator_command_policy_adapter.h"
 #include "server_text_messages_adapter.h"
 
 static void SV_ApplyTextMessageWriteResult( sizebuf_t *msg, sv_text_message_write_result_t result )
@@ -663,19 +664,22 @@ Kick a user off of the server
 static void SV_Kick_f( void )
 {
 	sv_client_t	*cl;
-	const char *param;
+	sv_operator_kick_plan_t plan;
 
-	if( Cmd_Argc() < 2 )
+	plan = SV_Operator_BuildKickCommandPlan(
+		Cmd_Argc(),
+		Cmd_Argv( 1 ),
+		Cmd_Argv( 2 ));
+
+	if( plan.action == SV_OPERATOR_KICK_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "kick <#id|name> [reason]\n" );
 		return;
 	}
 
-	param = Cmd_Argv( 1 );
-
-	if( *param == '#' && Q_isdigit( param + 1 ) )
-		cl = SV_ClientById( Q_atoi( param + 1 ) );
-	else cl = SV_ClientByName( param );
+	if( plan.action == SV_OPERATOR_KICK_FIND_BY_USERID )
+		cl = SV_ClientById( plan.user_id );
+	else cl = SV_ClientByName( plan.target );
 
 	if( !cl )
 	{
@@ -683,7 +687,7 @@ static void SV_Kick_f( void )
 		return;
 	}
 
-	SV_KickPlayer( cl, "%s", Cmd_Argv( 2 ));
+	SV_KickPlayer( cl, "%s", plan.reason );
 }
 
 /*
@@ -855,8 +859,14 @@ Examine or change the serverinfo string
 static void SV_ServerInfo_f( void )
 {
 	convar_t	*var;
+	sv_operator_info_plan_t plan;
 
-	if( Cmd_Argc() == 1 )
+	plan = SV_Operator_BuildInfoCommandPlan(
+		Cmd_Argc(),
+		Cmd_Argv( 1 ),
+		Cmd_Argv( 2 ));
+
+	if( plan.action == SV_OPERATOR_INFO_PRINT_CURRENT )
 	{
 		Con_Printf( "Server info settings:\n" );
 		Info_Print( svs.serverinfo );
@@ -864,28 +874,28 @@ static void SV_ServerInfo_f( void )
 		return;
 	}
 
-	if( Cmd_Argc() != 3 )
+	if( plan.action == SV_OPERATOR_INFO_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "serverinfo [ <key> <value> ]\n");
 		return;
 	}
 
-	if( Cmd_Argv(1)[0] == '*' )
+	if( plan.action == SV_OPERATOR_INFO_REJECT_STAR_KEY )
 	{
 		Con_Printf( "Star variables cannot be changed.\n" );
 		return;
 	}
 
 	// if this is a cvar, change it too
-	var = Cvar_FindVar( Cmd_Argv( 1 ));
+	var = Cvar_FindVar( plan.key );
 	if( var )
 	{
 		freestring( var->string ); // free the old value string
-		var->string = copystring( Cmd_Argv( 2 ));
+		var->string = copystring( plan.value );
 		var->value = Q_atof( var->string );
 	}
 
-	Info_SetValueForStarKey( svs.serverinfo, Cmd_Argv( 1 ), Cmd_Argv( 2 ), MAX_SERVERINFO_STRING );
+	Info_SetValueForStarKey( svs.serverinfo, plan.key, plan.value, MAX_SERVERINFO_STRING );
 	SV_BroadcastCommand( "fullserverinfo \"%s\"\n", svs.serverinfo );
 }
 
@@ -898,7 +908,14 @@ Examine or change the localinfo string
 */
 static void SV_LocalInfo_f( void )
 {
-	if( Cmd_Argc() == 1 )
+	sv_operator_info_plan_t plan;
+
+	plan = SV_Operator_BuildInfoCommandPlan(
+		Cmd_Argc(),
+		Cmd_Argv( 1 ),
+		Cmd_Argv( 2 ));
+
+	if( plan.action == SV_OPERATOR_INFO_PRINT_CURRENT )
 	{
 		Con_Printf( "Local info settings:\n" );
 		Info_Print( svs.localinfo );
@@ -906,19 +923,19 @@ static void SV_LocalInfo_f( void )
 		return;
 	}
 
-	if( Cmd_Argc() != 3 )
+	if( plan.action == SV_OPERATOR_INFO_PRINT_USAGE )
 	{
 		Con_Printf( S_USAGE "localinfo [ <key> <value> ]\n");
 		return;
 	}
 
-	if( Cmd_Argv(1)[0] == '*' )
+	if( plan.action == SV_OPERATOR_INFO_REJECT_STAR_KEY )
 	{
 		Con_Printf( "Star variables cannot be changed.\n" );
 		return;
 	}
 
-	Info_SetValueForStarKey( svs.localinfo, Cmd_Argv(1), Cmd_Argv(2), MAX_LOCALINFO_STRING );
+	Info_SetValueForStarKey( svs.localinfo, plan.key, plan.value, MAX_LOCALINFO_STRING );
 }
 
 /*

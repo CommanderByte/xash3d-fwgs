@@ -232,6 +232,7 @@ def build(bld):
 		'server/server_timeout_policy_adapter.cpp',
 		'server/server_multicast_policy_adapter.cpp',
 		'server/server_command_lifecycle_adapter.cpp',
+		'server/server_operator_command_policy_adapter.cpp',
 		'server/server_spawn_handshake_adapter.cpp',
 		'server/server_frame_datagram_adapter.cpp',
 		'server/server_event_playback_policy_adapter.cpp',

@@ -3817,17 +3817,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 128: Server Operator Command Boundary
 
-- [ ] `ENG-OPCMD-001` Audit `sv_cmds.c` operator commands, lifecycle commands,
+- [x] `ENG-OPCMD-001` Audit `sv_cmds.c` operator commands, lifecycle commands,
   status/info commands, and registration ownership.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-OPCMD-002` Identify command-table or command-lifecycle concepts
+  Evidence:
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/modern/engine/server-operator-command-boundary.md`.
+- [x] `ENG-OPCMD-002` Identify command-table or command-lifecycle concepts
   that are reusable instead of old function wrappers.
-  Evidence:
-- [ ] `ENG-OPCMD-003` Add tests for the safest selected command policy seam.
-  Evidence:
-- [ ] `ENG-OPCMD-004` Keep command registration, console output, filesystem
+  Evidence: `src/include/engine/server/server_operator_command_policy.hpp` and
+  `src/engine/server/server_operator_command_policy.cpp` route `kick`,
+  `serverinfo`, and `localinfo` argument policy while command execution stays
+  in `sv_cmds.c`.
+- [x] `ENG-OPCMD-003` Add tests for the safest selected command policy seam.
+  Evidence: `tests/engine/server_operator_command_policy.cpp`; focused test
+  `.\waf.bat build --targets=test_engine_server_operator_command_policy`
+  passed; full tests `.\waf.bat build --alltests` passed 125/125.
+- [x] `ENG-OPCMD-004` Keep command registration, console output, filesystem
   probes, and save/load side effects legacy-owned.
-  Evidence:
+  Evidence: `engine/server/sv_cmds.c` still owns `Cmd_AddCommand()`,
+  `Cmd_RemoveCommand()`, `Con_Printf()`, `Msg()`, client lookup, kicks,
+  info-string mutation, cvar mutation, filesystem probes, save/load/map
+  effects, and shutdown effects; validation smoke reached first frame in
+  0.504 seconds and stopped with reason `command`.
 
 ## Phase 129: Frame Snapshot Boundary Audit
 
