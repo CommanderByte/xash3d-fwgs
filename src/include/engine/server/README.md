@@ -47,6 +47,9 @@ Current helpers:
 - `resource_transfer_manifest.hpp`: target-neutral aggregate manifest over
   modern resource descriptors for catalog-to-download and resource-message
   flows.
+- `remote_admin_command.hpp`: target-neutral rcon enable/password action and
+  quoted command reconstruction helpers while redirects and command execution
+  stay legacy-owned.
 - `server_resource_catalog.hpp`: server startup resource catalog planning for
   generic, sound, model, decal, and event precaches.
 - `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo

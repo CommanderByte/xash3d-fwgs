@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "connectionless_classifier_adapter.h"
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
+#include "remote_admin_command_adapter.h"
 #include "server_challenge_policy_adapter.h"
 #include "server_download_policy_adapter.h"
 #include "server_upload_queue_adapter.h"
@@ -1175,13 +1176,12 @@ static void SV_BuildNetAnswer( netadr_t from )
 Rcon_Validate
 ================
 */
-static qboolean Rcon_Validate( void )
+static int Rcon_BuildAuthAction( void )
 {
-	if( COM_StringEmptyOrNULL( rcon_password.string ))
-		return false;
-	if( Q_strcmp( Cmd_Argv( 1 ), rcon_password.string ))
-		return false;
-	return true;
+	return SV_RemoteAdmin_BuildAuthAction(
+		rcon_enable.value != 0.0f,
+		rcon_password.string,
+		Cmd_Argv( 1 ));
 }
 
 /*
@@ -1196,9 +1196,11 @@ Redirect all printfs
 void SV_RemoteCommand( netadr_t from, sizebuf_t *msg )
 {
 	const char	*adr;
+	int		auth_action;
 	int		i;
 
-	if( !rcon_enable.value || COM_StringEmpty( rcon_password.string ))
+	auth_action = Rcon_BuildAuthAction();
+	if( auth_action == SV_REMOTE_ADMIN_AUTH_IGNORE_DISABLED )
 		return;
 
 	adr = NET_AdrToString( from );
@@ -1206,18 +1208,20 @@ void SV_RemoteCommand( netadr_t from, sizebuf_t *msg )
 	Con_Printf( "Rcon from %s:\n%s\n", adr, MSG_GetData( msg ) + 4 );
 	Log_Printf( "Rcon: \"%s\" from \"%s\"\n", MSG_GetData( msg ) + 4, adr );
 
-	if( Rcon_Validate( ))
+	if( auth_action == SV_REMOTE_ADMIN_AUTH_ACCEPT )
 	{
 		static char	outputbuf[2048];
 		char remaining[1024];
-		char *p = remaining;
+		size_t used;
 
-		remaining[0] = 0;
+		used = SV_RemoteAdmin_ResetCommand( remaining, sizeof( remaining ));
 		for( i = 2; i < Cmd_Argc(); i++ )
 		{
-			p += Q_strncpy( p, "\"", sizeof( remaining ) - ( p - remaining ));
-			p += Q_strncpy( p, Cmd_Argv( i ), sizeof( remaining ) - ( p - remaining ));
-			p += Q_strncpy( p, "\" ", sizeof( remaining ) - ( p - remaining ));
+			used = SV_RemoteAdmin_AppendCommandArgument(
+				remaining,
+				sizeof( remaining ),
+				used,
+				Cmd_Argv( i ));
 		}
 
 		SV_BeginRedirect( &host.rd, from, RD_PACKET, outputbuf, sizeof( outputbuf ) - 16, SV_FlushRedirect );

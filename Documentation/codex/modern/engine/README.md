@@ -22,6 +22,9 @@ Current implementation notes:
   first-free-slot selection, and master heartbeat population decisions through
   plain client-slot snapshots while leaving live connect/drop ownership in
   `sv_client.c`.
+- `client-transfer-voice-admin-split.md`: how Phase 126 keeps transfer and
+  voice on their existing helpers, defers cvar-query callback ownership, and
+  extracts only rcon auth/action plus quoted command reconstruction.
 - `server-client-flag-policy.md`: how Phase 109 groups private `FCL_*` flags by
   owner and starts routing fake-client/query-visible predicates without broad
   macro replacement.

@@ -219,6 +219,7 @@ def build(bld):
 		'server/source_query_adapter.cpp',
 		'server/user_agent_policy_adapter.cpp',
 		'server/netapi_info_adapter.cpp',
+		'server/remote_admin_command_adapter.cpp',
 		'server/server_hot_resource_adapter.cpp',
 		'server/server_reslist_policy_adapter.cpp',
 		'server/server_lifecycle_limits_adapter.cpp',

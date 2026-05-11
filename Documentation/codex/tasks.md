@@ -3766,17 +3766,31 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 126: Client Transfer Voice And Admin Split
 
-- [ ] `ENG-CLIENTSPLIT-001` Audit client transfer, voice, cvar-query, and
+- [x] `ENG-CLIENTSPLIT-001` Audit client transfer, voice, cvar-query, and
   remote-admin surfaces for follow-up extraction candidates.
   Evidence:
-- [ ] `ENG-CLIENTSPLIT-002` Add focused tests for the safest selected seam.
-  Evidence:
-- [ ] `ENG-CLIENTSPLIT-003` Implement or defer the seam based on whether live
+  `Documentation/codex/modern/engine/client-transfer-voice-admin-split.md`
+  audits transfer/resource, voice, cvar-query, and remote-admin ownership.
+- [x] `ENG-CLIENTSPLIT-002` Add focused tests for the safest selected seam.
+  Evidence: `tests/engine/remote_admin_command.cpp` covers rcon disabled,
+  missing, bad, and accepted passwords plus quoted command reconstruction and
+  safe truncation.
+- [x] `ENG-CLIENTSPLIT-003` Implement or defer the seam based on whether live
   netchan or edict mutation would dominate the helper.
-  Evidence:
-- [ ] `ENG-CLIENTSPLIT-004` Run focused tests and full validation after any
+  Evidence: `src/include/engine/server/remote_admin_command.hpp`,
+  `src/engine/server/remote_admin_command.cpp`, and
+  `engine/server/remote_admin_command_adapter.*` route only rcon auth/action
+  and command reconstruction; transfer, voice, cvar-query callback dispatch,
+  redirects, command execution, logging, and packet sends remain legacy-owned
+  or on existing helpers.
+- [x] `ENG-CLIENTSPLIT-004` Run focused tests and full validation after any
   code change.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_remote_admin_command -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 123/123, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.506 seconds and
+  stopped with reason `command`.
 
 ## Phase 127: Server Runtime Configuration Boundary
 

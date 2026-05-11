@@ -194,6 +194,20 @@ Phase 125 outcome:
   Evidence:
   `Documentation/codex/modern/engine/client-session-slots.md`.
 
+Phase 126 outcome:
+
+- Downloads and client resource-list parsing should stay with the
+  resource-transfer domain because live filesystem, HPAK, fragment, and
+  resource-list effects dominate.
+- Voice relay already has a focused helper, so the remaining live work is
+  message reads, physics callbacks, recipient iteration, and datagram mutation.
+- Cvar query responses should wait for a game DLL/client-query bridge.
+- The only new route-through is `remote_admin_command`, which covers rcon
+  enable/password action and quoted command reconstruction while redirects,
+  command execution, logging, and packet sends remain legacy-owned.
+  Evidence:
+  `Documentation/codex/modern/engine/client-transfer-voice-admin-split.md`.
+
 ## Phase 127-128: Runtime Configuration And Operator Commands
 
 Legacy spread:
