@@ -123,6 +123,19 @@ Phase 121 outcome:
   Evidence:
   `Documentation/codex/modern/engine/game-dll-bridge-submodule-plan.md`.
 
+Phase 122 outcome:
+
+- The first aggregate bridge test targets game DLL messaging, not loader or
+  edict ownership.
+- `game_dll_message_bridge` adds user-message begin request and active
+  registration resend payload helpers; `sv_game.c`, `gEngfuncs`, live DLL
+  load/unload, edict storage, string base, and `sv.multicast` remain
+  legacy-owned.
+- This gives Phase 123 a concrete basis for deciding whether a small grouped
+  messaging adapter is useful.
+  Evidence:
+  `Documentation/codex/modern/engine/game-dll-message-bridge-aggregate.md`.
+
 ## Phase 124-126: Client And Session Domain
 
 Legacy spread:

@@ -87,6 +87,13 @@ Phase 122 should pick one of these groups. The lowest-risk candidate is the
 message bridge aggregate because the project already has message-session,
 user-message, payload, multicast, and envelope tests.
 
+Phase 122 outcome: `game_dll_message_bridge` adds the first tiny aggregate
+helper for user-message begin requests and active registration resend payloads.
+`tests/engine/game_dll_message_bridge.cpp` now covers fixed and variable user
+messages, active registration resend payloads, size-mismatch clearing,
+multicast destination planning, and rewrite admission without moving live
+`sv.multicast` or callback publication.
+
 ## `sv_game.c` Regions Too Coupled To Move Now
 
 These regions should remain in `sv_game.c` or nearby legacy adapters until

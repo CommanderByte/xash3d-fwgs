@@ -60,6 +60,10 @@ Current implementation notes:
   load/unload decisions, API fallback, optional interface behavior, and
   cleanup intent while keeping real library lifetime and ABI publication
   legacy-owned.
+- `game-dll-message-bridge-aggregate.md`: how Phase 122 adds the first
+  cross-callback game DLL bridge aggregate around user-message registration,
+  message-session begin/write/end, resend payloads, multicast destination
+  policy, and rewrite admission.
 - `game-dll-movement-fake-client-boundary.md`: how Phase 99 models
   movement callback admission, yaw/pitch stepping, walkmove routing,
   maxspeed clamping, and fake-client command snapshots while leaving

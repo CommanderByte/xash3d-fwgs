@@ -22,6 +22,9 @@ Current helpers:
 - `game_dll_load_policy.cpp`: target-neutral fake-symbol game DLL load/unload
   plans for required exports, entity API fallback, optional extension tables,
   physics API admission, and cleanup intent.
+- `game_dll_message_bridge.cpp`: aggregate game DLL message bridge helpers for
+  user-message begin requests and active registration resend payloads while
+  live buffers and callback publication remain legacy-owned.
 - `game_dll_string_pool_compat.cpp`: fixture-safe game DLL string-pool
   compatibility model for escape processing, duplicate handling, static and
   dynamic arena accounting, overflow rewind behavior, and make-string

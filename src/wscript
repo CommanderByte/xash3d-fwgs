@@ -97,6 +97,7 @@ def build(bld):
 			'engine_game_dll_enginefuncs': '../tests/engine/game_dll_enginefuncs.cpp',
 			'engine_game_dll_entity_parse': '../tests/engine/game_dll_entity_parse.cpp',
 			'engine_game_dll_load_policy': '../tests/engine/game_dll_load_policy.cpp',
+			'engine_game_dll_message_bridge': '../tests/engine/game_dll_message_bridge.cpp',
 			'engine_game_dll_message_session': '../tests/engine/game_dll_message_session.cpp',
 			'engine_game_dll_movement_policy': '../tests/engine/game_dll_movement_policy.cpp',
 			'engine_game_dll_output_policy': '../tests/engine/game_dll_output_policy.cpp',

@@ -3652,18 +3652,34 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 122: Game DLL Bridge Aggregate Tests
 
-- [ ] `ENG-GDLLAGG-001` Add tests for the first cross-callback game DLL bridge
+- [x] `ENG-GDLLAGG-001` Add tests for the first cross-callback game DLL bridge
   concept selected in Phase 121.
-  Evidence:
-- [ ] `ENG-GDLLAGG-002` Keep live DLL load/unload, `GiveFnptrsToDll()`, edict
+  Evidence: `tests/engine/game_dll_message_bridge.cpp` covers the first
+  message-bridge aggregate across user-message registration, registered fixed
+  and variable message begin/write/end, active registration resend payloads,
+  multicast destination planning, fixed-size mismatch clearing, and rewrite
+  admission.
+- [x] `ENG-GDLLAGG-002` Keep live DLL load/unload, `GiveFnptrsToDll()`, edict
   storage, string base, and callback table ABI legacy-owned.
-  Evidence:
-- [ ] `ENG-GDLLAGG-003` Implement a tiny aggregate helper only if it improves
+  Evidence: Phase 122 added only target-neutral helper/test files under
+  `src/engine/server`, `src/include/engine/server`, and `tests/engine`;
+  `sv_game.c`, `gEngfuncs`, `SV_LoadProgs()`, `GiveFnptrsToDll()`,
+  edict storage, and `globalvars_t::pStringBase` were not changed.
+- [x] `ENG-GDLLAGG-003` Implement a tiny aggregate helper only if it improves
   bridge ownership clarity.
-  Evidence:
-- [ ] `ENG-GDLLAGG-004` Run focused game DLL bridge tests, full validation, and
+  Evidence: `game_dll_message_bridge` builds user-message begin requests and
+  active registration resend payloads, mirroring `SV_SendUserReg()` byte shape
+  without owning live `sv.multicast` or callback publication; boundary notes
+  are in `Documentation/codex/modern/engine/game-dll-message-bridge-aggregate.md`.
+- [x] `ENG-GDLLAGG-004` Run focused game DLL bridge tests, full validation, and
   smoke timing if code changes.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_game_dll_message_bridge`
+  passed, adjacent bridge/message focused tests passed, direct
+  `build/src/test_engine_game_dll_message_bridge.exe` passed, and
+  `scripts/run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_message_bridge -StopRunningXash` passed on 2026-05-11
+  with `.\waf.bat build --alltests` at 121/121 and smoke first frame at
+  0.540 seconds.
 
 ## Phase 123: Game DLL Bridge Adapter Pilot
 

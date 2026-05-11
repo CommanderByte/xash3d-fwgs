@@ -14,6 +14,9 @@ Current helpers:
 - `game_dll_load_policy.hpp`: fake-symbol game DLL load/unload decision
   contracts for required exports, API fallback, optional interfaces, and
   cleanup planning.
+- `game_dll_message_bridge.hpp`: aggregate game DLL message bridge contracts
+  for building user-message begin requests and active registration resend
+  payloads without owning live `sv.multicast` or callback publication.
 - `game_dll_message_session.hpp`: target-neutral model for game DLL
   message begin/write/end state, payload accounting, rewrite admission, and
   destination bounds.
