@@ -23,6 +23,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "render_api.h"	// modelstate_t
 #include "ref_common.h" // decals
+#include "client_policy_adapter.h"
 #include "game_dll_client_info_policy_adapter.h"
 #include "game_dll_entity_lifecycle_adapter.h"
 #include "game_dll_message_session_adapter.h"
@@ -30,6 +31,7 @@ GNU General Public License for more details.
 #include "game_dll_payload_policy_adapter.h"
 #include "game_dll_resource_policy_adapter.h"
 #include "game_dll_user_message_registry_adapter.h"
+#include "server_event_playback_policy_adapter.h"
 #include "server_group_filter_adapter.h"
 #include "server_map_validation_adapter.h"
 #include "server_multicast_policy_adapter.h"
@@ -4234,12 +4236,19 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 	event_state_t	*es;
 	event_args_t	args;
 	event_info_t	*ei = NULL;
-	int		j, slot, bestslot;
+	sv_event_playback_flag_plan_t flagPlan;
+	sv_event_recipient_input_t recipientInput;
+	sv_event_recipient_decision_t recipientDecision;
+	sv_event_queue_slot_t queueSlots[MAX_EVENT_QUEUE];
+	sv_event_queue_slot_plan_t queuePlan;
+	int		j, slot;
 	int		invokerIndex;
+	qboolean	invokerValid;
+	qboolean	clientInvoker;
 	byte		*mask = NULL;
 	vec3_t		pvspoint;
 
-	if( FBitSet( flags, FEV_CLIENT ))
+	if( !SV_EventPlayback_AllowsServer( flags ))
 		return;	// someone stupid joke
 
 	// first check event for out of bounds
@@ -4280,7 +4289,9 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 
 	VectorClear( pvspoint );
 
-	if( SV_IsValidEdict( pInvoker ))
+	invokerValid = SV_IsValidEdict( pInvoker );
+
+	if( invokerValid )
 	{
 		// add the view_ofs to avoid problems with crossed contents line
 		VectorAdd( pInvoker->v.origin, pInvoker->v.view_ofs, pvspoint );
@@ -4311,28 +4322,25 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 	}
 
 	// check event for some user errors
+	clientInvoker = false;
 	if( FBitSet( flags, FEV_NOTHOST|FEV_HOSTONLY ))
 	{
-		if( !SV_ClientFromEdict( pInvoker, true ))
-		{
-			const char *ev_name = sv.event_precache[eventindex];
-
-			if( FBitSet( flags, FEV_NOTHOST ))
-			{
-				Con_DPrintf( S_WARN "%s: specified FEV_NOTHOST when invoker not a client\n", ev_name );
-				ClearBits( flags, FEV_NOTHOST );
-			}
-
-			if( FBitSet( flags, FEV_HOSTONLY ))
-			{
-				Con_DPrintf( S_WARN "%s: specified FEV_HOSTONLY when invoker not a client\n", ev_name );
-				ClearBits( flags, FEV_HOSTONLY );
-			}
-		}
+		clientInvoker = SV_ClientFromEdict( pInvoker, true ) != NULL;
 	}
 
-	SetBits( flags, FEV_SERVER );		// it's a server event!
-	if( delay < 0.0f ) delay = 0.0f;	// fixup negative delays
+	flagPlan = SV_EventPlayback_BuildFlagPlan( flags, delay, clientInvoker );
+	if( flagPlan.cleared_not_host )
+	{
+		Con_DPrintf( S_WARN "%s: specified FEV_NOTHOST when invoker not a client\n", sv.event_precache[eventindex] );
+	}
+
+	if( flagPlan.cleared_host_only )
+	{
+		Con_DPrintf( S_WARN "%s: specified FEV_HOSTONLY when invoker not a client\n", sv.event_precache[eventindex] );
+	}
+
+	flags = flagPlan.flags;
+	delay = flagPlan.delay;
 
 	// setup pvs cluster for invoker
 	if( !FBitSet( flags, FEV_GLOBAL ))
@@ -4344,20 +4352,30 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 	// process all the clients
 	for( slot = 0, cl = svs.clients; slot < svs.maxclients; slot++, cl++ )
 	{
-		if( cl->state != cs_spawned || !cl->edict || FBitSet( cl->flags, FCL_FAKECLIENT ))
-			continue;
+		memset( &recipientInput, 0, sizeof( recipientInput ));
+		recipientInput.spawned = cl->state == cs_spawned;
+		recipientInput.has_edict = cl->edict != NULL;
+		recipientInput.fake_client = SV_ClientPolicy_IsFakeClient( cl->flags );
+		recipientInput.invoker_valid = invokerValid;
+		recipientInput.group_passes = true;
+		recipientInput.visible = true;
+		recipientInput.not_host = FBitSet( flags, FEV_NOTHOST );
+		recipientInput.host_only = FBitSet( flags, FEV_HOSTONLY );
+		recipientInput.local_weapons = SV_ClientPolicy_UsesLocalWeapons( cl->flags );
+		recipientInput.current_client = cl == sv.current_client;
+		recipientInput.invoker_client = cl->edict == pInvoker;
 
-		if( SV_IsValidEdict( pInvoker ) &&
-			!SV_GroupFilter_EntityPairPasses(
-				svs.groupop,
-				cl->edict->v.groupinfo,
-				pInvoker->v.groupinfo ))
-			continue;
-
-		if( SV_IsValidEdict( pInvoker ))
+		if( recipientInput.spawned && recipientInput.has_edict &&
+			!recipientInput.fake_client && invokerValid )
 		{
-			if( !SV_CheckClientVisiblity( cl, mask ))
-				continue;
+			recipientInput.group_passes =
+				SV_GroupFilter_EntityPairPasses(
+					svs.groupop,
+					cl->edict->v.groupinfo,
+					pInvoker->v.groupinfo );
+
+			if( recipientInput.group_passes )
+				recipientInput.visible = SV_CheckClientVisiblity( cl, mask );
 		}
 
 		// a1ba: GoldSrc never cleans up host_client pointer (similar to sv.current_client)
@@ -4369,16 +4387,15 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 		// invoker edict pointer but to preserve behaviour check for them both
 		//
 		// if it breaks some mods, probably sv.current_client semantics must be reworked to match GoldSrc
-		if( FBitSet( flags, FEV_NOTHOST ) && ( cl == sv.current_client || cl->edict == pInvoker ) && FBitSet( cl->flags, FCL_LOCAL_WEAPONS ))
-			continue;	// will be played on client side
-
-		if( FBitSet( flags, FEV_HOSTONLY ) && cl->edict != pInvoker )
-			continue;	// sending only to invoker
+		recipientDecision =
+			SV_EventPlayback_BuildRecipientDecision( &recipientInput );
+		if( !recipientDecision.deliver )
+			continue;
 
 		// all checks passed, send the event
 
 		// reliable event
-		if( FBitSet( flags, FEV_RELIABLE ))
+		if( SV_EventPlayback_UsesReliableDelivery( flags ))
 		{
 			// skipping queue, write direct into reliable datagram
 			SV_PlaybackReliableEvent( &cl->netchan.message, eventindex, delay, &args );
@@ -4387,41 +4404,24 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 
 		// unreliable event (stores in queue)
 		es = &cl->events;
-		bestslot = -1;
-
-		if( FBitSet( flags, FEV_UPDATE ))
+		for( j = 0; j < MAX_EVENT_QUEUE; j++ )
 		{
-			for( j = 0; j < MAX_EVENT_QUEUE; j++ )
-			{
-				ei = &es->ei[j];
-
-				if( ei->index == eventindex && invokerIndex != -1 && invokerIndex == ei->entity_index )
-				{
-					bestslot = j;
-					break;
-				}
-			}
+			queueSlots[j].event_index = es->ei[j].index;
+			queueSlots[j].entity_index = es->ei[j].entity_index;
 		}
 
-		if( bestslot == -1 )
-		{
-			for( j = 0; j < MAX_EVENT_QUEUE; j++ )
-			{
-				ei = &es->ei[j];
-
-				if( ei->index == 0 )
-				{
-					// found an empty slot
-					bestslot = j;
-					break;
-				}
-			}
-		}
+		queuePlan = SV_EventPlayback_SelectQueueSlot(
+			queueSlots,
+			MAX_EVENT_QUEUE,
+			eventindex,
+			invokerIndex,
+			FBitSet( flags, FEV_UPDATE ));
 
 		// no slot found for this player, oh well
-		if( bestslot == -1 ) continue;
+		if( !queuePlan.has_slot ) continue;
 
 		// add event to queue
+		ei = &es->ei[queuePlan.slot];
 		ei->index = eventindex;
 		ei->fire_time = delay;
 		ei->entity_index = invokerIndex;

@@ -77,29 +77,35 @@ enablers that make future server and engine migrations less adapter-heavy.
 
 ## Phase 110: Server Event Playback Boundary Audit
 
-- [ ] Audit `SV_PlaybackEventFull()` ownership: event flags, invoker handling,
+- [x] Audit `SV_PlaybackEventFull()` ownership: event flags, invoker handling,
   group filtering, PVS/PHS masks, recipient iteration, client flags, reliability,
   and payload fields.
-  Evidence:
-- [ ] Decide which inputs can be snapshots and which must stay live legacy state.
-  Evidence:
-- [ ] Define the first event playback helper boundary after Phases 107 and 109.
-  Evidence:
-- [ ] No runtime route-through is required in this audit phase.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/server-event-playback-boundary.md`.
+- [x] Decide which inputs can be snapshots and which must stay live legacy state.
+  Evidence: `Documentation/codex/modern/engine/server-event-playback-boundary.md`.
+- [x] Define the first event playback helper boundary after Phases 107 and 109.
+  Evidence: `Documentation/codex/modern/engine/server-event-playback-boundary.md`.
+- [x] No runtime route-through is required in this audit phase.
+  Evidence: documentation-only phase; `git diff --check` passed.
 
 ## Phase 111: Server Event Playback Policy Helper
 
-- [ ] Add target-neutral event admission and recipient decision helpers.
-  Evidence:
-- [ ] Add tests for `FEV_NOTHOST`, host/local-weapons suppression, fake clients,
-  HLTV/spectator filtering, reliability, and group filtering.
-  Evidence:
-- [ ] Route decisions while keeping PVS/PHS mask generation, message writes, and
+- [x] Add target-neutral event admission and recipient decision helpers.
+  Evidence: `src/include/engine/server/server_event_playback_policy.hpp`,
+  `src/engine/server/server_event_playback_policy.cpp`.
+- [x] Add tests for `FEV_NOTHOST`, host/local-weapons suppression, fake clients,
+  no direct HLTV/spectator filtering, reliability, and group filtering.
+  Evidence: `tests/engine/server_event_playback_policy.cpp`.
+- [x] Route decisions while keeping PVS/PHS mask generation, message writes, and
   recipient iteration legacy-owned.
-  Evidence:
-- [ ] Run focused tests, full tests, and `+wait +wait` smoke timing.
-  Evidence:
+  Evidence: `engine/server/sv_game.c`, `engine/server/sv_frame.c`,
+  `Documentation/codex/modern/engine/server-event-playback-policy.md`.
+- [x] Run focused tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_event_playback_policy -StopRunningXash` passed; focused
+  target passed, `xash` built, full tests passed 116/116, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.511 seconds and stopped with reason `command`.
 
 ## Phase 112: Read-Only Cvar Snapshot Pilot
 

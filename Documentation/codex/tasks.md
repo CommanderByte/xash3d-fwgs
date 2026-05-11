@@ -3367,32 +3367,40 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 110: Server Event Playback Boundary Audit
 
-- [ ] `ENG-SVEVENT-001` Audit `SV_PlaybackEventFull()` ownership: event flags,
+- [x] `ENG-SVEVENT-001` Audit `SV_PlaybackEventFull()` ownership: event flags,
   invoker handling, group filtering, PVS/PHS masks, recipient iteration, client
   flags, reliability, and payload fields.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
-- [ ] `ENG-SVEVENT-002` Decide which inputs can be adapter-provided snapshots
+  Evidence: `Documentation/codex/modern/engine/server-event-playback-boundary.md`.
+- [x] `ENG-SVEVENT-002` Decide which inputs can be adapter-provided snapshots
   and which must remain live legacy state.
-  Evidence:
-- [ ] `ENG-SVEVENT-003` Define the first event playback helper boundary after
+  Evidence: `Documentation/codex/modern/engine/server-event-playback-boundary.md`.
+- [x] `ENG-SVEVENT-003` Define the first event playback helper boundary after
   Phases 107 and 109.
-  Evidence:
+  Evidence: start Phase 111 with target-neutral event admission, recipient
+  decisions, and queue-slot planning while PVS/PHS masks, event queues, and
+  `MSG_*` writes stay legacy-owned; `git diff --check` passed.
 
 ## Phase 111: Server Event Playback Policy Helper
 
-- [ ] `ENG-SVEVENTPOL-001` Add target-neutral event admission and recipient
+- [x] `ENG-SVEVENTPOL-001` Add target-neutral event admission and recipient
   decision helpers.
-  Evidence:
-- [ ] `ENG-SVEVENTPOL-002` Add tests for `FEV_NOTHOST`, host/local-weapons
-  suppression, fake clients, HLTV/spectator filtering, reliability, and group
-  filtering.
-  Evidence:
-- [ ] `ENG-SVEVENTPOL-003` Route decisions while keeping PVS/PHS mask
+  Evidence: `src/include/engine/server/server_event_playback_policy.hpp`,
+  `src/engine/server/server_event_playback_policy.cpp`.
+- [x] `ENG-SVEVENTPOL-002` Add tests for `FEV_NOTHOST`, host/local-weapons
+  suppression, fake clients, no direct HLTV/spectator filtering, reliability,
+  and group filtering.
+  Evidence: `tests/engine/server_event_playback_policy.cpp`.
+- [x] `ENG-SVEVENTPOL-003` Route decisions while keeping PVS/PHS mask
   generation, message writes, and recipient iteration legacy-owned.
-  Evidence:
-- [ ] `ENG-SVEVENTPOL-004` Run focused tests, full tests, and `+wait +wait`
+  Evidence: `engine/server/sv_game.c`, `engine/server/sv_frame.c`,
+  `Documentation/codex/modern/engine/server-event-playback-policy.md`.
+- [x] `ENG-SVEVENTPOL-004` Run focused tests, full tests, and `+wait +wait`
   runtime smoke timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_event_playback_policy -StopRunningXash` passed; focused
+  target passed, `.\waf.bat build --targets=xash` passed, full tests passed
+  116/116; `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`
+  reached first frame in 0.511 seconds and stopped with reason `command`.
 
 ## Phase 112: Read-Only Cvar Snapshot Pilot
 
@@ -3604,3 +3612,5 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-058 | Treat C++ namespace/facade wrappers as migration scaffolding, not the final architecture; after behavior is protected by tests, regroup helpers into named domain concepts with clearer ownership and thinner adapters. | `modern/cpp-ownership-target.md`, `modern/engine/post-106-migration-audit.md` |
 | 2026-05-11 | DEC-059 | Centralize `SV_MapIsValid()` flag interpretation in a modern map-validation policy while leaving BSP probing, entity parsing, landmark scanning, console output, save state, and changelevel execution legacy-owned. | `modern/engine/server-map-validation-policy.md`, `src/include/engine/server/server_map_validation.hpp` |
 | 2026-05-11 | DEC-060 | Treat private `FCL_*` checks as client capability predicates by owner, starting with source-query fake-client visibility, and avoid broad replacement of the `server.h` macros. | `modern/engine/server-client-flag-policy.md`, `src/include/engine/server/client_policy.hpp` |
+| 2026-05-11 | DEC-061 | Treat server event playback as a staged policy boundary: first isolate event admission, recipient decisions, and queue-slot planning while keeping game DLL ABI, PVS/PHS masks, event queues, and message serialization legacy-owned. | `modern/engine/server-event-playback-boundary.md`, `todo/engine_next_migration_todo.md` |
+| 2026-05-11 | DEC-062 | Route server event playback decisions through `server_event_playback_policy` while keeping event argument mutation, visibility masks, queue mutation, and wire serialization in legacy server code. | `modern/engine/server-event-playback-policy.md`, `engine/server/sv_game.c`, `engine/server/sv_frame.c` |

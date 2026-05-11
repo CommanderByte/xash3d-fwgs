@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "const.h"
 #include "net_encode.h"
+#include "server_event_playback_policy_adapter.h"
 #include "server_frame_datagram_adapter.h"
 #include "server_visibility_constraints_adapter.h"
 
@@ -393,8 +394,7 @@ static void SV_EmitEvents( sv_client_t *cl, client_frame_t *to, sizebuf_t *msg )
 	// nothing to send
 	if( !ev_count ) return; // nothing to send
 
-	if ( ev_count >= MAX_EVENT_QUEUE / 2 )
-		ev_count = ( MAX_EVENT_QUEUE / 2 ) - 1;
+	ev_count = SV_EventPlayback_ClampEmitCount( ev_count, MAX_EVENT_QUEUE );
 
 	for( i = 0; i < MAX_EVENT_QUEUE; i++ )
 	{

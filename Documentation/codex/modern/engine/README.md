@@ -17,6 +17,12 @@ Current implementation notes:
 - `server-client-flag-policy.md`: how Phase 109 groups private `FCL_*` flags by
   owner and starts routing fake-client/query-visible predicates without broad
   macro replacement.
+- `server-event-playback-boundary.md`: how Phase 110 splits game DLL event
+  playback into compatibility-owned live state and target-neutral policy
+  candidates for event admission, recipient decisions, and queue-slot planning.
+- `server-event-playback-policy.md`: how Phase 111 routes event playback
+  admission, flag normalization, recipient decisions, queue-slot planning, and
+  queued emit-count clamping through target-neutral helpers.
 - `command-buffer-migration-guide.md`: how raw `Cbuf_*` buffer mechanics route
   through the private modern command-buffer primitive while dispatch policy
   stays in `cmd.c`.
