@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #include "server.h"
 #include "net_encode.h"
 #include "platform/platform.h"
+#include "server_cvar_snapshot_adapter.h"
 #include "user_agent_policy_adapter.h"
 
 // server cvars
@@ -793,11 +794,12 @@ qboolean SV_ProcessUserAgent( netadr_t from, const char *useragent )
 	int result;
 
 	memset( &policy, 0, sizeof( policy ));
-	policy.allow_no_input_devices = sv_allow_noinputdevices.value != 0.0f;
-	policy.allow_touch = sv_allow_touch.value != 0.0f;
-	policy.allow_mouse = sv_allow_mouse.value != 0.0f;
-	policy.allow_joystick = sv_allow_joystick.value != 0.0f;
-	policy.allow_vr = sv_allow_vr.value != 0.0f;
+	policy.allow_no_input_devices =
+		SV_ReadOnlyCvar_BooleanValue( &sv_allow_noinputdevices );
+	policy.allow_touch = SV_ReadOnlyCvar_BooleanValue( &sv_allow_touch );
+	policy.allow_mouse = SV_ReadOnlyCvar_BooleanValue( &sv_allow_mouse );
+	policy.allow_joystick = SV_ReadOnlyCvar_BooleanValue( &sv_allow_joystick );
+	policy.allow_vr = SV_ReadOnlyCvar_BooleanValue( &sv_allow_vr );
 	policy.banned_id = SV_UserAgentPolicy_UuidIsValid( id ) && SV_CheckID( id );
 
 	result = SV_UserAgentPolicy_Validate( id, input_devices_str, &policy );

@@ -152,6 +152,9 @@ Current implementation notes:
   through `src/engine/info_string.*` while keeping C callers stable.
 - `network-buffer-migration-guide.md`: how the private modern network bit
   primitive should grow behind the legacy `MSG_*` wire-format surface.
+- `read-only-cvar-snapshot.md`: how Phase 112 introduces a plain read-only cvar
+  value snapshot for modern policy helpers without moving cvar registry,
+  mutation, callback, or archive ownership.
 - `netapi-info-migration.md`: how Phase 56 routes short and long server
   NetAPI info-string construction through modern builders while request
   parsing and packet sends stay legacy-owned.

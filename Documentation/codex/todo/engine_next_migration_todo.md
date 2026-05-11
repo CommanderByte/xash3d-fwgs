@@ -109,18 +109,24 @@ enablers that make future server and engine migrations less adapter-heavy.
 
 ## Phase 112: Read-Only Cvar Snapshot Pilot
 
-- [ ] Inventory server helpers that only need read-only cvar values.
-  Evidence:
-- [ ] Add a small target-neutral value snapshot type for numeric, boolean, and
+- [x] Inventory server helpers that only need read-only cvar values.
+  Evidence: `Documentation/codex/modern/engine/read-only-cvar-snapshot.md`.
+- [x] Add a small target-neutral value snapshot type for numeric, boolean, and
   string cvar reads without owning the cvar registry.
-  Evidence:
-- [ ] Route one low-risk cvar-heavy helper through adapter-provided snapshots.
-  Evidence:
-- [ ] Keep registration, mutation, callbacks, command bindings, and archived
+  Evidence: `src/include/engine/cvar_snapshot.hpp`,
+  `src/engine/cvar_snapshot.cpp`, `tests/engine/cvar_snapshot.cpp`.
+- [x] Route one low-risk cvar-heavy helper through adapter-provided snapshots.
+  Evidence: `engine/server/sv_main.c` routes `SV_ProcessUserAgent()` input
+  device cvar reads through `engine/server/server_cvar_snapshot_adapter.*`.
+- [x] Keep registration, mutation, callbacks, command bindings, and archived
   persistence legacy-owned.
-  Evidence:
-- [ ] Run focused tests, full tests, and `+wait +wait` smoke timing.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/read-only-cvar-snapshot.md`.
+- [x] Run focused tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_cvar_snapshot -StopRunningXash` passed; focused target passed,
+  `xash` built, full tests passed 117/117, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.516 seconds and stopped with reason `command`.
 
 ## Later Candidates
 

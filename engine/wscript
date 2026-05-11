@@ -197,6 +197,7 @@ def build(bld):
 		'server/client_policy_adapter.cpp',
 		'server/connectionless_classifier_adapter.cpp',
 		'server/connection_response_adapter.cpp',
+		'server/server_cvar_snapshot_adapter.cpp',
 		'server/server_challenge_policy_adapter.cpp',
 		'server/game_dll_client_info_policy_adapter.cpp',
 		'server/game_dll_entity_lifecycle_adapter.cpp',

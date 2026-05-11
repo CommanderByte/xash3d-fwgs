@@ -3404,19 +3404,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 112: Read-Only Cvar Snapshot Pilot
 
-- [ ] `ENG-CVARSNAP-001` Inventory server helpers that only need read-only cvar
+- [x] `ENG-CVARSNAP-001` Inventory server helpers that only need read-only cvar
   values.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
-- [ ] `ENG-CVARSNAP-002` Add a small target-neutral value snapshot for numeric,
+  Evidence: `Documentation/codex/modern/engine/read-only-cvar-snapshot.md`.
+- [x] `ENG-CVARSNAP-002` Add a small target-neutral value snapshot for numeric,
   boolean, and string cvar reads without owning the cvar registry.
-  Evidence:
-- [ ] `ENG-CVARSNAP-003` Route one low-risk cvar-heavy helper through
+  Evidence: `src/include/engine/cvar_snapshot.hpp`,
+  `src/engine/cvar_snapshot.cpp`, `tests/engine/cvar_snapshot.cpp`.
+- [x] `ENG-CVARSNAP-003` Route one low-risk cvar-heavy helper through
   adapter-provided snapshots while keeping registration, mutation, callbacks,
   command bindings, and archive persistence legacy-owned.
-  Evidence:
-- [ ] `ENG-CVARSNAP-004` Run focused tests, full tests, and `+wait +wait`
+  Evidence: `engine/server/sv_main.c` routes `SV_ProcessUserAgent()` input
+  device cvar reads through `engine/server/server_cvar_snapshot_adapter.*`;
+  `Documentation/codex/modern/engine/read-only-cvar-snapshot.md`.
+- [x] `ENG-CVARSNAP-004` Run focused tests, full tests, and `+wait +wait`
   runtime smoke timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_cvar_snapshot -StopRunningXash` passed; focused target passed,
+  `.\waf.bat build --targets=xash` passed, full tests passed 117/117;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.516 seconds and stopped with reason `command`.
 
 ## Phase 113: Model And Visibility Service Boundary Audit
 
@@ -3614,3 +3621,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-060 | Treat private `FCL_*` checks as client capability predicates by owner, starting with source-query fake-client visibility, and avoid broad replacement of the `server.h` macros. | `modern/engine/server-client-flag-policy.md`, `src/include/engine/server/client_policy.hpp` |
 | 2026-05-11 | DEC-061 | Treat server event playback as a staged policy boundary: first isolate event admission, recipient decisions, and queue-slot planning while keeping game DLL ABI, PVS/PHS masks, event queues, and message serialization legacy-owned. | `modern/engine/server-event-playback-boundary.md`, `todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-062 | Route server event playback decisions through `server_event_playback_policy` while keeping event argument mutation, visibility masks, queue mutation, and wire serialization in legacy server code. | `modern/engine/server-event-playback-policy.md`, `engine/server/sv_game.c`, `engine/server/sv_frame.c` |
+| 2026-05-11 | DEC-063 | Introduce read-only cvar snapshots as plain values for modern policy helpers, starting with `SV_ProcessUserAgent()` input-device booleans, while keeping cvar registration, mutation, callbacks, command bindings, and archive persistence legacy-owned. | `modern/engine/read-only-cvar-snapshot.md`, `src/include/engine/cvar_snapshot.hpp`, `engine/server/sv_main.c` |
