@@ -1,4 +1,4 @@
-#include "engine/server/client_command_dispatch.hpp"
+#include "engine/server/client/client_command_dispatch.hpp"
 
 #include <cstring>
 

@@ -7,8 +7,8 @@ Phase 85 extracts the small, target-neutral userinfo and rate decisions from
 
 The modern helper lives in:
 
-- `src/include/engine/server/client_policy.hpp`
-- `src/engine/server/client_policy.cpp`
+- `src/include/engine/server/client/client_policy.hpp`
+- `src/engine/server/client/client_policy.cpp`
 
 It intentionally accepts plain values instead of `sv_client_t`, cvars,
 `server.h`, or info-string buffers.

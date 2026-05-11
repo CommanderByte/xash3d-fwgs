@@ -75,8 +75,8 @@ and read-only cvar snapshots.
 - [x] Capture current `SV_ProcessUserAgent()` behavior.
   Evidence: `Documentation/codex/legacy/engine/user-agent-policy-baseline.md`.
 - [x] Implement target-neutral user-agent validation inputs and result codes.
-  Evidence: `src/include/engine/server/user_agent_policy.hpp`,
-  `src/engine/server/user_agent_policy.cpp`.
+  Evidence: `src/include/engine/server/client/user_agent_policy.hpp`,
+  `src/engine/server/client/user_agent_policy.cpp`.
 - [x] Add tests for valid/invalid UUIDs, banned IDs, missing input-device
   lists, and touch/mouse/joystick/VR disallow cases.
   Evidence: `tests/engine/user_agent_policy.cpp`.
@@ -123,8 +123,8 @@ and read-only cvar snapshots.
   Evidence: `Documentation/codex/legacy/engine/connectionless-packet-baseline.md`.
 - [x] Implement a target-neutral classifier for full-line and first-token
   command decisions.
-  Evidence: `src/include/engine/server/connectionless_classifier.hpp`,
-  `src/engine/server/connectionless_classifier.cpp`.
+  Evidence: `src/include/engine/server/client/connectionless_classifier.hpp`,
+  `src/engine/server/client/connectionless_classifier.cpp`.
 - [x] Add tests for source-query exact match, loose `U`/`V` first-character
   routing, ping/ack aliases, master-server commands, uninitialized `rcon`, and
   game-DLL fallback.
@@ -199,8 +199,8 @@ and read-only cvar snapshots.
   Evidence: `Documentation/codex/legacy/engine/client-command-dispatch-baseline.md`.
 - [x] Implement a target-neutral command metadata table and first routing
   decision helper.
-  Evidence: `src/include/engine/server/client_command_dispatch.hpp`,
-  `src/engine/server/client_command_dispatch.cpp`.
+  Evidence: `src/include/engine/server/client/client_command_dispatch.hpp`,
+  `src/engine/server/client/client_command_dispatch.cpp`.
 - [x] Add tests for exact/case-sensitive lookup, built-ins before active-server
   gating, enttools gates, fullupdate throttling, and game DLL fallback.
   Evidence: `tests/engine/client_command_dispatch.cpp`.

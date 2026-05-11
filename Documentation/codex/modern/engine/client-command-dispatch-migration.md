@@ -2,8 +2,8 @@
 
 Phase 60 adds target-neutral helpers for server client command lookup:
 
-- `src/include/engine/server/client_command_dispatch.hpp`
-- `src/engine/server/client_command_dispatch.cpp`
+- `src/include/engine/server/client/client_command_dispatch.hpp`
+- `src/engine/server/client/client_command_dispatch.cpp`
 
 The helper owns the built-in and enttools command name tables, exact
 case-sensitive lookup, and the first routing decision. It does not tokenize raw

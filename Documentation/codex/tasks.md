@@ -1881,8 +1881,8 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence: `Documentation/codex/legacy/engine/user-agent-policy-baseline.md`.
 - [x] `ENG-SVUA-002` Implement target-neutral user-agent validation inputs and
   result codes under `src/engine/server`.
-  Evidence: `src/include/engine/server/user_agent_policy.hpp`,
-  `src/engine/server/user_agent_policy.cpp`,
+  Evidence: `src/include/engine/server/client/user_agent_policy.hpp`,
+  `src/engine/server/client/user_agent_policy.cpp`,
   `Documentation/codex/modern/engine/user-agent-policy-migration.md`.
 - [x] `ENG-SVUA-003` Add tests for valid/invalid UUIDs, banned IDs, missing
   input-device lists, and touch/mouse/joystick/VR disallow cases.
@@ -1936,8 +1936,8 @@ commit, test command, document link, or manual verification note that proves it.
   Evidence: `Documentation/codex/legacy/engine/connectionless-packet-baseline.md`.
 - [x] `ENG-SVCONNLESS-002` Implement a target-neutral classifier for the
   command string and first-token cases under `src/engine/server`.
-  Evidence: `src/include/engine/server/connectionless_classifier.hpp`,
-  `src/engine/server/connectionless_classifier.cpp`.
+  Evidence: `src/include/engine/server/client/connectionless_classifier.hpp`,
+  `src/engine/server/client/connectionless_classifier.cpp`.
 - [x] `ENG-SVCONNLESS-003` Add tests for exact `A2S_GOLDSRC_INFO`, single-byte
   source-query requests, command aliases, and unknown commands.
   Evidence: `tests/engine/connectionless_classifier.cpp`.
@@ -2716,8 +2716,8 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-CLIENTPOL-002` Implement target-neutral helpers for update-info
   throttling, client rate validation, and compatible userinfo-derived flags
   that can be fed by legacy snapshots.
-  Evidence: `src/include/engine/server/client_policy.hpp` and
-  `src/engine/server/client_policy.cpp`.
+  Evidence: `src/include/engine/server/client/client_policy.hpp` and
+  `src/engine/server/client/client_policy.cpp`.
 - [x] `ENG-CLIENTPOL-003` Add tests for update intervals, clamped rates,
   missing or malformed userinfo values, and prediction/local-weapons related
   decisions.
@@ -3164,8 +3164,8 @@ Phase 89 covers user-message registry policy.
   `Documentation/codex/todo/server_constants_todo.md`.
 - [x] `ENG-SVCHAL-002` Extract challenge time-window calculation as a pure
   helper.
-  Evidence: `src/include/engine/server/server_challenge_policy.hpp`,
-  `src/engine/server/server_challenge_policy.cpp`,
+  Evidence: `src/include/engine/server/client/server_challenge_policy.hpp`,
+  `src/engine/server/client/server_challenge_policy.cpp`,
   `engine/server/server_challenge_policy_adapter.h`,
   `engine/server/server_challenge_policy_adapter.cpp`,
   `engine/server/sv_client.c`.
@@ -3352,8 +3352,8 @@ Phase 89 covers user-message registry policy.
   `Documentation/codex/modern/engine/server-client-flag-policy.md`.
 - [x] `ENG-SVCLIENTFLAGS-002` Add typed client flag snapshots and predicates for
   one owner at a time, starting with fake-client and HLTV behavior.
-  Evidence: `src/include/engine/server/client_policy.hpp`,
-  `src/engine/server/client_policy.cpp`, `tests/engine/client_policy.cpp`.
+  Evidence: `src/include/engine/server/client/client_policy.hpp`,
+  `src/engine/server/client/client_policy.cpp`, `tests/engine/client_policy.cpp`.
 - [x] `ENG-SVCLIENTFLAGS-003` Route one low-risk owner through the predicates
   without replacing the broad `server.h` macros.
   Evidence: `engine/server/client_policy_adapter.h`,
@@ -3747,8 +3747,8 @@ Phase 89 covers user-message registry policy.
   invalid input, first-free-slot selection, and master-update reasons.
 - [x] `ENG-CLIENTSESS-002` Implement a target-neutral helper using plain slot
   snapshots and result objects.
-  Evidence: `src/include/engine/server/client_session_slots.hpp` and
-  `src/engine/server/client_session_slots.cpp`.
+  Evidence: `src/include/engine/server/client/client_session_slots.hpp` and
+  `src/engine/server/client/client_session_slots.cpp`.
 - [x] `ENG-CLIENTSESS-003` Keep netchan sends, client slot mutation, cvar
   reads, and game DLL callbacks legacy-owned.
   Evidence: `engine/server/client_session_slots_adapter.*` routes only
@@ -3777,8 +3777,8 @@ Phase 89 covers user-message registry policy.
   safe truncation.
 - [x] `ENG-CLIENTSPLIT-003` Implement or defer the seam based on whether live
   netchan or edict mutation would dominate the helper.
-  Evidence: `src/include/engine/server/remote_admin_command.hpp`,
-  `src/engine/server/remote_admin_command.cpp`, and
+  Evidence: `src/include/engine/server/client/remote_admin_command.hpp`,
+  `src/engine/server/client/remote_admin_command.cpp`, and
   `engine/server/remote_admin_command_adapter.*` route only rcon auth/action
   and command reconstruction; transfer, voice, cvar-query callback dispatch,
   redirects, command execution, logging, and packet sends remain legacy-owned
@@ -3801,8 +3801,8 @@ Phase 89 covers user-message registry policy.
   `Documentation/codex/modern/engine/server-runtime-configuration-boundary.md`.
 - [x] `ENG-RUNTIME-002` Identify read-only snapshot seams that reduce adapter
   churn without moving cvar ownership.
-  Evidence: `src/include/engine/server/server_timeout_policy.hpp` and
-  `src/engine/server/server_timeout_policy.cpp` route only client timeout and
+  Evidence: `src/include/engine/server/client/server_timeout_policy.hpp` and
+  `src/engine/server/client/server_timeout_policy.cpp` route only client timeout and
   pause-release decisions from plain request values.
 - [x] `ENG-RUNTIME-003` Add tests for any selected runtime policy helper.
   Evidence: `tests/engine/server_timeout_policy.cpp`; focused test
@@ -4087,20 +4087,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 140: Client Session Domain Consolidation Pilot
 
-- [ ] `ENG-CLIENT-DOMAIN-001` Group existing client helpers around admission,
+- [x] `ENG-CLIENT-DOMAIN-001` Group existing client helpers around admission,
   session slots, userinfo, commands, transfer, voice, cvar query, and remote
   admin.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-CLIENT-DOMAIN-002` Identify which helpers belong to client/session
+  Evidence: `src/engine/server/client/`,
+  `src/include/engine/server/client/`, and flat forwarding headers under
+  `src/include/engine/server/`.
+- [x] `ENG-CLIENT-DOMAIN-002` Identify which helpers belong to client/session
   and which should stay with resource or messaging domains.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-CLIENT-DOMAIN-003` Add aggregate tests for admission/session/
+  Evidence: `Documentation/codex/modern/engine/client-session-domain-pilot.md`
+  leaves transfer helpers in `resources/`, voice/userinfo packet builders in
+  `messaging/`, PMove bridge policy flat for now, and query/info builders
+  outside the client-session domain.
+- [x] `ENG-CLIENT-DOMAIN-003` Add aggregate tests for admission/session/
   userinfo facts if they reduce repeated adapter code.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-CLIENT-DOMAIN-004` Keep connect/drop/spawn mutation, netchan,
+  Evidence: `tests/engine/client_session_domain.cpp`.
+- [x] `ENG-CLIENT-DOMAIN-004` Keep connect/drop/spawn mutation, netchan,
   command execution, resource-list mutation, voice packet reads, and cvar
   query callbacks legacy-owned.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: only target-neutral modern files and private include paths moved;
+  legacy adapters and live `sv_client.c`/`sv_main.c` ownership were unchanged.
+  Validation: `test_engine_client_session_domain` passed; focused moved-client
+  targets passed 9/9; `.\waf.bat build --alltests` passed 131/131; runtime
+  smoke built `xash`, refreshed `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`, reached first frame
+  in 0.494 seconds, and stopped with reason `command` at May 11 2026
+  14:27:27 local time.
 
 ## Phase 141: Save Restore Value Objects
 
@@ -4356,7 +4368,7 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-057 | After the Phase 101-106 server constants lane, prefer small enabler policies before another broad server sweep: group filtering, map validation flags, client flag predicates, event playback, and read-only cvar snapshots. | `modern/engine/post-106-migration-audit.md`, `todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-058 | Treat C++ namespace/facade wrappers as migration scaffolding, not the final architecture; after behavior is protected by tests, regroup helpers into named domain concepts with clearer ownership and thinner adapters. | `modern/cpp-ownership-target.md`, `modern/engine/post-106-migration-audit.md` |
 | 2026-05-11 | DEC-059 | Centralize `SV_MapIsValid()` flag interpretation in a modern map-validation policy while leaving BSP probing, entity parsing, landmark scanning, console output, save state, and changelevel execution legacy-owned. | `modern/engine/server-map-validation-policy.md`, `src/include/engine/server/server_map_validation.hpp` |
-| 2026-05-11 | DEC-060 | Treat private `FCL_*` checks as client capability predicates by owner, starting with source-query fake-client visibility, and avoid broad replacement of the `server.h` macros. | `modern/engine/server-client-flag-policy.md`, `src/include/engine/server/client_policy.hpp` |
+| 2026-05-11 | DEC-060 | Treat private `FCL_*` checks as client capability predicates by owner, starting with source-query fake-client visibility, and avoid broad replacement of the `server.h` macros. | `modern/engine/server-client-flag-policy.md`, `src/include/engine/server/client/client_policy.hpp` |
 | 2026-05-11 | DEC-061 | Treat server event playback as a staged policy boundary: first isolate event admission, recipient decisions, and queue-slot planning while keeping game DLL ABI, PVS/PHS masks, event queues, and message serialization legacy-owned. | `modern/engine/server-event-playback-boundary.md`, `todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-062 | Route server event playback decisions through `server_event_playback_policy` while keeping event argument mutation, visibility masks, queue mutation, and wire serialization in legacy server code. | `modern/engine/server-event-playback-policy.md`, `engine/server/sv_game.c`, `engine/server/sv_frame.c` |
 | 2026-05-11 | DEC-063 | Introduce read-only cvar snapshots as plain values for modern policy helpers, starting with `SV_ProcessUserAgent()` input-device booleans, while keeping cvar registration, mutation, callbacks, command bindings, and archive persistence legacy-owned. | `modern/engine/read-only-cvar-snapshot.md`, `src/include/engine/cvar_snapshot.hpp`, `engine/server/sv_main.c` |

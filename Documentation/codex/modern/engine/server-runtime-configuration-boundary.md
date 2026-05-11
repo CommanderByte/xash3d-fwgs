@@ -35,7 +35,7 @@ The timeout loop in `SV_CheckTimeouts()` had a small policy core:
 - skip timeout decisions for fake clients and local addresses.
 
 Phase 127 moved only that decision into
-`src/engine/server/server_timeout_policy.cpp`. The legacy adapter builds a
+`src/engine/server/client/server_timeout_policy.cpp`. The legacy adapter builds a
 plain request from `sv_client_t`, cvar values, entity flags, and computed drop
 points, then applies the returned plan by mutating client state or calling
 `SV_DropTimedOutClient()`.

@@ -18,6 +18,10 @@ currently forward to that subdirectory for adapter compatibility.
 headers in this directory currently forward to that subdirectory so legacy
 adapters can keep their includes while the modern module has a clearer home.
 
+`client/` contains grouped client/session/admission contracts. The flat
+client-facing headers in this directory currently forward to that subdirectory
+for adapter compatibility.
+
 Current helpers:
 
 - `game_dll/game_dll_changelevel_policy.hpp`: game DLL changelevel request,
@@ -59,23 +63,25 @@ Current helpers:
 - `save_restore_format.hpp`: read-only save/restore binary fixture parser
   contracts for headers, sections, entity patches, packed short fields, and
   bundled file entries.
-- `client_policy.hpp`: userinfo penalty, rate/update interval, private
+- `client/client_policy.hpp`: userinfo penalty, rate/update interval, private
   client-flag snapshot/predicate, and prediction/lag/local-weapon flag decision
   contracts.
-- `client_command_dispatch.hpp`: server client-command lookup and routing
+- `client/client_command_dispatch.hpp`: server client-command lookup and routing
   decisions.
+- `client/client_session_slots.hpp`: client slot population, first-free-slot,
+  and master-update reason contracts.
 - `netapi_info.hpp`: short `A2A_INFO` and long `A2A_NETINFO` info-string
   response builders.
-- `connectionless_classifier.hpp`: server connectionless command
+- `client/connectionless_classifier.hpp`: server connectionless command
   classification.
-- `connection_response.hpp`: challenge and rejection response string
+- `client/connection_response.hpp`: challenge and rejection response string
   formatting.
 - `resources/resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
   checks, resource matching, and size summaries.
 - `resources/resource_transfer_manifest.hpp`: target-neutral aggregate manifest over
   modern resource descriptors for catalog-to-download and resource-message
   flows.
-- `remote_admin_command.hpp`: target-neutral rcon enable/password action and
+- `client/remote_admin_command.hpp`: target-neutral rcon enable/password action and
   quoted command reconstruction helpers while redirects and command execution
   stay legacy-owned.
 - `resources/server_resource_catalog.hpp`: server startup resource catalog planning for
@@ -108,7 +114,7 @@ Current helpers:
   for safe-download filtering and resource indexing.
 - `server_limits.hpp`: server-only limits, flags, and private constants
   mirrored as typed modern values with compatibility-role metadata.
-- `server_challenge_policy.hpp`: challenge-window calculation and accepted
+- `client/server_challenge_policy.hpp`: challenge-window calculation and accepted
   current/previous window pair contracts.
 - `server_lifecycle_limits.hpp`: maxclient, update-backup, packet-entity
   capacity, game-entity count, and spawn settling policy contracts.
@@ -149,10 +155,10 @@ Current helpers:
   static-entity admission decisions.
 - `messaging/server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
   and NUL-terminated text payload writers.
-- `server_timeout_policy.hpp`: `SV_CheckTimeouts()` client timeout and pause
+- `client/server_timeout_policy.hpp`: `SV_CheckTimeouts()` client timeout and pause
   release decisions built from plain runtime snapshots while cvar reads, local
   address checks, client drops, and pause toggles stay legacy-owned.
 - `messaging/server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and
   `svc_voicedata` payload serialization.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
-- `user_agent_policy.hpp`: connection UUID and input-device validation policy.
+- `client/user_agent_policy.hpp`: connection UUID and input-device validation policy.

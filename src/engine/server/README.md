@@ -20,6 +20,12 @@ game DLL bridge headers under `src/include/engine/server/` are forwarding
 includes for adapter compatibility while `sv_game.c` still owns callback table
 publication, DLL lifetime, and live edict storage.
 
+`client/` contains grouped target-neutral client/session/admission helpers. The
+flat client-facing headers under `src/include/engine/server/` are forwarding
+includes for adapter compatibility while live client mutation, netchan sends,
+resource-list mutation, voice packet reads, and cvar-query callbacks remain
+legacy-owned.
+
 Current helpers:
 
 - `game_dll/game_dll_changelevel_policy.cpp`: target-neutral game DLL changelevel
@@ -59,15 +65,17 @@ Current helpers:
 - `save_restore_format.cpp`: read-only save/restore file-format fixture
   parsing for headers, token tables, field sections, `.HL3` entity patches,
   packed short fields, and bundled save files.
-- `client_policy.cpp`: target-neutral userinfo penalty, rate/update interval,
+- `client/client_policy.cpp`: target-neutral userinfo penalty, rate/update interval,
   private client-flag snapshots, fake/HLTV/prediction predicates, and
   prediction/lag/local-weapon flag decisions.
-- `client_command_dispatch.cpp`: target-neutral client command lookup and
+- `client/client_command_dispatch.cpp`: target-neutral client command lookup and
   routing decisions.
+- `client/client_session_slots.cpp`: target-neutral client slot population,
+  first-free-slot, and master-update reason helpers.
 - `netapi_info.cpp`: target-neutral NetAPI info-string construction.
-- `connectionless_classifier.cpp`: target-neutral server connectionless command
+- `client/connectionless_classifier.cpp`: target-neutral server connectionless command
   classification.
-- `connection_response.cpp`: target-neutral challenge and rejection response
+- `client/connection_response.cpp`: target-neutral challenge and rejection response
   string formatting.
 - `resources/resource_identity.cpp`: target-neutral custom resource identity, download
   name checks, matching, and size-summary helpers.
@@ -105,7 +113,9 @@ Current helpers:
   classification for safe-download filtering and resource indexing.
 - `server_limits.cpp`: target-neutral server-only limit and flag mirrors plus
   compatibility classification metadata for later route-through decisions.
-- `server_challenge_policy.cpp`: target-neutral server challenge-window
+- `client/remote_admin_command.cpp`: target-neutral rcon authentication and
+  quoted command reconstruction helpers.
+- `client/server_challenge_policy.cpp`: target-neutral server challenge-window
   calculation and current/previous acceptance pair helpers.
 - `server_lifecycle_limits.cpp`: target-neutral maxclient, update-backup,
   packet-entity capacity, game-entity count, and spawn settling policy
@@ -146,4 +156,6 @@ Current helpers:
 - `messaging/server_voice_relay.cpp`: target-neutral voice relay gates, recipient
   decisions, and `svc_voicedata` payload serialization.
 - `source_query.cpp`: target-neutral GoldSrc query payload construction.
-- `user_agent_policy.cpp`: target-neutral connection user-agent validation.
+- `client/server_timeout_policy.cpp`: target-neutral client timeout and pause
+  release policy helpers.
+- `client/user_agent_policy.cpp`: target-neutral connection user-agent validation.

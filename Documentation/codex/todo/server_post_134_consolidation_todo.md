@@ -109,14 +109,26 @@ with reason `command` on May 11 2026 at 14:14:40 local time.
 Goal: clarify `sv_client.c` modernization boundaries before extracting more
 client behavior.
 
-- [ ] Group existing client helpers around admission, session slots, userinfo,
+- [x] Group existing client helpers around admission, session slots, userinfo,
   commands, transfer, voice, cvar query, and remote admin.
-- [ ] Identify which helpers should move under a future client/session module
+- [x] Identify which helpers should move under a future client/session module
   and which belong to resource or messaging domains instead.
-- [ ] Add aggregate tests for admission/session/userinfo facts if they reduce
+- [x] Add aggregate tests for admission/session/userinfo facts if they reduce
   repeated adapter code.
-- [ ] Keep connect/drop/spawn mutation, netchan, command execution, resource
+- [x] Keep connect/drop/spawn mutation, netchan, command execution, resource
   list mutation, voice packet reads, and cvar-query callbacks legacy-owned.
+
+Evidence:
+`Documentation/codex/modern/engine/client-session-domain-pilot.md`,
+`src/engine/server/client/`, `src/include/engine/server/client/`, flat
+forwarding headers under `src/include/engine/server/`, and
+`tests/engine/client_session_domain.cpp`.
+
+Validation:
+`test_engine_client_session_domain` passed; focused moved-client targets passed
+9/9; `.\waf.bat build --alltests` passed 131/131; runtime smoke reached first
+frame in 0.494 seconds and stopped with reason `command` on May 11 2026 at
+14:27:27 local time.
 
 ## Phase 141: Save Restore Value Objects
 

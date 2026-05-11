@@ -3,8 +3,8 @@
 Phase 57 extracts the `SV_ConnectionlessPacket()` decision table into a
 target-neutral helper:
 
-- `src/include/engine/server/connectionless_classifier.hpp`
-- `src/engine/server/connectionless_classifier.cpp`
+- `src/include/engine/server/client/connectionless_classifier.hpp`
+- `src/engine/server/client/connectionless_classifier.cpp`
 
 The helper accepts the full command line, first token, server initialization
 state, and master-server classification. It returns a small enum describing the

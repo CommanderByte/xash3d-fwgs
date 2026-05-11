@@ -77,7 +77,7 @@ updates and may mutate the userinfo string. Legacy code then copies the final
 ## Phase 85 Route-Through Boundary
 
 Phase 85 routes only target-neutral decisions through
-`src/engine/server/client_policy.cpp`:
+`src/engine/server/client/client_policy.cpp`:
 
 - userinfo penalty plan;
 - requested rate/default/hard clamp;

@@ -18,6 +18,10 @@ Current implementation notes:
   admission, session slots, spawn handshake, userinfo, command, transfer,
   voice, cvar-query, remote-admin, and movement ownership before choosing a
   small client-session slot helper as the next seam.
+- `client-session-domain-pilot.md`: how Phase 140 physically groups
+  target-neutral client/session/admission/admin helpers under
+  `src/engine/server/client/`, while leaving transfer in `resources/`, packet
+  payloads in `messaging/`, and live client mutation legacy-owned.
 - `client-session-slots.md`: how Phase 125 routes player/bot counts,
   first-free-slot selection, and master heartbeat population decisions through
   plain client-slot snapshots while leaving live connect/drop ownership in

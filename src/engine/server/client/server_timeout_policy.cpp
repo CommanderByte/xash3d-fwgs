@@ -1,6 +1,6 @@
-#include "engine/server/server_timeout_policy.hpp"
+#include "engine/server/client/server_timeout_policy.hpp"
 
-#include "engine/server/client_session_slots.hpp"
+#include "engine/server/client/client_session_slots.hpp"
 
 namespace xash
 {

@@ -3,8 +3,8 @@
 Phase 59 adds target-neutral helpers for server challenge and rejection response
 text:
 
-- `src/include/engine/server/connection_response.hpp`
-- `src/engine/server/connection_response.cpp`
+- `src/include/engine/server/client/connection_response.hpp`
+- `src/engine/server/client/connection_response.cpp`
 
 The helpers format packet/report strings only. They do not generate challenge
 numbers, inspect network addresses, validate clients, log to the console, or

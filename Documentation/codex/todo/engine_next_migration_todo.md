@@ -60,8 +60,8 @@ enablers that make future server and engine migrations less adapter-heavy.
   frame resend/send/skip, resources, and consistency.
   Evidence: `Documentation/codex/modern/engine/server-client-flag-policy.md`.
 - [x] Add typed client flag snapshot/predicate helpers for one owner at a time.
-  Evidence: `src/include/engine/server/client_policy.hpp`,
-  `src/engine/server/client_policy.cpp`, `tests/engine/client_policy.cpp`.
+  Evidence: `src/include/engine/server/client/client_policy.hpp`,
+  `src/engine/server/client/client_policy.cpp`, `tests/engine/client_policy.cpp`.
 - [x] Start with fake-client and HLTV predicates because they appear in many
   server and game DLL paths.
   Evidence: `Documentation/codex/modern/engine/server-client-flag-policy.md`.

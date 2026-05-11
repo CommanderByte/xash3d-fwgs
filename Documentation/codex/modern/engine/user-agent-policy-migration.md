@@ -7,8 +7,8 @@ modern server code.
 
 Modern code lives in:
 
-- `src/include/engine/server/user_agent_policy.hpp`;
-- `src/engine/server/user_agent_policy.cpp`;
+- `src/include/engine/server/client/user_agent_policy.hpp`;
+- `src/engine/server/client/user_agent_policy.cpp`;
 - `tests/engine/user_agent_policy.cpp`.
 
 Legacy glue lives in:

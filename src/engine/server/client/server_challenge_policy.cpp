@@ -1,4 +1,4 @@
-#include "engine/server/server_challenge_policy.hpp"
+#include "engine/server/client/server_challenge_policy.hpp"
 
 #include <limits>
 
