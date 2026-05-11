@@ -4338,33 +4338,42 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 152: Game DLL Bridge Consolidation Map
 
-- [ ] `ENG-GDLLGROUP2-001` Re-scan `sv_game.c` against modern `game_dll/`
+- [x] `ENG-GDLLGROUP2-001` Re-scan `sv_game.c` against modern `game_dll/`
   helpers.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-GDLLGROUP2-002` Classify helpers by ABI, lifecycle, entities,
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-consolidation-map.md`.
+- [x] `ENG-GDLLGROUP2-002` Classify helpers by ABI, lifecycle, entities,
   messages, resources, world queries, movement, output, and string pool.
-  Evidence:
-- [ ] `ENG-GDLLGROUP2-003` Decide which adapter groups can be consolidated
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-consolidation-map.md`.
+- [x] `ENG-GDLLGROUP2-003` Decide which adapter groups can be consolidated
   without changing ABI publication order.
-  Evidence:
-- [ ] `ENG-GDLLGROUP2-004` Keep callback table layout, DLL load/unload, edict
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-consolidation-map.md`.
+- [x] `ENG-GDLLGROUP2-004` Keep callback table layout, DLL load/unload, edict
   storage, and game DLL function ordering legacy-owned.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-consolidation-map.md`.
 
 ## Phase 153: Game DLL Bridge Adapter Shrink Pilot
 
-- [ ] `ENG-GDLLADAPT2-001` Pick one low-risk game DLL adapter cluster from
+- [x] `ENG-GDLLADAPT2-001` Pick one low-risk game DLL adapter cluster from
   Phase 152.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-GDLLADAPT2-002` Add or strengthen aggregate tests before moving
+  Evidence: `Documentation/codex/modern/engine/game-dll-adapter-shrink-pilot.md`.
+- [x] `ENG-GDLLADAPT2-002` Add or strengthen aggregate tests before moving
   glue.
-  Evidence:
-- [ ] `ENG-GDLLADAPT2-003` Consolidate only mechanical conversion or repeated
+  Evidence: `tests/engine/game_dll_adapter_shared.cpp` and
+  `tests/engine/game_dll_bridge_domain.cpp`.
+- [x] `ENG-GDLLADAPT2-003` Consolidate only mechanical conversion or repeated
   adapter calls.
-  Evidence:
-- [ ] `ENG-GDLLADAPT2-004` Run focused game DLL bridge tests, full validation,
+  Evidence: `engine/server/game_dll_adapter_shared.hpp`,
+  `engine/server/game_dll_client_info_policy_adapter.cpp`, and
+  `engine/server/game_dll_output_policy_adapter.cpp`.
+- [x] `ENG-GDLLADAPT2-004` Run focused game DLL bridge tests, full validation,
   and smoke timing.
-  Evidence:
+  Evidence: command
+  `.\waf.bat build --targets=test_engine_game_dll_adapter_shared,test_engine_game_dll_bridge_domain,test_engine_game_dll_client_info_policy,test_engine_game_dll_output_policy`
+  passed 4/4; command `.\waf.bat build --alltests` passed 138/138;
+  command `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_adapter_shared -SkipFullTests -AllowSmokeNonZeroExit
+  -StopRunningXash` passed; smoke reached first frame in 0.512 seconds and
+  stopped with reason `command`.
 
 ## Phase 154: Client Session Aggregate Tests
 

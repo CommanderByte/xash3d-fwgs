@@ -3,6 +3,10 @@
 #include "common.h"
 #include "engine/server/game_dll/game_dll_output_policy.hpp"
 #include "eiface.h"
+#include "game_dll_adapter_shared.hpp"
+
+using xash::engine::server::adapter::FromLegacyBool;
+using xash::engine::server::adapter::ToLegacyEnum;
 
 static_assert(at_notice == xash::engine::server::kGameDllAlertNotice,
 	"at_notice value changed");
@@ -29,9 +33,9 @@ static_assert(DEV_EXTENDED == xash::engine::server::kGameDllDeveloperExtended,
 
 extern "C" int SV_GameDllOutput_BuildServerCommandAction(int command_valid)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildGameDllServerCommandAction(
-			command_valid != 0));
+			FromLegacyBool(command_valid)));
 }
 
 extern "C" int SV_GameDllOutput_BuildClientCommandAction(
@@ -40,12 +44,12 @@ extern "C" int SV_GameDllOutput_BuildClientCommandAction(
 	int fake_client,
 	int command_valid)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildGameDllClientCommandAction(
-			server_active != 0,
-			has_client != 0,
-			fake_client != 0,
-			command_valid != 0));
+			FromLegacyBool(server_active),
+			FromLegacyBool(has_client),
+			FromLegacyBool(fake_client),
+			FromLegacyBool(command_valid)));
 }
 
 extern "C" int SV_GameDllOutput_BuildClientPrintfAction(
@@ -53,18 +57,18 @@ extern "C" int SV_GameDllOutput_BuildClientPrintfAction(
 	int fake_client,
 	int print_type)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildGameDllClientPrintfAction(
-			has_client != 0,
-			fake_client != 0,
+			FromLegacyBool(has_client),
+			FromLegacyBool(fake_client),
 			print_type));
 }
 
 extern "C" int SV_GameDllOutput_BuildServerPrintAction(int quake_compatible)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildGameDllServerPrintAction(
-			quake_compatible != 0));
+			FromLegacyBool(quake_compatible)));
 }
 
 extern "C" int SV_GameDllOutput_BuildAlertAction(
@@ -72,7 +76,7 @@ extern "C" int SV_GameDllOutput_BuildAlertAction(
 	int max_clients,
 	float developer_level)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildGameDllAlertOutputAction(
 			alert_type,
 			max_clients,
@@ -81,6 +85,6 @@ extern "C" int SV_GameDllOutput_BuildAlertAction(
 
 extern "C" int SV_GameDllOutput_BuildEndSectionAction(const char *section_name)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildGameDllEndSectionAction(section_name));
 }

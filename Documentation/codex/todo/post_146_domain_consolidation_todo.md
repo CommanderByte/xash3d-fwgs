@@ -78,22 +78,22 @@ ownership.
 Goal: regroup game DLL bridge helpers around the conceptual domains identified
 after Phase 114.
 
-- [ ] Re-scan `sv_game.c` against modern `game_dll/` helpers.
-- [ ] Classify helpers by ABI, lifecycle, entities, messages, resources,
+- [x] Re-scan `sv_game.c` against modern `game_dll/` helpers.
+- [x] Classify helpers by ABI, lifecycle, entities, messages, resources,
   world queries, movement, output, and string pool.
-- [ ] Decide which adapter groups can be consolidated without changing ABI
+- [x] Decide which adapter groups can be consolidated without changing ABI
   publication order.
-- [ ] Keep callback table layout, DLL load/unload, edict storage, and game DLL
+- [x] Keep callback table layout, DLL load/unload, edict storage, and game DLL
   function ordering legacy-owned.
 
 ## Phase 153: Game DLL Bridge Adapter Shrink Pilot
 
 Goal: shrink one safe game DLL adapter cluster behind existing tests.
 
-- [ ] Pick one low-risk cluster from Phase 152.
-- [ ] Add or strengthen aggregate tests before moving glue.
-- [ ] Consolidate only mechanical conversion or repeated adapter calls.
-- [ ] Run focused game DLL bridge tests, full validation, and smoke timing.
+- [x] Pick one low-risk cluster from Phase 152.
+- [x] Add or strengthen aggregate tests before moving glue.
+- [x] Consolidate only mechanical conversion or repeated adapter calls.
+- [x] Run focused game DLL bridge tests, full validation, and smoke timing.
 
 ## Phase 154: Client Session Aggregate Tests
 

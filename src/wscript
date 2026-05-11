@@ -94,6 +94,7 @@ def build(bld):
 			'engine_connection_response': '../tests/engine/connection_response.cpp',
 			'engine_filesystem_mount_flags': '../tests/engine/filesystem_mount_flags.cpp',
 			'engine_game_dll_changelevel_policy': '../tests/engine/game_dll_changelevel_policy.cpp',
+			'engine_game_dll_adapter_shared': '../tests/engine/game_dll_adapter_shared.cpp',
 			'engine_game_dll_bridge_domain': '../tests/engine/game_dll_bridge_domain.cpp',
 			'engine_game_dll_client_info_policy': '../tests/engine/game_dll_client_info_policy.cpp',
 			'engine_game_dll_entity_lifecycle': '../tests/engine/game_dll_entity_lifecycle.cpp',

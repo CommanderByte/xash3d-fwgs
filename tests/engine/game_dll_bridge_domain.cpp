@@ -17,6 +17,8 @@
 #include "engine/server/game_dll/game_dll_resource_policy.hpp"
 #include "engine/server/game_dll/game_dll_string_pool_compat.hpp"
 #include "engine/server/game_dll/game_dll_visibility_trace_policy.hpp"
+#include "server/game_dll_client_info_policy_adapter.h"
+#include "server/game_dll_output_policy_adapter.h"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;
@@ -205,6 +207,34 @@ bool TestResourceOutputPayloadAndClientInfoPoliciesStayComposable()
 		stats.packetLoss == 7;
 }
 
+bool TestScalarAdapterLayoutsStayComposable()
+{
+	return SV_GAMEDLL_INFO_BUFFER_LOCALINFO ==
+			static_cast<int>(GameDllInfoBufferRoute::LocalInfo) &&
+		SV_GAMEDLL_INFO_BUFFER_SERVERINFO ==
+			static_cast<int>(GameDllInfoBufferRoute::ServerInfo) &&
+		SV_GAMEDLL_INFO_BUFFER_CLIENT_USERINFO ==
+			static_cast<int>(GameDllInfoBufferRoute::ClientUserinfo) &&
+		SV_GAMEDLL_INFO_BUFFER_EMPTY_STRING ==
+			static_cast<int>(GameDllInfoBufferRoute::EmptyString) &&
+		SV_GAMEDLL_CLIENT_KEY_UPDATE_AND_RESEND ==
+			static_cast<int>(GameDllClientKeyValueAction::UpdateAndResend) &&
+		SV_GAMEDLL_QUERY_CVAR_NOTIFY_BAD_PLAYER ==
+			static_cast<int>(GameDllQueryCvarAction::NotifyBadPlayer) &&
+		SV_GAMEDLL_GAME_DIR_WRITE_FULL_PATH ==
+			static_cast<int>(GameDllGameDirAction::WriteFullPath) &&
+		SV_GAMEDLL_SERVER_COMMAND_QUEUE_COMMAND ==
+			static_cast<int>(GameDllServerCommandAction::QueueCommand) &&
+		SV_GAMEDLL_CLIENT_COMMAND_STUFF_TEXT ==
+			static_cast<int>(GameDllClientCommandAction::StuffText) &&
+		SV_GAMEDLL_CLIENT_PRINTF_CENTER_PRINT ==
+			static_cast<int>(GameDllClientPrintfAction::CenterPrint) &&
+		SV_GAMEDLL_ALERT_PRINT_ERROR ==
+			static_cast<int>(GameDllAlertOutputAction::PrintError) &&
+		SV_GAMEDLL_END_SECTION_DISCONNECT ==
+			static_cast<int>(GameDllEndSectionAction::Disconnect);
+}
+
 bool TestEntityMovementVisibilityAndChangelevelPoliciesStayComposable()
 {
 	const GameDllPrivateDataAllocationPlan allocation =
@@ -299,11 +329,14 @@ int main()
 	if (!TestResourceOutputPayloadAndClientInfoPoliciesStayComposable())
 		return 2;
 
-	if (!TestEntityMovementVisibilityAndChangelevelPoliciesStayComposable())
+	if (!TestScalarAdapterLayoutsStayComposable())
 		return 3;
 
-	if (!TestLoadPolicyKeepsLegacyLifetimeExternal())
+	if (!TestEntityMovementVisibilityAndChangelevelPoliciesStayComposable())
 		return 4;
+
+	if (!TestLoadPolicyKeepsLegacyLifetimeExternal())
+		return 5;
 
 	return EXIT_SUCCESS;
 }
