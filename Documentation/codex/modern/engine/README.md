@@ -14,6 +14,9 @@ Current implementation notes:
 - `client-policy-migration.md`: how Phase 85 routes userinfo penalty, rate,
   update interval, and prediction/lag/local-weapon flag decisions through
   target-neutral helpers while info-string mutation stays legacy-owned.
+- `server-client-flag-policy.md`: how Phase 109 groups private `FCL_*` flags by
+  owner and starts routing fake-client/query-visible predicates without broad
+  macro replacement.
 - `command-buffer-migration-guide.md`: how raw `Cbuf_*` buffer mechanics route
   through the private modern command-buffer primitive while dispatch policy
   stays in `cmd.c`.

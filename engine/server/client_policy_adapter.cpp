@@ -18,6 +18,24 @@ sv_client_userinfo_penalty_plan_t ToLegacyPenaltyPlan(
 	return legacy;
 }
 
+sv_client_flag_snapshot_t ToLegacyFlagSnapshot(
+	const xash::engine::server::ClientFlagSnapshot &snapshot)
+{
+	sv_client_flag_snapshot_t legacy = {};
+	legacy.resend_userinfo = snapshot.resendUserinfo ? 1 : 0;
+	legacy.resend_movevars = snapshot.resendMovevars ? 1 : 0;
+	legacy.skip_net_message = snapshot.skipNetMessage ? 1 : 0;
+	legacy.send_net_message = snapshot.sendNetMessage ? 1 : 0;
+	legacy.predict_movement = snapshot.predictMovement ? 1 : 0;
+	legacy.local_weapons = snapshot.localWeapons ? 1 : 0;
+	legacy.lag_compensation = snapshot.lagCompensation ? 1 : 0;
+	legacy.fake_client = snapshot.fakeClient ? 1 : 0;
+	legacy.hltv_proxy = snapshot.hltvProxy ? 1 : 0;
+	legacy.send_resources = snapshot.sendResources ? 1 : 0;
+	legacy.force_unmodified = snapshot.forceUnmodified ? 1 : 0;
+	return legacy;
+}
+
 }
 
 extern "C" sv_client_userinfo_penalty_plan_t
@@ -104,4 +122,41 @@ SV_ClientPolicy_BuildUserinfoFlagPlan(
 	legacy.lag_compensation = modern.lagCompensation ? 1 : 0;
 	legacy.local_weapons = modern.localWeapons ? 1 : 0;
 	return legacy;
+}
+
+extern "C" sv_client_flag_snapshot_t SV_ClientPolicy_BuildFlagSnapshot(
+	unsigned int flags)
+{
+	return ToLegacyFlagSnapshot(
+		xash::engine::server::BuildClientFlagSnapshot(flags));
+}
+
+extern "C" int SV_ClientPolicy_IsFakeClient(unsigned int flags)
+{
+	return xash::engine::server::ClientIsFakeClient(flags) ? 1 : 0;
+}
+
+extern "C" int SV_ClientPolicy_IsHltvProxy(unsigned int flags)
+{
+	return xash::engine::server::ClientIsHltvProxy(flags) ? 1 : 0;
+}
+
+extern "C" int SV_ClientPolicy_UsesLocalWeapons(unsigned int flags)
+{
+	return xash::engine::server::ClientUsesLocalWeapons(flags) ? 1 : 0;
+}
+
+extern "C" int SV_ClientPolicy_PredictsMovement(unsigned int flags)
+{
+	return xash::engine::server::ClientPredictsMovement(flags) ? 1 : 0;
+}
+
+extern "C" int SV_ClientPolicy_UsesLagCompensation(unsigned int flags)
+{
+	return xash::engine::server::ClientUsesLagCompensation(flags) ? 1 : 0;
+}
+
+extern "C" int SV_ClientPolicy_ShouldAppearInHumanQueries(unsigned int flags)
+{
+	return xash::engine::server::ClientShouldAppearInHumanQueries(flags) ? 1 : 0;
 }

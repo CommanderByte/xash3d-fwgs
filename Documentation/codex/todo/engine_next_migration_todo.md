@@ -56,18 +56,24 @@ enablers that make future server and engine migrations less adapter-heavy.
 
 ## Phase 109: Client Flag Predicate Policy
 
-- [ ] Group `FCL_*` uses by owner: fake client, HLTV, prediction/local weapons,
+- [x] Group `FCL_*` uses by owner: fake client, HLTV, prediction/local weapons,
   frame resend/send/skip, resources, and consistency.
-  Evidence:
-- [ ] Add typed client flag snapshot/predicate helpers for one owner at a time.
-  Evidence:
-- [ ] Start with fake-client and HLTV predicates because they appear in many
+  Evidence: `Documentation/codex/modern/engine/server-client-flag-policy.md`.
+- [x] Add typed client flag snapshot/predicate helpers for one owner at a time.
+  Evidence: `src/include/engine/server/client_policy.hpp`,
+  `src/engine/server/client_policy.cpp`, `tests/engine/client_policy.cpp`.
+- [x] Start with fake-client and HLTV predicates because they appear in many
   server and game DLL paths.
-  Evidence:
-- [ ] Avoid broad macro replacement in `server.h`.
-  Evidence:
-- [ ] Run focused tests, full tests, and `+wait +wait` smoke timing.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/server-client-flag-policy.md`.
+- [x] Avoid broad macro replacement in `server.h`.
+  Evidence: `engine/server/server.h` remains unchanged; Phase 109 routes only
+  `sv_query.c` through `client_policy_adapter`.
+- [x] Run focused tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_client_policy -StopRunningXash` passed; focused test passed,
+  `.\waf.bat build --targets=xash` passed, full tests passed 115/115;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.501 seconds and stopped with reason `command`.
 
 ## Phase 110: Server Event Playback Boundary Audit
 

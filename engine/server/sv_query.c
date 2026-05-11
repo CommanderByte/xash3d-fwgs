@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include "common.h"
 #include "server.h"
+#include "client_policy_adapter.h"
 #include "source_query_adapter.h"
 
 /*
@@ -127,7 +128,7 @@ static void SV_SourceQuery_Players( netadr_t from )
 		if( cl->state < cs_connected )
 			continue;
 
-		if( FBitSet( cl->flags, FCL_FAKECLIENT ))
+		if( !SV_ClientPolicy_ShouldAppearInHumanQueries( cl->flags ))
 			duration = -1.0f;
 		else duration = host.realtime - cl->connection_started;
 

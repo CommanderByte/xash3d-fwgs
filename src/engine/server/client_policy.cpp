@@ -1,5 +1,7 @@
 #include "engine/server/client_policy.hpp"
 
+#include "engine/server/server_limits.hpp"
+
 namespace xash
 {
 namespace engine
@@ -20,6 +22,64 @@ double Clamp(double value, double minimum, double maximum)
 	return value;
 }
 
+}
+
+ClientFlagSnapshot BuildClientFlagSnapshot(unsigned int flags)
+{
+	ClientFlagSnapshot snapshot = {};
+	snapshot.resendUserinfo =
+		(flags & kServerClientFlagResendUserinfo) != 0u;
+	snapshot.resendMovevars =
+		(flags & kServerClientFlagResendMovevars) != 0u;
+	snapshot.skipNetMessage =
+		(flags & kServerClientFlagSkipNetMessage) != 0u;
+	snapshot.sendNetMessage =
+		(flags & kServerClientFlagSendNetMessage) != 0u;
+	snapshot.predictMovement =
+		(flags & kServerClientFlagPredictMovement) != 0u;
+	snapshot.localWeapons =
+		(flags & kServerClientFlagLocalWeapons) != 0u;
+	snapshot.lagCompensation =
+		(flags & kServerClientFlagLagCompensation) != 0u;
+	snapshot.fakeClient =
+		(flags & kServerClientFlagFakeClient) != 0u;
+	snapshot.hltvProxy =
+		(flags & kServerClientFlagHltvProxy) != 0u;
+	snapshot.sendResources =
+		(flags & kServerClientFlagSendResources) != 0u;
+	snapshot.forceUnmodified =
+		(flags & kServerClientFlagForceUnmodified) != 0u;
+	return snapshot;
+}
+
+bool ClientIsFakeClient(unsigned int flags)
+{
+	return BuildClientFlagSnapshot(flags).fakeClient;
+}
+
+bool ClientIsHltvProxy(unsigned int flags)
+{
+	return BuildClientFlagSnapshot(flags).hltvProxy;
+}
+
+bool ClientUsesLocalWeapons(unsigned int flags)
+{
+	return BuildClientFlagSnapshot(flags).localWeapons;
+}
+
+bool ClientPredictsMovement(unsigned int flags)
+{
+	return BuildClientFlagSnapshot(flags).predictMovement;
+}
+
+bool ClientUsesLagCompensation(unsigned int flags)
+{
+	return BuildClientFlagSnapshot(flags).lagCompensation;
+}
+
+bool ClientShouldAppearInHumanQueries(unsigned int flags)
+{
+	return !ClientIsFakeClient(flags);
 }
 
 UserinfoPenaltyPlan BuildUserinfoPenaltyPlan(

@@ -8,6 +8,21 @@ namespace engine
 namespace server
 {
 
+struct ClientFlagSnapshot
+{
+	bool resendUserinfo;
+	bool resendMovevars;
+	bool skipNetMessage;
+	bool sendNetMessage;
+	bool predictMovement;
+	bool localWeapons;
+	bool lagCompensation;
+	bool fakeClient;
+	bool hltvProxy;
+	bool sendResources;
+	bool forceUnmodified;
+};
+
 struct UserinfoPenaltyInput
 {
 	bool penaltyEnabled;
@@ -38,6 +53,14 @@ struct ClientUserinfoFlagPlan
 	bool lagCompensation;
 	bool localWeapons;
 };
+
+ClientFlagSnapshot BuildClientFlagSnapshot(unsigned int flags);
+bool ClientIsFakeClient(unsigned int flags);
+bool ClientIsHltvProxy(unsigned int flags);
+bool ClientUsesLocalWeapons(unsigned int flags);
+bool ClientPredictsMovement(unsigned int flags);
+bool ClientUsesLagCompensation(unsigned int flags);
+bool ClientShouldAppearInHumanQueries(unsigned int flags);
 
 UserinfoPenaltyPlan BuildUserinfoPenaltyPlan(
 	const UserinfoPenaltyInput &input);

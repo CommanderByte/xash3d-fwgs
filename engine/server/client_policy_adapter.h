@@ -36,6 +36,21 @@ typedef struct sv_client_userinfo_flag_plan_s
 	int local_weapons;
 } sv_client_userinfo_flag_plan_t;
 
+typedef struct sv_client_flag_snapshot_s
+{
+	int resend_userinfo;
+	int resend_movevars;
+	int skip_net_message;
+	int send_net_message;
+	int predict_movement;
+	int local_weapons;
+	int lag_compensation;
+	int fake_client;
+	int hltv_proxy;
+	int send_resources;
+	int force_unmodified;
+} sv_client_flag_snapshot_t;
+
 sv_client_userinfo_penalty_plan_t SV_ClientPolicy_BuildUserinfoPenaltyPlan(
 	const sv_client_userinfo_penalty_input_t *input);
 
@@ -63,6 +78,15 @@ sv_client_userinfo_flag_plan_t SV_ClientPolicy_BuildUserinfoFlagPlan(
 	int no_prediction,
 	int lag_compensation,
 	int local_weapons);
+
+sv_client_flag_snapshot_t SV_ClientPolicy_BuildFlagSnapshot(
+	unsigned int flags);
+int SV_ClientPolicy_IsFakeClient(unsigned int flags);
+int SV_ClientPolicy_IsHltvProxy(unsigned int flags);
+int SV_ClientPolicy_UsesLocalWeapons(unsigned int flags);
+int SV_ClientPolicy_PredictsMovement(unsigned int flags);
+int SV_ClientPolicy_UsesLagCompensation(unsigned int flags);
+int SV_ClientPolicy_ShouldAppearInHumanQueries(unsigned int flags);
 
 #ifdef __cplusplus
 }

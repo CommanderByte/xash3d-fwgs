@@ -2,6 +2,7 @@
 #include <cstdlib>
 
 #include "engine/server/client_policy.hpp"
+#include "engine/server/server_limits.hpp"
 
 using namespace xash::engine::server;
 
@@ -152,6 +153,49 @@ bool TestClientUserinfoFlags()
 		enabled.localWeapons;
 }
 
+bool TestClientFlagSnapshot()
+{
+	const unsigned int flags =
+		kServerClientFlagResendUserinfo |
+		kServerClientFlagPredictMovement |
+		kServerClientFlagLocalWeapons |
+		kServerClientFlagFakeClient |
+		kServerClientFlagHltvProxy;
+	const ClientFlagSnapshot snapshot = BuildClientFlagSnapshot(flags);
+
+	return snapshot.resendUserinfo &&
+		!snapshot.resendMovevars &&
+		!snapshot.skipNetMessage &&
+		!snapshot.sendNetMessage &&
+		snapshot.predictMovement &&
+		snapshot.localWeapons &&
+		!snapshot.lagCompensation &&
+		snapshot.fakeClient &&
+		snapshot.hltvProxy &&
+		!snapshot.sendResources &&
+		!snapshot.forceUnmodified;
+}
+
+bool TestClientFlagPredicates()
+{
+	const unsigned int fake = kServerClientFlagFakeClient;
+	const unsigned int hltv = kServerClientFlagHltvProxy;
+	const unsigned int prediction =
+		kServerClientFlagPredictMovement |
+		kServerClientFlagLocalWeapons |
+		kServerClientFlagLagCompensation;
+
+	return ClientIsFakeClient(fake) &&
+		!ClientIsFakeClient(0u) &&
+		ClientIsHltvProxy(hltv) &&
+		!ClientIsHltvProxy(0u) &&
+		ClientPredictsMovement(prediction) &&
+		ClientUsesLocalWeapons(prediction) &&
+		ClientUsesLagCompensation(prediction) &&
+		ClientShouldAppearInHumanQueries(0u) &&
+		!ClientShouldAppearInHumanQueries(fake);
+}
+
 }
 
 int main()
@@ -163,7 +207,9 @@ int main()
 		!TestRequestedRateUsesDefaultAndHardClamp() ||
 		!TestUpdateIntervalDefaultsAndCvarLimits() ||
 		!TestLegacyServerRateLimitsDoNotClamp() ||
-		!TestClientUserinfoFlags())
+		!TestClientUserinfoFlags() ||
+		!TestClientFlagSnapshot() ||
+		!TestClientFlagPredicates())
 	{
 		return EXIT_FAILURE;
 	}

@@ -3344,18 +3344,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 109: Client Flag Predicate Policy
 
-- [ ] `ENG-SVCLIENTFLAGS-001` Group `FCL_*` uses by owner: fake client, HLTV,
+- [x] `ENG-SVCLIENTFLAGS-001` Group `FCL_*` uses by owner: fake client, HLTV,
   prediction/local weapons, frame send/resend/skip, resources, and consistency.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
-- [ ] `ENG-SVCLIENTFLAGS-002` Add typed client flag snapshots and predicates for
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`,
+  `Documentation/codex/modern/engine/server-client-flag-policy.md`.
+- [x] `ENG-SVCLIENTFLAGS-002` Add typed client flag snapshots and predicates for
   one owner at a time, starting with fake-client and HLTV behavior.
-  Evidence:
-- [ ] `ENG-SVCLIENTFLAGS-003` Route one low-risk owner through the predicates
+  Evidence: `src/include/engine/server/client_policy.hpp`,
+  `src/engine/server/client_policy.cpp`, `tests/engine/client_policy.cpp`.
+- [x] `ENG-SVCLIENTFLAGS-003` Route one low-risk owner through the predicates
   without replacing the broad `server.h` macros.
-  Evidence:
-- [ ] `ENG-SVCLIENTFLAGS-004` Run focused tests, full tests, and `+wait +wait`
+  Evidence: `engine/server/client_policy_adapter.h`,
+  `engine/server/client_policy_adapter.cpp`, `engine/server/sv_query.c`;
+  `engine/server/server.h` remains unchanged.
+- [x] `ENG-SVCLIENTFLAGS-004` Run focused tests, full tests, and `+wait +wait`
   runtime smoke timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_client_policy -StopRunningXash` passed; focused test passed,
+  `.\waf.bat build --targets=xash` passed, full tests passed 115/115;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.501 seconds and stopped with reason `command`.
 
 ## Phase 110: Server Event Playback Boundary Audit
 
@@ -3595,3 +3603,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-057 | After the Phase 101-106 server constants lane, prefer small enabler policies before another broad server sweep: group filtering, map validation flags, client flag predicates, event playback, and read-only cvar snapshots. | `modern/engine/post-106-migration-audit.md`, `todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-058 | Treat C++ namespace/facade wrappers as migration scaffolding, not the final architecture; after behavior is protected by tests, regroup helpers into named domain concepts with clearer ownership and thinner adapters. | `modern/cpp-ownership-target.md`, `modern/engine/post-106-migration-audit.md` |
 | 2026-05-11 | DEC-059 | Centralize `SV_MapIsValid()` flag interpretation in a modern map-validation policy while leaving BSP probing, entity parsing, landmark scanning, console output, save state, and changelevel execution legacy-owned. | `modern/engine/server-map-validation-policy.md`, `src/include/engine/server/server_map_validation.hpp` |
+| 2026-05-11 | DEC-060 | Treat private `FCL_*` checks as client capability predicates by owner, starting with source-query fake-client visibility, and avoid broad replacement of the `server.h` macros. | `modern/engine/server-client-flag-policy.md`, `src/include/engine/server/client_policy.hpp` |
