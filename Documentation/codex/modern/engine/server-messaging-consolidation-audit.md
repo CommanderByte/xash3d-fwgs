@@ -245,3 +245,20 @@ depends on `sv.multicast`, user-message registration, and multicast routing.
 Defer broad adapter regrouping until after Phase 119 tests exist. Defer game
 DLL message session consolidation to Phase 121 or later. Defer rendered-console
 sink work until a client/rendering console phase exists.
+
+## Phase 119 Pilot Result
+
+Phase 119 added `server_message_envelope` as a small aggregate helper. It owns
+shared command-byte and NUL string envelope writers plus a plain recipient-facts
+fixture that can feed multicast, event-playback, and voice-recipient policy
+requests.
+
+The pilot routed the small modern payload helpers through the shared envelope
+writer where doing so removed duplicate command/string/byte glue. It did not
+merge payload-specific encoders, legacy C adapters, packet buffers, netchan
+sends, game DLL message sessions, user-message rewrites, or rendered-console
+behavior.
+
+This makes Phase 120 a bounded adapter review: look for repeated
+`NetworkBitBuffer` result translation and command-envelope adapter glue, but do
+not collapse game DLL bridge publication into server messaging yet.

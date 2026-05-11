@@ -1,7 +1,7 @@
 #include "engine/server/server_spawn_handshake.hpp"
+#include "engine/server/server_message_envelope.hpp"
 
 #include <cstdio>
-#include <cstring>
 
 namespace xash
 {
@@ -11,13 +11,6 @@ namespace server
 {
 namespace
 {
-
-void WriteByte(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	unsigned int value)
-{
-	buffer.writeUnsigned(static_cast<std::uint8_t>(value), 8);
-}
 
 void WriteWord(
 	xash::engine::network::NetworkBitBuffer &buffer,
@@ -38,18 +31,6 @@ void WriteChar(
 	int value)
 {
 	buffer.writeSigned(static_cast<std::int8_t>(value), 8);
-}
-
-void WriteString(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	const char *value)
-{
-	if (!value)
-		value = "";
-
-	const std::size_t length = std::strlen(value);
-	for (std::size_t i = 0; i <= length; ++i)
-		WriteByte(buffer, static_cast<unsigned char>(value[i]));
 }
 
 }
@@ -88,14 +69,14 @@ void WriteServerdataPayload(
 	WriteLong(buffer, static_cast<std::uint32_t>(payload.protocolVersion));
 	WriteLong(buffer, static_cast<std::uint32_t>(payload.spawnCount));
 	WriteLong(buffer, payload.worldMapCrc);
-	WriteByte(buffer, static_cast<unsigned int>(payload.clientIndex));
-	WriteByte(buffer, static_cast<unsigned int>(payload.maxClients));
+	WriteServerMessageByte(buffer, static_cast<unsigned int>(payload.clientIndex));
+	WriteServerMessageByte(buffer, static_cast<unsigned int>(payload.maxClients));
 	WriteWord(buffer, static_cast<unsigned int>(payload.maxEdicts));
 	WriteWord(buffer, static_cast<unsigned int>(payload.maxModels));
-	WriteString(buffer, payload.mapName);
-	WriteString(buffer, payload.mapMessage);
+	WriteServerMessageString(buffer, payload.mapName);
+	WriteServerMessageString(buffer, payload.mapMessage);
 	buffer.writeOneBit(payload.background ? 1 : 0);
-	WriteString(buffer, payload.gameFolder);
+	WriteServerMessageString(buffer, payload.gameFolder);
 	WriteLong(buffer, payload.hostFeatures);
 
 	for (int i = 0; i < kServerdataHullComponentCount; ++i)
@@ -109,7 +90,7 @@ void WriteServerdataMessage(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	const ServerdataPayload &payload)
 {
-	WriteByte(buffer, kServerdataCommand);
+	WriteServerMessageCommand(buffer, kServerdataCommand);
 	WriteServerdataPayload(buffer, payload);
 }
 
@@ -117,14 +98,14 @@ void WriteSignonNumberPayload(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	int signonNumber)
 {
-	WriteByte(buffer, static_cast<unsigned int>(signonNumber));
+	WriteServerMessageByte(buffer, static_cast<unsigned int>(signonNumber));
 }
 
 void WriteSignonNumberMessage(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	int signonNumber)
 {
-	WriteByte(buffer, kServerdataSignonNumberCommand);
+	WriteServerMessageCommand(buffer, kServerdataSignonNumberCommand);
 	WriteSignonNumberPayload(buffer, signonNumber);
 }
 

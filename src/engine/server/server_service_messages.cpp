@@ -1,7 +1,5 @@
 #include "engine/server/server_service_messages.hpp"
-
-#include <cstddef>
-#include <cstring>
+#include "engine/server/server_message_envelope.hpp"
 
 namespace xash
 {
@@ -11,25 +9,6 @@ namespace server
 {
 namespace
 {
-
-void WriteByte(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	unsigned int value)
-{
-	buffer.writeUnsigned(static_cast<std::uint8_t>(value), 8);
-}
-
-void WriteString(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	const char *value)
-{
-	if (!value)
-		value = "";
-
-	const std::size_t length = std::strlen(value);
-	for (std::size_t i = 0; i <= length; ++i)
-		WriteByte(buffer, static_cast<unsigned char>(value[i]));
-}
 
 const char *VoiceCodecOrDefault(const char *codec)
 {
@@ -45,14 +24,14 @@ void WriteServiceCommand(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	std::uint8_t command)
 {
-	WriteByte(buffer, command);
+	WriteServerMessageCommand(buffer, command);
 }
 
 void WriteFileTransferFailedPayload(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	const char *filename)
 {
-	WriteString(buffer, filename);
+	WriteServerMessageString(buffer, filename);
 }
 
 void WriteFileTransferFailedMessage(
@@ -66,7 +45,7 @@ void WriteFileTransferFailedMessage(
 void WriteReconnectPayload(
 	xash::engine::network::NetworkBitBuffer &buffer)
 {
-	WriteString(buffer, kServiceMessageReconnectCommand);
+	WriteServerMessageString(buffer, kServiceMessageReconnectCommand);
 }
 
 void WriteReconnectMessage(
@@ -111,8 +90,8 @@ void WriteVoiceInitPayload(
 	const char *codec,
 	int quality)
 {
-	WriteString(buffer, VoiceCodecOrDefault(codec));
-	WriteByte(buffer, static_cast<unsigned int>(quality));
+	WriteServerMessageString(buffer, VoiceCodecOrDefault(codec));
+	WriteServerMessageByte(buffer, static_cast<unsigned int>(quality));
 }
 
 void WriteVoiceInitMessage(

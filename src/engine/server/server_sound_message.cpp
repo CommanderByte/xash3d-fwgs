@@ -1,4 +1,5 @@
 #include "engine/server/server_sound_message.hpp"
+#include "engine/server/server_message_envelope.hpp"
 
 namespace xash
 {
@@ -8,13 +9,6 @@ namespace server
 {
 namespace
 {
-
-void WriteByte(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	unsigned int value)
-{
-	buffer.writeUnsigned(static_cast<std::uint8_t>(value), 8);
-}
 
 int EncodeAttenuation(float attenuation)
 {
@@ -90,7 +84,7 @@ void WriteSoundCommand(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	std::uint8_t command)
 {
-	WriteByte(buffer, command);
+	WriteServerMessageCommand(buffer, command);
 }
 
 void WriteSoundPayload(
@@ -102,11 +96,13 @@ void WriteSoundPayload(
 	buffer.writeUnsigned(static_cast<std::uint32_t>(payload.channel), kSoundMessageMaxChannelBits);
 
 	if (payload.flags & kSoundMessageVolumeFlag)
-		WriteByte(buffer, static_cast<unsigned int>(payload.volume));
+		WriteServerMessageByte(buffer, static_cast<unsigned int>(payload.volume));
 	if (payload.flags & kSoundMessageAttenuationFlag)
-		WriteByte(buffer, static_cast<unsigned int>(EncodeAttenuation(payload.attenuation)));
+		WriteServerMessageByte(
+			buffer,
+			static_cast<unsigned int>(EncodeAttenuation(payload.attenuation)));
 	if (payload.flags & kSoundMessagePitchFlag)
-		WriteByte(buffer, static_cast<unsigned int>(payload.pitch));
+		WriteServerMessageByte(buffer, static_cast<unsigned int>(payload.pitch));
 
 	buffer.writeUnsigned(static_cast<std::uint32_t>(payload.entityIndex), kSoundMessageMaxEntityBits);
 	WriteCoordinate(buffer, payload.origin[0], payload.largeCoordinates);

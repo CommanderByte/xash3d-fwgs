@@ -1,4 +1,5 @@
 #include "engine/server/server_static_messages.hpp"
+#include "engine/server/server_message_envelope.hpp"
 
 namespace xash
 {
@@ -8,13 +9,6 @@ namespace server
 {
 namespace
 {
-
-void WriteByte(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	unsigned int value)
-{
-	buffer.writeUnsigned(static_cast<std::uint8_t>(value), 8);
-}
 
 void WriteWord(
 	xash::engine::network::NetworkBitBuffer &buffer,
@@ -89,7 +83,7 @@ void WriteStaticMessageCommand(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	std::uint8_t command)
 {
-	WriteByte(buffer, command);
+	WriteServerMessageCommand(buffer, command);
 }
 
 void WriteBspDecalPayload(
@@ -103,7 +97,7 @@ void WriteBspDecalPayload(
 	WriteShort(buffer, payload.entityIndex);
 	if (payload.entityIndex > 0)
 		WriteWord(buffer, payload.modelIndex);
-	WriteByte(buffer, static_cast<unsigned int>(payload.flags));
+	WriteServerMessageByte(buffer, static_cast<unsigned int>(payload.flags));
 	WriteWord(buffer, EncodeScale(payload.scale));
 }
 

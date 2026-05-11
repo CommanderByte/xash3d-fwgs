@@ -3567,18 +3567,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 119: Server Messaging Aggregate Helper Pilot
 
-- [ ] `ENG-MSGAGG-001` Add aggregate tests for the selected message envelope,
+- [x] `ENG-MSGAGG-001` Add aggregate tests for the selected message envelope,
   destination, or recipient concept.
-  Evidence:
-- [ ] `ENG-MSGAGG-002` Implement the smallest target-neutral aggregate helper
+  Evidence: `tests/engine/server_message_envelope.cpp` covers representative
+  complete messages, shared command/string envelope helpers, overflow behavior,
+  and the same recipient facts feeding multicast, event, and voice policy.
+- [x] `ENG-MSGAGG-002` Implement the smallest target-neutral aggregate helper
   that reduces duplicated message policy.
-  Evidence:
-- [ ] `ENG-MSGAGG-003` Keep packet buffers, network sends, and rendered console
+  Evidence: `src/include/engine/server/server_message_envelope.hpp` and
+  `src/engine/server/server_message_envelope.cpp` add shared command-byte,
+  NUL-string, envelope metadata, and recipient-facts helpers; text, service,
+  sound, static, voice, and spawn-handshake payload helpers now use the shared
+  envelope writer.
+- [x] `ENG-MSGAGG-003` Keep packet buffers, network sends, and rendered console
   routing legacy-owned.
-  Evidence:
-- [ ] `ENG-MSGAGG-004` Run focused messaging tests, full validation, and smoke
+  Evidence: `Documentation/codex/modern/engine/server-messaging-aggregate-pilot.md`
+  documents that live packet buffers, netchan sends, `sv.multicast`, game DLL
+  message sessions, user-message rewrites, and rendered-console routing remain
+  outside the helper.
+- [x] `ENG-MSGAGG-004` Run focused messaging tests, full validation, and smoke
   timing if code changes.
-  Evidence:
+  Evidence: focused messaging targets passed 8/8, direct
+  `build/src/test_engine_server_message_envelope.exe` passed, and
+  `scripts/run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_message_envelope -StopRunningXash` passed on
+  2026-05-11 with `.\waf.bat build --alltests` at 120/120 and smoke first
+  frame at 0.591 seconds.
 
 ## Phase 120: Server Messaging Adapter Shrink Review
 

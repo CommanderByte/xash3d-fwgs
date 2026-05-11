@@ -1,4 +1,5 @@
 #include "engine/server/server_voice_relay.hpp"
+#include "engine/server/server_message_envelope.hpp"
 
 namespace xash
 {
@@ -8,13 +9,6 @@ namespace server
 {
 namespace
 {
-
-void WriteByte(
-	xash::engine::network::NetworkBitBuffer &buffer,
-	unsigned int value)
-{
-	buffer.writeUnsigned(static_cast<std::uint8_t>(value), 8);
-}
 
 bool ListenerMaskIncludes(std::uint32_t listenerMask, int recipientIndex)
 {
@@ -123,8 +117,8 @@ void WriteVoiceDataPayload(
 	const void *payload,
 	unsigned int payloadSize)
 {
-	WriteByte(buffer, static_cast<unsigned int>(senderIndex));
-	WriteByte(buffer, frames);
+	WriteServerMessageByte(buffer, static_cast<unsigned int>(senderIndex));
+	WriteServerMessageByte(buffer, frames);
 	buffer.writeSigned(static_cast<int>(payloadSize), 16);
 
 	if (payloadSize == 0)
@@ -140,7 +134,7 @@ void WriteVoiceDataMessage(
 	const void *payload,
 	unsigned int payloadSize)
 {
-	WriteByte(buffer, kVoiceRelayServiceCommand);
+	WriteServerMessageCommand(buffer, kVoiceRelayServiceCommand);
 	WriteVoiceDataPayload(buffer, senderIndex, frames, payload, payloadSize);
 }
 

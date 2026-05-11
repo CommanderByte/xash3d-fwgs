@@ -81,6 +81,8 @@ Current helpers:
 - `server_map_validation.hpp`: map validation flag decoding, load
   classification, changelevel landmark decision, and game DLL existence
   compatibility contracts.
+- `server_message_envelope.hpp`: shared server message command/string envelope
+  writers and plain recipient-facts adapters for aggregate messaging tests.
 - `server_movement_constraints.hpp`: server monster movement mode and
   fly-move clip-plane constraint contracts.
 - `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,
