@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "engine/server/runtime/server_command_lifecycle.hpp"
+#include "engine/server/runtime/server_operator_command_policy.hpp"
 
 using namespace xash::engine::server;
 
@@ -112,9 +113,11 @@ static bool TestBackgroundMapCanReplaceExistingBackground()
 static bool TestMapValidationClassification()
 {
 	return ClassifyMapValidation(kLifecycleMapExists) == MapValidationResult::Valid &&
-		ClassifyMapValidation(kLifecycleMapInvalidVersion) == MapValidationResult::InvalidVersion &&
+		ClassifyMapValidation(kLifecycleMapInvalidVersion) ==
+			MapValidationResult::InvalidVersion &&
 		ClassifyMapValidation(0) == MapValidationResult::Missing &&
-		ClassifyMapValidation(kLifecycleMapExists | kLifecycleMapInvalidVersion) ==
+		ClassifyMapValidation(
+			kLifecycleMapExists | kLifecycleMapInvalidVersion) ==
 			MapValidationResult::InvalidVersion;
 }
 
@@ -184,10 +187,14 @@ static bool TestReloadCommand()
 
 static bool TestChangeLevelCommands()
 {
-	const LifecyclePlan missing = BuildChangeLevelCommandPlan(false, 1, nullptr, nullptr);
-	const LifecyclePlan classic = BuildChangeLevelCommandPlan(false, 3, "c1a1.bsp", "ignored");
-	const LifecyclePlan smoothNoLandmark = BuildChangeLevelCommandPlan(true, 2, "c1a2", nullptr);
-	const LifecyclePlan smooth = BuildChangeLevelCommandPlan(true, 3, "c1a3", "lm1");
+	const LifecyclePlan missing =
+		BuildChangeLevelCommandPlan(false, 1, nullptr, nullptr);
+	const LifecyclePlan classic =
+		BuildChangeLevelCommandPlan(false, 3, "c1a1.bsp", "ignored");
+	const LifecyclePlan smoothNoLandmark =
+		BuildChangeLevelCommandPlan(true, 2, "c1a2", nullptr);
+	const LifecyclePlan smooth =
+		BuildChangeLevelCommandPlan(true, 3, "c1a3", "lm1");
 
 	return missing.action == LifecycleAction::PrintUsage &&
 		classic.action == LifecycleAction::QueueChangeLevel &&
@@ -198,6 +205,84 @@ static bool TestChangeLevelCommands()
 		smooth.action == LifecycleAction::QueueChangeLevel &&
 		smooth.mapName == "c1a3" &&
 		smooth.landmarkName == "lm1";
+}
+
+static bool TestInfoCommandPrintsCurrentWithoutArguments()
+{
+	const OperatorInfoCommandPlan plan =
+		BuildOperatorInfoCommandPlan(1, nullptr, nullptr);
+
+	return plan.action == OperatorInfoCommandAction::PrintCurrent &&
+		plan.key.empty() &&
+		plan.value.empty();
+}
+
+static bool TestInfoCommandRejectsWrongArgumentCountsBeforeStarKeys()
+{
+	const OperatorInfoCommandPlan twoArgs =
+		BuildOperatorInfoCommandPlan(2, "*protected", nullptr);
+	const OperatorInfoCommandPlan fourArgs =
+		BuildOperatorInfoCommandPlan(4, "hostname", "value");
+
+	return twoArgs.action == OperatorInfoCommandAction::PrintUsage &&
+		fourArgs.action == OperatorInfoCommandAction::PrintUsage;
+}
+
+static bool TestInfoCommandRejectsStarKeysOnlyWhenSetting()
+{
+	const OperatorInfoCommandPlan plan =
+		BuildOperatorInfoCommandPlan(3, "*protected", "value");
+
+	return plan.action == OperatorInfoCommandAction::RejectStarKey &&
+		plan.key == "*protected" &&
+		plan.value == "value";
+}
+
+static bool TestInfoCommandAllowsRegularKeyMutation()
+{
+	const OperatorInfoCommandPlan plan =
+		BuildOperatorInfoCommandPlan(3, "hostname", "lambda");
+
+	return plan.action == OperatorInfoCommandAction::SetValue &&
+		plan.key == "hostname" &&
+		plan.value == "lambda";
+}
+
+static bool TestKickCommandRequiresTargetArgument()
+{
+	return BuildOperatorKickCommandPlan(1, nullptr, nullptr).action ==
+		OperatorKickCommandAction::PrintUsage;
+}
+
+static bool TestKickCommandClassifiesHashUserId()
+{
+	const OperatorKickCommandPlan plan =
+		BuildOperatorKickCommandPlan(3, "#42", "reason");
+
+	return plan.action == OperatorKickCommandAction::FindByUserId &&
+		plan.userId == 42 &&
+		plan.target == "#42" &&
+		plan.reason == "reason";
+}
+
+static bool TestKickCommandRequiresAllDigitsAfterHash()
+{
+	const OperatorKickCommandPlan plan =
+		BuildOperatorKickCommandPlan(2, "#12abc", nullptr);
+
+	return plan.action == OperatorKickCommandAction::FindByName &&
+		plan.target == "#12abc" &&
+		plan.reason.empty();
+}
+
+static bool TestKickCommandKeepsNamesAndEmptyReason()
+{
+	const OperatorKickCommandPlan plan =
+		BuildOperatorKickCommandPlan(2, "Gordon", nullptr);
+
+	return plan.action == OperatorKickCommandAction::FindByName &&
+		plan.target == "Gordon" &&
+		plan.reason.empty();
 }
 
 }
@@ -216,7 +301,15 @@ int main()
 		!TestQuickAliases() ||
 		!TestRestartCommand() ||
 		!TestReloadCommand() ||
-		!TestChangeLevelCommands())
+		!TestChangeLevelCommands() ||
+		!TestInfoCommandPrintsCurrentWithoutArguments() ||
+		!TestInfoCommandRejectsWrongArgumentCountsBeforeStarKeys() ||
+		!TestInfoCommandRejectsStarKeysOnlyWhenSetting() ||
+		!TestInfoCommandAllowsRegularKeyMutation() ||
+		!TestKickCommandRequiresTargetArgument() ||
+		!TestKickCommandClassifiesHashUserId() ||
+		!TestKickCommandRequiresAllDigitsAfterHash() ||
+		!TestKickCommandKeepsNamesAndEmptyReason())
 	{
 		return EXIT_FAILURE;
 	}

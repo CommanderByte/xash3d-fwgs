@@ -73,13 +73,16 @@ Phase 163 decisions are recorded in
 
 Goal: reduce test target noise without making failures harder to diagnose.
 
-- [ ] Pick the modules with the strongest aggregate coverage.
-- [ ] Move duplicated setup into module-specific test support headers.
-- [ ] Merge selected tiny tests into aggregate/module tests and update
+- [x] Pick the modules with the strongest aggregate coverage.
+- [x] Move duplicated setup into module-specific test support headers.
+- [x] Merge selected tiny tests into aggregate/module tests and update
   `src/wscript`.
-- [ ] Keep focused tests for ABI order, protocol byte layouts, save formats,
+- [x] Keep focused tests for ABI order, protocol byte layouts, save formats,
   and tricky compatibility quirks.
-- [ ] Run focused module tests and full validation.
+- [x] Run focused module tests and full validation.
+
+Phase 164 decisions are recorded in
+`Documentation/codex/modern/engine/test-suite-consolidation-pass.md`.
 
 ## Phase 165: Adapter And Common Glue Cleanup
 

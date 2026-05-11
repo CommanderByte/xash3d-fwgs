@@ -4610,20 +4610,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 164: Test Suite Consolidation Pass
 
-- [ ] `ENG-TESTCOLLAPSE-001` Pick the modules with the strongest aggregate
+- [x] `ENG-TESTCOLLAPSE-001` Pick the modules with the strongest aggregate
   coverage.
-  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
-- [ ] `ENG-TESTCOLLAPSE-002` Move duplicated setup into module-specific test
+  Evidence: `Documentation/codex/modern/engine/test-suite-consolidation-pass.md`.
+- [x] `ENG-TESTCOLLAPSE-002` Move duplicated setup into module-specific test
   support headers.
-  Evidence:
-- [ ] `ENG-TESTCOLLAPSE-003` Merge selected tiny tests into aggregate/module
+  Evidence: `tests/engine/game_dll_user_message_test_support.hpp`.
+- [x] `ENG-TESTCOLLAPSE-003` Merge selected tiny tests into aggregate/module
   tests and update `src/wscript`.
-  Evidence:
-- [ ] `ENG-TESTCOLLAPSE-004` Keep focused tests for ABI order, protocol byte
+  Evidence: `tests/engine/server_runtime_commands.cpp`,
+  `tests/engine/server_world_policies.cpp`,
+  `tests/engine/server_shared_rules.cpp`,
+  `tests/engine/server_query_responses.cpp`,
+  `tests/engine/game_dll_user_messages.cpp`, and `src/wscript`.
+- [x] `ENG-TESTCOLLAPSE-004` Keep focused tests for ABI order, protocol byte
   layouts, save formats, and tricky compatibility quirks.
-  Evidence:
-- [ ] `ENG-TESTCOLLAPSE-005` Run focused module tests and full validation.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/test-suite-consolidation-pass.md`.
+- [x] `ENG-TESTCOLLAPSE-005` Run focused module tests and full validation.
+  Evidence: focused consolidation targets passed 6/6 with
+  `.\waf.bat build --targets=test_engine_server_runtime_commands,test_engine_server_world_policies,test_engine_server_shared_rules,test_engine_server_query_responses,test_engine_game_dll_user_messages,test_engine_game_dll_bridge_domain`;
+  `.\waf.bat build --targets=xash` passed; `.\waf.bat build --alltests`
+  passed 132/132; runtime smoke reached first frame in 0.540 seconds with stop
+  reason `command`.
 
 ## Phase 165: Adapter And Common Glue Cleanup
 

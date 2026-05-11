@@ -19,9 +19,13 @@
 #include "engine/server/game_dll/game_dll_visibility_trace_policy.hpp"
 #include "server/game_dll_client_info_policy_adapter.h"
 #include "server/game_dll_output_policy_adapter.h"
+#include "game_dll_user_message_test_support.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;
+using xash::tests::engine::ReadCString;
+using xash::tests::engine::RegistrationRequest;
+using xash::tests::engine::Slot;
 
 namespace
 {
@@ -29,48 +33,6 @@ namespace
 bool NearlyEqualDouble(double a, double b, double tolerance = 0.00001)
 {
 	return std::fabs(a - b) <= tolerance;
-}
-
-GameDllUserMessageSlot Slot(
-	const char *name,
-	int number,
-	int size)
-{
-	GameDllUserMessageSlot slot = {};
-	slot.name = name;
-	slot.number = number;
-	slot.size = size;
-	return slot;
-}
-
-GameDllUserMessageRegistrationRequest RegistrationRequest(
-	const GameDllUserMessageSlot *slots,
-	int slotCount,
-	const char *name,
-	int size,
-	bool serverActive)
-{
-	GameDllUserMessageRegistrationRequest request = {};
-	request.name = name;
-	request.requestedSize = size;
-	request.slots = slots;
-	request.slotCount = slotCount;
-	request.nameCapacity = kGameDllUserMessageNameCapacity;
-	request.serverActive = serverActive;
-	return request;
-}
-
-bool ReadCString(NetworkBitBuffer &reader, const char *expected)
-{
-	for (std::size_t i = 0; ; ++i)
-	{
-		const unsigned int value = reader.readUnsigned(8);
-		if (value != static_cast<unsigned char>(expected[i]))
-			return false;
-
-		if (value == 0)
-			return true;
-	}
 }
 
 bool TestAbiMetadataFeedsMessageRegistrationFlow()

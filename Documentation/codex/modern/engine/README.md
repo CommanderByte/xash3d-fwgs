@@ -122,6 +122,9 @@ Current implementation notes:
   server helper layer to future `shared`, `resources`, `messaging`,
   `game_dll`, `client`, `runtime`, `world`, and `save` domains before any
   physical file moves.
+- `test-suite-consolidation-pass.md`: how Phase 164 mirrors the server
+  implementation collapses in the test target layout while keeping ABI,
+  protocol-byte, save-format, fixture, and domain aggregate tests focused.
 - `server-header-boundary-audit.md`: how Phase 143 classifies
   `engine/server/server.h`, maps modern helper coverage, and proposes a
   constants/cvars-first split plan while preserving current include behavior.

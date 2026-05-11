@@ -1,67 +1,175 @@
-#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
 #include "engine/server/game_dll/game_dll_message_bridge.hpp"
+#include "engine/server/game_dll/game_dll_user_message_registry.hpp"
 #include "engine/server/messaging/server_multicast_policy.hpp"
+#include "game_dll_user_message_test_support.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;
+using xash::tests::engine::ReadCString;
+using xash::tests::engine::RegistrationRequest;
+using xash::tests::engine::Slot;
 
 namespace
 {
 
-GameDllUserMessageSlot Slot(
-	const char *name,
-	int number,
-	int size)
+static bool TestRejectsInvalidNames()
 {
-	GameDllUserMessageSlot slot = {};
-	slot.name = name;
-	slot.number = number;
-	slot.size = size;
-	return slot;
+	GameDllUserMessageSlot slots[4] = {};
+	const char tooLong[] = "12345678901234567890123456789012";
+
+	const GameDllUserMessageRegistrationPlan nullName =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, nullptr, 1));
+	const GameDllUserMessageRegistrationPlan emptyName =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "", 1));
+	const GameDllUserMessageRegistrationPlan longName =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, tooLong, 1));
+
+	return nullName.action ==
+			GameDllUserMessageRegistrationAction::Reject &&
+		nullName.rejectReason ==
+			GameDllUserMessageRejectReason::EmptyName &&
+		emptyName.rejectReason ==
+			GameDllUserMessageRejectReason::EmptyName &&
+		longName.rejectReason ==
+			GameDllUserMessageRejectReason::NameTooLong;
 }
 
-GameDllUserMessageRegistrationRequest Request(
-	const GameDllUserMessageSlot *slots,
-	int slotCount,
-	const char *name,
-	int size,
-	bool serverActive)
+static bool TestRejectsOversizedMessage()
 {
-	GameDllUserMessageRegistrationRequest request = {};
-	request.name = name;
-	request.requestedSize = size;
-	request.slots = slots;
-	request.slotCount = slotCount;
-	request.nameCapacity = kGameDllUserMessageNameCapacity;
-	request.serverActive = serverActive;
-	return request;
+	GameDllUserMessageSlot slots[4] = {};
+	const GameDllUserMessageRegistrationPlan plan =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(
+				slots,
+				4,
+				"HudText",
+				kGameDllUserMessageMaxPayloadBytes + 1));
+
+	return plan.action == GameDllUserMessageRegistrationAction::Reject &&
+		plan.rejectReason == GameDllUserMessageRejectReason::SizeTooLarge &&
+		plan.messageNumber == kGameDllUserMessageBadMessage;
 }
 
-bool ReadCString(NetworkBitBuffer &reader, const char *expected)
+static bool TestDuplicateReturnsExistingNumber()
 {
-	for (std::size_t i = 0; ; ++i)
-	{
-		const unsigned int value = reader.readUnsigned(8);
-		if (value != static_cast<unsigned char>(expected[i]))
-			return false;
+	GameDllUserMessageSlot slots[4] = {};
+	slots[1] = Slot("HudText", 75, -1);
+	slots[2] = Slot("CurWeapon", 76, 3);
 
-		if (value == 0)
-			return true;
-	}
+	const GameDllUserMessageRegistrationPlan plan =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "CurWeapon", 10, true));
+
+	return plan.action ==
+			GameDllUserMessageRegistrationAction::ReturnExisting &&
+		plan.slotIndex == 2 &&
+		plan.messageNumber == 76 &&
+		plan.storedSize == 3 &&
+		!plan.resendRegistration;
 }
 
-bool TestRegisteredFixedUserMessageMulticasts()
+static bool TestRegistersNewFixedAndVariableSizes()
+{
+	GameDllUserMessageSlot slots[4] = {};
+	slots[1] = Slot("HudText", 60, -1);
+
+	const GameDllUserMessageRegistrationPlan fixed =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "CurWeapon", 3));
+	const GameDllUserMessageRegistrationPlan variable =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "SayText", -1));
+	const GameDllUserMessageRegistrationPlan clampedLow =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "Battery", -50));
+
+	return fixed.action ==
+			GameDllUserMessageRegistrationAction::RegisterNew &&
+		fixed.slotIndex == 2 &&
+		fixed.messageNumber == kGameDllUserMessageLastServiceMessage + 2 &&
+		fixed.storedSize == 3 &&
+		variable.storedSize == -1 &&
+		clampedLow.storedSize == -1;
+}
+
+static bool TestCapacityExceeded()
+{
+	GameDllUserMessageSlot slots[3] = {};
+	slots[1] = Slot("One", 60, 1);
+	slots[2] = Slot("Two", 61, 1);
+
+	const GameDllUserMessageRegistrationPlan plan =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 3, "Three", 1));
+
+	return plan.action == GameDllUserMessageRegistrationAction::Reject &&
+		plan.rejectReason ==
+			GameDllUserMessageRejectReason::CapacityExceeded;
+}
+
+static bool TestStopsAtFirstEmptySlot()
+{
+	GameDllUserMessageSlot slots[5] = {};
+	slots[1] = Slot("One", 60, 1);
+	slots[3] = Slot("HiddenAfterHole", 62, 1);
+
+	const GameDllUserMessageRegistrationPlan plan =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 5, "HiddenAfterHole", 1));
+
+	return plan.action ==
+			GameDllUserMessageRegistrationAction::RegisterNew &&
+		plan.slotIndex == 2 &&
+		plan.messageNumber == kGameDllUserMessageLastServiceMessage + 2;
+}
+
+static bool TestActiveServerResendPlanning()
+{
+	GameDllUserMessageSlot slots[4] = {};
+	slots[1] = Slot("HudText", 60, -1);
+
+	const GameDllUserMessageRegistrationPlan inactive =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "SayText", -1, false));
+	const GameDllUserMessageRegistrationPlan active =
+		BuildGameDllUserMessageRegistrationPlan(
+			RegistrationRequest(slots, 4, "SayText", -1, true));
+
+	return inactive.action ==
+			GameDllUserMessageRegistrationAction::RegisterNew &&
+		!inactive.resendRegistration &&
+		active.action ==
+			GameDllUserMessageRegistrationAction::RegisterNew &&
+		active.resendRegistration;
+}
+
+static bool TestDisplayNames()
+{
+	return std::strcmp(
+			GameDllUserMessageRegistrationActionName(
+				GameDllUserMessageRegistrationAction::RegisterNew),
+			"register-new") == 0 &&
+		std::strcmp(
+			GameDllUserMessageRejectReasonName(
+				GameDllUserMessageRejectReason::CapacityExceeded),
+			"capacity-exceeded") == 0;
+}
+
+static bool TestRegisteredFixedUserMessageMulticasts()
 {
 	GameDllUserMessageSlot slots[4] = {};
 	slots[1] = Slot("HudText", kGameDllUserMessageLastServiceMessage + 1, 3);
 
 	const GameDllUserMessageRegistrationPlan plan =
 		BuildGameDllUserMessageRegistrationPlan(
-			Request(slots, 4, "HudText", 3, false));
+			RegistrationRequest(slots, 4, "HudText", 3, false));
 
 	if (plan.action != GameDllUserMessageRegistrationAction::ReturnExisting)
 		return false;
@@ -102,14 +210,14 @@ bool TestRegisteredFixedUserMessageMulticasts()
 		multicast.clearMulticast;
 }
 
-bool TestRegisteredVariableUserMessagePatchesSize()
+static bool TestRegisteredVariableUserMessagePatchesSize()
 {
 	GameDllUserMessageSlot slots[4] = {};
 	slots[1] = Slot("HudText", kGameDllUserMessageLastServiceMessage + 1, -1);
 
 	const GameDllUserMessageRegistrationPlan plan =
 		BuildGameDllUserMessageRegistrationPlan(
-			Request(slots, 4, "SayText", -1, false));
+			RegistrationRequest(slots, 4, "SayText", -1, false));
 
 	if (plan.action != GameDllUserMessageRegistrationAction::RegisterNew)
 		return false;
@@ -143,12 +251,12 @@ bool TestRegisteredVariableUserMessagePatchesSize()
 		data[5] == 0;
 }
 
-bool TestActiveRegistrationBuildsResendPayload()
+static bool TestActiveRegistrationBuildsResendPayload()
 {
 	GameDllUserMessageSlot slots[4] = {};
 	const GameDllUserMessageRegistrationPlan plan =
 		BuildGameDllUserMessageRegistrationPlan(
-			Request(slots, 4, "SayText", -1, true));
+			RegistrationRequest(slots, 4, "SayText", -1, true));
 	const GameDllUserMessageRegistrationBroadcast broadcast =
 		BuildGameDllUserMessageRegistrationBroadcast(plan, "SayText");
 
@@ -162,7 +270,8 @@ bool TestActiveRegistrationBuildsResendPayload()
 		plan.resendRegistration &&
 		broadcast.shouldWrite &&
 		reader.readUnsigned(8) == kGameDllUserMessageRegistrationCommand &&
-		reader.readUnsigned(8) == static_cast<unsigned int>(plan.messageNumber) &&
+		reader.readUnsigned(8) ==
+			static_cast<unsigned int>(plan.messageNumber) &&
 		reader.readUnsigned(16) ==
 			static_cast<unsigned int>(
 				static_cast<unsigned short>(plan.storedSize)) &&
@@ -171,15 +280,15 @@ bool TestActiveRegistrationBuildsResendPayload()
 		!reader.overflow();
 }
 
-bool TestInactiveOrRejectedRegistrationDoesNotBroadcast()
+static bool TestInactiveOrRejectedRegistrationDoesNotBroadcast()
 {
 	GameDllUserMessageSlot slots[2] = {};
 	const GameDllUserMessageRegistrationPlan inactive =
 		BuildGameDllUserMessageRegistrationPlan(
-			Request(slots, 2, "HudText", 1, false));
+			RegistrationRequest(slots, 2, "HudText", 1, false));
 	const GameDllUserMessageRegistrationPlan rejected =
 		BuildGameDllUserMessageRegistrationPlan(
-			Request(slots, 2, nullptr, 1, true));
+			RegistrationRequest(slots, 2, nullptr, 1, true));
 
 	const GameDllUserMessageRegistrationBroadcast inactiveBroadcast =
 		BuildGameDllUserMessageRegistrationBroadcast(inactive, "HudText");
@@ -200,7 +309,7 @@ bool TestInactiveOrRejectedRegistrationDoesNotBroadcast()
 		!writer.overflow();
 }
 
-bool TestRegisteredSizeMismatchClearsBuffer()
+static bool TestRegisteredSizeMismatchClearsBuffer()
 {
 	const GameDllUserMessageSlot fixedSlot =
 		Slot("CurWeapon", kGameDllUserMessageLastServiceMessage + 2, 2);
@@ -225,7 +334,7 @@ bool TestRegisteredSizeMismatchClearsBuffer()
 		!end.shouldMulticast;
 }
 
-bool TestRewrittenSystemMessageKeepsLegacyCommand()
+static bool TestRewrittenSystemMessageKeepsLegacyCommand()
 {
 	unsigned char data[16] = {};
 	GameDllMessageSession session(data, sizeof(data));
@@ -259,7 +368,15 @@ bool TestRewrittenSystemMessageKeepsLegacyCommand()
 
 int main()
 {
-	if (!TestRegisteredFixedUserMessageMulticasts() ||
+	if (!TestRejectsInvalidNames() ||
+		!TestRejectsOversizedMessage() ||
+		!TestDuplicateReturnsExistingNumber() ||
+		!TestRegistersNewFixedAndVariableSizes() ||
+		!TestCapacityExceeded() ||
+		!TestStopsAtFirstEmptySlot() ||
+		!TestActiveServerResendPlanning() ||
+		!TestDisplayNames() ||
+		!TestRegisteredFixedUserMessageMulticasts() ||
 		!TestRegisteredVariableUserMessagePatchesSize() ||
 		!TestActiveRegistrationBuildsResendPayload() ||
 		!TestInactiveOrRejectedRegistrationDoesNotBroadcast() ||
