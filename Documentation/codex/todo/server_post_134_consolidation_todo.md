@@ -30,13 +30,16 @@ Evidence:
 Goal: make the intended `src/engine/server` submodule layout explicit before
 moving files.
 
-- [ ] Define the target directories for resources, messaging, game DLL bridge,
+- [x] Define the target directories for resources, messaging, game DLL bridge,
   client/session, runtime, world/physics, save/restore, and shared contracts.
-- [ ] Map current helper files to those domains and mark temporary facades.
-- [ ] Decide which include paths and Waf target lists would change during a
+- [x] Map current helper files to those domains and mark temporary facades.
+- [x] Decide which include paths and Waf target lists would change during a
   physical move.
-- [ ] Document the no-move/no-rename boundaries for public ABI and legacy C
+- [x] Document the no-move/no-rename boundaries for public ABI and legacy C
   adapters.
+
+Evidence:
+`Documentation/codex/modern/engine/server-domain-layout-plan.md`.
 
 ## Phase 137: Resource Transfer Domain Consolidation Pilot
 

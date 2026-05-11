@@ -99,6 +99,10 @@ Current implementation notes:
 - `server-cpp-ownership-consolidation.md`: how Phase 114 classifies the modern
   server helper surface as reusable concepts, behavior owners, or temporary
   facades, and where the old `sv_*.c` grouping should eventually split.
+- `server-domain-layout-plan.md`: how Phase 136 maps the current flat modern
+  server helper layer to future `shared`, `resources`, `messaging`,
+  `game_dll`, `client`, `runtime`, `world`, and `save` domains before any
+  physical file moves.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of

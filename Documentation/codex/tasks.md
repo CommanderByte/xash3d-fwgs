@@ -3993,19 +3993,19 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 136: Server Domain Layout Plan
 
-- [ ] `ENG-SERVER-LAYOUT-001` Define target domain directories for resources,
+- [x] `ENG-SERVER-LAYOUT-001` Define target domain directories for resources,
   messaging, game DLL bridge, client/session, runtime, world/physics,
   save/restore, and shared contracts.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-LAYOUT-002` Map current helper files to those domains and
+  Evidence: `Documentation/codex/modern/engine/server-domain-layout-plan.md`.
+- [x] `ENG-SERVER-LAYOUT-002` Map current helper files to those domains and
   mark temporary facades.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-LAYOUT-003` Decide which include paths and Waf target lists
+  Evidence: `Documentation/codex/modern/engine/server-domain-layout-plan.md`.
+- [x] `ENG-SERVER-LAYOUT-003` Decide which include paths and Waf target lists
   would change during a physical move.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-LAYOUT-004` Document no-move/no-rename boundaries for
+  Evidence: `Documentation/codex/modern/engine/server-domain-layout-plan.md`.
+- [x] `ENG-SERVER-LAYOUT-004` Document no-move/no-rename boundaries for
   public ABI and legacy C adapters.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: `Documentation/codex/modern/engine/server-domain-layout-plan.md`.
 
 ## Phase 137: Resource Transfer Domain Consolidation Pilot
 
