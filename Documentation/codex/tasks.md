@@ -4526,6 +4526,112 @@ Phase 89 covers user-message registry policy.
   Evidence: moved the completed post-146 consolidation TODO to
   `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 
+## Phase 161: Server Module Cleanup Roadmap
+
+- [x] `ENG-MODCLEAN-001` Audit `client`, `resources`, `messaging`,
+  `game_dll`, and the flat server layer for collapse candidates.
+  Evidence: `Documentation/codex/modern/engine/server-module-cleanup-plan.md`.
+- [x] `ENG-MODCLEAN-002` Decide game-engine terminology for the cleanup lane.
+  Evidence: use Session, Content, Replication, Game API, Simulation,
+  Savegame, Runtime, and Shared as the planning vocabulary.
+- [x] `ENG-MODCLEAN-003` Define test-collapse rules before merging test
+  targets.
+  Evidence: `Documentation/codex/modern/engine/server-module-cleanup-plan.md`.
+- [x] `ENG-MODCLEAN-004` Define aggressive scan and batching techniques for
+  the cleanup lane.
+  Evidence: `Documentation/codex/modern/engine/server-module-cleanup-plan.md`.
+- [x] `ENG-MODCLEAN-005` Add the next cleanup phases to this task list.
+  Evidence: Phases 162-166 below;
+  `Documentation/codex/todo/server_module_cleanup_todo.md`.
+
+## Phase 162: Flat Server Module Rehome
+
+- [ ] `ENG-FLATREHOME-001` Create the needed `shared/`, `runtime/`, `save/`,
+  and `world/` source and include directories.
+  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
+- [ ] `ENG-FLATREHOME-002` Move obvious shared constraints, runtime shell
+  helpers, savegame helpers, and simulation/world helpers into their modules.
+  Evidence:
+- [ ] `ENG-FLATREHOME-003` Decide whether `source_query` and `netapi_info`
+  move into `client/` or a query submodule, and do the move if the owner is
+  clear.
+  Evidence:
+- [ ] `ENG-FLATREHOME-004` Update includes, READMEs, and Waf references where
+  needed while keeping live legacy ownership unchanged.
+  Evidence:
+- [ ] `ENG-FLATREHOME-005` Run focused affected tests, full validation, and
+  smoke timing if runtime wiring changes.
+  Evidence:
+
+## Phase 163: Submodule Collapse Pass
+
+- [ ] `ENG-SUBCOLLAPSE-001` Review Session/client helpers and decide whether
+  admission/query pieces should group further.
+  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
+- [ ] `ENG-SUBCOLLAPSE-002` Review Content/resource helpers and collapse
+  duplicated consistency or transfer setup only where aggregate tests protect
+  it.
+  Evidence:
+- [ ] `ENG-SUBCOLLAPSE-003` Review Replication/messaging helpers and decide
+  whether tiny payload writers or snapshot-adjacent helpers should group.
+  Evidence:
+- [ ] `ENG-SUBCOLLAPSE-004` Review Game API/game DLL helpers and decide
+  whether message bridge/session/registry or entity lifecycle/parse pieces
+  should share implementation or setup.
+  Evidence:
+- [ ] `ENG-SUBCOLLAPSE-005` Run focused module tests and full validation.
+  Evidence:
+
+## Phase 164: Test Suite Consolidation Pass
+
+- [ ] `ENG-TESTCOLLAPSE-001` Pick the modules with the strongest aggregate
+  coverage.
+  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
+- [ ] `ENG-TESTCOLLAPSE-002` Move duplicated setup into module-specific test
+  support headers.
+  Evidence:
+- [ ] `ENG-TESTCOLLAPSE-003` Merge selected tiny tests into aggregate/module
+  tests and update `src/wscript`.
+  Evidence:
+- [ ] `ENG-TESTCOLLAPSE-004` Keep focused tests for ABI order, protocol byte
+  layouts, save formats, and tricky compatibility quirks.
+  Evidence:
+- [ ] `ENG-TESTCOLLAPSE-005` Run focused module tests and full validation.
+  Evidence:
+
+## Phase 165: Adapter And Common Glue Cleanup
+
+- [ ] `ENG-GLUECLEAN-001` Review adapter shared helpers for Session, Content,
+  Replication, and Game API.
+  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
+- [ ] `ENG-GLUECLEAN-002` Move common plain structs/enums into module headers
+  only when multiple helpers genuinely share them.
+  Evidence:
+- [ ] `ENG-GLUECLEAN-003` Avoid a giant `server_adapter.cpp` or broad `Server`
+  facade.
+  Evidence:
+- [ ] `ENG-GLUECLEAN-004` Keep live legacy ownership obvious at the call site.
+  Evidence:
+- [ ] `ENG-GLUECLEAN-005` Run focused adapter/module tests, full validation,
+  and smoke timing if runtime route-through code changes.
+  Evidence:
+
+## Phase 166: Module Cleanup Checkpoint
+
+- [ ] `ENG-MODCHECK-001` Recount modern server files, headers, adapters, and
+  tests after the cleanup lane.
+  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
+- [ ] `ENG-MODCHECK-002` Compare before/after readability and validation cost.
+  Evidence:
+- [ ] `ENG-MODCHECK-003` Decide whether to continue server cleanup or switch
+  to client/render fixtures.
+  Evidence:
+- [ ] `ENG-MODCHECK-004` Run full validation and runtime smoke timing.
+  Evidence:
+- [ ] `ENG-MODCHECK-005` Move completed cleanup TODOs to `done/` where
+  sensible.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current
