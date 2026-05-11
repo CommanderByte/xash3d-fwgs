@@ -2806,7 +2806,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `tests/engine/game_dll_message_session.cpp`.
 - [x] `ENG-GAMEDLL-MSG-004` Route only the smallest safe state/accounting
   decisions while keeping `sv.multicast` and `SV_Multicast()` legacy-owned.
-  Evidence: `engine/server/game_dll_message_session_adapter.cpp` and
+  Evidence: `engine/server/game_dll_message_bridge_adapter.cpp`,
+  `engine/server/game_dll_message_session_adapter.h`, and
   `engine/server/sv_game.c` route byte normalization, payload byte accounting,
   string byte accounting, entity index validation, destination clamping, and
   rewrite admission through the modern helper.
@@ -2834,7 +2835,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `tests/engine/game_dll_user_message_registry.cpp`.
 - [x] `ENG-GAMEDLL-USERMSG-004` Route safe policy decisions while keeping
   `svgame.msg` mutation and multicast registration writes adapter-owned.
-  Evidence: `engine/server/game_dll_user_message_registry_adapter.cpp` and
+  Evidence: `engine/server/game_dll_message_bridge_adapter.cpp`,
+  `engine/server/game_dll_user_message_registry_adapter.h`, and
   `engine/server/sv_game.c` route validation, duplicate detection, size
   clamping, slot selection, message number planning, and active resend planning
   through the modern helper while keeping table writes and multicast calls in
@@ -3683,18 +3685,32 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 123: Game DLL Bridge Adapter Pilot
 
-- [ ] `ENG-GDLLADAPT-001` Pick one low-risk game DLL adapter group to
+- [x] `ENG-GDLLADAPT-001` Pick one low-risk game DLL adapter group to
   consolidate or explicitly leave split.
-  Evidence:
-- [ ] `ENG-GDLLADAPT-002` Preserve exported callback behavior and table order
+  Evidence: message-session and user-message registration adapter
+  implementations are grouped in
+  `engine/server/game_dll_message_bridge_adapter.cpp`; the split C headers
+  remain in place for `sv_game.c`.
+- [x] `ENG-GDLLADAPT-002` Preserve exported callback behavior and table order
   with tests or metadata checks.
-  Evidence:
-- [ ] `ENG-GDLLADAPT-003` Update docs if the grouped adapter changes the
+  Evidence: no `sv_game.c` callback table or C function names changed; the
+  grouped adapter keeps the existing `SV_GameDllMessageSession_*` and
+  `SV_GameDllUserMessage_*` symbols and retains protocol/static-assert checks.
+- [x] `ENG-GDLLADAPT-003` Update docs if the grouped adapter changes the
   recommended `sv_game.c` split.
   Evidence:
-- [ ] `ENG-GDLLADAPT-004` Run focused game DLL bridge tests and full
+  `Documentation/codex/modern/engine/game-dll-message-bridge-adapter-pilot.md`,
+  `Documentation/codex/modern/engine/game-dll-message-bridge-aggregate.md`,
+  and `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [x] `ENG-GDLLADAPT-004` Run focused game DLL bridge tests and full
   validation.
-  Evidence:
+  Evidence: `.\waf.bat build
+  --targets=test_engine_game_dll_message_bridge,test_engine_game_dll_message_session,test_engine_game_dll_user_message_registry,test_engine_game_dll_enginefuncs`
+  passed; `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_game_dll_message_bridge -StopRunningXash` passed, with
+  `.\waf.bat build --alltests` at 121/121 and smoke first frame at
+  0.509 seconds. The user also reported a manual launch/new-game smoke after
+  Phase 122 with no visible issues before starting this phase.
 
 ## Phase 124: Client Session Boundary Audit
 

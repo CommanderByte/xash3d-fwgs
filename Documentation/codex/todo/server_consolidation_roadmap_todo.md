@@ -136,6 +136,16 @@ Phase 122 outcome:
   Evidence:
   `Documentation/codex/modern/engine/game-dll-message-bridge-aggregate.md`.
 
+Phase 123 outcome:
+
+- The pilot groups the message-session and user-message registration adapter
+  implementations in `engine/server/game_dll_message_bridge_adapter.cpp`.
+- The C headers and exported adapter function names remain split and stable,
+  so `sv_game.c` call sites and game DLL callback table publication stay
+  compatibility-owned.
+  Evidence:
+  `Documentation/codex/modern/engine/game-dll-message-bridge-adapter-pilot.md`.
+
 ## Phase 124-126: Client And Session Domain
 
 Legacy spread:

@@ -57,7 +57,9 @@ phase.
   accounting, and rewrite admission.
   Evidence: `tests/engine/game_dll_message_session.cpp`.
 - [x] Route only the smallest safe validation and size-accounting decisions.
-  Evidence: `engine/server/game_dll_message_session_adapter.cpp` routes byte
+  Evidence: `engine/server/game_dll_message_bridge_adapter.cpp` implements
+  the message-session C surface declared by
+  `engine/server/game_dll_message_session_adapter.h`; it routes byte
   normalization, fixed write byte counts, string byte counts, entity index
   validation, destination clamping, and rewrite admission while leaving
   `sv.multicast` writes and `SV_Multicast()` in `sv_game.c`.
@@ -80,8 +82,10 @@ phase.
   max-message count, and active resend planning.
   Evidence: `tests/engine/game_dll_user_message_registry.cpp`.
 - [x] Keep actual message IDs and multicast writes adapter-owned.
-  Evidence: `engine/server/game_dll_user_message_registry_adapter.cpp`
-  returns a policy plan; `sv_game.c` still mutates `svgame.msg`, calls
+  Evidence: `engine/server/game_dll_message_bridge_adapter.cpp` implements
+  the user-message registry C surface declared by
+  `engine/server/game_dll_user_message_registry_adapter.h`; it returns a
+  policy plan while `sv_game.c` still mutates `svgame.msg`, calls
   `SV_SendUserReg()`, and calls `SV_Multicast()`.
 
 ## Phase 90: Game DLL Text, Command, And Alert Output Policy

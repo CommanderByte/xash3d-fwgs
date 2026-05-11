@@ -41,7 +41,7 @@ facade. The live bridge remains in `sv_game.c` until later phases have broader
 fixtures for `svgame.msg`, `sv.multicast`, destination entities, trace/visibility
 state, and callback side effects.
 
-Phase 123 can now decide whether a small grouped messaging adapter would make
-the current bridge easier to read. If it does, it should start with the message
-session and user-message registration adapters, not the concrete callback table
-or real DLL loader.
+Phase 123 groups the message-session and user-message registration adapter
+implementations in `engine/server/game_dll_message_bridge_adapter.cpp`. The
+public adapter headers remain split, and the concrete callback table plus real
+DLL loader remain outside the grouped adapter.
