@@ -168,4 +168,6 @@ Goal: pause after the first post-146 domain consolidation tranche.
 - [ ] Run full validation and runtime smoke timing.
 - [ ] Decide whether to continue server consolidation, shift to client/render,
   or tackle deferred memory/platform/licensing work.
+- [ ] Choose one simplification pilot: grouped adapter, grouped domain module,
+  aggregate test, or README inventory cleanup.
 - [ ] Move completed TODO items to `Documentation/codex/done/` where sensible.

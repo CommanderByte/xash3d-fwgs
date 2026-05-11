@@ -4503,13 +4503,17 @@ Phase 89 covers user-message registry policy.
 
 - [ ] `ENG-DOMAIN-CHECK-001` Compare adapter counts and modern domain files
   after Phases 147-159.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`,
+  `Documentation/codex/modern/engine/pre-159-simplification-checkpoint.md`.
 - [ ] `ENG-DOMAIN-CHECK-002` Run full validation and runtime smoke timing.
   Evidence:
 - [ ] `ENG-DOMAIN-CHECK-003` Decide whether to continue server consolidation,
   shift to client/render, or tackle deferred memory/platform/licensing work.
   Evidence:
-- [ ] `ENG-DOMAIN-CHECK-004` Move completed TODO items to
+- [ ] `ENG-DOMAIN-CHECK-004` Choose one simplification pilot: grouped adapter,
+  grouped domain module, aggregate test, or README inventory cleanup.
+  Evidence:
+- [ ] `ENG-DOMAIN-CHECK-005` Move completed TODO items to
   `Documentation/codex/done/` where sensible.
   Evidence:
 
