@@ -162,6 +162,10 @@ Current implementation notes:
 - `server-route-through-review.md`: how Phase 106 reviews the Phase 101-105
   constants lane, confirms no extra broad route-through should be made, and
   lists the next behavior-owner phases.
+- `server-runtime-configuration-boundary.md`: how Phase 127 keeps `sv_main.c`
+  cvar registration, movevars, packet reads, frame ordering, master heartbeats,
+  and shutdown legacy-owned while routing client timeout decisions through a
+  plain modern policy helper.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

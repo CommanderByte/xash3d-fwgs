@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "net_encode.h"
 #include "platform/platform.h"
 #include "server_cvar_snapshot_adapter.h"
+#include "server_timeout_policy_adapter.h"
 #include "user_agent_policy_adapter.h"
 
 // server cvars
@@ -497,44 +498,59 @@ static void SV_CheckTimeouts( void )
 	for( i = 0; i < svs.maxclients; i++ )
 	{
 		sv_client_t *cl = &svs.clients[i];
+		sv_timeout_client_request_t request;
+		sv_timeout_client_plan_t plan;
 
-		if( cl->state >= cs_connected )
+		memset( &request, 0, sizeof( request ));
+		request.state = cl->state;
+		request.fake_client = FBitSet( cl->flags, FCL_FAKECLIENT );
+		request.has_entity = cl->edict != NULL;
+		if( cl->edict )
 		{
-			if( cl->edict && !FBitSet( cl->edict->v.flags, FL_SPECTATOR|FL_FAKECLIENT ))
-				numclients++;
+			request.entity_spectator =
+				FBitSet( cl->edict->v.flags, FL_SPECTATOR );
+			request.entity_fake_client =
+				FBitSet( cl->edict->v.flags, FL_FAKECLIENT );
 		}
+		request.local_address =
+			!request.fake_client &&
+			( cl->state == cs_connected ||
+				cl->state == cs_spawning ||
+				cl->state == cs_spawned ) &&
+			NET_IsLocalAddress( cl->netchan.remote_address );
+		request.connection_started = cl->connection_started;
+		request.last_received = cl->netchan.last_received;
+		request.connected_drop_point = connected_droppoint;
+		request.spawned_drop_point = spawned_droppoint;
+		request.ban_connected_timeout =
+			sv_connect_timeout_ban.value > 0.0f;
 
-		// fake clients do not timeout
-		if( FBitSet( cl->flags, FCL_FAKECLIENT ))
-			continue;
+		plan = SV_Timeout_BuildClientPlan( &request );
 
-		switch( cl->state )
+		if( plan.active_player )
+			numclients++;
+
+		switch( plan.action )
 		{
-		case cs_zombie:
+		case SV_TIMEOUT_CLIENT_ACTION_FREE_ZOMBIE:
 			// FIXME: get rid of the zombie state
 			cl->state = cs_free; // can now be reused
 			break;
-		case cs_connected:
-		case cs_spawning:
-			if( !NET_IsLocalAddress( cl->netchan.remote_address ))
-			{
-				if( cl->connection_started < connected_droppoint )
-					SV_DropTimedOutClient( cl, sv_connect_timeout_ban.value > 0.0f );
-			}
+		case SV_TIMEOUT_CLIENT_ACTION_DROP_CONNECTED:
+			SV_DropTimedOutClient( cl, plan.ban != 0 );
 			break;
-		case cs_spawned:
-			if( !NET_IsLocalAddress( cl->netchan.remote_address ))
-			{
-				if( cl->netchan.last_received < spawned_droppoint )
-					SV_DropTimedOutClient( cl, false );
-			}
+		case SV_TIMEOUT_CLIENT_ACTION_DROP_SPAWNED:
+			SV_DropTimedOutClient( cl, false );
 			break;
 		default:
 			break;
 		}
 	}
 
-	if( svs.maxclients > 1 && sv.paused && !numclients )
+	if( SV_Timeout_ShouldReleasePause(
+		svs.maxclients,
+		sv.paused,
+		numclients ))
 	{
 		// nobody left, unpause the server
 		SV_TogglePause( "Pause released since no players are left." );

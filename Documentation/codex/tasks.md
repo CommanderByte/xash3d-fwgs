@@ -3794,17 +3794,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 127: Server Runtime Configuration Boundary
 
-- [ ] `ENG-RUNTIME-001` Audit `sv_main.c` cvar registration, read-only cvar
+- [x] `ENG-RUNTIME-001` Audit `sv_main.c` cvar registration, read-only cvar
   access, movevars, timeout loops, packet reads, master heartbeat, and shutdown.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-RUNTIME-002` Identify read-only snapshot seams that reduce adapter
+  Evidence:
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/modern/engine/server-runtime-configuration-boundary.md`.
+- [x] `ENG-RUNTIME-002` Identify read-only snapshot seams that reduce adapter
   churn without moving cvar ownership.
-  Evidence:
-- [ ] `ENG-RUNTIME-003` Add tests for any selected runtime policy helper.
-  Evidence:
-- [ ] `ENG-RUNTIME-004` Keep live cvar mutation, command registration, packet
+  Evidence: `src/include/engine/server/server_timeout_policy.hpp` and
+  `src/engine/server/server_timeout_policy.cpp` route only client timeout and
+  pause-release decisions from plain request values.
+- [x] `ENG-RUNTIME-003` Add tests for any selected runtime policy helper.
+  Evidence: `tests/engine/server_timeout_policy.cpp`; focused test
+  `.\waf.bat build --targets=test_engine_server_timeout_policy` passed; full
+  tests `.\waf.bat build --alltests` passed 124/124.
+- [x] `ENG-RUNTIME-004` Keep live cvar mutation, command registration, packet
   reads, and shutdown sends legacy-owned.
-  Evidence:
+  Evidence: `engine/server/sv_main.c` still owns cvar reads/registration,
+  `NET_IsLocalAddress()`, `SV_DropTimedOutClient()`, zombie-state mutation, and
+  pause toggling; validation smoke reached first frame in 0.511 seconds and
+  stopped with reason `command`.
 
 ## Phase 128: Server Operator Command Boundary
 

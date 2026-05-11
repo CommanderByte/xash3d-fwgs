@@ -227,6 +227,19 @@ Planned path:
 - Phase 128 audits operator commands and looks for command-table or command
   lifecycle helpers that are genuinely reusable.
 
+Phase 127 outcome:
+
+- `sv_main.c` cvar registration, movevar mutation, packet reads, frame
+  sequencing, master heartbeats, final messages, and shutdown remain
+  legacy-owned.
+- `SV_CheckTimeouts()` now routes only timeout and pause-release decisions
+  through `server_timeout_policy`, using plain request values built from the
+  legacy client slot, cvar reads, entity flags, and computed drop points.
+- The policy helper deliberately does not own cvar mutation, local-address
+  detection, client drops, zombie state mutation, or pause toggles.
+  Evidence:
+  `Documentation/codex/modern/engine/server-runtime-configuration-boundary.md`.
+
 ## Phase 129-130: Frame Snapshot Domain
 
 Legacy spread:

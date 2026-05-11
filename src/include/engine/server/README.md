@@ -105,6 +105,9 @@ Current helpers:
   static-entity admission decisions.
 - `server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
   and NUL-terminated text payload writers.
+- `server_timeout_policy.hpp`: `SV_CheckTimeouts()` client timeout and pause
+  release decisions built from plain runtime snapshots while cvar reads, local
+  address checks, client drops, and pause toggles stay legacy-owned.
 - `server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and
   `svc_voicedata` payload serialization.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
