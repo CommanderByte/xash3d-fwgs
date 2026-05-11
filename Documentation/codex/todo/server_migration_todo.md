@@ -310,7 +310,7 @@ and read-only cvar snapshots.
 - [x] Implement a target-neutral resource-row encoder on top of modern
   `NetworkBitBuffer`.
   Evidence: `src/include/engine/server/server_resource_message.hpp`,
-  `src/engine/server/server_resource_message.cpp`.
+  `src/engine/server/messaging/server_resource_message.cpp`.
 - [x] Add golden tests for plain rows, custom hashes, reserved payloads, signed
   sizes, and overflow.
   Evidence: `tests/engine/server_resource_message.cpp`.
@@ -333,7 +333,7 @@ and read-only cvar snapshots.
 - [x] Implement a target-neutral customization payload encoder on top of
   modern `NetworkBitBuffer`.
   Evidence: `src/include/engine/server/server_customization_message.hpp`,
-  `src/engine/server/server_customization_message.cpp`.
+  `src/engine/server/messaging/server_customization_message.cpp`.
 - [x] Add golden tests for custom and non-custom payloads, signed fields, and
   overflow.
   Evidence: `tests/engine/server_customization_message.cpp`.

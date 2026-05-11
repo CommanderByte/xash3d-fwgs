@@ -2144,7 +2144,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-RESMSG-002` Implement a target-neutral resource-row encoder that can
   write into modern network-buffer primitives or caller-provided byte sinks.
   Evidence: `src/include/engine/server/server_resource_message.hpp`,
-  `src/engine/server/server_resource_message.cpp`.
+  `src/engine/server/messaging/server_resource_message.cpp`.
 - [x] `ENG-RESMSG-003` Add golden tests for resource rows with and without
   custom hashes and reserved consistency payloads.
   Evidence: `tests/engine/server_resource_message.cpp`.
@@ -2170,7 +2170,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-CUSTOMMSG-002` Implement a target-neutral customization payload
   encoder that writes through modern network-buffer primitives.
   Evidence: `src/include/engine/server/server_customization_message.hpp`,
-  `src/engine/server/server_customization_message.cpp`.
+  `src/engine/server/messaging/server_customization_message.cpp`.
 - [x] `ENG-CUSTOMMSG-003` Add golden tests for custom and non-custom
   customization payloads, signed fields, and overflow.
   Evidence: `tests/engine/server_customization_message.cpp`.
@@ -2338,7 +2338,7 @@ commit, test command, document link, or manual verification note that proves it.
   encoder that consumes adapter-provided sanitized userinfo and MD5 digest
   snapshots.
   Evidence: `src/include/engine/server/server_userinfo_message.hpp`,
-  `src/engine/server/server_userinfo_message.cpp`,
+  `src/engine/server/messaging/server_userinfo_message.cpp`,
   `engine/server/server_userinfo_message_adapter.h`, and
   `engine/server/server_userinfo_message_adapter.cpp`.
 - [x] `ENG-USERINFO-003` Add golden tests for named clients, unnamed clients,
@@ -2368,7 +2368,7 @@ commit, test command, document link, or manual verification note that proves it.
   file-transfer failure, reconnect command, set-view, pause, and voice-codec
   payloads.
   Evidence: `src/include/engine/server/server_service_messages.hpp`,
-  `src/engine/server/server_service_messages.cpp`,
+  `src/engine/server/messaging/server_service_messages.cpp`,
   `engine/server/server_service_messages_adapter.h`, and
   `engine/server/server_service_messages_adapter.cpp`.
 - [x] `ENG-SVCMSG-003` Add golden tests for command bytes, word/bit fields,
@@ -2397,7 +2397,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-VOICE-002` Implement a target-neutral voice relay policy helper and,
   if cleanly separable, a `svc_voicedata` payload writer.
   Evidence: `src/include/engine/server/server_voice_relay.hpp`,
-  `src/engine/server/server_voice_relay.cpp`,
+  `src/engine/server/messaging/server_voice_relay.cpp`,
   `engine/server/server_voice_relay_adapter.h`, and
   `engine/server/server_voice_relay_adapter.cpp`.
 - [x] `ENG-VOICE-003` Add tests for oversized packets, disabled voice, sender
@@ -2428,7 +2428,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-TEXTMSG-002` Implement target-neutral print/stufftext payload
   encoders and, where useful, tiny command-string builders.
   Evidence: `src/include/engine/server/server_text_messages.hpp`,
-  `src/engine/server/server_text_messages.cpp`,
+  `src/engine/server/messaging/server_text_messages.cpp`,
   `engine/server/server_text_messages_adapter.h`, and
   `engine/server/server_text_messages_adapter.cpp`.
 - [x] `ENG-TEXTMSG-003` Add golden tests for print channels, empty strings,
@@ -2457,7 +2457,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-SOUNDMSG-002` Implement target-neutral sound-message flag planning
   and payload serialization.
   Evidence: `src/include/engine/server/server_sound_message.hpp`,
-  `src/engine/server/server_sound_message.cpp`,
+  `src/engine/server/messaging/server_sound_message.cpp`,
   `engine/server/server_sound_message_adapter.h`, and
   `engine/server/server_sound_message_adapter.cpp`.
 - [x] `ENG-SOUNDMSG-003` Add golden tests for minimal sounds, flagged optional
@@ -2487,7 +2487,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-STATICMSG-002` Implement target-neutral `svc_bspdecal` and
   `svc_spawnstatic` helpers for stable message layout.
   Evidence: `src/include/engine/server/server_static_messages.hpp`,
-  `src/engine/server/server_static_messages.cpp`,
+  `src/engine/server/messaging/server_static_messages.cpp`,
   `engine/server/server_static_messages_adapter.h`, and
   `engine/server/server_static_messages_adapter.cpp`. Note: `svc_spawnstatic`
   delta payload serialization remains legacy-owned because it depends on active
@@ -2522,7 +2522,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-MCAST-002` Implement target-neutral recipient/destination policy
   helpers that do not own actual buffer writes.
   Evidence: `src/include/engine/server/server_multicast_policy.hpp` and
-  `src/engine/server/server_multicast_policy.cpp`.
+  `src/engine/server/messaging/server_multicast_policy.cpp`.
 - [x] `ENG-MCAST-003` Add tests for broadcast, one-client, PVS/PHS filtered,
   reliable/unreliable, spectator, and invalid destination cases.
   Evidence: `tests/engine/server_multicast_policy.cpp`.
@@ -2600,7 +2600,7 @@ Phase 89 covers user-message registry policy.
   `Documentation/codex/legacy/engine/serverdata-spawn-handshake-baseline.md`.
 - [x] `ENG-SERVERDATA-002` Implement target-neutral serverdata payload and
   spawn-handshake planning helpers.
-  Evidence: Added `src/engine/server/server_spawn_handshake.cpp` and
+  Evidence: Added `src/engine/server/messaging/server_spawn_handshake.cpp` and
   `src/include/engine/server/server_spawn_handshake.hpp`.
 - [x] `ENG-SERVERDATA-003` Add golden tests for serverdata fields, player box
   bounds, signon number, reconnect fallback, overflow/drop behavior, and
@@ -2630,7 +2630,7 @@ Phase 89 covers user-message registry policy.
   `Documentation/codex/legacy/engine/server-frame-datagram-baseline.md`.
 - [x] `ENG-FRAME-002` Implement target-neutral frame-send planning helpers for
   copy versus fragment decisions and overflow responses.
-  Evidence: Added `src/engine/server/server_frame_datagram.cpp` and
+  Evidence: Added `src/engine/server/messaging/server_frame_datagram.cpp` and
   `src/include/engine/server/server_frame_datagram.hpp`.
 - [x] `ENG-FRAME-003` Add tests for small reliable data, fragmented reliable
   data, ignored unreliable overflow, spectator payloads, and resend flags.
@@ -3387,7 +3387,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-SVEVENTPOL-001` Add target-neutral event admission and recipient
   decision helpers.
   Evidence: `src/include/engine/server/server_event_playback_policy.hpp`,
-  `src/engine/server/server_event_playback_policy.cpp`.
+  `src/engine/server/messaging/server_event_playback_policy.cpp`.
 - [x] `ENG-SVEVENTPOL-002` Add tests for `FEV_NOTHOST`, host/local-weapons
   suppression, fake clients, no direct HLTV/spectator filtering, reliability,
   and group filtering.
@@ -3577,7 +3577,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-MSGAGG-002` Implement the smallest target-neutral aggregate helper
   that reduces duplicated message policy.
   Evidence: `src/include/engine/server/server_message_envelope.hpp` and
-  `src/engine/server/server_message_envelope.cpp` add shared command-byte,
+  `src/engine/server/messaging/server_message_envelope.cpp` add shared command-byte,
   NUL-string, envelope metadata, and recipient-facts helpers; text, service,
   sound, static, voice, and spawn-handshake payload helpers now use the shared
   envelope writer.
@@ -3875,7 +3875,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-FRAMEHELP-002` Implement a pure helper only around immutable
   snapshots or simple capacity decisions.
   Evidence: `src/include/engine/server/server_packet_entities_delta.hpp` and
-  `src/engine/server/server_packet_entities_delta.cpp` plan only
+  `src/engine/server/messaging/server_packet_entities_delta.cpp` plan only
   packet-entity header mode and sorted old/new cursor actions.
 - [x] `ENG-FRAMEHELP-003` Keep packet-entity storage, delta writes, client
   frame mutation, and network buffers legacy-owned.
@@ -4034,19 +4034,29 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 138: Server Messaging Domain Consolidation Pilot
 
-- [ ] `ENG-MSG-DOMAIN-001` Review text, service, sound, static, voice,
+- [x] `ENG-MSG-DOMAIN-001` Review text, service, sound, static, voice,
   multicast, envelope, spawn handshake, event playback, and frame datagram
   helpers as one domain.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-MSG-DOMAIN-002` Add aggregate tests around representative complete
+  Evidence: `Documentation/codex/modern/engine/server-messaging-domain-pilot.md`.
+- [x] `ENG-MSG-DOMAIN-002` Add aggregate tests around representative complete
   messages plus recipient facts.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-MSG-DOMAIN-003` Expand shared adapter/result translation only where
+  Evidence: `tests/engine/server_message_envelope.cpp` covers text, service,
+  sound, static, voice, signon, userinfo, resource-list, customization,
+  recipient, frame-send, and packet-entity facts.
+- [x] `ENG-MSG-DOMAIN-003` Expand shared adapter/result translation only where
   duplication is obvious.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-MSG-DOMAIN-004` Keep `sizebuf_t`, `MSG_*`, signon/datagram
+  Evidence: `Documentation/codex/modern/engine/server-messaging-domain-pilot.md`
+  keeps adapters split because live destination buffers still differ by call
+  site.
+- [x] `ENG-MSG-DOMAIN-004` Keep `sizebuf_t`, `MSG_*`, signon/datagram
   mutation, netchan sends, and rendered console ownership legacy-bound.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: `Documentation/codex/modern/engine/server-messaging-domain-pilot.md`.
+  Validation: focused messaging-domain targets passed 14/14;
+  `.\waf.bat build --alltests` passed 129/129; runtime smoke built `xash`,
+  refreshed `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`, reached first frame
+  in 0.497 seconds, and stopped with reason `command` at May 11 2026
+  13:58:36 local time.
 
 ## Phase 139: Game DLL Bridge Domain Consolidation Pilot
 

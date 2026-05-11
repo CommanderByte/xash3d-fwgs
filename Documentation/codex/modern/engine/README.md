@@ -103,6 +103,10 @@ Current implementation notes:
   server helper layer to future `shared`, `resources`, `messaging`,
   `game_dll`, `client`, `runtime`, `world`, and `save` domains before any
   physical file moves.
+- `server-messaging-domain-pilot.md`: how Phase 138 physically groups modern
+  message payload, recipient, frame send-gate, and packet-entity cursor helpers
+  under `src/engine/server/messaging/` while keeping flat forwarding headers
+  and legacy packet ownership intact.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of
@@ -143,12 +147,14 @@ Current implementation notes:
   Phase 68's implemented consistency setup and response validation policy;
   legacy code still owns file hashing, model bounds probes, message reads,
   drops, and the game DLL consistency callback.
-- `server_customization_message.hpp` / `server_customization_message.cpp`:
+- `messaging/server_customization_message.hpp` /
+  `messaging/server_customization_message.cpp`:
   Phase 66's implemented customization payload encoder; legacy code still owns
   `svc_customization`, client netchan routing, and customization propagation.
-- `server_resource_message.hpp` / `server_resource_message.cpp`: Phase 65's
-  implemented resource-row encoder; legacy code still owns command wrappers,
-  resource counts, consistency serialization, and netchan delivery.
+- `messaging/server_resource_message.hpp` /
+  `messaging/server_resource_message.cpp`: Phase 65's implemented resource-row
+  encoder; legacy code still owns command wrappers, resource counts,
+  consistency serialization, and netchan delivery.
 - `resources/server_upload_queue.hpp` / `resources/server_upload_queue.cpp`:
   Phase 64's implemented upload queue policy helper; legacy code still owns
   `MSG_*`, HPAK probes, upload command emission, allocation, and resource-list

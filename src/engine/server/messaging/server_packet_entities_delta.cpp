@@ -1,4 +1,4 @@
-#include "engine/server/server_packet_entities_delta.hpp"
+#include "engine/server/messaging/server_packet_entities_delta.hpp"
 
 namespace xash
 {

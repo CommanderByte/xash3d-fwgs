@@ -10,7 +10,7 @@ entity storage and wire writes.
 The helper lives in:
 
 - `src/include/engine/server/server_packet_entities_delta.hpp`
-- `src/engine/server/server_packet_entities_delta.cpp`
+- `src/engine/server/messaging/server_packet_entities_delta.cpp`
 
 It owns two pure decisions:
 

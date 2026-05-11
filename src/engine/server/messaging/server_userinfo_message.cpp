@@ -1,4 +1,4 @@
-#include "engine/server/server_userinfo_message.hpp"
+#include "engine/server/messaging/server_userinfo_message.hpp"
 
 #include <cstring>
 

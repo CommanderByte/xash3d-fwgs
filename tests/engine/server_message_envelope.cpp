@@ -2,12 +2,17 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
+#include "engine/server/server_customization_message.hpp"
+#include "engine/server/server_frame_datagram.hpp"
 #include "engine/server/server_message_envelope.hpp"
+#include "engine/server/server_packet_entities_delta.hpp"
+#include "engine/server/server_resource_message.hpp"
 #include "engine/server/server_service_messages.hpp"
 #include "engine/server/server_sound_message.hpp"
 #include "engine/server/server_spawn_handshake.hpp"
 #include "engine/server/server_static_messages.hpp"
 #include "engine/server/server_text_messages.hpp"
+#include "engine/server/server_userinfo_message.hpp"
 #include "engine/server/server_voice_relay.hpp"
 
 using namespace xash::engine::network;
@@ -15,6 +20,10 @@ using namespace xash::engine::server;
 
 namespace
 {
+
+constexpr std::uint8_t kRepresentativeUserinfoCommand = 13;
+constexpr std::uint8_t kRepresentativeResourceListCommand = 43;
+constexpr std::uint8_t kRepresentativeCustomizationCommand = 46;
 
 void WriteRepresentativePrint(NetworkBitBuffer &buffer)
 {
@@ -63,6 +72,46 @@ void WriteRepresentativeSignon(NetworkBitBuffer &buffer)
 	WriteSignonNumberMessage(buffer, 1);
 }
 
+void WriteRepresentativeUserinfo(NetworkBitBuffer &buffer)
+{
+	WriteServerMessageCommand(buffer, kRepresentativeUserinfoCommand);
+
+	UserinfoUpdatePayload payload = {};
+	payload.clientIndex = 2;
+	payload.userId = 17;
+	payload.active = true;
+	payload.userinfo = "\\name\\barney";
+	payload.hashedCdKeyDigest = nullptr;
+	WriteUserinfoUpdatePayload(buffer, payload);
+}
+
+void WriteRepresentativeResourceList(NetworkBitBuffer &buffer)
+{
+	WriteServerMessageCommand(buffer, kRepresentativeResourceListCommand);
+
+	ResourceMessageRow row = {};
+	row.type = ResourceType::Model;
+	row.name = "models/w_9mmhandgun.mdl";
+	row.index = 9;
+	row.downloadSize = 2048;
+	row.flags = kResourceMessageFlagFatalIfMissing;
+	WriteResourceMessageRow(buffer, row);
+}
+
+void WriteRepresentativeCustomization(NetworkBitBuffer &buffer)
+{
+	WriteServerMessageCommand(buffer, kRepresentativeCustomizationCommand);
+
+	CustomizationMessage message = {};
+	message.playerNumber = 1;
+	message.type = ResourceType::Decal;
+	message.name = "custom.hpk";
+	message.index = 5;
+	message.downloadSize = 128;
+	message.flags = 0;
+	WriteCustomizationMessagePayload(buffer, message);
+}
+
 bool MessageCommandMatches(
 	void (*writeMessage)(NetworkBitBuffer &buffer),
 	std::uint8_t expectedCommand)
@@ -88,7 +137,16 @@ bool TestRepresentativeMessageEnvelopes()
 		MessageCommandMatches(WriteRepresentativeVoice, kVoiceRelayServiceCommand) &&
 		MessageCommandMatches(
 			WriteRepresentativeSignon,
-			kServerdataSignonNumberCommand);
+			kServerdataSignonNumberCommand) &&
+		MessageCommandMatches(
+			WriteRepresentativeUserinfo,
+			kRepresentativeUserinfoCommand) &&
+		MessageCommandMatches(
+			WriteRepresentativeResourceList,
+			kRepresentativeResourceListCommand) &&
+		MessageCommandMatches(
+			WriteRepresentativeCustomization,
+			kRepresentativeCustomizationCommand);
 }
 
 bool TestEnvelopeCommandAndStringHelpers()
@@ -211,6 +269,32 @@ bool TestVoiceRecipientFactsUseListenerMask()
 		local.outgoingPayloadSize == 0;
 }
 
+bool TestFrameAndPacketFactsStayInMessagingDomain()
+{
+	const FrameTransferPlan datagram =
+		BuildServerUnreliableDatagramPlan(15, 16);
+	const FrameReliableResendPlan resend =
+		BuildReliableResendPlan(
+			kFrameResendUserinfoFlag | kFrameResendMovevarsFlag,
+			9.0,
+			10.0,
+			64,
+			8);
+	const PacketEntityHeaderPlan header =
+		BuildPacketEntityHeaderPlan(true, 193, 256, 64, 12);
+	const PacketEntityCursorPlan cursor =
+		BuildPacketEntityCursorPlan(1, 3, 42, 2, 4, 42, 99999);
+
+	return datagram.action == FrameTransferAction::Copy &&
+		resend.sendUserinfo &&
+		resend.sendMovevars &&
+		header.action == PacketEntityHeaderAction::Delta &&
+		header.usePreviousFrame &&
+		cursor.action == PacketEntityCursorAction::DeltaFromOld &&
+		cursor.advanceNew == 1 &&
+		cursor.advanceOld == 1;
+}
+
 }
 
 int main()
@@ -221,7 +305,8 @@ int main()
 		!TestRecipientFactsAllowDefaultRecipient() ||
 		!TestRecipientFactsPreservePolicyDifferences() ||
 		!TestRecipientFactsRejectUnspawnedRecipient() ||
-		!TestVoiceRecipientFactsUseListenerMask())
+		!TestVoiceRecipientFactsUseListenerMask() ||
+		!TestFrameAndPacketFactsStayInMessagingDomain())
 	{
 		return EXIT_FAILURE;
 	}

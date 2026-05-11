@@ -1,4 +1,4 @@
-#include "engine/server/server_resource_message.hpp"
+#include "engine/server/messaging/server_resource_message.hpp"
 
 #include <cstring>
 

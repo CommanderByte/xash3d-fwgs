@@ -1,5 +1,5 @@
-#include "engine/server/server_sound_message.hpp"
-#include "engine/server/server_message_envelope.hpp"
+#include "engine/server/messaging/server_sound_message.hpp"
+#include "engine/server/messaging/server_message_envelope.hpp"
 
 namespace xash
 {

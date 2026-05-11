@@ -32,7 +32,7 @@ edict validation and client lookup remain legacy-owned.
 
 ## Modern Boundary
 
-`src/engine/server/server_service_messages.cpp` owns only the target-neutral
+`src/engine/server/messaging/server_service_messages.cpp` owns only the target-neutral
 byte and bit layout. The C adapter receives legacy `sizebuf_t` storage and
 returns the updated cursor/overflow state. Server state, entity lookup, cvars,
 client choice, and message ownership remain in the legacy server files.

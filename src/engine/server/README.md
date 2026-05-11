@@ -11,6 +11,10 @@ code until a later compatibility phase changes those boundaries.
 resource headers under `src/include/engine/server/` are forwarding includes so
 legacy adapters and tests do not need a broad include rewrite yet.
 
+`messaging/` contains grouped target-neutral message payload, recipient, frame
+send-gate, and packet-entity cursor helpers. The flat messaging headers under
+`src/include/engine/server/` are forwarding includes for adapter compatibility.
+
 Current helpers:
 
 - `game_dll_changelevel_policy.cpp`: target-neutral game DLL changelevel
@@ -73,15 +77,15 @@ Current helpers:
   resource-index serialization.
 - `resources/server_consistency_policy.cpp`: target-neutral consistency setup,
   reserved bounds payload, and response validation policy.
-- `server_customization_message.cpp`: target-neutral propagated customization
+- `messaging/server_customization_message.cpp`: target-neutral propagated customization
   payload serialization for `svc_customization`.
 - `server_command_lifecycle.cpp`: target-neutral server lifecycle command
   argument, alias, and validation routing decisions.
-- `server_spawn_handshake.cpp`: target-neutral fixed `svc_serverdata`
+- `messaging/server_spawn_handshake.cpp`: target-neutral fixed `svc_serverdata`
   payloads and new/spawn/begin handshake decisions.
-- `server_frame_datagram.cpp`: target-neutral frame datagram fanout,
+- `messaging/server_frame_datagram.cpp`: target-neutral frame datagram fanout,
   overflow, resend, and send-loop gate decisions.
-- `server_resource_message.cpp`: target-neutral resource-list row
+- `messaging/server_resource_message.cpp`: target-neutral resource-list row
   serialization using modern bit-buffer primitives.
 - `resources/server_upload_queue.cpp`: target-neutral client resource upload queue
   admission, missing decal estimation, limit checks, and batch actions.
@@ -104,7 +108,7 @@ Current helpers:
 - `server_map_validation.cpp`: target-neutral map validation flag decoding,
   load classification, changelevel landmark decisions, and game DLL
   existence compatibility.
-- `server_message_envelope.cpp`: shared server message command/string envelope
+- `messaging/server_message_envelope.cpp`: shared server message command/string envelope
   writers and plain recipient-facts adapters for aggregate messaging tests.
 - `server_movement_constraints.cpp`: target-neutral server monster movement
   mode classification and fly-move clip-plane constraint helpers.
@@ -114,22 +118,27 @@ Current helpers:
   interpolation timing, teleport threshold, and player-index predicates.
 - `server_visibility_constraints.cpp`: target-neutral entity leaf capacity,
   overflow marker, cached leaf index, and portal viewentity capacity helpers.
-- `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
+- `messaging/server_event_playback_policy.cpp`: target-neutral event playback
+  admission, flag normalization, recipient decisions, queue-slot planning, and
+  queued emit-count clamping.
+- `messaging/server_packet_entities_delta.cpp`: target-neutral packet-entity
+  header and sorted old/new cursor planning.
+- `messaging/server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload
   serialization for client slot, user ID, active bit, sanitized userinfo, and
   hashed CD key digest bytes.
-- `server_service_messages.cpp`: target-neutral payload serialization for
+- `messaging/server_service_messages.cpp`: target-neutral payload serialization for
   compact service messages such as file-transfer failure, reconnect, set-view,
   set-pause, and voice-init.
-- `server_sound_message.cpp`: target-neutral `svc_sound` / `svc_restoresound`
+- `messaging/server_sound_message.cpp`: target-neutral `svc_sound` / `svc_restoresound`
   command planning and bit-packed payload serialization.
-- `server_static_messages.cpp`: target-neutral `svc_bspdecal` payload
+- `messaging/server_static_messages.cpp`: target-neutral `svc_bspdecal` payload
   serialization and safe static-entity admission checks.
-- `server_multicast_policy.cpp`: target-neutral `SV_Multicast()`
+- `messaging/server_multicast_policy.cpp`: target-neutral `SV_Multicast()`
   destination and recipient routing decisions while leaving masks and writes
   legacy-owned.
-- `server_text_messages.cpp`: target-neutral payload serialization for
+- `messaging/server_text_messages.cpp`: target-neutral payload serialization for
   `svc_print` and `svc_stufftext` NUL-terminated text messages.
-- `server_voice_relay.cpp`: target-neutral voice relay gates, recipient
+- `messaging/server_voice_relay.cpp`: target-neutral voice relay gates, recipient
   decisions, and `svc_voicedata` payload serialization.
 - `source_query.cpp`: target-neutral GoldSrc query payload construction.
 - `user_agent_policy.cpp`: target-neutral connection user-agent validation.

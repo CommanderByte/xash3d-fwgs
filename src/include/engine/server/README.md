@@ -10,6 +10,10 @@ filesystem module, or platform-specific types.
 headers in this directory currently forward to that subdirectory for adapter
 compatibility.
 
+`messaging/` contains grouped message payload, recipient, frame send-gate, and
+packet-entity cursor contracts. The flat messaging headers in this directory
+currently forward to that subdirectory for adapter compatibility.
+
 Current helpers:
 
 - `game_dll_enginefuncs.hpp`: metadata for the stable `enginefuncs_t` game DLL
@@ -62,15 +66,15 @@ Current helpers:
   serialization for server resource checks.
 - `resources/server_consistency_policy.hpp`: consistency setup, reserved bounds payload,
   and response validation policy.
-- `server_customization_message.hpp`: propagated customization payload
+- `messaging/server_customization_message.hpp`: propagated customization payload
   serialization for `svc_customization`.
 - `server_command_lifecycle.hpp`: server lifecycle command request
   normalization and action planning.
-- `server_spawn_handshake.hpp`: fixed `svc_serverdata` payload constants,
+- `messaging/server_spawn_handshake.hpp`: fixed `svc_serverdata` payload constants,
   signon-number payload writer, and new/spawn/begin handshake decisions.
-- `server_frame_datagram.hpp`: frame datagram transfer, overflow, resend, and
+- `messaging/server_frame_datagram.hpp`: frame datagram transfer, overflow, resend, and
   send-loop gate plans.
-- `server_resource_message.hpp`: resource-list row serialization using modern
+- `messaging/server_resource_message.hpp`: resource-list row serialization using modern
   bit-buffer primitives.
 - `resources/server_upload_queue.hpp`: client resource-list admission, missing custom
   decal estimation, upload-limit, and upload batch action decisions.
@@ -91,7 +95,7 @@ Current helpers:
 - `server_map_validation.hpp`: map validation flag decoding, load
   classification, changelevel landmark decision, and game DLL existence
   compatibility contracts.
-- `server_message_envelope.hpp`: shared server message command/string envelope
+- `messaging/server_message_envelope.hpp`: shared server message command/string envelope
   writers and plain recipient-facts adapters for aggregate messaging tests.
 - `server_movement_constraints.hpp`: server monster movement mode and
   fly-move clip-plane constraint contracts.
@@ -102,7 +106,10 @@ Current helpers:
 - `server_operator_command_policy.hpp`: `kick`, `serverinfo`, and `localinfo`
   argument classification while command registration, console output, lookup,
   cvar mutation, and info-string mutation stay legacy-owned.
-- `server_packet_entities_delta.hpp`: packet-entity header and sorted cursor
+- `messaging/server_event_playback_policy.hpp`: event playback admission, flag
+  normalization, recipient decisions, queue-slot planning, and queued emit-count
+  clamping.
+- `messaging/server_packet_entities_delta.hpp`: packet-entity header and sorted cursor
   planning for `SV_EmitPacketEntities()` while `entity_state_t` storage,
   baselines, delta writes, and `client_frame_t` mutation stay legacy-owned.
 - `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,
@@ -110,22 +117,22 @@ Current helpers:
 - `server_world_link_policy.hpp`: area-node split axis, split distance, link
   child selection, and recursive child traversal mask contracts for
   `sv_world.c`.
-- `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
+- `messaging/server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
   for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
   digest bytes.
-- `server_service_messages.hpp`: compact service-message payload writers for
+- `messaging/server_service_messages.hpp`: compact service-message payload writers for
   file-transfer failure, reconnect, set-view, set-pause, and voice-init.
-- `server_sound_message.hpp`: `svc_sound` / `svc_restoresound` constants,
+- `messaging/server_sound_message.hpp`: `svc_sound` / `svc_restoresound` constants,
   network flag planning, stream-channel handling, and bit-packed payload
   writers.
-- `server_static_messages.hpp`: `svc_bspdecal` payload writer constants and
+- `messaging/server_static_messages.hpp`: `svc_bspdecal` payload writer constants and
   static-entity admission decisions.
-- `server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
+- `messaging/server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
   and NUL-terminated text payload writers.
 - `server_timeout_policy.hpp`: `SV_CheckTimeouts()` client timeout and pause
   release decisions built from plain runtime snapshots while cvar reads, local
   address checks, client drops, and pause toggles stay legacy-owned.
-- `server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and
+- `messaging/server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and
   `svc_voicedata` payload serialization.
 - `source_query.hpp`: GoldSrc source-query response byte builders.
 - `user_agent_policy.hpp`: connection UUID and input-device validation policy.

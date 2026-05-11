@@ -37,7 +37,7 @@ bit. They do not send a userinfo string or digest.
 ## Modern Boundary
 
 Phase 72 moves only the payload writer into
-`src/engine/server/server_userinfo_message.cpp`. The C adapter accepts the
+`src/engine/server/messaging/server_userinfo_message.cpp`. The C adapter accepts the
 legacy buffer pointer, bit capacity, current bit, already-sanitized userinfo,
 and already-computed digest bytes. It returns the updated bit cursor and
 overflow flag for the legacy `sizebuf_t`.

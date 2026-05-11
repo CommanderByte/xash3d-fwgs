@@ -64,14 +64,19 @@ Evidence:
 Goal: consolidate message payload and envelope helpers without hiding live
 packet-buffer ownership.
 
-- [ ] Review text, service, sound, static, voice, multicast, envelope, spawn
+- [x] Review text, service, sound, static, voice, multicast, envelope, spawn
   handshake, event playback, and frame datagram helpers.
-- [ ] Add aggregate tests around representative complete messages plus
+- [x] Add aggregate tests around representative complete messages plus
   recipient facts.
-- [ ] Expand shared adapter/result translation only where duplication is
+- [x] Expand shared adapter/result translation only where duplication is
   obvious.
-- [ ] Keep `sizebuf_t`, `MSG_*`, signon/datagram mutation, netchan sends, and
+- [x] Keep `sizebuf_t`, `MSG_*`, signon/datagram mutation, netchan sends, and
   rendered console ownership legacy-bound.
+
+Evidence:
+`Documentation/codex/modern/engine/server-messaging-domain-pilot.md`,
+`src/engine/server/messaging/`, `src/include/engine/server/messaging/`, and
+`tests/engine/server_message_envelope.cpp`.
 
 ## Phase 139: Game DLL Bridge Domain Consolidation Pilot
 

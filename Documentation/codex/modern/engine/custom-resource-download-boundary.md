@@ -114,7 +114,7 @@ This can reuse existing modern network-buffer primitives, but the adapter should
 continue to own `MSG_BeginServerCmd()` and `Netchan_CreateFragments()`.
 
 Phase 65 implementation note: the row encoder now lives in
-`src/engine/server/server_resource_message.cpp`, with the legacy bridge in
+`src/engine/server/messaging/server_resource_message.cpp`, with the legacy bridge in
 `engine/server/server_resource_message_adapter.cpp`. The helper writes only one
 resource row into a caller-provided bit buffer; legacy code still owns
 `svc_resourcerequest`, `svc_resourcelocation`, `svc_resourcelist`,
@@ -129,7 +129,7 @@ Legacy code should continue to own `svc_customization` and the destination
 client netchan message.
 
 Phase 66 implementation note: the payload encoder now lives in
-`src/engine/server/server_customization_message.cpp`, with the legacy bridge in
+`src/engine/server/messaging/server_customization_message.cpp`, with the legacy bridge in
 `engine/server/server_customization_message_adapter.cpp`. The helper writes only
 the `svc_customization` payload; legacy code still owns client selection,
 customization propagation, the server command byte, and netchan delivery.

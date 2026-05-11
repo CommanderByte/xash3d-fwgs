@@ -8,7 +8,7 @@ playback. The helper deliberately owns decisions, not the event system itself.
 The policy lives in:
 
 - `src/include/engine/server/server_event_playback_policy.hpp`
-- `src/engine/server/server_event_playback_policy.cpp`
+- `src/engine/server/messaging/server_event_playback_policy.cpp`
 
 It covers these pure decisions:
 

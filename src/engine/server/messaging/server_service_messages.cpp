@@ -1,5 +1,5 @@
-#include "engine/server/server_service_messages.hpp"
-#include "engine/server/server_message_envelope.hpp"
+#include "engine/server/messaging/server_service_messages.hpp"
+#include "engine/server/messaging/server_message_envelope.hpp"
 
 namespace xash
 {

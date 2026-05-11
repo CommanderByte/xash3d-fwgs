@@ -92,7 +92,7 @@ enablers that make future server and engine migrations less adapter-heavy.
 
 - [x] Add target-neutral event admission and recipient decision helpers.
   Evidence: `src/include/engine/server/server_event_playback_policy.hpp`,
-  `src/engine/server/server_event_playback_policy.cpp`.
+  `src/engine/server/messaging/server_event_playback_policy.cpp`.
 - [x] Add tests for `FEV_NOTHOST`, host/local-weapons suppression, fake clients,
   no direct HLTV/spectator filtering, reliability, and group filtering.
   Evidence: `tests/engine/server_event_playback_policy.cpp`.

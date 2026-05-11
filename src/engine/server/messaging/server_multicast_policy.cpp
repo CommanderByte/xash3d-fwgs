@@ -1,4 +1,4 @@
-#include "engine/server/server_multicast_policy.hpp"
+#include "engine/server/messaging/server_multicast_policy.hpp"
 
 namespace xash
 {
