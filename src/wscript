@@ -116,6 +116,7 @@ def build(bld):
 			'engine_platform_command_line': '../tests/engine/platform_command_line.cpp',
 			'engine_platform_current_user': '../tests/engine/platform_current_user.cpp',
 			'engine_resource_identity': '../tests/engine/resource_identity.cpp',
+			'engine_resource_domain': '../tests/engine/resource_domain.cpp',
 			'engine_resource_transfer_manifest': '../tests/engine/resource_transfer_manifest.cpp',
 			'engine_remote_admin_command': '../tests/engine/remote_admin_command.cpp',
 			'engine_server_consistency_list': '../tests/engine/server_consistency_list.cpp',

@@ -144,6 +144,10 @@ Current implementation notes:
   resource catalogs, downloads, uploads, customizations, consistency checks,
   hot resources, reslists, and game DLL resource callbacks into a future
   resource-transfer domain.
+- `resource-domain-aggregate-tests.md`: how Phase 148 proves the resource
+  helpers compose across game DLL precache, reslist/catalog/manifest, download,
+  upload, consistency, hot-resource, and customization payload flows before
+  adapter shrink work.
 - `resource-transfer-domain-pilot.md`: how Phase 137 physically groups the
   modern resource-domain helpers under `src/engine/server/resources/` while
   keeping flat forwarding headers and legacy runtime ownership intact.

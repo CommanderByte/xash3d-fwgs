@@ -4256,18 +4256,22 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 148: Resource Domain Aggregate Tests
 
-- [ ] `ENG-RESAGG-001` Audit current resource-domain helpers and adapters
+- [x] `ENG-RESAGG-001` Audit current resource-domain helpers and adapters
   against `sv_custom.c`, `sv_client.c`, and `sv_game.c` call sites.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-RESAGG-002` Add aggregate tests covering identity, catalog,
+  Evidence: `Documentation/codex/modern/engine/resource-domain-aggregate-tests.md`;
+  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [x] `ENG-RESAGG-002` Add aggregate tests covering identity, catalog,
   consistency, download/upload admission, hot-resource decisions, and
   customization payload planning.
-  Evidence:
-- [ ] `ENG-RESAGG-003` Keep HPAK mutation, filesystem reads/writes, reliable
+  Evidence: `tests/engine/resource_domain.cpp`;
+  `src/wscript`.
+- [x] `ENG-RESAGG-003` Keep HPAK mutation, filesystem reads/writes, reliable
   datagram ownership, and client/resource structs legacy-owned.
-  Evidence:
-- [ ] `ENG-RESAGG-004` Run focused resource tests and full validation.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/resource-domain-aggregate-tests.md`.
+- [x] `ENG-RESAGG-004` Run focused resource tests and full validation.
+  Evidence: `.\waf.bat build --targets=test_engine_resource_domain` passed
+  1/1; focused resource slice passed 10/10; `.\waf.bat build --alltests`
+  passed 135/135.
 
 ## Phase 149: Resource Adapter Shrink Pilot
 

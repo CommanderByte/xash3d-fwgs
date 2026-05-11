@@ -27,14 +27,14 @@ Goal: make the next route explicit before starting new code movement.
 
 Goal: prove resource helpers work together before adapter consolidation.
 
-- [ ] Audit current resource-domain helpers and adapters against
+- [x] Audit current resource-domain helpers and adapters against
   `sv_custom.c`, `sv_client.c`, and `sv_game.c` call sites.
-- [ ] Add aggregate tests covering identity, catalog, consistency,
+- [x] Add aggregate tests covering identity, catalog, consistency,
   download/upload admission, hot-resource decisions, and customization payload
   planning.
-- [ ] Keep HPAK mutation, filesystem reads/writes, reliable datagram ownership,
+- [x] Keep HPAK mutation, filesystem reads/writes, reliable datagram ownership,
   and client/resource structs legacy-owned.
-- [ ] Run focused resource tests and full validation.
+- [x] Run focused resource tests and full validation.
 
 ## Phase 149: Resource Adapter Shrink Pilot
 
