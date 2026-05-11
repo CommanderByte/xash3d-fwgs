@@ -93,6 +93,8 @@ Current helpers:
   fly-move clip-plane constraint contracts.
 - `server_physics_routing_policy.hpp`: server `MOVETYPE_*` handler routing,
   pusher-candidate, and precise-blocking predicates.
+- `server_pmove_bridge_policy.hpp`: PMove unlag admission, interpolation
+  timing, teleport threshold, and player-index predicates.
 - `server_operator_command_policy.hpp`: `kick`, `serverinfo`, and `localinfo`
   argument classification while command registration, console output, lookup,
   cvar mutation, and info-string mutation stay legacy-owned.

@@ -106,6 +106,8 @@ Current helpers:
   mode classification and fly-move clip-plane constraint helpers.
 - `server_physics_routing_policy.cpp`: target-neutral `MOVETYPE_*` to server
   physics handler routing plus pusher-candidate predicates.
+- `server_pmove_bridge_policy.cpp`: target-neutral PMove unlag admission,
+  interpolation timing, teleport threshold, and player-index predicates.
 - `server_visibility_constraints.cpp`: target-neutral entity leaf capacity,
   overflow marker, cached leaf index, and portal viewentity capacity helpers.
 - `server_userinfo_message.cpp`: target-neutral `svc_updateuserinfo` payload

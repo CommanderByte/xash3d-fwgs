@@ -351,6 +351,22 @@ Phase 132 outcome:
   Evidence:
   `Documentation/codex/modern/engine/server-world-physics-fixture-audit.md`.
 
+Phase 133 outcome:
+
+- `sv_pmove.c` still owns the PMove callback table, `playermove_t` setup and
+  finish, physent/visent/moveent population, player trace callbacks, unlag
+  edict relinking, touch replay, and `SV_RunCmd()` command execution.
+- `sv_client.c` still owns delta-compressed usercmd parsing, dropped-command
+  sequencing, frozen-player filtering, and calls into `SV_RunCmd()`.
+- `server_pmove_bridge_policy` now owns only PMove unlag admission, player
+  edict-index range checks, interpolant-use gates, teleport threshold,
+  latency/lerp target-time calculations, and interpolation fraction clamps.
+- Further route-through needs command packet fixtures, playermove setup/finish
+  snapshots, physent population fixtures, PMove callback mocks, unlag
+  frame-history fixtures, and touch replay fixtures.
+  Evidence:
+  `Documentation/codex/modern/engine/server-pmove-bridge-boundary.md`.
+
 ## Phase 134: Runtime Save/Restore Owner Audit
 
 Legacy spread:

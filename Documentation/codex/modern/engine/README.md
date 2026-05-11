@@ -175,6 +175,9 @@ Current implementation notes:
   tracing, live physics loops, and physics API callbacks legacy-owned while
   routing `MOVETYPE_*` physics dispatch and pusher predicates through a plain
   helper.
+- `server-pmove-bridge-boundary.md`: how Phase 133 keeps PMove setup,
+  physent population, command execution, and touch replay legacy-owned while
+  routing unlag admission and interpolation timing through a plain helper.
 - `server-route-through-review.md`: how Phase 106 reviews the Phase 101-105
   constants lane, confirms no extra broad route-through should be made, and
   lists the next behavior-owner phases.

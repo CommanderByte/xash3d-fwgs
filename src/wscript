@@ -181,6 +181,7 @@ def build(bld):
 			'engine_server_spawn_handshake': '../tests/engine/server_spawn_handshake.cpp',
 			'engine_server_packet_entities_delta': '../tests/engine/server_packet_entities_delta.cpp',
 			'engine_server_frame_datagram': '../tests/engine/server_frame_datagram.cpp',
+			'engine_server_pmove_bridge_policy': '../tests/engine/server_pmove_bridge_policy.cpp',
 			'engine_save_restore_format': '../tests/engine/save_restore_format.cpp',
 		}
 

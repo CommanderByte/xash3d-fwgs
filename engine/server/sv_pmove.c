@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "event_flags.h"
 #include "studio.h"
 #include "server_group_filter_adapter.h"
+#include "server_pmove_bridge_policy_adapter.h"
 
 static qboolean has_update = false;
 static void SV_GetTrueOrigin( sv_client_t *cl, int edictnum, vec3_t origin );
@@ -136,22 +137,17 @@ static qboolean SV_CopyEdictToPhysEnt( physent_t *pe, edict_t *ed )
 
 static qboolean SV_ShouldUnlagForPlayer( sv_client_t *cl )
 {
-	// can't unlag in singleplayer
-	if( svs.maxclients <= 1 )
-		return false;
+	sv_pmove_unlag_admission_facts_t facts;
 
-	// unlag disabled globally
-	if( !svgame.dllFuncs.pfnAllowLagCompensation() || !sv_unlag.value )
-		return false;
+	facts.max_clients = svs.maxclients;
+	facts.game_allows_lag_compensation =
+		svgame.dllFuncs.pfnAllowLagCompensation() ? 1 : 0;
+	facts.server_unlag_enabled = ( sv_unlag.value != 0.0f ) ? 1 : 0;
+	facts.client_lag_compensation_enabled =
+		FBitSet( cl->flags, FCL_LAG_COMPENSATION ) ? 1 : 0;
+	facts.client_spawned = ( cl->state == cs_spawned ) ? 1 : 0;
 
-	if( !FBitSet( cl->flags, FCL_LAG_COMPENSATION ))
-		return false;
-
-	// player not ready
-	if( cl->state != cs_spawned )
-		return false;
-
-	return true;
+	return SV_PMoveBridge_ShouldEnableUnlag( &facts );
 }
 
 static void SV_GetTrueOrigin( sv_client_t *cl, int edictnum, vec3_t origin )
@@ -159,10 +155,14 @@ static void SV_GetTrueOrigin( sv_client_t *cl, int edictnum, vec3_t origin )
 	if( !SV_ShouldUnlagForPlayer( cl ))
 		return;
 
-	if( edictnum < 1 || edictnum > svs.maxclients )
+	if( !SV_PMoveBridge_IsPlayerEntityIndex( edictnum, svs.maxclients ))
 		return;
 
-	if( svgame.interp[edictnum-1].active && svgame.interp[edictnum-1].moving )
+	if( SV_PMoveBridge_ShouldUseInterpolatedPlayer(
+		edictnum,
+		svs.maxclients,
+		svgame.interp[edictnum-1].active,
+		svgame.interp[edictnum-1].moving ))
 		VectorCopy( svgame.interp[edictnum-1].oldpos, origin );
 }
 
@@ -171,10 +171,14 @@ static void SV_GetTrueMinMax( sv_client_t *cl, int edictnum, vec3_t mins, vec3_t
 	if( !SV_ShouldUnlagForPlayer( cl ))
 		return;
 
-	if( edictnum < 1 || edictnum > svs.maxclients )
+	if( !SV_PMoveBridge_IsPlayerEntityIndex( edictnum, svs.maxclients ))
 		return;
 
-	if( svgame.interp[edictnum-1].active && svgame.interp[edictnum-1].moving )
+	if( SV_PMoveBridge_ShouldUseInterpolatedPlayer(
+		edictnum,
+		svs.maxclients,
+		svgame.interp[edictnum-1].active,
+		svgame.interp[edictnum-1].moving ))
 	{
 		VectorCopy( svgame.interp[edictnum-1].mins, mins );
 		VectorCopy( svgame.interp[edictnum-1].maxs, maxs );
@@ -678,14 +682,7 @@ static entity_state_t *SV_FindEntInPack( int index, client_frame_t *frame )
 
 static qboolean SV_UnlagCheckTeleport( vec3_t old_pos, vec3_t new_pos )
 {
-	int	i;
-
-	for( i = 0; i < 3; i++ )
-	{
-		if( fabs( old_pos[i] - new_pos[i] ) > 64.0f )
-			return true;
-	}
-	return false;
+	return SV_PMoveBridge_IsUnlagTeleport( old_pos, new_pos );
 }
 
 static void SV_SetupMoveInterpolant( sv_client_t *cl )
@@ -693,6 +690,7 @@ static void SV_SetupMoveInterpolant( sv_client_t *cl )
 	int		i, j, clientnum;
 	float		finalpush, lerp_msec;
 	float		latency, lerpFrac;
+	sv_pmove_unlag_latency_plan_t latency_plan;
 	client_frame_t	*frame, *frame2;
 	entity_state_t	*state, *lerpstate;
 	vec3_t		curpos, newpos;
@@ -720,26 +718,22 @@ static void SV_SetupMoveInterpolant( sv_client_t *cl )
 		lerp->active = true;
 	}
 
-	latency = Q_min( cl->latency, 1.5f );
+	latency_plan = SV_PMoveBridge_BuildUnlagLatencyPlan(
+		cl->latency,
+		sv_maxunlag.value );
 
-	if( sv_maxunlag.value != 0.0f )
-	{
-		if( sv_maxunlag.value < 0.0f )
-			Cvar_DirectSetValue( &sv_maxunlag, 0.0f );
+	if( latency_plan.clamp_max_unlag_cvar_to_zero )
+		Cvar_DirectSetValue( &sv_maxunlag, 0.0f );
 
-		latency = Q_min( latency, sv_maxunlag.value );
-	}
-
-	lerp_msec = cl->lastcmd.lerp_msec * 0.001f;
-
-	if( lerp_msec > 0.1f )
-		lerp_msec = 0.1f;
-
-	if( lerp_msec < cl->next_messageinterval )
-		lerp_msec = cl->next_messageinterval;
-
-	finalpush = ( host.realtime - latency - lerp_msec ) + sv_unlagpush.value;
-	if( finalpush > host.realtime ) finalpush = host.realtime; // pushed too much ?
+	latency = latency_plan.latency;
+	lerp_msec = SV_PMoveBridge_BuildLerpSeconds(
+		cl->lastcmd.lerp_msec,
+		cl->next_messageinterval );
+	finalpush = SV_PMoveBridge_BuildUnlagTargetTime(
+		host.realtime,
+		latency,
+		lerp_msec,
+		sv_unlagpush.value );
 
 	frame = frame2 = NULL;
 
@@ -788,15 +782,10 @@ static void SV_SetupMoveInterpolant( sv_client_t *cl )
 	}
 	else
 	{
-		if( frame2->senttime - frame->senttime == 0.0 )
-		{
-			lerpFrac = 0;
-		}
-		else
-		{
-			lerpFrac = (finalpush - frame->senttime) / (frame2->senttime - frame->senttime);
-			lerpFrac = bound( 0.0f, lerpFrac, 1.0f );
-		}
+		lerpFrac = SV_PMoveBridge_BuildInterpolationFraction(
+			finalpush,
+			frame->senttime,
+			frame2->senttime );
 	}
 
 	for( i = 0; i < frame->num_entities; i++ )

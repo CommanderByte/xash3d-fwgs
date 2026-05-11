@@ -3940,18 +3940,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 133: Player Move Bridge Boundary Audit
 
-- [ ] `ENG-PMOVE-001` Audit `sv_pmove.c` PMove setup, physent population,
+- [x] `ENG-PMOVE-001` Audit `sv_pmove.c` PMove setup, physent population,
   unlag, interpolants, and `SV_RunCmd()` ownership.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-PMOVE-002` Identify plain-value snapshots that could support future
+  Evidence: `Documentation/codex/modern/engine/server-pmove-bridge-boundary.md`
+  and `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [x] `ENG-PMOVE-002` Identify plain-value snapshots that could support future
   PMove bridge tests.
-  Evidence:
-- [ ] `ENG-PMOVE-003` Decide whether any helper can be extracted without
+  Evidence: `Documentation/codex/modern/engine/server-pmove-bridge-boundary.md`
+  lists command, setup/finish, physent, callback, unlag, and touch fixtures.
+- [x] `ENG-PMOVE-003` Decide whether any helper can be extracted without
   changing prediction, lag compensation, or movement command behavior.
-  Evidence:
-- [ ] `ENG-PMOVE-004` Defer route-through if the seam is dominated by live
+  Evidence: `src/engine/server/server_pmove_bridge_policy.cpp` extracts only
+  unlag admission, player-index, interpolation, latency, lerp, target-time, and
+  teleport-threshold policy; `tests/engine/server_pmove_bridge_policy.cpp`
+  covers the helper, and focused test passed 1/1.
+- [x] `ENG-PMOVE-004` Defer route-through if the seam is dominated by live
   player movement state.
-  Evidence:
+  Evidence: `engine/server/sv_pmove.c` still owns PMove setup/finish,
+  physent population, callback table, edict relinking, `PM_Move()`, touch
+  replay, and `SV_RunCmd()`; validation passed
+  `test_engine_server_pmove_bridge_policy`, built `xash`, passed 129/129 full
+  tests, and smoke reached first frame in 0.515 seconds with reason `command`.
 
 ## Phase 134: Runtime Save Restore Owner Audit
 
