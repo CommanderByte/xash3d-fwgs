@@ -1,16 +1,10 @@
 #include "connection_response_adapter.h"
 
+#include "client_adapter_shared.hpp"
 #include "engine/server/client/connection_response.hpp"
 
-namespace
-{
-
-int ToLegacyBool(bool value)
-{
-	return value ? 1 : 0;
-}
-
-}
+using xash::engine::server::adapter::client::FromLegacyBool;
+using xash::engine::server::adapter::client::ToLegacyBool;
 
 extern "C" int SV_ConnectionResponse_FormatChallenge(
 	char *out,
@@ -22,7 +16,7 @@ extern "C" int SV_ConnectionResponse_FormatChallenge(
 		out,
 		capacity,
 		challenge,
-		skip_bandwidth_test != 0));
+		FromLegacyBool(skip_bandwidth_test)));
 }
 
 extern "C" int SV_ConnectionResponse_FormatRejectReport(

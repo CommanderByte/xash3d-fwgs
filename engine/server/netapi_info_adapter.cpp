@@ -1,16 +1,10 @@
 #include "netapi_info_adapter.h"
 
+#include "client_adapter_shared.hpp"
 #include "engine/server/netapi_info.hpp"
 
-namespace
-{
-
-int ToLegacyBool(bool value)
-{
-	return value ? 1 : 0;
-}
-
-}
+using xash::engine::server::adapter::client::FromLegacyBool;
+using xash::engine::server::adapter::client::ToLegacyBool;
 
 extern "C" int SV_NetApiInfo_BuildLegacyServerInfo(
 	char *out,
@@ -25,13 +19,13 @@ extern "C" int SV_NetApiInfo_BuildLegacyServerInfo(
 	modern.protocolVersion = info->protocol_version;
 	modern.hostname = info->hostname;
 	modern.mapName = info->map_name;
-	modern.deathmatch = info->deathmatch != 0;
-	modern.teamplay = info->teamplay != 0;
-	modern.coop = info->coop != 0;
+	modern.deathmatch = FromLegacyBool(info->deathmatch);
+	modern.teamplay = FromLegacyBool(info->teamplay);
+	modern.coop = FromLegacyBool(info->coop);
 	modern.playerCount = info->player_count;
 	modern.maxPlayers = info->max_players;
 	modern.gameFolder = info->game_folder;
-	modern.passwordProtected = info->password_protected != 0;
+	modern.passwordProtected = FromLegacyBool(info->password_protected);
 
 	return ToLegacyBool(xash::engine::server::BuildLegacyServerInfoString(
 		out,
@@ -74,7 +68,7 @@ extern "C" int SV_NetApiInfo_AppendRule(
 	xash::engine::server::NetApiRuleInfo rule = {};
 	rule.name = name;
 	rule.value = value;
-	rule.isProtected = is_protected != 0;
+	rule.isProtected = FromLegacyBool(is_protected);
 
 	return ToLegacyBool(xash::engine::server::AppendNetApiRule(out, capacity, rule));
 }

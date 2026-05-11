@@ -100,23 +100,23 @@ Goal: shrink one safe game DLL adapter cluster behind existing tests.
 Goal: prove client/session helpers combine cleanly before more `sv_client.c`
 movement.
 
-- [ ] Add aggregate tests around admission, slot selection, rejection response,
+- [x] Add aggregate tests around admission, slot selection, rejection response,
   userinfo policy, command dispatch route, remote admin command classification,
   and query response behavior.
-- [ ] Keep packet reads, netchan state, downloads, movement packet parsing,
+- [x] Keep packet reads, netchan state, downloads, movement packet parsing,
   and live client mutation legacy-owned.
-- [ ] Run focused client/session tests and full validation.
-- [ ] Record whether this makes a grouped client adapter worthwhile.
+- [x] Run focused client/session tests and full validation.
+- [x] Record whether this makes a grouped client adapter worthwhile.
 
 ## Phase 155: Client Adapter Shrink Pilot
 
 Goal: reduce duplicated client/session adapter glue where Phase 154 proves the
 concept boundary.
 
-- [ ] Identify plain-value client adapters that can share conversion utilities.
-- [ ] Keep transfer, voice, movement, and netchan side effects separated.
-- [ ] Avoid creating a broad `sv_client.c` replacement facade.
-- [ ] Run focused client/session tests, full validation, and smoke timing.
+- [x] Identify plain-value client adapters that can share conversion utilities.
+- [x] Keep transfer, voice, movement, and netchan side effects separated.
+- [x] Avoid creating a broad `sv_client.c` replacement facade.
+- [x] Run focused client/session tests, full validation, and smoke timing.
 
 ## Phase 156: World And PMove Fixture Expansion
 

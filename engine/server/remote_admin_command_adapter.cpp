@@ -1,6 +1,10 @@
 #include "remote_admin_command_adapter.h"
 
+#include "client_adapter_shared.hpp"
 #include "engine/server/client/remote_admin_command.hpp"
+
+using xash::engine::server::adapter::client::FromLegacyBool;
+using xash::engine::server::adapter::client::ToLegacyEnum;
 
 static_assert(SV_REMOTE_ADMIN_AUTH_IGNORE_DISABLED ==
 	static_cast<int>(xash::engine::server::RemoteAdminAuthAction::IgnoreDisabled),
@@ -17,9 +21,9 @@ extern "C" int SV_RemoteAdmin_BuildAuthAction(
 	const char *configured_password,
 	const char *supplied_password)
 {
-	return static_cast<int>(
+	return ToLegacyEnum(
 		xash::engine::server::BuildRemoteAdminAuthAction(
-			enabled != 0,
+			FromLegacyBool(enabled),
 			configured_password,
 			supplied_password));
 }

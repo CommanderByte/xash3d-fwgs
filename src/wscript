@@ -84,6 +84,7 @@ def build(bld):
 		tests = {
 			'debugging': '../tests/debugging/debugging.cpp',
 			'engine_base_command_registry': '../tests/engine/base_command_registry.cpp',
+			'engine_client_adapter_shared': '../tests/engine/client_adapter_shared.cpp',
 			'engine_command_buffer': '../tests/engine/command_buffer.cpp',
 			'engine_cvar_snapshot': '../tests/engine/cvar_snapshot.cpp',
 			'engine_client_command_dispatch': '../tests/engine/client_command_dispatch.cpp',

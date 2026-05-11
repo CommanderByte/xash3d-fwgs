@@ -2,7 +2,12 @@
 
 #include <cstddef>
 
+#include "client_adapter_shared.hpp"
 #include "engine/server/client/client_session_slots.hpp"
+
+using xash::engine::server::ClientSessionMasterUpdate;
+using xash::engine::server::adapter::client::ToLegacyBool;
+using xash::engine::server::adapter::client::ToLegacyEnum;
 
 static_assert(SV_CLIENT_SESSION_SLOT_FREE ==
 	xash::engine::server::kClientSessionSlotFree,
@@ -28,31 +33,34 @@ static_assert(offsetof(sv_client_session_slot_snapshot_t, state) ==
 static_assert(offsetof(sv_client_session_slot_snapshot_t, flags) ==
 	offsetof(xash::engine::server::ClientSessionSlotSnapshot, flags),
 	"client session slot flags offset changed");
-
-namespace
-{
-
-int ToLegacyMasterUpdate(
-	xash::engine::server::ClientSessionMasterUpdate update)
-{
-	return static_cast<int>(update);
-}
-
-}
+static_assert(SV_CLIENT_SESSION_MASTER_UPDATE_NONE ==
+	static_cast<int>(ClientSessionMasterUpdate::None),
+	"ClientSessionMasterUpdate::None value changed");
+static_assert(SV_CLIENT_SESSION_MASTER_UPDATE_FIRST_CONNECTED_CLIENT ==
+	static_cast<int>(ClientSessionMasterUpdate::FirstConnectedClient),
+	"ClientSessionMasterUpdate::FirstConnectedClient value changed");
+static_assert(SV_CLIENT_SESSION_MASTER_UPDATE_FULL_SERVER ==
+	static_cast<int>(ClientSessionMasterUpdate::FullServer),
+	"ClientSessionMasterUpdate::FullServer value changed");
+static_assert(SV_CLIENT_SESSION_MASTER_UPDATE_EMPTY_SERVER ==
+	static_cast<int>(ClientSessionMasterUpdate::EmptyServer),
+	"ClientSessionMasterUpdate::EmptyServer value changed");
 
 extern "C" int SV_ClientSession_SlotIsFree(int state)
 {
-	return xash::engine::server::ClientSessionSlotIsFree(state) ? 1 : 0;
+	return ToLegacyBool(xash::engine::server::ClientSessionSlotIsFree(state));
 }
 
 extern "C" int SV_ClientSession_SlotIsConnected(int state)
 {
-	return xash::engine::server::ClientSessionSlotIsConnected(state) ? 1 : 0;
+	return ToLegacyBool(
+		xash::engine::server::ClientSessionSlotIsConnected(state));
 }
 
 extern "C" int SV_ClientSession_SlotIsFakeClient(unsigned int flags)
 {
-	return xash::engine::server::ClientSessionSlotIsFakeClient(flags) ? 1 : 0;
+	return ToLegacyBool(
+		xash::engine::server::ClientSessionSlotIsFakeClient(flags));
 }
 
 extern "C" sv_client_session_population_t SV_ClientSession_CountPopulation(
@@ -87,7 +95,7 @@ extern "C" int SV_ClientSession_BuildConnectMasterUpdate(
 	int connected_slots,
 	int max_slots)
 {
-	return ToLegacyMasterUpdate(
+	return ToLegacyEnum(
 		xash::engine::server::BuildClientSessionConnectMasterUpdate(
 			connected_slots,
 			max_slots));
@@ -95,7 +103,7 @@ extern "C" int SV_ClientSession_BuildConnectMasterUpdate(
 
 extern "C" int SV_ClientSession_BuildDropMasterUpdate(int connected_slots)
 {
-	return ToLegacyMasterUpdate(
+	return ToLegacyEnum(
 		xash::engine::server::BuildClientSessionDropMasterUpdate(
 			connected_slots));
 }

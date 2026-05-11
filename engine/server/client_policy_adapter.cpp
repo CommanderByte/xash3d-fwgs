@@ -1,6 +1,10 @@
 #include "client_policy_adapter.h"
 
+#include "client_adapter_shared.hpp"
 #include "engine/server/client/client_policy.hpp"
+
+using xash::engine::server::adapter::client::FromLegacyBool;
+using xash::engine::server::adapter::client::ToLegacyBool;
 
 namespace
 {
@@ -9,9 +13,9 @@ sv_client_userinfo_penalty_plan_t ToLegacyPenaltyPlan(
 	const xash::engine::server::UserinfoPenaltyPlan &plan)
 {
 	sv_client_userinfo_penalty_plan_t legacy = {};
-	legacy.allow_update = plan.allowUpdate ? 1 : 0;
-	legacy.report_ignored_update = plan.reportIgnoredUpdate ? 1 : 0;
-	legacy.report_penalty_changed = plan.reportPenaltyChanged ? 1 : 0;
+	legacy.allow_update = ToLegacyBool(plan.allowUpdate);
+	legacy.report_ignored_update = ToLegacyBool(plan.reportIgnoredUpdate);
+	legacy.report_penalty_changed = ToLegacyBool(plan.reportPenaltyChanged);
 	legacy.next_change_time = plan.nextChangeTime;
 	legacy.penalty = plan.penalty;
 	legacy.change_attempts = plan.changeAttempts;
@@ -22,17 +26,17 @@ sv_client_flag_snapshot_t ToLegacyFlagSnapshot(
 	const xash::engine::server::ClientFlagSnapshot &snapshot)
 {
 	sv_client_flag_snapshot_t legacy = {};
-	legacy.resend_userinfo = snapshot.resendUserinfo ? 1 : 0;
-	legacy.resend_movevars = snapshot.resendMovevars ? 1 : 0;
-	legacy.skip_net_message = snapshot.skipNetMessage ? 1 : 0;
-	legacy.send_net_message = snapshot.sendNetMessage ? 1 : 0;
-	legacy.predict_movement = snapshot.predictMovement ? 1 : 0;
-	legacy.local_weapons = snapshot.localWeapons ? 1 : 0;
-	legacy.lag_compensation = snapshot.lagCompensation ? 1 : 0;
-	legacy.fake_client = snapshot.fakeClient ? 1 : 0;
-	legacy.hltv_proxy = snapshot.hltvProxy ? 1 : 0;
-	legacy.send_resources = snapshot.sendResources ? 1 : 0;
-	legacy.force_unmodified = snapshot.forceUnmodified ? 1 : 0;
+	legacy.resend_userinfo = ToLegacyBool(snapshot.resendUserinfo);
+	legacy.resend_movevars = ToLegacyBool(snapshot.resendMovevars);
+	legacy.skip_net_message = ToLegacyBool(snapshot.skipNetMessage);
+	legacy.send_net_message = ToLegacyBool(snapshot.sendNetMessage);
+	legacy.predict_movement = ToLegacyBool(snapshot.predictMovement);
+	legacy.local_weapons = ToLegacyBool(snapshot.localWeapons);
+	legacy.lag_compensation = ToLegacyBool(snapshot.lagCompensation);
+	legacy.fake_client = ToLegacyBool(snapshot.fakeClient);
+	legacy.hltv_proxy = ToLegacyBool(snapshot.hltvProxy);
+	legacy.send_resources = ToLegacyBool(snapshot.sendResources);
+	legacy.force_unmodified = ToLegacyBool(snapshot.forceUnmodified);
 	return legacy;
 }
 
@@ -46,9 +50,9 @@ SV_ClientPolicy_BuildUserinfoPenaltyPlan(
 		return {};
 
 	xash::engine::server::UserinfoPenaltyInput modern = {};
-	modern.penaltyEnabled = input->penalty_enabled != 0;
-	modern.fakeClient = input->fake_client != 0;
-	modern.singlePlayer = input->single_player != 0;
+	modern.penaltyEnabled = FromLegacyBool(input->penalty_enabled);
+	modern.fakeClient = FromLegacyBool(input->fake_client);
+	modern.singlePlayer = FromLegacyBool(input->single_player);
 	modern.realtime = input->realtime;
 	modern.nextChangeTime = input->next_change_time;
 	modern.penalty = input->penalty;
@@ -118,9 +122,9 @@ SV_ClientPolicy_BuildUserinfoFlagPlan(
 			local_weapons);
 
 	sv_client_userinfo_flag_plan_t legacy = {};
-	legacy.predict_movement = modern.predictMovement ? 1 : 0;
-	legacy.lag_compensation = modern.lagCompensation ? 1 : 0;
-	legacy.local_weapons = modern.localWeapons ? 1 : 0;
+	legacy.predict_movement = ToLegacyBool(modern.predictMovement);
+	legacy.lag_compensation = ToLegacyBool(modern.lagCompensation);
+	legacy.local_weapons = ToLegacyBool(modern.localWeapons);
 	return legacy;
 }
 
@@ -133,30 +137,31 @@ extern "C" sv_client_flag_snapshot_t SV_ClientPolicy_BuildFlagSnapshot(
 
 extern "C" int SV_ClientPolicy_IsFakeClient(unsigned int flags)
 {
-	return xash::engine::server::ClientIsFakeClient(flags) ? 1 : 0;
+	return ToLegacyBool(xash::engine::server::ClientIsFakeClient(flags));
 }
 
 extern "C" int SV_ClientPolicy_IsHltvProxy(unsigned int flags)
 {
-	return xash::engine::server::ClientIsHltvProxy(flags) ? 1 : 0;
+	return ToLegacyBool(xash::engine::server::ClientIsHltvProxy(flags));
 }
 
 extern "C" int SV_ClientPolicy_UsesLocalWeapons(unsigned int flags)
 {
-	return xash::engine::server::ClientUsesLocalWeapons(flags) ? 1 : 0;
+	return ToLegacyBool(xash::engine::server::ClientUsesLocalWeapons(flags));
 }
 
 extern "C" int SV_ClientPolicy_PredictsMovement(unsigned int flags)
 {
-	return xash::engine::server::ClientPredictsMovement(flags) ? 1 : 0;
+	return ToLegacyBool(xash::engine::server::ClientPredictsMovement(flags));
 }
 
 extern "C" int SV_ClientPolicy_UsesLagCompensation(unsigned int flags)
 {
-	return xash::engine::server::ClientUsesLagCompensation(flags) ? 1 : 0;
+	return ToLegacyBool(xash::engine::server::ClientUsesLagCompensation(flags));
 }
 
 extern "C" int SV_ClientPolicy_ShouldAppearInHumanQueries(unsigned int flags)
 {
-	return xash::engine::server::ClientShouldAppearInHumanQueries(flags) ? 1 : 0;
+	return ToLegacyBool(
+		xash::engine::server::ClientShouldAppearInHumanQueries(flags));
 }

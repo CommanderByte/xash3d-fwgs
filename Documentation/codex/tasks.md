@@ -4377,33 +4377,38 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 154: Client Session Aggregate Tests
 
-- [ ] `ENG-CLIENTAGG-001` Add aggregate tests around admission, slot selection,
+- [x] `ENG-CLIENTAGG-001` Add aggregate tests around admission, slot selection,
   rejection response, userinfo policy, command dispatch route, remote admin
   command classification, and query response behavior.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-CLIENTAGG-002` Keep packet reads, netchan state, downloads,
+  Evidence: `tests/engine/client_session_domain.cpp` and
+  `Documentation/codex/modern/engine/client-session-domain-aggregate.md`.
+- [x] `ENG-CLIENTAGG-002` Keep packet reads, netchan state, downloads,
   movement packet parsing, and live client mutation legacy-owned.
-  Evidence:
-- [ ] `ENG-CLIENTAGG-003` Run focused client/session tests and full validation.
-  Evidence:
-- [ ] `ENG-CLIENTAGG-004` Record whether this makes a grouped client adapter
+  Evidence: `Documentation/codex/modern/engine/client-session-domain-aggregate.md`.
+- [x] `ENG-CLIENTAGG-003` Run focused client/session tests and full validation.
+  Evidence: focused client/session command passed 11/11; command
+  `.\waf.bat build --alltests` passed 139/139.
+- [x] `ENG-CLIENTAGG-004` Record whether this makes a grouped client adapter
   worthwhile.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/client-session-domain-aggregate.md`.
 
 ## Phase 155: Client Adapter Shrink Pilot
 
-- [ ] `ENG-CLIENTADAPT-001` Identify plain-value client adapters that can
+- [x] `ENG-CLIENTADAPT-001` Identify plain-value client adapters that can
   share conversion utilities.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-CLIENTADAPT-002` Keep transfer, voice, movement, and netchan side
+  Evidence: `Documentation/codex/modern/engine/client-adapter-shrink-pilot.md`.
+- [x] `ENG-CLIENTADAPT-002` Keep transfer, voice, movement, and netchan side
   effects separated.
-  Evidence:
-- [ ] `ENG-CLIENTADAPT-003` Avoid creating a broad `sv_client.c` replacement
+  Evidence: `Documentation/codex/modern/engine/client-adapter-shrink-pilot.md`.
+- [x] `ENG-CLIENTADAPT-003` Avoid creating a broad `sv_client.c` replacement
   facade.
-  Evidence:
-- [ ] `ENG-CLIENTADAPT-004` Run focused client/session tests, full validation,
+  Evidence: `Documentation/codex/modern/engine/client-adapter-shrink-pilot.md`.
+- [x] `ENG-CLIENTADAPT-004` Run focused client/session tests, full validation,
   and smoke timing.
-  Evidence:
+  Evidence: command
+  `.\waf.bat build --targets=test_engine_client_adapter_shared,test_engine_client_session_domain,test_engine_client_command_dispatch,test_engine_client_policy,test_engine_client_session_slots,test_engine_connection_response,test_engine_connectionless_classifier,test_engine_remote_admin_command,test_engine_server_challenge_policy,test_engine_source_query,test_engine_netapi_info`
+  passed 11/11; command `.\waf.bat build --alltests` passed 139/139; smoke
+  reached first frame in 0.501 seconds and stopped with reason `command`.
 
 ## Phase 156: World And PMove Fixture Expansion
 

@@ -1,5 +1,7 @@
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
+#include <cstdint>
 #include <cstring>
 
 #include "engine/server/client/client_command_dispatch.hpp"
@@ -11,7 +13,9 @@
 #include "engine/server/client/server_challenge_policy.hpp"
 #include "engine/server/client/server_timeout_policy.hpp"
 #include "engine/server/client/user_agent_policy.hpp"
+#include "engine/server/netapi_info.hpp"
 #include "engine/server/server_limits.hpp"
+#include "engine/server/source_query.hpp"
 
 using namespace xash::engine::server;
 
@@ -188,12 +192,63 @@ bool TestSessionUserinfoCommandAndTimeoutHelpersCompose()
 		ShouldReleaseServerPauseForTimeouts(2, true, 0);
 }
 
+bool TestQueryResponseHelpersCompose()
+{
+	unsigned char sourceBuffer[256] = {};
+	SourceQueryDetails source = {};
+	source.protocolVersion = 49;
+	source.hostname = "Test Host";
+	source.mapName = "crossfire";
+	source.gameFolder = "valve";
+	source.gameDescription = "Half-Life";
+	source.appId = 70;
+	source.playerCount = 3;
+	source.maxPlayers = 8;
+	source.botCount = 1;
+	source.serverType = 'd';
+	source.platform = 'w';
+	source.passwordProtected = true;
+	source.secure = 0;
+	source.version = "0.21";
+
+	const std::size_t sourceBytes =
+		BuildSourceQueryDetails(source, sourceBuffer, sizeof(sourceBuffer));
+
+	char netapi[512] = {};
+	LegacyServerInfo legacy = {};
+	legacy.requestProtocol = 49;
+	legacy.protocolVersion = 49;
+	legacy.hostname = "Test Host";
+	legacy.mapName = "crossfire";
+	legacy.deathmatch = true;
+	legacy.teamplay = false;
+	legacy.coop = false;
+	legacy.playerCount = 3;
+	legacy.maxPlayers = 8;
+	legacy.gameFolder = "valve";
+	legacy.passwordProtected = true;
+
+	return sourceBytes > 8 &&
+		sourceBuffer[0] == 0xff &&
+		sourceBuffer[1] == 0xff &&
+		sourceBuffer[2] == 0xff &&
+		sourceBuffer[3] == 0xff &&
+		sourceBuffer[4] == kSourceQueryInfoResponse &&
+		SourceQueryAllowsPlayerList(true, false) &&
+		!SourceQueryAllowsPlayerList(true, true) &&
+		BuildLegacyServerInfoString(netapi, sizeof(netapi), legacy) &&
+		std::strstr(netapi, "\\map\\crossfire") != nullptr &&
+		std::strstr(netapi, "\\numcl\\3") != nullptr &&
+		std::strstr(netapi, "\\password\\1") != nullptr;
+}
+
 }
 
 int main()
 {
 	if (!TestConnectionAdmissionHelpersCompose() ||
-		!TestSessionUserinfoCommandAndTimeoutHelpersCompose())
+		!TestSessionUserinfoCommandAndTimeoutHelpersCompose() ||
+		!TestQueryResponseHelpersCompose())
 	{
 		return EXIT_FAILURE;
 	}

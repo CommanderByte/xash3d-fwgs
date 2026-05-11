@@ -1,22 +1,14 @@
 #include "source_query_adapter.h"
 
+#include "client_adapter_shared.hpp"
 #include "common.h"
 #include "engine/server/source_query.hpp"
 
 #include <cstddef>
 
-namespace
-{
-
-int ToLegacySize(std::size_t value)
-{
-	if (value == 0 || value > static_cast<std::size_t>(0x7fffffff))
-		return 0;
-
-	return static_cast<int>(value);
-}
-
-}
+using xash::engine::server::adapter::client::FromLegacyBool;
+using xash::engine::server::adapter::client::ToLegacyBool;
+using xash::engine::server::adapter::client::ToLegacySize;
 
 extern "C" char SV_SourceQueryAdapter_PlatformCode(void)
 {
@@ -33,9 +25,9 @@ extern "C" int SV_SourceQueryAdapter_AllowsPlayerList(
 	int expose_player_list,
 	int password_protected)
 {
-	return xash::engine::server::SourceQueryAllowsPlayerList(
-		expose_player_list != 0,
-		password_protected != 0);
+	return ToLegacyBool(xash::engine::server::SourceQueryAllowsPlayerList(
+		FromLegacyBool(expose_player_list),
+		FromLegacyBool(password_protected)));
 }
 
 extern "C" int SV_SourceQueryAdapter_BuildDetails(
@@ -58,7 +50,7 @@ extern "C" int SV_SourceQueryAdapter_BuildDetails(
 	modern.botCount = details->bot_count;
 	modern.serverType = details->server_type;
 	modern.platform = details->platform;
-	modern.passwordProtected = details->password_protected != 0;
+	modern.passwordProtected = FromLegacyBool(details->password_protected);
 	modern.secure = details->secure;
 	modern.version = details->version;
 
@@ -84,7 +76,7 @@ extern "C" int SV_SourceQueryAdapter_AppendRule(
 	xash::engine::server::SourceQueryRule rule = {};
 	rule.name = name;
 	rule.value = value;
-	rule.isProtected = is_protected != 0;
+	rule.isProtected = FromLegacyBool(is_protected);
 
 	return ToLegacySize(xash::engine::server::AppendSourceQueryRule(
 		buffer,
