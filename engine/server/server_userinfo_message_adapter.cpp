@@ -13,12 +13,6 @@ extern "C" sv_userinfo_message_write_result_t SV_UserinfoMessage_WritePayload(
 	const char *userinfo,
 	const unsigned char digest[16])
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
-			data,
-			data_bits,
-			current_bit);
-
 	xash::engine::server::UserinfoUpdatePayload payload = {};
 	payload.clientIndex = client_index;
 	payload.userId = user_id;
@@ -26,8 +20,11 @@ extern "C" sv_userinfo_message_write_result_t SV_UserinfoMessage_WritePayload(
 	payload.userinfo = userinfo;
 	payload.hashedCdKeyDigest = digest;
 
-	xash::engine::server::WriteUserinfoUpdatePayload(buffer, payload);
-
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_userinfo_message_write_result_t>(buffer);
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_userinfo_message_write_result_t>(
+			data,
+			data_bits,
+			current_bit,
+			xash::engine::server::WriteUserinfoUpdatePayload,
+			payload);
 }

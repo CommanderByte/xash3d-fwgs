@@ -9,14 +9,13 @@ extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteFileTransfer
 	int current_bit,
 	const char *filename)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_service_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteFileTransferFailedPayload(buffer, filename);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_service_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteFileTransferFailedPayload,
+			filename);
 }
 
 extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteReconnectPayload(
@@ -24,14 +23,12 @@ extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteReconnectPay
 	int data_bits,
 	int current_bit)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_service_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteReconnectPayload(buffer);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_service_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteReconnectPayload);
 }
 
 extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteSetViewPayload(
@@ -40,14 +37,13 @@ extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteSetViewPaylo
 	int current_bit,
 	int entity_index)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_service_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteSetViewPayload(buffer, entity_index);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_service_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteSetViewPayload,
+			entity_index);
 }
 
 extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteSetPausePayload(
@@ -56,14 +52,13 @@ extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteSetPausePayl
 	int current_bit,
 	int paused)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_service_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteSetPausePayload(buffer, paused != 0);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_service_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteSetPausePayload,
+			paused != 0);
 }
 
 extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteVoiceInitPayload(
@@ -73,12 +68,12 @@ extern "C" sv_service_message_write_result_t SV_ServiceMessage_WriteVoiceInitPay
 	const char *codec,
 	int quality)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_service_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteVoiceInitPayload(buffer, codec, quality);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_service_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteVoiceInitPayload,
+			codec,
+			quality);
 }

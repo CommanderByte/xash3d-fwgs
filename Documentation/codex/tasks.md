@@ -4315,18 +4315,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 151: Messaging Adapter Shrink Pilot
 
-- [ ] `ENG-MSGADAPT2-001` Identify adapters that share
+- [x] `ENG-MSGADAPT2-001` Identify adapters that share
   recipient/envelope/string/byte writer patterns.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-MSGADAPT2-002` Add shared adapter glue only for repeated mechanical
+  Evidence: `Documentation/codex/modern/engine/server-messaging-adapter-shrink-pilot.md`;
+  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [x] `ENG-MSGADAPT2-002` Add shared adapter glue only for repeated mechanical
   conversions.
-  Evidence:
-- [ ] `ENG-MSGADAPT2-003` Keep live datagram mutation and buffer lifetime in
+  Evidence: `engine/server/server_message_adapter_shared.hpp`;
+  `tests/engine/server_message_adapter_shared.cpp`;
+  `engine/wscript`.
+- [x] `ENG-MSGADAPT2-003` Keep live datagram mutation and buffer lifetime in
   legacy call sites.
-  Evidence:
-- [ ] `ENG-MSGADAPT2-004` Run focused messaging tests, full validation, and
+  Evidence: `Documentation/codex/modern/engine/server-messaging-adapter-shrink-pilot.md`.
+- [x] `ENG-MSGADAPT2-004` Run focused messaging tests, full validation, and
   smoke timing if runtime code changes.
-  Evidence:
+  Evidence: focused messaging/adapter executables passed 16/16;
+  `.\waf.bat build --alltests` passed 137/137;
+  `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_message_adapter_shared -SkipFullTests
+  -AllowSmokeNonZeroExit -StopRunningXash` passed; smoke reached first frame in
+  0.509 seconds and stopped with reason `command`.
 
 ## Phase 152: Game DLL Bridge Consolidation Map
 

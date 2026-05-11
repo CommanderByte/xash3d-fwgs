@@ -54,12 +54,11 @@ extern "C" sv_sound_message_write_result_t SV_SoundMessage_WritePayload(
 	payload.origin[2] = origin_z;
 	payload.largeCoordinates = large_coordinates != 0;
 
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_sound_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteSoundPayload(buffer, payload);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_sound_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteSoundPayload,
+			payload);
 }

@@ -4,6 +4,7 @@
 #include "engine/network/network_buffer.hpp"
 
 #include <cstddef>
+#include <utility>
 
 namespace xash
 {
@@ -33,6 +34,33 @@ WriteResult MakeWriteResult(
 	result.current_bit = static_cast<int>(buffer.tellBit());
 	result.overflow = buffer.overflow() ? 1 : 0;
 	return result;
+}
+
+template <typename WriteResult, typename Writer>
+WriteResult WriteWithNetworkBitBuffer(
+	unsigned char *data,
+	int dataBits,
+	int currentBit,
+	Writer writer)
+{
+	xash::engine::network::NetworkBitBuffer buffer =
+		MakeNetworkBitBuffer(data, dataBits, currentBit);
+	writer(buffer);
+	return MakeWriteResult<WriteResult>(buffer);
+}
+
+template <typename WriteResult, typename Writer, typename... Args>
+WriteResult WritePayloadWithNetworkBitBuffer(
+	unsigned char *data,
+	int dataBits,
+	int currentBit,
+	Writer writer,
+	Args&&... args)
+{
+	xash::engine::network::NetworkBitBuffer buffer =
+		MakeNetworkBitBuffer(data, dataBits, currentBit);
+	writer(buffer, std::forward<Args>(args)...);
+	return MakeWriteResult<WriteResult>(buffer);
 }
 
 }

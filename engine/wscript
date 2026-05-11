@@ -256,6 +256,14 @@ def build(bld):
 			features = 'cxx test',
 			install_path = None,
 		)
+		bld.program(
+			source = ['../tests/engine/server_message_adapter_shared.cpp'],
+			target = 'test_engine_server_message_adapter_shared',
+			use = 'engine_includes modern_engine public werror',
+			includes = includes,
+			features = 'cxx test',
+			install_path = None,
+		)
 
 	# include platform-specific sources, this shall not fail if directory doesn't exist
 	source += bld.path.ant_glob('platform/%s/*.c' % bld.env.DEST_OS)

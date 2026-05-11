@@ -66,11 +66,11 @@ individual payload writers.
 Goal: reduce repeated message adapter glue without obscuring packet-buffer
 ownership.
 
-- [ ] Identify adapters that share recipient/envelope/string/byte writer
+- [x] Identify adapters that share recipient/envelope/string/byte writer
   patterns.
-- [ ] Add shared adapter glue only for repeated mechanical conversions.
-- [ ] Keep live datagram mutation and buffer lifetime in legacy call sites.
-- [ ] Run focused messaging tests, full validation, and smoke timing if
+- [x] Add shared adapter glue only for repeated mechanical conversions.
+- [x] Keep live datagram mutation and buffer lifetime in legacy call sites.
+- [x] Run focused messaging tests, full validation, and smoke timing if
   runtime code changes.
 
 ## Phase 152: Game DLL Bridge Consolidation Map

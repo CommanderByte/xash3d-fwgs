@@ -9,14 +9,13 @@ extern "C" sv_text_message_write_result_t SV_TextMessage_WritePrintPayload(
 	int current_bit,
 	const char *text)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_text_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WritePrintPayload(buffer, text);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_text_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WritePrintPayload,
+			text);
 }
 
 extern "C" sv_text_message_write_result_t SV_TextMessage_WriteStuffTextPayload(
@@ -25,12 +24,11 @@ extern "C" sv_text_message_write_result_t SV_TextMessage_WriteStuffTextPayload(
 	int current_bit,
 	const char *command_text)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_text_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteStuffTextPayload(buffer, command_text);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_text_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteStuffTextPayload,
+			command_text);
 }

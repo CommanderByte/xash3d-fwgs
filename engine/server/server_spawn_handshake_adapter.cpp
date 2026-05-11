@@ -96,14 +96,13 @@ extern "C" sv_spawn_handshake_write_result_t SV_Serverdata_WritePayload(
 		}
 	}
 
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_spawn_handshake_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteServerdataPayload(buffer, payload);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_spawn_handshake_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteServerdataPayload,
+			payload);
 }
 
 extern "C" sv_spawn_handshake_write_result_t SV_SpawnHandshake_WriteSignonNumberMessage(
@@ -112,14 +111,13 @@ extern "C" sv_spawn_handshake_write_result_t SV_SpawnHandshake_WriteSignonNumber
 	int current_bit,
 	int signon_number)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_spawn_handshake_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteSignonNumberMessage(buffer, signon_number);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_spawn_handshake_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteSignonNumberMessage,
+			signon_number);
 }
 
 extern "C" enum sv_spawn_command_action_e SV_SpawnHandshake_BuildNewCommandAction(

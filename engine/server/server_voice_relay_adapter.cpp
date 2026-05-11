@@ -81,19 +81,14 @@ extern "C" sv_voice_relay_write_result_t SV_VoiceRelay_WritePayload(
 	const void *payload,
 	unsigned int payload_size)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_voice_relay_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-
-	xash::engine::server::WriteVoiceDataPayload(
-		buffer,
-		sender_index,
-		frames,
-		payload,
-		payload_size);
-
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_voice_relay_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteVoiceDataPayload,
+			sender_index,
+			frames,
+			payload,
+			payload_size);
 }

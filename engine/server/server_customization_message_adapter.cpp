@@ -11,18 +11,16 @@ extern "C" sv_customization_message_write_result_t SV_CustomizationMessage_Write
 	int data_bits,
 	int current_bit)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
-			data,
-			data_bits,
-			current_bit);
-
-	xash::engine::server::WriteCustomizationMessagePayload(
-		buffer,
+	const xash::engine::server::CustomizationMessage message =
 		xash::engine::server::adapter::ToModernCustomizationMessage(
 			resource,
-			playernum));
+			playernum);
 
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_customization_message_write_result_t>(buffer);
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_customization_message_write_result_t>(
+			data,
+			data_bits,
+			current_bit,
+			xash::engine::server::WriteCustomizationMessagePayload,
+			message);
 }

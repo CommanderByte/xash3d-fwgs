@@ -10,16 +10,14 @@ extern "C" sv_resource_message_write_result_t SV_ResourceMessage_WriteResource(
 	int data_bits,
 	int current_bit)
 {
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	const xash::engine::server::ResourceMessageRow row =
+		xash::engine::server::adapter::ToModernResourceMessageRow(resource);
+
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_resource_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-
-	xash::engine::server::WriteResourceMessageRow(
-		buffer,
-		xash::engine::server::adapter::ToModernResourceMessageRow(resource));
-
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_resource_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteResourceMessageRow,
+			row);
 }

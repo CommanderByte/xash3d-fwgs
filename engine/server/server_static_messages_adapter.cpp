@@ -45,12 +45,11 @@ extern "C" sv_static_message_write_result_t SV_StaticMessage_WriteBspDecalPayloa
 	payload.scale = scale;
 	payload.largeCoordinates = large_coordinates != 0;
 
-	xash::engine::network::NetworkBitBuffer buffer =
-		xash::engine::server::adapter::MakeNetworkBitBuffer(
+	return xash::engine::server::adapter::WritePayloadWithNetworkBitBuffer<
+		sv_static_message_write_result_t>(
 			data,
 			data_bits,
-			current_bit);
-	xash::engine::server::WriteBspDecalPayload(buffer, payload);
-	return xash::engine::server::adapter::MakeWriteResult<
-		sv_static_message_write_result_t>(buffer);
+			current_bit,
+			xash::engine::server::WriteBspDecalPayload,
+			payload);
 }
