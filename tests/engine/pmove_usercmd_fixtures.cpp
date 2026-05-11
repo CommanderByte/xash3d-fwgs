@@ -165,6 +165,30 @@ static bool TestFinishSnapshotModelsReturnFieldsAndAngleRule()
 		FixturePmoveVec3Equal(fixed.viewangles, FixturePmoveVec3(0.0f, 0.0f, 0.0f));
 }
 
+static bool TestSetupFinishSnapshotsSupportComparisonPlan()
+{
+	const PmoveFixturePlayerState player = PlayerState();
+	const PmoveFixtureUsercmd command = FixturePmoveUsercmd(16, 5, 1);
+	const PmoveFixtureSetupSnapshot setup =
+		BuildPmoveFixtureSetupSnapshot(player, command);
+	PmoveFixtureMoveResult move = {};
+	move.origin = setup.origin;
+	move.angles = setup.angles;
+	move.velocity = FixturePmoveVec3(10.0f, 20.0f, 30.0f);
+	move.cmd = command;
+	move.onground = -1;
+	move.numPhysent = 0;
+
+	const PmoveFixtureFinishSnapshot finish =
+		BuildPmoveFixtureFinishSnapshot(move, false);
+
+	return FixturePmoveVec3Equal(setup.origin, finish.origin) &&
+		FixturePmoveVec3Equal(setup.angles, finish.viewangles) &&
+		finish.oldbuttons == command.buttons &&
+		!finish.onGround &&
+		!finish.runfuncs;
+}
+
 static bool TestCallbackMockInventoryCoversPmoveAndTouchReplay()
 {
 	const unsigned int mask = BuildPmoveFixtureRequiredCallbackMockMask();
@@ -204,6 +228,7 @@ int main()
 		!TestTimebaseFixtureMatchesLegacyCommandAccounting() ||
 		!TestSetupSnapshotModelsSafeComparableFields() ||
 		!TestFinishSnapshotModelsReturnFieldsAndAngleRule() ||
+		!TestSetupFinishSnapshotsSupportComparisonPlan() ||
 		!TestCallbackMockInventoryCoversPmoveAndTouchReplay() ||
 		!TestUnlagHistoryFixtureReusesModernTimingPolicy())
 	{

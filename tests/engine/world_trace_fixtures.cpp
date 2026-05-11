@@ -84,6 +84,28 @@ static bool TestFixtureModelsTraversalMaskSelection()
 			(kWorldAreaChildPositiveMask | kWorldAreaChildNegativeMask);
 }
 
+static bool TestFixtureModelsMoveClipPlanSelection()
+{
+	constexpr int kMoveNormal = 1;
+	constexpr int kMoveMissile = 3;
+
+	const ServerWorldMoveClipPlan normal =
+		FixtureMoveClipPlan((2 << 8) | kMoveNormal, true, false, kMoveMissile);
+	const ServerWorldMoveClipPlan quake =
+		FixtureMoveClipPlan((2 << 8) | kMoveNormal, true, true, kMoveMissile);
+	const ServerWorldMoveClipPlan missile =
+		FixtureMoveClipPlan((5 << 8) | kMoveMissile, false, false, kMoveMissile);
+
+	return normal.moveType == kMoveNormal &&
+		normal.ignoreTransparent == 2 &&
+		normal.monsterClip &&
+		!normal.useMissileBounds &&
+		!quake.monsterClip &&
+		missile.moveType == kMoveMissile &&
+		missile.ignoreTransparent == 5 &&
+		missile.useMissileBounds;
+}
+
 static bool TestFixtureModelsTriggerTouchAdmission()
 {
 	const WorldFixtureEdict moving =
@@ -135,6 +157,7 @@ int main()
 	if (!TestAreaNodeFixtureUsesModernSplitPolicy() ||
 		!TestFixtureModelsLinkChildSelection() ||
 		!TestFixtureModelsTraversalMaskSelection() ||
+		!TestFixtureModelsMoveClipPlanSelection() ||
 		!TestFixtureModelsTriggerTouchAdmission() ||
 		!TestFixtureModelsClipAdmissionWithoutEngineRuntime())
 	{

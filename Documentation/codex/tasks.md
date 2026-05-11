@@ -4412,32 +4412,50 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 156: World And PMove Fixture Expansion
 
-- [ ] `ENG-WORLDPMOVE-FIX-001` Extend world trace fixtures toward
+- [x] `ENG-WORLDPMOVE-FIX-001` Extend world trace fixtures toward
   clip-admission path selection.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-WORLDPMOVE-FIX-002` Extend PMove fixtures toward command replay and
+  Evidence: `tests/engine/world_trace_fixture_common.hpp`,
+  `tests/engine/world_trace_fixtures.cpp`,
+  `Documentation/codex/modern/engine/world-pmove-fixture-expansion.md`.
+- [x] `ENG-WORLDPMOVE-FIX-002` Extend PMove fixtures toward command replay and
   setup/finish comparison plans.
-  Evidence:
-- [ ] `ENG-WORLDPMOVE-FIX-003` Keep exact hull traversal, PMove callbacks,
+  Evidence: `tests/engine/pmove_usercmd_fixtures.cpp`,
+  `Documentation/codex/modern/engine/world-pmove-fixture-expansion.md`.
+- [x] `ENG-WORLDPMOVE-FIX-003` Keep exact hull traversal, PMove callbacks,
   physent population, and touch replay legacy-owned.
-  Evidence:
-- [ ] `ENG-WORLDPMOVE-FIX-004` Run focused fixture tests and full validation.
-  Evidence:
+  Evidence: fixture documentation keeps traversal, PMove callbacks, physent
+  population, touch replay, and global mutation outside the fixture contract.
+- [x] `ENG-WORLDPMOVE-FIX-004` Run focused fixture tests and full validation.
+  Evidence: focused world/PMove policy and fixture targets passed; full
+  `.\waf.bat build --alltests` passed 140/140 tests.
 
 ## Phase 157: World Or PMove Micro-Extraction Pilot
 
-- [ ] `ENG-WORLDPMOVE-PILOT-001` Choose exactly one decision covered by Phase
+- [x] `ENG-WORLDPMOVE-PILOT-001` Choose exactly one decision covered by Phase
   156 fixtures.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-WORLDPMOVE-PILOT-002` Route the legacy call site through the modern
+  Evidence:
+  `Documentation/codex/modern/engine/world-pmove-micro-extraction-pilot.md`.
+- [x] `ENG-WORLDPMOVE-PILOT-002` Route the legacy call site through the modern
   helper.
-  Evidence:
-- [ ] `ENG-WORLDPMOVE-PILOT-003` Keep live storage, traces, callbacks, and
+  Evidence: `src/include/engine/server/server_world_trace_policy.hpp`,
+  `src/engine/server/server_world_trace_policy.cpp`,
+  `engine/server/server_world_trace_policy_adapter.h`,
+  `engine/server/server_world_trace_policy_adapter.cpp`,
+  `engine/server/sv_world.c`.
+- [x] `ENG-WORLDPMOVE-PILOT-003` Keep live storage, traces, callbacks, and
   relinking legacy-owned.
-  Evidence:
-- [ ] `ENG-WORLDPMOVE-PILOT-004` Run focused tests, full validation, and smoke
+  Evidence: only `SV_Move` clip setup plan selection moved; world trace
+  traversal, portal clipping, trace mutation, and `SV_MoveNoEnts` remain
+  legacy-owned.
+- [x] `ENG-WORLDPMOVE-PILOT-004` Run focused tests, full validation, and smoke
   timing.
   Evidence:
+  `.\waf.bat build --targets=test_engine_server_world_trace_policy,test_engine_world_trace_fixtures,test_engine_pmove_usercmd_fixtures,test_engine_server_world_link_policy,test_engine_server_pmove_bridge_policy,test_engine_server_movement_constraints`
+  passed; `.\waf.bat build --alltests` passed 140/140 tests;
+  `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_world_trace_policy -SkipFullTests -AllowSmokeNonZeroExit
+  -StopRunningXash` reached first frame in 0.497 seconds and stopped with
+  reason `command`.
 
 ## Phase 158: Save Runtime Fixture Expansion
 

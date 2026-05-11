@@ -122,21 +122,21 @@ concept boundary.
 
 Goal: strengthen fixtures before live world/PMove ownership moves.
 
-- [ ] Extend world trace fixtures toward clip-admission path selection.
-- [ ] Extend PMove fixtures toward command replay and setup/finish comparison
+- [x] Extend world trace fixtures toward clip-admission path selection.
+- [x] Extend PMove fixtures toward command replay and setup/finish comparison
   plans.
-- [ ] Keep exact hull traversal, PMove callbacks, physent population, and
+- [x] Keep exact hull traversal, PMove callbacks, physent population, and
   touch replay legacy-owned.
-- [ ] Run focused fixture tests and full validation.
+- [x] Run focused fixture tests and full validation.
 
 ## Phase 157: World Or PMove Micro-Extraction Pilot
 
 Goal: move one fixture-backed world/PMove decision into modern code.
 
-- [ ] Choose exactly one decision covered by Phase 156 fixtures.
-- [ ] Route the legacy call site through the modern helper.
-- [ ] Keep live storage, traces, callbacks, and relinking legacy-owned.
-- [ ] Run focused tests, full validation, and smoke timing.
+- [x] Choose exactly one decision covered by Phase 156 fixtures.
+- [x] Route the legacy call site through the modern helper.
+- [x] Keep live storage, traces, callbacks, and relinking legacy-owned.
+- [x] Run focused tests, full validation, and smoke timing.
 
 ## Phase 158: Save Runtime Fixture Expansion
 

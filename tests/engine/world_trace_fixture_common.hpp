@@ -3,6 +3,7 @@
 
 #include "engine/server/server_group_filter.hpp"
 #include "engine/server/server_world_link_policy.hpp"
+#include "engine/server/server_world_trace_policy.hpp"
 
 namespace xash
 {
@@ -132,6 +133,19 @@ inline int FixtureTraversalMask(
 		FixtureAxisMin(bounds, node.axis),
 		FixtureAxisMax(bounds, node.axis),
 		node.splitDistance);
+}
+
+inline xash::engine::server::ServerWorldMoveClipPlan FixtureMoveClipPlan(
+	int encodedMoveType,
+	bool requestedMonsterClip,
+	bool quakeCompatible,
+	int missileMoveType)
+{
+	return xash::engine::server::BuildServerWorldMoveClipPlan(
+		encodedMoveType,
+		requestedMonsterClip,
+		quakeCompatible,
+		missileMoveType);
 }
 
 inline bool FixtureTouchCandidatePasses(

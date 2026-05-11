@@ -244,6 +244,7 @@ def build(bld):
 		'server/server_pmove_bridge_policy_adapter.cpp',
 		'server/server_visibility_constraints_adapter.cpp',
 		'server/server_world_link_policy_adapter.cpp',
+		'server/server_world_trace_policy_adapter.cpp',
 	]
 	libs += ['modern_engine']
 

@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #include "server_group_filter_adapter.h"
 #include "server_visibility_constraints_adapter.h"
 #include "server_world_link_policy_adapter.h"
+#include "server_world_trace_policy_adapter.h"
 
 typedef struct moveclip_s
 {
@@ -1351,6 +1352,7 @@ SV_Move
 trace_t SV_Move( const vec3_t start, vec3_t mins, vec3_t maxs, const vec3_t end, int type, edict_t *e, qboolean monsterclip )
 {
 	moveclip_t clip = { 0 };
+	sv_world_move_clip_plan_t move_plan;
 
 	SV_ClipMoveToEntity( SV_EdictNum( 0 ), start, mins, maxs, end, &clip.trace );
 
@@ -1359,21 +1361,23 @@ trace_t SV_Move( const vec3_t start, vec3_t mins, vec3_t maxs, const vec3_t end,
 		const float trace_fraction = clip.trace.fraction;
 		vec3_t trace_endpos;
 		VectorCopy( clip.trace.endpos, trace_endpos );
+		move_plan = SV_WorldTrace_BuildMoveClipPlan(
+			type,
+			monsterclip,
+			FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ),
+			MOVE_MISSILE );
 
 		clip.trace.fraction = 1.0f;
 		clip.start = start;
 		clip.end = trace_endpos;
-		clip.type = (type & 0xFF);
-		clip.ignoretrans = type >> 8;
-		clip.monsterclip = false;
+		clip.type = move_plan.move_type;
+		clip.ignoretrans = move_plan.ignore_transparent;
+		clip.monsterclip = move_plan.monsterclip;
 		clip.passedict = (e) ? e : SV_EdictNum( 0 );
 		clip.mins = mins;
 		clip.maxs = maxs;
 
-		if( monsterclip && !FBitSet( host.features, ENGINE_QUAKE_COMPATIBLE ))
-			clip.monsterclip = true;
-
-		if( clip.type == MOVE_MISSILE )
+		if( move_plan.use_missile_bounds )
 		{
 			VectorSet( clip.mins2, -15.0f, -15.0f, -15.0f );
 			VectorSet( clip.maxs2,  15.0f,  15.0f,  15.0f );
