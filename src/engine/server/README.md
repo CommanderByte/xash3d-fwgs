@@ -55,6 +55,9 @@ Current helpers:
   string formatting.
 - `resource_identity.cpp`: target-neutral custom resource identity, download
   name checks, matching, and size-summary helpers.
+- `resource_transfer_manifest.cpp`: target-neutral aggregate manifest over
+  modern resource descriptors for catalog-to-download and resource-message
+  flows.
 - `server_resource_catalog.cpp`: target-neutral startup resource catalog
   planning for generic, sound, model, decal, and event precaches.
 - `server_download_policy.cpp`: target-neutral server download allow/reject,

@@ -277,3 +277,24 @@ Proceed to Phase 116 with aggregate resource-transfer tests first. If the test
 code needs a repeated descriptor-list abstraction, add a small target-neutral
 manifest helper. Leave directory regrouping and adapter consolidation for Phase
 117 or later, after the manifest boundary is proven.
+
+## Phase 116 Pilot Result
+
+Phase 116 added `ResourceTransferManifest` as the first target-neutral aggregate
+resource helper. It owns modern `ResourceDescriptor` values, can be filled from
+startup catalog entries, and exposes views for:
+
+- download-policy requests and lookup indexes;
+- resource-message rows;
+- size summaries;
+- safe append/rejection of invalid descriptors.
+
+The helper intentionally does not own HPAK, filesystem probes, cvar checks,
+netchan fragments, game DLL callbacks, or live `sv.resources[]` /
+`resource_t` mutation. Those remain legacy-owned until a later adapter or
+runtime-state phase.
+
+The aggregate test now covers catalog-to-manifest, reslist-to-manifest,
+manifest-to-download, and manifest-to-resource-row behavior. This makes Phase
+117 safer: adapter shrink can be reviewed against a proven target-neutral
+manifest boundary rather than against individual helper leaves only.

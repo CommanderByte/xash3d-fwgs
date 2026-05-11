@@ -3484,18 +3484,34 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 116: Resource Transfer Aggregate Helper Pilot
 
-- [ ] `ENG-RESAGG-001` Add focused tests for the catalog-to-manifest resource
+- [x] `ENG-RESAGG-001` Add focused tests for the catalog-to-manifest resource
   flow selected in Phase 115.
-  Evidence:
-- [ ] `ENG-RESAGG-002` Implement a target-neutral aggregate helper only if it
+  Evidence: `tests/engine/resource_transfer_manifest.cpp` covers catalog
+  entries flowing into a manifest, download lookup, size summaries,
+  resource-message row serialization, reslist token routing, and invalid
+  descriptor rejection.
+- [x] `ENG-RESAGG-002` Implement a target-neutral aggregate helper only if it
   removes duplication between existing resource helpers.
-  Evidence:
-- [ ] `ENG-RESAGG-003` Keep HPAK, filesystem probes, cvar checks, and live
+  Evidence: `src/include/engine/server/resource_transfer_manifest.hpp` and
+  `src/engine/server/resource_transfer_manifest.cpp` add
+  `ResourceTransferManifest`, which owns modern `ResourceDescriptor` values
+  and builds download-policy and resource-message views without duplicating
+  descriptor-list traversal in tests or later helpers.
+- [x] `ENG-RESAGG-003` Keep HPAK, filesystem probes, cvar checks, and live
   resource list mutation legacy-owned.
-  Evidence:
-- [ ] `ENG-RESAGG-004` Run focused resource tests, full validation, and
+  Evidence: the manifest helper includes only modern server value headers and
+  leaves `sv.resources[]`, `resource_t` linked lists, HPAK access, filesystem
+  probes, cvars, and netchan/game-DLL side effects untouched.
+- [x] `ENG-RESAGG-004` Run focused resource tests, full validation, and
   `+wait +wait` smoke timing if code changes.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_resource_transfer_manifest`
+  passed; focused neighboring resource tests
+  `test_engine_resource_identity,test_engine_server_resource_catalog,test_engine_server_reslist_policy,test_engine_server_resource_message,test_engine_server_download_policy`
+  passed 5/5; `.\scripts\run-phase-validation.ps1 -FocusedTarget test_engine_resource_transfer_manifest -StopRunningXash`
+  passed, including `.\waf.bat build --targets=xash`,
+  `.\waf.bat build --alltests` 118/118, runtime DLL refresh, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reaching
+  first frame in 0.512 seconds with stop reason `command`.
 
 ## Phase 117: Resource Transfer Adapter Shrink Review
 

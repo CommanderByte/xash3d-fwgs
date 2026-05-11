@@ -41,6 +41,9 @@ Current helpers:
   formatting.
 - `resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
   checks, resource matching, and size summaries.
+- `resource_transfer_manifest.hpp`: target-neutral aggregate manifest over
+  modern resource descriptors for catalog-to-download and resource-message
+  flows.
 - `server_resource_catalog.hpp`: server startup resource catalog planning for
   generic, sound, model, decal, and event precaches.
 - `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
