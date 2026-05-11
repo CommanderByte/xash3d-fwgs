@@ -1,9 +1,15 @@
+#include "server_consistency_list_adapter.h"
 #include "server_consistency_policy_adapter.h"
 
+#include "engine/network/network_buffer.hpp"
+#include "engine/server/resources/server_consistency_list.hpp"
 #include "engine/server/resources/server_consistency_policy.hpp"
 #include "resource_adapter_shared.hpp"
+#include "server_message_adapter_shared.hpp"
 
+#include <cstddef>
 #include <cstring>
+#include <vector>
 
 namespace
 {
@@ -19,7 +25,6 @@ int ToLegacyStatus(xash::engine::server::ConsistencyEntryStatus status)
 	case ConsistencyEntryStatus::BadResource:
 		return SV_CONSISTENCY_ENTRY_BAD_RESOURCE;
 	case ConsistencyEntryStatus::InvalidType:
-		return SV_CONSISTENCY_ENTRY_INVALID_TYPE;
 	default:
 		return SV_CONSISTENCY_ENTRY_INVALID_TYPE;
 	}
@@ -34,6 +39,55 @@ sv_consistency_entry_decision_t ToLegacyDecision(
 	return legacy;
 }
 
+}
+
+extern "C" sv_consistency_list_write_result_t SV_ConsistencyList_Write(
+	const resource_t *resources,
+	int resource_count,
+	int consistency_count,
+	int max_clients,
+	int consistency_enabled,
+	int hltv_proxy,
+	int already_overflow,
+	unsigned char *data,
+	int data_bits,
+	int current_bit)
+{
+	const std::vector<int> indexes =
+		xash::engine::server::adapter::BuildCheckedResourceIndexSnapshot(
+			resources,
+			resource_count);
+
+	xash::engine::server::ConsistencyListRequest request = {};
+	request.maxClients = max_clients;
+	request.consistencyEnabled = consistency_enabled != 0;
+	request.consistencyCount = consistency_count;
+	request.hltvProxy = hltv_proxy != 0;
+	request.resourceIndexes = indexes.empty() ? nullptr : indexes.data();
+	request.resourceIndexCount = indexes.size();
+
+	sv_consistency_list_write_result_t legacy = {};
+	legacy.current_bit = current_bit;
+	legacy.overflow = already_overflow ? 1 : 0;
+	legacy.force_unmodified =
+		xash::engine::server::ConsistencyListShouldSend(request) ? 1 : 0;
+
+	if (already_overflow)
+		return legacy;
+
+	xash::engine::network::NetworkBitBuffer buffer =
+		xash::engine::server::adapter::MakeNetworkBitBuffer(
+			data,
+			data_bits,
+			current_bit);
+
+	const xash::engine::server::ConsistencyListWriteResult result =
+		xash::engine::server::WriteConsistencyList(buffer, request);
+
+	legacy.current_bit = static_cast<int>(buffer.tellBit());
+	legacy.overflow = buffer.overflow() ? 1 : 0;
+	legacy.force_unmodified = result.forceUnmodified ? 1 : 0;
+	return legacy;
 }
 
 extern "C" int SV_ConsistencyPolicy_ResourceNeedsSetup(
@@ -54,7 +108,8 @@ extern "C" int SV_ConsistencyPolicy_RequiresModelBounds(
 		force_type) ? 1 : 0;
 }
 
-extern "C" sv_consistency_reservation_result_t SV_ConsistencyPolicy_BuildReservation(
+extern "C" sv_consistency_reservation_result_t
+SV_ConsistencyPolicy_BuildReservation(
 	resourcetype_t resource_type,
 	int force_type,
 	const float *specified_mins,
@@ -80,16 +135,22 @@ extern "C" sv_consistency_reservation_result_t SV_ConsistencyPolicy_BuildReserva
 	legacy.requires_model_bounds = result.requiresModelBounds ? 1 : 0;
 	legacy.has_reserved_data = result.hasReservedData ? 1 : 0;
 	legacy.unsupported_force_type = result.unsupportedForceType ? 1 : 0;
-	std::memcpy(legacy.reserved_data, result.reservedData, sizeof(legacy.reserved_data));
+	std::memcpy(
+		legacy.reserved_data,
+		result.reservedData,
+		sizeof(legacy.reserved_data));
 	return legacy;
 }
 
-extern "C" int SV_ConsistencyPolicy_ReservedDataIsEmpty(const unsigned char *reserved_data)
+extern "C" int SV_ConsistencyPolicy_ReservedDataIsEmpty(
+	const unsigned char *reserved_data)
 {
-	return xash::engine::server::ConsistencyReservedDataIsEmpty(reserved_data) ? 1 : 0;
+	return xash::engine::server::ConsistencyReservedDataIsEmpty(
+		reserved_data) ? 1 : 0;
 }
 
-extern "C" sv_consistency_entry_decision_t SV_ConsistencyPolicy_EvaluateChecksum(
+extern "C" sv_consistency_entry_decision_t
+SV_ConsistencyPolicy_EvaluateChecksum(
 	int resource_index,
 	const unsigned char *expected_hash,
 	const unsigned char *received_prefix,
@@ -99,10 +160,13 @@ extern "C" sv_consistency_entry_decision_t SV_ConsistencyPolicy_EvaluateChecksum
 		resource_index,
 		expected_hash,
 		received_prefix,
-		received_prefix_size < 0 ? 0U : static_cast<std::size_t>(received_prefix_size)));
+		received_prefix_size < 0 ?
+			0U :
+			static_cast<std::size_t>(received_prefix_size)));
 }
 
-extern "C" sv_consistency_entry_decision_t SV_ConsistencyPolicy_EvaluateBounds(
+extern "C" sv_consistency_entry_decision_t
+SV_ConsistencyPolicy_EvaluateBounds(
 	int resource_index,
 	const unsigned char *reserved_data,
 	const float *client_mins,

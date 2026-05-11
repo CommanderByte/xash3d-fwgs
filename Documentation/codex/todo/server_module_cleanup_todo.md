@@ -97,14 +97,17 @@ Bis pass:
 Goal: remove repeated adapter and common-structure boilerplate where it is
 mechanical, while keeping risky side effects visible.
 
-- [ ] Review adapter shared helpers for Session, Content, Replication, and
+- [x] Review adapter shared helpers for Session, Content, Replication, and
   Game API.
-- [ ] Move common plain structs/enums into module headers only when multiple
+- [x] Move common plain structs/enums into module headers only when multiple
   helpers genuinely share them.
-- [ ] Avoid a giant `server_adapter.cpp` or broad `Server` facade.
-- [ ] Keep live legacy ownership obvious at the call site.
-- [ ] Run focused adapter/module tests, full validation, and smoke timing if
+- [x] Avoid a giant `server_adapter.cpp` or broad `Server` facade.
+- [x] Keep live legacy ownership obvious at the call site.
+- [x] Run focused adapter/module tests, full validation, and smoke timing if
   runtime route-through code changes.
+
+Phase 165 decisions are recorded in
+`Documentation/codex/modern/engine/adapter-glue-cleanup.md`.
 
 ## Phase 166: Module Cleanup Checkpoint
 

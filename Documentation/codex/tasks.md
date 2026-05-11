@@ -4648,20 +4648,29 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 165: Adapter And Common Glue Cleanup
 
-- [ ] `ENG-GLUECLEAN-001` Review adapter shared helpers for Session, Content,
+- [x] `ENG-GLUECLEAN-001` Review adapter shared helpers for Session, Content,
   Replication, and Game API.
-  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
-- [ ] `ENG-GLUECLEAN-002` Move common plain structs/enums into module headers
+  Evidence: `Documentation/codex/modern/engine/adapter-glue-cleanup.md`.
+- [x] `ENG-GLUECLEAN-002` Move common plain structs/enums into module headers
   only when multiple helpers genuinely share them.
-  Evidence:
-- [ ] `ENG-GLUECLEAN-003` Avoid a giant `server_adapter.cpp` or broad `Server`
+  Evidence: no new broad shared struct was added; existing narrow shared glue
+  remains in `engine/server/resource_adapter_shared.cpp` and
+  `engine/server/server_message_adapter_shared.hpp`.
+- [x] `ENG-GLUECLEAN-003` Avoid a giant `server_adapter.cpp` or broad `Server`
   facade.
-  Evidence:
-- [ ] `ENG-GLUECLEAN-004` Keep live legacy ownership obvious at the call site.
-  Evidence:
-- [ ] `ENG-GLUECLEAN-005` Run focused adapter/module tests, full validation,
+  Evidence: `engine/server/server_query_responses_adapter.cpp`,
+  `engine/server/server_consistency_adapter.cpp`, and
+  `engine/server/server_resource_flow_adapter.cpp` collapse implementation
+  files only; the split legacy adapter headers remain.
+- [x] `ENG-GLUECLEAN-004` Keep live legacy ownership obvious at the call site.
+  Evidence: legacy C callers still include the same narrow headers; only
+  `engine/wscript` now points at the grouped implementation files.
+- [x] `ENG-GLUECLEAN-005` Run focused adapter/module tests, full validation,
   and smoke timing if runtime route-through code changes.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_server_query_responses,test_engine_server_consistency,test_engine_server_resource_flow,test_engine_resource_adapter_shared,test_engine_resource_domain,test_engine_resource_transfer_manifest`
+  passed; `.\waf.bat build --targets=xash` passed;
+  `.\waf.bat build --alltests` passed 127/127; runtime smoke reached first
+  frame in 0.492 seconds with stop reason `command`.
 
 ## Phase 166: Module Cleanup Checkpoint
 
