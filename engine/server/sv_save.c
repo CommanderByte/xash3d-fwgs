@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "render_api.h"	// decallist_t
 #include "sound.h"		// S_GetDynamicSounds
 #include "ref_common.h" // decals
+#include "server_map_validation_adapter.h"
 
 /*
 ==============================================================================
@@ -2162,16 +2163,18 @@ qboolean SV_LoadGame( const char *pPath )
 			// now check for map problems
 			flags = SV_MapIsValid( gameHeader.mapName, NULL );
 
-			if( FBitSet( flags, MAP_INVALID_VERSION ))
+			switch( SV_MapValidation_Classify( flags ))
 			{
+			case SV_MAP_VALIDATION_INVALID_VERSION:
 				Con_Printf( S_ERROR "map %s is invalid or not supported\n", gameHeader.mapName );
 				validload = false;
-			}
-
-			if( !FBitSet( flags, MAP_IS_EXIST ))
-			{
+				break;
+			case SV_MAP_VALIDATION_MISSING:
 				Con_Printf( S_ERROR "map %s doesn't exist\n", gameHeader.mapName );
 				validload = false;
+				break;
+			case SV_MAP_VALIDATION_VALID:
+				break;
 			}
 		}
 	}
@@ -2451,16 +2454,16 @@ int GAME_EXPORT SV_GetSaveComment( const char *savename, char *comment )
 		// now check for map problems
 		flags = SV_MapIsValid( mapName, NULL );
 
-		if( FBitSet( flags, MAP_INVALID_VERSION ))
+		switch( SV_MapValidation_Classify( flags ))
 		{
+		case SV_MAP_VALIDATION_INVALID_VERSION:
 			Q_snprintf( comment, MAX_STRING, "<map %s has invalid format>", mapName );
 			return 0;
-		}
-
-		if( !FBitSet( flags, MAP_IS_EXIST ))
-		{
+		case SV_MAP_VALIDATION_MISSING:
 			Q_snprintf( comment, MAX_STRING, "<map %s is missed>", mapName );
 			return 0;
+		case SV_MAP_VALIDATION_VALID:
+			break;
 		}
 
 		fileTime = FS_FileTime( savename, true );

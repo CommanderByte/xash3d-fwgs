@@ -107,6 +107,10 @@ Current implementation notes:
   update-backup, packet-entity capacity, game-entity count, and spawn settling
   calculations through target-neutral helpers while keeping allocation and
   activation side effects legacy-owned.
+- `server-map-validation-policy.md`: how Phase 108 centralizes
+  `SV_MapIsValid()` flag interpretation, changelevel landmark compatibility,
+  save/load admission, and game DLL existence behavior while map probing and
+  entity parsing stay legacy-owned.
 - `server-movement-constraints.md`: how Phase 104 names server monster
   movement modes and fly-move clip-plane constraints separately from trace,
   walkmove, and `pm_shared` constants.

@@ -3320,18 +3320,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 108: Map Validation And Landmark Result Policy
 
-- [ ] `ENG-SVMAP-001` Baseline `SV_MapIsValid()` flag interpretation in
+- [x] `ENG-SVMAP-001` Baseline `SV_MapIsValid()` flag interpretation in
   changelevel, command lifecycle, and save/load paths.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
-- [ ] `ENG-SVMAP-002` Add target-neutral result classification for
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`,
+  `Documentation/codex/modern/engine/server-map-validation-policy.md`.
+- [x] `ENG-SVMAP-002` Add target-neutral result classification for
   `MAP_IS_EXIST`, `MAP_HAS_LANDMARK`, and `MAP_INVALID_VERSION`.
-  Evidence:
-- [ ] `ENG-SVMAP-003` Route safe flag interpretation through a C adapter while
+  Evidence: `src/include/engine/server/server_map_validation.hpp`,
+  `src/engine/server/server_map_validation.cpp`,
+  `tests/engine/server_map_validation.cpp`.
+- [x] `ENG-SVMAP-003` Route safe flag interpretation through a C adapter while
   leaving map probing, BSP/header checks, and entity parsing legacy-owned.
-  Evidence:
-- [ ] `ENG-SVMAP-004` Run focused tests, full tests, and `+wait +wait` runtime
+  Evidence: `engine/server/server_map_validation_adapter.h`,
+  `engine/server/server_map_validation_adapter.cpp`, `engine/server/sv_game.c`,
+  `engine/server/sv_save.c`, `src/engine/server/server_command_lifecycle.cpp`.
+- [x] `ENG-SVMAP-004` Run focused tests, full tests, and `+wait +wait` runtime
   smoke timing.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_map_validation -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 115/115;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.506 seconds and stopped with reason `command`.
 
 ## Phase 109: Client Flag Predicate Policy
 
@@ -3585,3 +3594,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-10 | DEC-056 | For the first server filter migration, keep legacy linked lists, commands, file writes, client iteration, and `host.realtime` ownership in `sv_filter.c`; route only rule activity, ID prefix matching, IP matching, and IP removal-selector policy through modern server helpers. | `legacy/engine/server-filter-baseline.md`, `modern/engine/server-filter-migration.md`, `src/engine/server/server_filter.cpp`, `engine/server/server_filter_adapter.cpp` |
 | 2026-05-11 | DEC-057 | After the Phase 101-106 server constants lane, prefer small enabler policies before another broad server sweep: group filtering, map validation flags, client flag predicates, event playback, and read-only cvar snapshots. | `modern/engine/post-106-migration-audit.md`, `todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-058 | Treat C++ namespace/facade wrappers as migration scaffolding, not the final architecture; after behavior is protected by tests, regroup helpers into named domain concepts with clearer ownership and thinner adapters. | `modern/cpp-ownership-target.md`, `modern/engine/post-106-migration-audit.md` |
+| 2026-05-11 | DEC-059 | Centralize `SV_MapIsValid()` flag interpretation in a modern map-validation policy while leaving BSP probing, entity parsing, landmark scanning, console output, save state, and changelevel execution legacy-owned. | `modern/engine/server-map-validation-policy.md`, `src/include/engine/server/server_map_validation.hpp` |

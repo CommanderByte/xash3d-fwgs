@@ -31,20 +31,28 @@ enablers that make future server and engine migrations less adapter-heavy.
 
 ## Phase 108: Map Validation And Landmark Result Policy
 
-- [ ] Baseline `SV_MapIsValid()` flag interpretation in changelevel, command,
+- [x] Baseline `SV_MapIsValid()` flag interpretation in changelevel, command,
   and save/load paths.
-  Evidence:
-- [ ] Add target-neutral result classification for `MAP_IS_EXIST`,
+  Evidence: `Documentation/codex/modern/engine/server-map-validation-policy.md`.
+- [x] Add target-neutral result classification for `MAP_IS_EXIST`,
   `MAP_HAS_LANDMARK`, and `MAP_INVALID_VERSION`.
-  Evidence:
-- [ ] Route safe flag interpretation through a C adapter while leaving map
+  Evidence: `src/include/engine/server/server_map_validation.hpp`,
+  `src/engine/server/server_map_validation.cpp`,
+  `tests/engine/server_map_validation.cpp`.
+- [x] Route safe flag interpretation through a C adapter while leaving map
   probing, BSP/header checks, and entity parsing legacy-owned.
-  Evidence:
-- [ ] Add tests for invalid version, missing map, existing map, smooth
+  Evidence: `engine/server/server_map_validation_adapter.h`,
+  `engine/server/server_map_validation_adapter.cpp`, `engine/server/sv_game.c`,
+  `engine/server/sv_save.c`, `src/engine/server/server_command_lifecycle.cpp`.
+- [x] Add tests for invalid version, missing map, existing map, smooth
   transition without landmark, and classic transition behavior.
-  Evidence:
-- [ ] Run focused tests, full tests, and `+wait +wait` smoke timing.
-  Evidence:
+  Evidence: `tests/engine/server_map_validation.cpp`.
+- [x] Run focused tests, full tests, and `+wait +wait` smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_map_validation -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 115/115;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.506 seconds and stopped with reason `command`.
 
 ## Phase 109: Client Flag Predicate Policy
 

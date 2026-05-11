@@ -74,6 +74,9 @@ Current helpers:
   current/previous window pair contracts.
 - `server_lifecycle_limits.hpp`: maxclient, update-backup, packet-entity
   capacity, game-entity count, and spawn settling policy contracts.
+- `server_map_validation.hpp`: map validation flag decoding, load
+  classification, changelevel landmark decision, and game DLL existence
+  compatibility contracts.
 - `server_movement_constraints.hpp`: server monster movement mode and
   fly-move clip-plane constraint contracts.
 - `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,

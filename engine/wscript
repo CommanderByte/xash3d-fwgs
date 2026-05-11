@@ -231,6 +231,7 @@ def build(bld):
 		'server/server_spawn_handshake_adapter.cpp',
 		'server/server_frame_datagram_adapter.cpp',
 		'server/server_group_filter_adapter.cpp',
+		'server/server_map_validation_adapter.cpp',
 		'server/server_movement_constraints_adapter.cpp',
 		'server/server_visibility_constraints_adapter.cpp',
 	]

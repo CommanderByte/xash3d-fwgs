@@ -31,6 +31,7 @@ GNU General Public License for more details.
 #include "game_dll_resource_policy_adapter.h"
 #include "game_dll_user_message_registry_adapter.h"
 #include "server_group_filter_adapter.h"
+#include "server_map_validation_adapter.h"
 #include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
 #include "server_sound_message_adapter.h"
@@ -812,6 +813,7 @@ void SV_QueueChangeLevel( const char *level, const char *landname )
 {
 	uint	flags, smooth = false;
 	char	mapname[MAX_QPATH];
+	sv_changelevel_map_validation_t map_validation;
 
 	// hold mapname to other place
 	Q_strncpy( mapname, level, sizeof( mapname ));
@@ -821,28 +823,29 @@ void SV_QueueChangeLevel( const char *level, const char *landname )
 		smooth = true;
 
 	flags = SV_MapIsValid( mapname, landname );
+	map_validation = SV_MapValidation_BuildChangeLevelDecision(
+		flags,
+		smooth,
+		sv_validate_changelevel.value != 0.0f );
 
-	if( FBitSet( flags, MAP_INVALID_VERSION ))
+	if( map_validation.result == SV_MAP_VALIDATION_INVALID_VERSION )
 	{
 		Con_Printf( S_ERROR "changelevel: %s is invalid or not supported\n", mapname );
 		return;
 	}
 
-	if( !FBitSet( flags, MAP_IS_EXIST ))
+	if( map_validation.result == SV_MAP_VALIDATION_MISSING )
 	{
 		Con_Printf( S_ERROR "changelevel: map %s doesn't exist\n", mapname );
 		return;
 	}
 
-	if( smooth && !FBitSet( flags, MAP_HAS_LANDMARK ))
+	if( map_validation.disable_smooth )
 	{
-		if( sv_validate_changelevel.value )
-		{
-			// NOTE: we find valid map but specified landmark it's doesn't exist
-			// run simple changelevel like in q1, throw warning
-			Con_Printf( S_WARN "changelevel: %s doesn't contain landmark [%s]. smooth transition was disabled\n", mapname, landname );
-			smooth = false;
-		}
+		// NOTE: we find valid map but specified landmark it's doesn't exist
+		// run simple changelevel like in q1, throw warning
+		Con_Printf( S_WARN "changelevel: %s doesn't contain landmark [%s]. smooth transition was disabled\n", mapname, landname );
+		smooth = false;
 	}
 
 	if( svs.maxclients > 1 )
@@ -3911,7 +3914,7 @@ int GAME_EXPORT pfnIsMapValid( char *filename )
 {
 	uint	flags = SV_MapIsValid( filename, NULL );
 
-	if( FBitSet( flags, MAP_IS_EXIST ))
+	if( SV_MapValidation_MapExistsForGameDll( flags ))
 		return true;
 	return false;
 }

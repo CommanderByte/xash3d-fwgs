@@ -90,6 +90,9 @@ Current helpers:
 - `server_lifecycle_limits.cpp`: target-neutral maxclient, update-backup,
   packet-entity capacity, game-entity count, and spawn settling policy
   calculations.
+- `server_map_validation.cpp`: target-neutral map validation flag decoding,
+  load classification, changelevel landmark decisions, and game DLL
+  existence compatibility.
 - `server_movement_constraints.cpp`: target-neutral server monster movement
   mode classification and fly-move clip-plane constraint helpers.
 - `server_visibility_constraints.cpp`: target-neutral entity leaf capacity,

@@ -1,5 +1,7 @@
 #include "engine/server/server_command_lifecycle.hpp"
 
+#include "engine/server/server_map_validation.hpp"
+
 namespace xash
 {
 namespace engine
@@ -92,11 +94,15 @@ LifecyclePlan BuildMapCommandPlan(
 
 MapValidationResult ClassifyMapValidation(unsigned int mapFlags)
 {
-	if ((mapFlags & kLifecycleMapInvalidVersion) != 0)
+	switch (ClassifyServerMapValidation(mapFlags))
+	{
+	case ServerMapValidationResult::InvalidVersion:
 		return MapValidationResult::InvalidVersion;
-
-	if ((mapFlags & kLifecycleMapExists) == 0)
+	case ServerMapValidationResult::Missing:
 		return MapValidationResult::Missing;
+	case ServerMapValidationResult::Valid:
+		return MapValidationResult::Valid;
+	}
 
 	return MapValidationResult::Valid;
 }
