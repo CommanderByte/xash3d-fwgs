@@ -247,10 +247,21 @@ registration.
 Goal: turn the long server lane into a measured runtime checkpoint before more
 deep server changes.
 
-- [ ] Run focused/full validation after the consolidation docs are in place.
-- [ ] Launch the game with `scripts/run-game.ps1` and manually start a new
+- [x] Run focused/full validation after the consolidation docs are in place.
+- [x] Launch the game with `scripts/run-game.ps1` and manually start a new
   game.
-- [ ] Record first-frame time from the validation smoke and the manual
+- [x] Record first-frame time from the validation smoke and the manual
   new-game result in `Documentation/codex/tasks.md`.
-- [ ] Compare current startup evidence with the recent server-phase smoke
+- [x] Compare current startup evidence with the recent server-phase smoke
   timings and flag obvious regressions for later investigation.
+
+Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+"test_engine_world_trace_fixtures,test_engine_pmove_usercmd_fixtures,test_engine_server_world_link_policy,test_engine_server_pmove_bridge_policy"
+-StopRunningXash -CopyLauncher` passed on May 11 2026 at 15:11 local time;
+focused tests passed, `.\waf.bat build --targets=xash` passed,
+`.\waf.bat build --alltests` passed 134/134, and runtime smoke reached first
+frame in 0.502 seconds with stop reason `command`. Then
+`.\scripts\run-game.ps1 -StopRunningXash -CopyLauncher` launched the
+interactive runtime and the user confirmed the game was still running with no
+immediate visible issue. The 0.502 second timing is inside the recent
+server-lane smoke range, so no obvious startup regression is flagged.

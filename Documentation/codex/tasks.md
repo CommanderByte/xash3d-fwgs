@@ -4216,19 +4216,235 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 146: Server Runtime Smoke And Performance Checkpoint
 
-- [ ] `ENG-SERVER-SMOKE-001` Run focused/full validation after the
+- [x] `ENG-SERVER-SMOKE-001` Run focused/full validation after the
   consolidation docs are in place.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-SMOKE-002` Launch the game with `scripts/run-game.ps1` and
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  "test_engine_world_trace_fixtures,test_engine_pmove_usercmd_fixtures,test_engine_server_world_link_policy,test_engine_server_pmove_bridge_policy"
+  -StopRunningXash -CopyLauncher` passed; focused tests passed,
+  `.\waf.bat build --targets=xash` passed, and `.\waf.bat build --alltests`
+  passed 134/134.
+- [x] `ENG-SERVER-SMOKE-002` Launch the game with `scripts/run-game.ps1` and
   manually start a new game.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-SMOKE-003` Record first-frame time from the validation smoke
+  Evidence: `.\scripts\run-game.ps1 -StopRunningXash -CopyLauncher` launched
+  `run-win32\xash3d.exe` with current runtime binaries; the user confirmed the
+  runtime was still running with no immediate visible issue before this
+  checkpoint moved to roadmap planning.
+- [x] `ENG-SERVER-SMOKE-003` Record first-frame time from the validation smoke
   and the manual new-game result in this task list.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SERVER-SMOKE-004` Compare current startup evidence with recent
+  Evidence: validation smoke reached first frame in 0.502 seconds and stopped
+  with reason `command`; the interactive manual run was confirmed still
+  running by the user.
+- [x] `ENG-SERVER-SMOKE-004` Compare current startup evidence with recent
   server-phase smoke timings and flag obvious regressions for later
   investigation.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: recent server-lane timings were approximately 0.501, 0.497,
+  0.508, 0.494, and 0.481 seconds; the current 0.502 second timing sits inside
+  that range, so no obvious startup regression is flagged.
+
+## Phase 147: Post-146 Migration Status And Roadmap
+
+- [x] `ENG-ROADMAP-147-001` Record the current modern/legacy file-shape
+  inventory.
+  Evidence: `Documentation/codex/modern/engine/milestone-146-migration-status.md`.
+- [x] `ENG-ROADMAP-147-002` Identify what is actually modern-owned versus
+  adapter-routed.
+  Evidence: `Documentation/codex/modern/engine/milestone-146-migration-status.md`.
+- [x] `ENG-ROADMAP-147-003` Pick the next domain consolidation order.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [x] `ENG-ROADMAP-147-004` Update this task list with the next phase set.
+  Evidence: Phases 148-160 below.
+
+## Phase 148: Resource Domain Aggregate Tests
+
+- [ ] `ENG-RESAGG-001` Audit current resource-domain helpers and adapters
+  against `sv_custom.c`, `sv_client.c`, and `sv_game.c` call sites.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-RESAGG-002` Add aggregate tests covering identity, catalog,
+  consistency, download/upload admission, hot-resource decisions, and
+  customization payload planning.
+  Evidence:
+- [ ] `ENG-RESAGG-003` Keep HPAK mutation, filesystem reads/writes, reliable
+  datagram ownership, and client/resource structs legacy-owned.
+  Evidence:
+- [ ] `ENG-RESAGG-004` Run focused resource tests and full validation.
+  Evidence:
+
+## Phase 149: Resource Adapter Shrink Pilot
+
+- [ ] `ENG-RESADAPT-001` Identify resource adapters that only translate plain
+  values.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-RESADAPT-002` Add a small shared resource adapter utility or grouped
+  adapter if it reduces duplication without hiding legacy ownership.
+  Evidence:
+- [ ] `ENG-RESADAPT-003` Avoid merging unrelated `sv_custom.c`, `sv_client.c`,
+  and `sv_game.c` side effects.
+  Evidence:
+- [ ] `ENG-RESADAPT-004` Run focused resource tests, full validation, and
+  smoke timing if runtime code changes.
+  Evidence:
+
+## Phase 150: Messaging Domain Aggregate Tests
+
+- [ ] `ENG-MSGAGG2-001` Audit message helpers under
+  `src/engine/server/messaging`.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-MSGAGG2-002` Add aggregate tests for envelope selection, recipient
+  policy, payload writer output, and event/frame-adjacent message planning.
+  Evidence:
+- [ ] `ENG-MSGAGG2-003` Keep `sizebuf_t`, datagram ownership, signon buffers,
+  client frames, and actual network sends legacy-owned.
+  Evidence:
+- [ ] `ENG-MSGAGG2-004` Run focused messaging tests and full validation.
+  Evidence:
+
+## Phase 151: Messaging Adapter Shrink Pilot
+
+- [ ] `ENG-MSGADAPT2-001` Identify adapters that share
+  recipient/envelope/string/byte writer patterns.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-MSGADAPT2-002` Add shared adapter glue only for repeated mechanical
+  conversions.
+  Evidence:
+- [ ] `ENG-MSGADAPT2-003` Keep live datagram mutation and buffer lifetime in
+  legacy call sites.
+  Evidence:
+- [ ] `ENG-MSGADAPT2-004` Run focused messaging tests, full validation, and
+  smoke timing if runtime code changes.
+  Evidence:
+
+## Phase 152: Game DLL Bridge Consolidation Map
+
+- [ ] `ENG-GDLLGROUP2-001` Re-scan `sv_game.c` against modern `game_dll/`
+  helpers.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-GDLLGROUP2-002` Classify helpers by ABI, lifecycle, entities,
+  messages, resources, world queries, movement, output, and string pool.
+  Evidence:
+- [ ] `ENG-GDLLGROUP2-003` Decide which adapter groups can be consolidated
+  without changing ABI publication order.
+  Evidence:
+- [ ] `ENG-GDLLGROUP2-004` Keep callback table layout, DLL load/unload, edict
+  storage, and game DLL function ordering legacy-owned.
+  Evidence:
+
+## Phase 153: Game DLL Bridge Adapter Shrink Pilot
+
+- [ ] `ENG-GDLLADAPT2-001` Pick one low-risk game DLL adapter cluster from
+  Phase 152.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-GDLLADAPT2-002` Add or strengthen aggregate tests before moving
+  glue.
+  Evidence:
+- [ ] `ENG-GDLLADAPT2-003` Consolidate only mechanical conversion or repeated
+  adapter calls.
+  Evidence:
+- [ ] `ENG-GDLLADAPT2-004` Run focused game DLL bridge tests, full validation,
+  and smoke timing.
+  Evidence:
+
+## Phase 154: Client Session Aggregate Tests
+
+- [ ] `ENG-CLIENTAGG-001` Add aggregate tests around admission, slot selection,
+  rejection response, userinfo policy, command dispatch route, remote admin
+  command classification, and query response behavior.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-CLIENTAGG-002` Keep packet reads, netchan state, downloads,
+  movement packet parsing, and live client mutation legacy-owned.
+  Evidence:
+- [ ] `ENG-CLIENTAGG-003` Run focused client/session tests and full validation.
+  Evidence:
+- [ ] `ENG-CLIENTAGG-004` Record whether this makes a grouped client adapter
+  worthwhile.
+  Evidence:
+
+## Phase 155: Client Adapter Shrink Pilot
+
+- [ ] `ENG-CLIENTADAPT-001` Identify plain-value client adapters that can
+  share conversion utilities.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-CLIENTADAPT-002` Keep transfer, voice, movement, and netchan side
+  effects separated.
+  Evidence:
+- [ ] `ENG-CLIENTADAPT-003` Avoid creating a broad `sv_client.c` replacement
+  facade.
+  Evidence:
+- [ ] `ENG-CLIENTADAPT-004` Run focused client/session tests, full validation,
+  and smoke timing.
+  Evidence:
+
+## Phase 156: World And PMove Fixture Expansion
+
+- [ ] `ENG-WORLDPMOVE-FIX-001` Extend world trace fixtures toward
+  clip-admission path selection.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-WORLDPMOVE-FIX-002` Extend PMove fixtures toward command replay and
+  setup/finish comparison plans.
+  Evidence:
+- [ ] `ENG-WORLDPMOVE-FIX-003` Keep exact hull traversal, PMove callbacks,
+  physent population, and touch replay legacy-owned.
+  Evidence:
+- [ ] `ENG-WORLDPMOVE-FIX-004` Run focused fixture tests and full validation.
+  Evidence:
+
+## Phase 157: World Or PMove Micro-Extraction Pilot
+
+- [ ] `ENG-WORLDPMOVE-PILOT-001` Choose exactly one decision covered by Phase
+  156 fixtures.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-WORLDPMOVE-PILOT-002` Route the legacy call site through the modern
+  helper.
+  Evidence:
+- [ ] `ENG-WORLDPMOVE-PILOT-003` Keep live storage, traces, callbacks, and
+  relinking legacy-owned.
+  Evidence:
+- [ ] `ENG-WORLDPMOVE-PILOT-004` Run focused tests, full validation, and smoke
+  timing.
+  Evidence:
+
+## Phase 158: Save Runtime Fixture Expansion
+
+- [ ] `ENG-SAVEFIX-001` Extend save fixtures beyond format/value parsing into
+  save admission, comment/version decisions, entity patch planning, and
+  manifest behavior.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-SAVEFIX-002` Keep raw stream mutation, filesystem writes, game DLL
+  field callbacks, and console output legacy-owned.
+  Evidence:
+- [ ] `ENG-SAVEFIX-003` Run focused save tests and full validation.
+  Evidence:
+- [ ] `ENG-SAVEFIX-004` Decide whether a save-domain aggregate test is ready.
+  Evidence:
+
+## Phase 159: Engine Client And Render Boundary Audit
+
+- [ ] `ENG-CLIENTRENDER-001` Audit `engine/client`, `engine/client/dll_int`,
+  menu interfaces, render boundaries, audio/video capture, and rendered
+  console ownership.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-CLIENTRENDER-002` Identify low-risk value/policy candidates
+  analogous to the early server phases.
+  Evidence:
+- [ ] `ENG-CLIENTRENDER-003` Avoid touching renderer or client prediction
+  runtime without fixtures.
+  Evidence:
+- [ ] `ENG-CLIENTRENDER-004` Produce a recommended client/render/audio phase
+  list.
+  Evidence:
+
+## Phase 160: Domain Consolidation Checkpoint
+
+- [ ] `ENG-DOMAIN-CHECK-001` Compare adapter counts and modern domain files
+  after Phases 147-159.
+  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [ ] `ENG-DOMAIN-CHECK-002` Run full validation and runtime smoke timing.
+  Evidence:
+- [ ] `ENG-DOMAIN-CHECK-003` Decide whether to continue server consolidation,
+  shift to client/render, or tackle deferred memory/platform/licensing work.
+  Evidence:
+- [ ] `ENG-DOMAIN-CHECK-004` Move completed TODO items to
+  `Documentation/codex/done/` where sensible.
+  Evidence:
 
 ## Phase 800: POSIX Console Backend Validation
 

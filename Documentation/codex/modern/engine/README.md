@@ -97,6 +97,10 @@ Current implementation notes:
 - `milestone-134-server-progress-audit.md`: how the server helper layer looks
   after the Phase 115-134 ownership sweep, what remains legacy-owned, and why
   the next lane should be consolidation rather than more one-helper extraction.
+- `milestone-146-migration-status.md`: how the project stands after the
+  world/PMove fixture harnesses and runtime checkpoint, including what is
+  modern-owned, what is still adapter-routed, and the recommended next domain
+  consolidation order.
 - `model-visibility-service-boundary.md`: how Phase 113 audits BSP model,
   hull, PVS/PAS, trace, physics, and game DLL visibility ownership before any
   runtime route-through.
