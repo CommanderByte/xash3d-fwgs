@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "net_encode.h"
 #include "server_event_playback_policy_adapter.h"
 #include "server_frame_datagram_adapter.h"
+#include "server_packet_entities_delta_adapter.h"
 #include "server_visibility_constraints_adapter.h"
 
 typedef struct
@@ -243,35 +244,48 @@ static void SV_EmitPacketEntities( sv_client_t *cl, client_frame_t *to, sizebuf_
 	qboolean		player;
 	int		oldmax;
 	client_frame_t	*from;
+	sv_packet_entity_header_plan_t header_plan;
+	sv_packet_entity_cursor_plan_t cursor_plan;
 
 	// this is the frame that we are going to delta update from
 	if( cl->delta_sequence != -1 )
 	{
 		from = &cl->frames[cl->delta_sequence & SV_UPDATE_MASK];
-		oldmax = from->num_entities;
+		header_plan = SV_PacketEntities_BuildHeaderPlan(
+			true,
+			from->first_entity,
+			svs.next_client_entities,
+			svs.num_client_entities,
+			from->num_entities );
 
 		// the snapshot's entities may still have rolled off the buffer, though
-		if( from->first_entity <= ( svs.next_client_entities - svs.num_client_entities ))
+		if( header_plan.warn_outdated_delta )
 		{
 			Con_DPrintf( S_WARN "%s: delta request from out of date entities.\n", cl->name );
-			MSG_BeginServerCmd( msg, svc_packetentities );
-			MSG_WriteUBitLong( msg, to->num_entities - 1, MAX_VISIBLE_PACKET_BITS );
-
 			from = NULL;
-			oldmax = 0;
-		}
-		else
-		{
-			MSG_BeginServerCmd( msg, svc_deltapacketentities );
-			MSG_WriteUBitLong( msg, to->num_entities - 1, MAX_VISIBLE_PACKET_BITS );
-			MSG_WriteByte( msg, cl->delta_sequence );
 		}
 	}
 	else
 	{
 		from = NULL;
-		oldmax = 0;
+		header_plan = SV_PacketEntities_BuildHeaderPlan(
+			false,
+			0,
+			svs.next_client_entities,
+			svs.num_client_entities,
+			0 );
+	}
 
+	oldmax = header_plan.old_entity_count;
+
+	if( header_plan.action == SV_PACKET_ENTITY_HEADER_DELTA )
+	{
+		MSG_BeginServerCmd( msg, svc_deltapacketentities );
+		MSG_WriteUBitLong( msg, to->num_entities - 1, MAX_VISIBLE_PACKET_BITS );
+		MSG_WriteByte( msg, cl->delta_sequence );
+	}
+	else
+	{
 		MSG_BeginServerCmd( msg, svc_packetentities );
 		MSG_WriteUBitLong( msg, to->num_entities - 1, MAX_VISIBLE_PACKET_BITS );
 	}
@@ -281,10 +295,11 @@ static void SV_EmitPacketEntities( sv_client_t *cl, client_frame_t *to, sizebuf_
 	newindex = 0;
 	oldindex = 0;
 
-	while( newindex < to->num_entities || oldindex < oldmax )
+	while( true )
 	{
 		if( newindex >= to->num_entities )
 		{
+			newent = NULL;
 			newnum = MAX_ENTNUMBER;
 			player = false;
 		}
@@ -297,6 +312,7 @@ static void SV_EmitPacketEntities( sv_client_t *cl, client_frame_t *to, sizebuf_
 
 		if( oldindex >= oldmax )
 		{
+			oldent = NULL;
 			oldnum = MAX_ENTNUMBER;
 		}
 		else
@@ -305,18 +321,30 @@ static void SV_EmitPacketEntities( sv_client_t *cl, client_frame_t *to, sizebuf_
 			oldnum = oldent->number;
 		}
 
-		if( newnum == oldnum )
+		cursor_plan = SV_PacketEntities_BuildCursorPlan(
+			newindex,
+			to->num_entities,
+			newnum,
+			oldindex,
+			oldmax,
+			oldnum,
+			MAX_ENTNUMBER );
+
+		if( cursor_plan.action == SV_PACKET_ENTITY_CURSOR_FINISH )
+			break;
+
+		if( cursor_plan.action == SV_PACKET_ENTITY_CURSOR_DELTA_FROM_OLD )
 		{
 			// delta update from old position
 			// because the force parm is false, this will not result
 			// in any bytes being emited if the entity has not changed at all
 			MSG_WriteDeltaEntity( oldent, newent, msg, false, player, sv.time, 0 );
-			oldindex++;
-			newindex++;
+			oldindex += cursor_plan.advance_old;
+			newindex += cursor_plan.advance_new;
 			continue;
 		}
 
-		if( newnum < oldnum )
+		if( cursor_plan.action == SV_PACKET_ENTITY_CURSOR_ADD_FROM_BASELINE )
 		{
 			entity_state_t	*baseline = &svs.baselines[newnum];
 			const char	*classname = SV_ClassName( SV_EdictNum( newnum ));
@@ -342,11 +370,11 @@ static void SV_EmitPacketEntities( sv_client_t *cl, client_frame_t *to, sizebuf_
 
 			// this is a new entity, send it from the baseline
 			MSG_WriteDeltaEntity( baseline, newent, msg, true, player, sv.time, offset );
-			newindex++;
+			newindex += cursor_plan.advance_new;
 			continue;
 		}
 
-		if( newnum > oldnum )
+		if( cursor_plan.action == SV_PACKET_ENTITY_CURSOR_REMOVE_FROM_OLD )
 		{
 			edict_t	*ed = SV_EdictNum( oldent->number );
 			qboolean	force = false;
@@ -357,7 +385,7 @@ static void SV_EmitPacketEntities( sv_client_t *cl, client_frame_t *to, sizebuf_
 
 			// remove from message
 			MSG_WriteDeltaEntity( oldent, NULL, msg, force, false, sv.time, 0 );
-			oldindex++;
+			oldindex += cursor_plan.advance_old;
 			continue;
 		}
 	}

@@ -3867,18 +3867,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 130: Frame Snapshot Helper Pilot
 
-- [ ] `ENG-FRAMEHELP-001` Add tests for the selected frame/snapshot planning
+- [x] `ENG-FRAMEHELP-001` Add tests for the selected frame/snapshot planning
   seam, if Phase 129 finds a safe one.
-  Evidence:
-- [ ] `ENG-FRAMEHELP-002` Implement a pure helper only around immutable
+  Evidence: `tests/engine/server_packet_entities_delta.cpp`; focused test
+  `.\waf.bat build --targets=test_engine_server_packet_entities_delta`
+  passed.
+- [x] `ENG-FRAMEHELP-002` Implement a pure helper only around immutable
   snapshots or simple capacity decisions.
-  Evidence:
-- [ ] `ENG-FRAMEHELP-003` Keep packet-entity storage, delta writes, client
+  Evidence: `src/include/engine/server/server_packet_entities_delta.hpp` and
+  `src/engine/server/server_packet_entities_delta.cpp` plan only
+  packet-entity header mode and sorted old/new cursor actions.
+- [x] `ENG-FRAMEHELP-003` Keep packet-entity storage, delta writes, client
   frame mutation, and network buffers legacy-owned.
-  Evidence:
-- [ ] `ENG-FRAMEHELP-004` Run focused frame tests, full validation, and smoke
+  Evidence: `engine/server/sv_frame.c` still owns `svs.packet_entities`,
+  `client_frame_t` mutation, `SV_FindBestBaseline()`, instanced baselines,
+  `MSG_BeginServerCmd()`, `MSG_WriteDeltaEntity()`, terminator writes, stale
+  delta diagnostics, and old-edict removal checks.
+- [x] `ENG-FRAMEHELP-004` Run focused frame tests, full validation, and smoke
   timing if code changes.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/server-packet-entities-delta.md`;
+  `.\waf.bat build --targets=xash` passed; `.\waf.bat build --alltests`
+  passed 126/126; smoke reached first frame in 0.514 seconds and stopped with
+  reason `command`.
 
 ## Phase 131: World Link And Touch Boundary Audit
 

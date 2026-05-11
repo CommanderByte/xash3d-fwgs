@@ -157,6 +157,10 @@ Current implementation notes:
   `sv_cmds.c` command registration, console output, filesystem probes,
   save/load effects, and info-string mutation legacy-owned while routing
   `kick`, `serverinfo`, and `localinfo` argument policy through a modern helper.
+- `server-packet-entities-delta.md`: how Phase 130 routes only the
+  packet-entity header mode and sorted old/new cursor decisions through a
+  modern helper while packet storage, baselines, delta writes, and frame
+  mutation stay legacy-owned.
 - `server-movement-constraints.md`: how Phase 104 names server monster
   movement modes and fly-move clip-plane constraints separately from trace,
   walkmove, and `pm_shared` constants.

@@ -177,6 +177,7 @@ def build(bld):
 			'engine_server_command_lifecycle': '../tests/engine/server_command_lifecycle.cpp',
 			'engine_server_operator_command_policy': '../tests/engine/server_operator_command_policy.cpp',
 			'engine_server_spawn_handshake': '../tests/engine/server_spawn_handshake.cpp',
+			'engine_server_packet_entities_delta': '../tests/engine/server_packet_entities_delta.cpp',
 			'engine_server_frame_datagram': '../tests/engine/server_frame_datagram.cpp',
 			'engine_save_restore_format': '../tests/engine/save_restore_format.cpp',
 		}

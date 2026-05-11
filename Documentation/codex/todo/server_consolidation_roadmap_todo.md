@@ -285,6 +285,18 @@ Phase 129 outcome:
   Evidence:
   `Documentation/codex/modern/engine/server-frame-snapshot-boundary.md`.
 
+Phase 130 outcome:
+
+- `server_packet_entities_delta` now owns only packet-entity header selection
+  and sorted old/new cursor actions for `SV_EmitPacketEntities()`.
+- `sv_frame.c` still owns `svs.packet_entities`, `client_frame_t` mutation,
+  baseline selection, `MSG_WriteDeltaEntity()`, stale-delta diagnostics, and
+  old-edict removal checks.
+- The helper adds fixture coverage for packet-entity ordering without moving
+  the snapshot builder or delta writer.
+  Evidence:
+  `Documentation/codex/modern/engine/server-packet-entities-delta.md`.
+
 ## Phase 131-133: World, Physics, And PMove
 
 Legacy spread:

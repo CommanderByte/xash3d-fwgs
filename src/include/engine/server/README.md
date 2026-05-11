@@ -94,6 +94,9 @@ Current helpers:
 - `server_operator_command_policy.hpp`: `kick`, `serverinfo`, and `localinfo`
   argument classification while command registration, console output, lookup,
   cvar mutation, and info-string mutation stay legacy-owned.
+- `server_packet_entities_delta.hpp`: packet-entity header and sorted cursor
+  planning for `SV_EmitPacketEntities()` while `entity_state_t` storage,
+  baselines, delta writes, and `client_frame_t` mutation stay legacy-owned.
 - `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,
   cached leaf index, and portal viewentity capacity contracts.
 - `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
