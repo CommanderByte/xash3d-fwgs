@@ -2063,7 +2063,7 @@ commit, test command, document link, or manual verification note that proves it.
   `src/engine/server` or a shared resource namespace if the audit shows client
   reuse.
   Evidence: `src/include/engine/server/resource_identity.hpp`,
-  `src/engine/server/resource_identity.cpp`.
+  `src/engine/server/resources/resource_identity.cpp`.
 - [x] `ENG-RESID-003` Add tests for resource names, hashes, type handling, and
   legacy edge cases.
   Evidence: `tests/engine/resource_identity.cpp`.
@@ -2090,7 +2090,7 @@ commit, test command, document link, or manual verification note that proves it.
   describes allow/fail/sidecar outcomes without opening files or creating
   netchan fragments.
   Evidence: `src/include/engine/server/server_download_policy.hpp`,
-  `src/engine/server/server_download_policy.cpp`.
+  `src/engine/server/resources/server_download_policy.cpp`.
 - [x] `ENG-DL-003` Add tests for unsafe paths, disabled downloads, missing
   precache entries, model texture sidecars, and custom logo names.
   Evidence: `tests/engine/server_download_policy.cpp`.
@@ -2117,7 +2117,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-UPLOADQ-002` Implement target-neutral upload queue decision helpers
   that operate on resource snapshots and adapter-supplied HPAK presence.
   Evidence: `src/include/engine/server/server_upload_queue.hpp`,
-  `src/engine/server/server_upload_queue.cpp`.
+  `src/engine/server/resources/server_upload_queue.cpp`.
 - [x] `ENG-UPLOADQ-003` Add tests for invalid descriptors, too-frequent
   updates, missing custom decals, disabled uploads, and max-upload rejection.
   Evidence: `tests/engine/server_upload_queue.cpp`.
@@ -2197,7 +2197,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-CONSLIST-002` Implement a target-neutral consistency-list encoder
   for resource-index snapshots.
   Evidence: `src/include/engine/server/server_consistency_list.hpp`,
-  `src/engine/server/server_consistency_list.cpp`.
+  `src/engine/server/resources/server_consistency_list.cpp`.
 - [x] `ENG-CONSLIST-003` Add golden tests for empty lists, HLTV/single-player
   suppression, small deltas, large deltas, and terminators.
   Evidence: `tests/engine/server_consistency_list.cpp`.
@@ -2224,7 +2224,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-CONSIST-002` Implement target-neutral consistency request/response
   policy helpers that consume MD5 and bounds snapshots.
   Evidence: `src/include/engine/server/server_consistency_policy.hpp`,
-  `src/engine/server/server_consistency_policy.cpp`.
+  `src/engine/server/resources/server_consistency_policy.cpp`.
 - [x] `ENG-CONSIST-003` Add tests for MD5 prefix comparison, bounds validation,
   invalid force types, and response-count mismatch.
   Evidence: `tests/engine/server_consistency_policy.cpp`.
@@ -2253,7 +2253,7 @@ commit, test command, document link, or manual verification note that proves it.
   that consumes adapter-provided precache, file-size, index, and flag
   snapshots.
   Evidence: `src/include/engine/server/server_resource_catalog.hpp`,
-  `src/engine/server/server_resource_catalog.cpp`.
+  `src/engine/server/resources/server_resource_catalog.cpp`.
 - [x] `ENG-RESCAT-003` Add golden tests for ordering, empty entries, sound
   sentinel names, model wildcard size behavior, flags, indexes, and resource
   type assignment.
@@ -2285,7 +2285,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-HOTRES-002` Implement a target-neutral hot-resource announcement
   planner that consumes adapter-provided type, index, flags, and file size.
   Evidence: `src/include/engine/server/server_hot_resource.hpp` and
-  `src/engine/server/server_hot_resource.cpp`.
+  `src/engine/server/resources/server_hot_resource.cpp`.
 - [x] `ENG-HOTRES-003` Add tests for model wildcard resources, sound path
   prefixing, generic resources, empty names, and signed size preservation.
   Evidence: `tests/engine/server_hot_resource.cpp`.
@@ -2311,7 +2311,7 @@ commit, test command, document link, or manual verification note that proves it.
 - [x] `ENG-RESLIST-002` Implement a target-neutral reslist token classifier
   that returns normalized path, resource type, and index route intent.
   Evidence: `src/include/engine/server/server_reslist_policy.hpp` and
-  `src/engine/server/server_reslist_policy.cpp`.
+  `src/engine/server/resources/server_reslist_policy.cpp`.
 - [x] `ENG-RESLIST-003` Add tests for empty tokens, unsafe paths, Windows slash
   input, supported sound formats, unsupported sound paths, and generic
   fallback.
@@ -3495,7 +3495,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-RESAGG-002` Implement a target-neutral aggregate helper only if it
   removes duplication between existing resource helpers.
   Evidence: `src/include/engine/server/resource_transfer_manifest.hpp` and
-  `src/engine/server/resource_transfer_manifest.cpp` add
+  `src/engine/server/resources/resource_transfer_manifest.cpp` add
   `ResourceTransferManifest`, which owns modern `ResourceDescriptor` values
   and builds download-policy and resource-message views without duplicating
   descriptor-list traversal in tests or later helpers.
@@ -4009,19 +4009,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 137: Resource Transfer Domain Consolidation Pilot
 
-- [ ] `ENG-RES-DOMAIN-001` Review resource identity, manifest, catalog,
+- [x] `ENG-RES-DOMAIN-001` Review resource identity, manifest, catalog,
   download/upload, consistency, customization, hot-resource, and reslist
   helpers as one domain.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-RES-DOMAIN-002` Add or extend aggregate tests that exercise
+  Evidence: `Documentation/codex/modern/engine/resource-transfer-domain-pilot.md`.
+- [x] `ENG-RES-DOMAIN-002` Add or extend aggregate tests that exercise
   catalog-to-transfer flows.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-RES-DOMAIN-003` Move or group modern resource-domain files only if
+  Evidence: `tests/engine/resource_transfer_manifest.cpp` covers manifest-fed
+  resource and customization message writers.
+- [x] `ENG-RES-DOMAIN-003` Move or group modern resource-domain files only if
   the Phase 136 layout makes the change low-risk.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-RES-DOMAIN-004` Keep HPAK, filesystem probes, resource linked
+  Evidence: `src/engine/server/resources/`,
+  `src/include/engine/server/resources/`, and flat forwarding headers under
+  `src/include/engine/server/`.
+- [x] `ENG-RES-DOMAIN-004` Keep HPAK, filesystem probes, resource linked
   lists, netchan fragments, and game DLL callbacks legacy-owned.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: `Documentation/codex/modern/engine/resource-transfer-domain-pilot.md`.
+  Validation: focused resource-domain targets passed 9/9;
+  `.\waf.bat build --alltests` passed 129/129; runtime smoke built `xash`,
+  refreshed `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`, reached first frame
+  in 0.501 seconds, and stopped with reason `command` at May 11 2026
+  13:49:11 local time.
 
 ## Phase 138: Server Messaging Domain Consolidation Pilot
 

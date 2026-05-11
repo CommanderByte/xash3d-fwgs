@@ -1,4 +1,4 @@
-#include "engine/server/resource_identity.hpp"
+#include "engine/server/resources/resource_identity.hpp"
 
 #include "utilities/path.hpp"
 

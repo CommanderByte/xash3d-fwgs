@@ -1,4 +1,4 @@
-#include "engine/server/server_upload_queue.hpp"
+#include "engine/server/resources/server_upload_queue.hpp"
 
 namespace xash
 {

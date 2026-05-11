@@ -7,6 +7,10 @@ Files here should avoid including `server.h`. Legacy server globals, command
 parsing, file I/O, networking sends, and game DLL callbacks belong in adapter
 code until a later compatibility phase changes those boundaries.
 
+`resources/` contains the first grouped modern server domain. The flat
+resource headers under `src/include/engine/server/` are forwarding includes so
+legacy adapters and tests do not need a broad include rewrite yet.
+
 Current helpers:
 
 - `game_dll_changelevel_policy.cpp`: target-neutral game DLL changelevel
@@ -56,18 +60,18 @@ Current helpers:
   classification.
 - `connection_response.cpp`: target-neutral challenge and rejection response
   string formatting.
-- `resource_identity.cpp`: target-neutral custom resource identity, download
+- `resources/resource_identity.cpp`: target-neutral custom resource identity, download
   name checks, matching, and size-summary helpers.
-- `resource_transfer_manifest.cpp`: target-neutral aggregate manifest over
+- `resources/resource_transfer_manifest.cpp`: target-neutral aggregate manifest over
   modern resource descriptors for catalog-to-download and resource-message
   flows.
-- `server_resource_catalog.cpp`: target-neutral startup resource catalog
+- `resources/server_resource_catalog.cpp`: target-neutral startup resource catalog
   planning for generic, sound, model, decal, and event precaches.
-- `server_download_policy.cpp`: target-neutral server download allow/reject,
+- `resources/server_download_policy.cpp`: target-neutral server download allow/reject,
   precache, model sidecar, and custom logo lookup decisions.
-- `server_consistency_list.cpp`: target-neutral consistency-list enable and
+- `resources/server_consistency_list.cpp`: target-neutral consistency-list enable and
   resource-index serialization.
-- `server_consistency_policy.cpp`: target-neutral consistency setup,
+- `resources/server_consistency_policy.cpp`: target-neutral consistency setup,
   reserved bounds payload, and response validation policy.
 - `server_customization_message.cpp`: target-neutral propagated customization
   payload serialization for `svc_customization`.
@@ -79,16 +83,16 @@ Current helpers:
   overflow, resend, and send-loop gate decisions.
 - `server_resource_message.cpp`: target-neutral resource-list row
   serialization using modern bit-buffer primitives.
-- `server_upload_queue.cpp`: target-neutral client resource upload queue
+- `resources/server_upload_queue.cpp`: target-neutral client resource upload queue
   admission, missing decal estimation, limit checks, and batch actions.
 - `server_filter.cpp`: target-neutral ban filter policy.
 - `server_group_filter.cpp`: target-neutral server entity group-filter
   predicates for pair and active-mask comparisons.
 - `server_event_log.cpp`: target-neutral server event log line and stock
   message formatting.
-- `server_hot_resource.cpp`: target-neutral hot-resource announcement
+- `resources/server_hot_resource.cpp`: target-neutral hot-resource announcement
   planning for resources added after server startup.
-- `server_reslist_policy.cpp`: target-neutral `.res` and `reslist.txt` token
+- `resources/server_reslist_policy.cpp`: target-neutral `.res` and `reslist.txt` token
   classification for safe-download filtering and resource indexing.
 - `server_limits.cpp`: target-neutral server-only limit and flag mirrors plus
   compatibility classification metadata for later route-through decisions.

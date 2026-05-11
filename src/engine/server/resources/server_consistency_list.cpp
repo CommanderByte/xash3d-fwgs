@@ -1,4 +1,4 @@
-#include "engine/server/server_consistency_list.hpp"
+#include "engine/server/resources/server_consistency_list.hpp"
 
 namespace xash
 {

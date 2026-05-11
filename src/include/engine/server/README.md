@@ -6,6 +6,10 @@ Headers in this folder should expose plain value types and small services used
 by tests and legacy adapters. They should not expose game DLL, renderer,
 filesystem module, or platform-specific types.
 
+`resources/` contains grouped resource-domain contracts. The flat resource
+headers in this directory currently forward to that subdirectory for adapter
+compatibility.
+
 Current helpers:
 
 - `game_dll_enginefuncs.hpp`: metadata for the stable `enginefuncs_t` game DLL
@@ -42,21 +46,21 @@ Current helpers:
   classification.
 - `connection_response.hpp`: challenge and rejection response string
   formatting.
-- `resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
+- `resources/resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
   checks, resource matching, and size summaries.
-- `resource_transfer_manifest.hpp`: target-neutral aggregate manifest over
+- `resources/resource_transfer_manifest.hpp`: target-neutral aggregate manifest over
   modern resource descriptors for catalog-to-download and resource-message
   flows.
 - `remote_admin_command.hpp`: target-neutral rcon enable/password action and
   quoted command reconstruction helpers while redirects and command execution
   stay legacy-owned.
-- `server_resource_catalog.hpp`: server startup resource catalog planning for
+- `resources/server_resource_catalog.hpp`: server startup resource catalog planning for
   generic, sound, model, decal, and event precaches.
-- `server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
+- `resources/server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
   decisions built from resource snapshots and adapter-supplied sidecar probes.
-- `server_consistency_list.hpp`: consistency-list enable and resource-index
+- `resources/server_consistency_list.hpp`: consistency-list enable and resource-index
   serialization for server resource checks.
-- `server_consistency_policy.hpp`: consistency setup, reserved bounds payload,
+- `resources/server_consistency_policy.hpp`: consistency setup, reserved bounds payload,
   and response validation policy.
 - `server_customization_message.hpp`: propagated customization payload
   serialization for `svc_customization`.
@@ -68,15 +72,15 @@ Current helpers:
   send-loop gate plans.
 - `server_resource_message.hpp`: resource-list row serialization using modern
   bit-buffer primitives.
-- `server_upload_queue.hpp`: client resource-list admission, missing custom
+- `resources/server_upload_queue.hpp`: client resource-list admission, missing custom
   decal estimation, upload-limit, and upload batch action decisions.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
 - `server_group_filter.hpp`: entity group-filter operation, pair-filter, and
   active-mask decision contracts.
 - `server_event_log.hpp`: server event log line and stock message formatting.
-- `server_hot_resource.hpp`: hot-resource announcement planning for resources
+- `resources/server_hot_resource.hpp`: hot-resource announcement planning for resources
   added after server startup.
-- `server_reslist_policy.hpp`: `.res` and `reslist.txt` token classification
+- `resources/server_reslist_policy.hpp`: `.res` and `reslist.txt` token classification
   for safe-download filtering and resource indexing.
 - `server_limits.hpp`: server-only limits, flags, and private constants
   mirrored as typed modern values with compatibility-role metadata.

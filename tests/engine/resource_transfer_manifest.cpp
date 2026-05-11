@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
+#include "engine/server/server_customization_message.hpp"
 #include "engine/server/resource_transfer_manifest.hpp"
 #include "engine/server/server_reslist_policy.hpp"
 
@@ -202,13 +203,105 @@ static bool TestManifestRejectsInvalidDescriptors()
 		!manifest.data();
 }
 
+static bool TestCustomManifestFeedsMessageWriters()
+{
+	std::uint8_t hash[kResourceMessageHashSize] = {};
+	std::uint8_t reserved[kResourceMessageReservedSize] = {};
+
+	for (std::size_t i = 0; i < kResourceMessageHashSize; ++i)
+		hash[i] = static_cast<std::uint8_t>(0xB0 + i);
+
+	for (std::size_t i = 0; i < kResourceMessageReservedSize; ++i)
+		reserved[i] = static_cast<std::uint8_t>(i + 1);
+
+	ResourceDescriptor custom = {};
+	custom.name = "custom.hpk";
+	custom.type = ResourceType::Decal;
+	custom.index = 5;
+	custom.downloadSize = -42;
+	custom.flags = kResourceMessageFlagWasMissing | kResourceMessageFlagCustom;
+	custom.md5Hash = hash;
+
+	ResourceTransferManifest manifest;
+	ResourceMessageRow row = {};
+
+	if (!manifest.append(custom) ||
+		!manifest.buildResourceMessageRow(0, row, reserved) ||
+		row.md5Hash != hash ||
+		!ResourceMessageRowHasReservedData(row))
+	{
+		return false;
+	}
+
+	unsigned char resourceData[256] = {};
+	NetworkBitBuffer resourceWriter(resourceData, sizeof(resourceData) << 3);
+	WriteResourceMessageRow(resourceWriter, row);
+
+	NetworkBitBuffer resourceReader(resourceData, resourceWriter.tellBit());
+	char name[32] = {};
+	std::uint8_t readHash[kResourceMessageHashSize] = {};
+	std::uint8_t readReserved[kResourceMessageReservedSize] = {};
+
+	if (resourceReader.readUnsigned(4) != static_cast<unsigned int>(ResourceType::Decal) ||
+		!ReadString(resourceReader, name, sizeof(name)) ||
+		std::strcmp(name, "custom.hpk") != 0 ||
+		resourceReader.readUnsigned(kResourceMessageModelIndexBits) != 5 ||
+		resourceReader.readSigned(kResourceMessageDownloadSizeBits) != -42 ||
+		resourceReader.readUnsigned(kResourceMessageFlagsBits) != kResourceMessageFlagWasMissing ||
+		!resourceReader.readBits(readHash, kResourceMessageHashSize << 3) ||
+		resourceReader.readOneBit() != 1 ||
+		!resourceReader.readBits(readReserved, kResourceMessageReservedSize << 3) ||
+		std::memcmp(readHash, hash, sizeof(hash)) != 0 ||
+		std::memcmp(readReserved, reserved, sizeof(reserved)) != 0)
+	{
+		return false;
+	}
+
+	CustomizationMessage customization = {};
+	customization.playerNumber = 3;
+	customization.type = custom.type;
+	customization.name = custom.name;
+	customization.index = custom.index;
+	customization.downloadSize = custom.downloadSize;
+	customization.flags = kCustomizationMessageFlagCustom;
+	customization.md5Hash = custom.md5Hash;
+
+	unsigned char customizationData[128] = {};
+	NetworkBitBuffer customizationWriter(
+		customizationData,
+		sizeof(customizationData) << 3);
+	WriteCustomizationMessagePayload(customizationWriter, customization);
+
+	NetworkBitBuffer customizationReader(
+		customizationData,
+		customizationWriter.tellBit());
+	char customizationName[32] = {};
+	std::uint8_t customizationHash[kCustomizationMessageHashSize] = {};
+
+	return customizationReader.readUnsigned(8) == 3 &&
+		customizationReader.readUnsigned(8) == static_cast<unsigned int>(ResourceType::Decal) &&
+		ReadString(customizationReader, customizationName, sizeof(customizationName)) &&
+		std::strcmp(customizationName, "custom.hpk") == 0 &&
+		customizationReader.readSigned(16) == 5 &&
+		customizationReader.readSigned(32) == -42 &&
+		customizationReader.readUnsigned(8) == kCustomizationMessageFlagCustom &&
+		customizationReader.readBits(customizationHash, kCustomizationMessageHashSize << 3) &&
+		std::memcmp(customizationHash, hash, sizeof(customizationHash)) == 0 &&
+		customizationReader.tellBit() == customizationWriter.tellBit() &&
+		!resourceReader.overflow() &&
+		!resourceWriter.overflow() &&
+		!customizationReader.overflow() &&
+		!customizationWriter.overflow();
+}
+
 int main()
 {
 	if (!TestCatalogEntriesBuildDownloadManifest() ||
 		!TestCatalogManifestSizeSummary() ||
 		!TestCatalogManifestResourceMessageRow() ||
 		!TestReslistTokensCanFeedManifest() ||
-		!TestManifestRejectsInvalidDescriptors())
+		!TestManifestRejectsInvalidDescriptors() ||
+		!TestCustomManifestFeedsMessageWriters())
 	{
 		return EXIT_FAILURE;
 	}

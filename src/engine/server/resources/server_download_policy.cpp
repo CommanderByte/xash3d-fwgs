@@ -1,4 +1,4 @@
-#include "engine/server/server_download_policy.hpp"
+#include "engine/server/resources/server_download_policy.hpp"
 
 #include "utilities/path.hpp"
 

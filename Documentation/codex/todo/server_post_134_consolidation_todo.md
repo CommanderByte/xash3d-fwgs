@@ -45,14 +45,19 @@ Evidence:
 
 Goal: use the best-covered resource helpers as the first consolidation pilot.
 
-- [ ] Review `resource_identity`, `resource_transfer_manifest`,
+- [x] Review `resource_identity`, `resource_transfer_manifest`,
   `server_resource_catalog`, download/upload, consistency, customization,
   hot-resource, and reslist helpers as one domain.
-- [ ] Add or extend aggregate tests that exercise catalog-to-transfer flows.
-- [ ] Move or group only the modern resource-domain files if the Phase 136
+- [x] Add or extend aggregate tests that exercise catalog-to-transfer flows.
+- [x] Move or group only the modern resource-domain files if the Phase 136
   layout makes the change low-risk.
-- [ ] Keep HPAK, filesystem probes, resource linked lists, netchan fragments,
+- [x] Keep HPAK, filesystem probes, resource linked lists, netchan fragments,
   and game DLL callbacks legacy-owned.
+
+Evidence:
+`Documentation/codex/modern/engine/resource-transfer-domain-pilot.md`,
+`src/engine/server/resources/`, `src/include/engine/server/resources/`, and
+`tests/engine/resource_transfer_manifest.cpp`.
 
 ## Phase 138: Server Messaging Domain Consolidation Pilot
 

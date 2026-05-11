@@ -1,4 +1,4 @@
-#include "engine/server/server_resource_catalog.hpp"
+#include "engine/server/resources/server_resource_catalog.hpp"
 
 namespace xash
 {

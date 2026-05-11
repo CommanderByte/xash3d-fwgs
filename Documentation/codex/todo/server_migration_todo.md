@@ -239,7 +239,7 @@ and read-only cvar snapshots.
   `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
 - [x] Implement target-neutral resource identity helpers.
   Evidence: `src/include/engine/server/resource_identity.hpp`,
-  `src/engine/server/resource_identity.cpp`.
+  `src/engine/server/resources/resource_identity.cpp`.
 - [x] Add tests for `!MD5` names, safe download names, sound-resource matching,
   resource lookup, type names, and size summaries.
   Evidence: `tests/engine/resource_identity.cpp`.
@@ -261,7 +261,7 @@ and read-only cvar snapshots.
   `Documentation/codex/modern/engine/custom-resource-download-boundary.md`.
 - [x] Implement target-neutral allow/reject/send/logo download policy.
   Evidence: `src/include/engine/server/server_download_policy.hpp`,
-  `src/engine/server/server_download_policy.cpp`.
+  `src/engine/server/resources/server_download_policy.cpp`.
 - [x] Add tests for unsafe paths, disabled downloads, precache misses, model
   sidecar downloads, and custom logo names.
   Evidence: `tests/engine/server_download_policy.cpp`.
@@ -285,7 +285,7 @@ and read-only cvar snapshots.
 - [x] Implement target-neutral upload queue decisions for descriptor validity,
   rate limiting, missing decal estimation, upload limits, and batch actions.
   Evidence: `src/include/engine/server/server_upload_queue.hpp`,
-  `src/engine/server/server_upload_queue.cpp`.
+  `src/engine/server/resources/server_upload_queue.cpp`.
 - [x] Add tests for invalid descriptors, too-frequent updates, missing decals,
   disabled uploads, max-upload rejection, and batch action selection.
   Evidence: `tests/engine/server_upload_queue.cpp`.
@@ -358,7 +358,7 @@ and read-only cvar snapshots.
 - [x] Implement a target-neutral consistency-list encoder for resource-index
   snapshots.
   Evidence: `src/include/engine/server/server_consistency_list.hpp`,
-  `src/engine/server/server_consistency_list.cpp`.
+  `src/engine/server/resources/server_consistency_list.cpp`.
 - [x] Add golden tests for disabled paths, enabled empty lists, small deltas,
   large deltas, reader roundtrip, and overflow.
   Evidence: `tests/engine/server_consistency_list.cpp`.
@@ -384,7 +384,7 @@ and read-only cvar snapshots.
 - [x] Implement target-neutral consistency request/response policy helpers
   that consume adapter-provided MD5 prefixes and bounds snapshots.
   Evidence: `src/include/engine/server/server_consistency_policy.hpp`,
-  `src/engine/server/server_consistency_policy.cpp`.
+  `src/engine/server/resources/server_consistency_policy.cpp`.
 - [x] Add tests for setup gates, MD5-prefix comparison, bounds reservation,
   same/spec bounds validation, invalid force types, and response count checks.
   Evidence: `tests/engine/server_consistency_policy.cpp`.
@@ -414,7 +414,7 @@ before touching the global `sv.resources` list directly.
 - [x] Implement a modern resource catalog builder that takes snapshots of
   precache entries, flags, indexes, types, and adapter-provided file sizes.
   Evidence: `src/include/engine/server/server_resource_catalog.hpp`,
-  `src/engine/server/server_resource_catalog.cpp`.
+  `src/engine/server/resources/server_resource_catalog.cpp`.
 - [x] Keep filesystem probes, console output, `sv.resources` mutation, and
   `MAX_RESOURCE_LIST` enforcement in the adapter unless the boundary becomes
   clearly cleaner during implementation.

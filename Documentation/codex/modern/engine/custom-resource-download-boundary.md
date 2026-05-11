@@ -78,7 +78,7 @@ as `LookupCustomLogo` followed by an adapter-owned no-op on missing data, unless
 we deliberately choose to change behavior in a later compatibility phase.
 
 Phase 63 implementation note: this policy now lives in
-`src/engine/server/server_download_policy.cpp`, with the legacy bridge in
+`src/engine/server/resources/server_download_policy.cpp`, with the legacy bridge in
 `engine/server/server_download_policy_adapter.cpp`. The adapter supplies cvar
 values and `sv.resources[]`; `sv_client.c` asks the helper whether a model
 texture sidecar probe is needed before calling `FS_FileExists()`. Legacy code
@@ -100,7 +100,7 @@ Keep message reads, node allocation, HPAK lookups, upload command writes, and
 - does the upload total exceed the configured limit?
 
 Phase 64 implementation note: this policy now lives in
-`src/engine/server/server_upload_queue.cpp`, with the legacy bridge in
+`src/engine/server/resources/server_upload_queue.cpp`, with the legacy bridge in
 `engine/server/server_upload_queue_adapter.cpp`. The helper validates client
 resource descriptors, gates too-frequent updates, decides which decals should
 be marked missing, checks the upload byte limit, and chooses batch actions.
@@ -142,7 +142,7 @@ produce the same small-delta or absolute-index encoding, while legacy code owns
 client flags, cvar checks, `resource_t`, and message destination state.
 
 Phase 67 implementation note: the consistency-list encoder now lives in
-`src/engine/server/server_consistency_list.cpp`, with the legacy bridge in
+`src/engine/server/resources/server_consistency_list.cpp`, with the legacy bridge in
 `engine/server/server_consistency_list_adapter.cpp`. The helper writes only the
 enable/entry/terminator bits for index snapshots and reports whether
 `FCL_FORCE_UNMODIFIED` should be set; legacy code still owns cvars, client
@@ -159,7 +159,7 @@ Audit and extract the pure parts of `SV_TransferConsistencyInfo()` and
 - game DLL `pfnInconsistentFile()` ownership.
 
 Phase 68 implementation note: consistency setup and response policy now live in
-`src/engine/server/server_consistency_policy.cpp`, with the legacy bridge in
+`src/engine/server/resources/server_consistency_policy.cpp`, with the legacy bridge in
 `engine/server/server_consistency_policy_adapter.cpp`. The helper decides setup
 gates, reserved bounds payloads, MD5-prefix matches, bounds validation, invalid
 force types, and response-count matches. Legacy code still owns file path

@@ -1,4 +1,4 @@
-#include "engine/server/server_reslist_policy.hpp"
+#include "engine/server/resources/server_reslist_policy.hpp"
 
 #include "utilities/path.hpp"
 
