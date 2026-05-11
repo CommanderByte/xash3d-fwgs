@@ -3892,18 +3892,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 131: World Link And Touch Boundary Audit
 
-- [ ] `ENG-WORLDLINK-001` Audit `sv_world.c` area tree, link/unlink, touch
+- [x] `ENG-WORLDLINK-001` Audit `sv_world.c` area tree, link/unlink, touch
   trigger, water links, and group-filter usage.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-WORLDLINK-002` Identify fixture needs for touch and link behavior
+  Evidence:
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/modern/engine/server-world-link-boundary.md`.
+- [x] `ENG-WORLDLINK-002` Identify fixture needs for touch and link behavior
   before any route-through.
-  Evidence:
-- [ ] `ENG-WORLDLINK-003` Add pure policy tests only where live `edict_t` and
+  Evidence: further route-through needs synthetic edict/list fixtures, trigger
+  brush hull fixtures, water content fixtures, and callback-order tests before
+  moving link lists, `pfnTouch()`, or contents checks.
+- [x] `ENG-WORLDLINK-003` Add pure policy tests only where live `edict_t` and
   area tree mutation are not required.
-  Evidence:
-- [ ] `ENG-WORLDLINK-004` Keep area nodes, edict links, trigger calls, and
+  Evidence: `tests/engine/server_world_link_policy.cpp`; focused test
+  `.\waf.bat build --targets=test_engine_server_world_link_policy` passed.
+- [x] `ENG-WORLDLINK-004` Keep area nodes, edict links, trigger calls, and
   collision-owned state legacy-owned.
-  Evidence:
+  Evidence: `engine/server/sv_world.c` still owns `sv_areanodes`, link-list
+  mutation, `SV_LinkEdict()`, `SV_UnlinkEdict()`, trigger/water edict scans,
+  `pfnTouch()`, group-filter call sites, hull tests, and collision traversal;
+  full validation passed 127/127 and smoke reached first frame in 0.485 seconds
+  with reason `command`.
 
 ## Phase 132: World Trace And Physics Fixture Audit
 

@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "studio.h"
 #include "server_group_filter_adapter.h"
 #include "server_visibility_constraints_adapter.h"
+#include "server_world_link_policy_adapter.h"
 
 typedef struct moveclip_s
 {
@@ -442,11 +443,11 @@ static areanode_t *SV_CreateAreaNode( int depth, vec3_t mins, vec3_t maxs )
 	}
 
 	VectorSubtract( maxs, mins, size );
-	if( size[0] > size[1] )
-		anode->axis = 0;
-	else anode->axis = 1;
+	anode->axis = SV_WorldArea_SelectSplitAxis( size[0], size[1] );
 
-	anode->dist = 0.5f * ( maxs[anode->axis] + mins[anode->axis] );
+	anode->dist = SV_WorldArea_BuildSplitDistance(
+		mins[anode->axis],
+		maxs[anode->axis] );
 	VectorCopy( mins, mins1 );
 	VectorCopy( mins, mins2 );
 	VectorCopy( maxs, maxs1 );
@@ -512,6 +513,7 @@ static void SV_TouchLinks( edict_t *ent, areanode_t *node )
 	hull_t	*hull;
 	vec3_t	test, offset;
 	model_t	*mod;
+	int	child_mask;
 
 	// touch linked edicts
 	for( l = node->trigger_edicts.next; l != &node->trigger_edicts; l = next )
@@ -577,9 +579,14 @@ static void SV_TouchLinks( edict_t *ent, areanode_t *node )
 	// recurse down both sides
 	if( node->axis == -1 ) return;
 
-	if( ent->v.absmax[node->axis] > node->dist )
+	child_mask = SV_WorldArea_BuildTraversalMask(
+		ent->v.absmin[node->axis],
+		ent->v.absmax[node->axis],
+		node->dist );
+
+	if( child_mask & SV_WORLD_AREA_CHILD_POSITIVE_MASK )
 		SV_TouchLinks( ent, node->children[0] );
-	if( ent->v.absmin[node->axis] < node->dist )
+	if( child_mask & SV_WORLD_AREA_CHILD_NEGATIVE_MASK )
 		SV_TouchLinks( ent, node->children[1] );
 }
 
@@ -685,12 +692,19 @@ void GAME_EXPORT SV_LinkEdict( edict_t *ent, qboolean touch_triggers )
 
 	while( 1 )
 	{
+		int child;
+
 		if( node->axis == -1 ) break;
-		if( ent->v.absmin[node->axis] > node->dist )
-			node = node->children[0];
-		else if( ent->v.absmax[node->axis] < node->dist )
-			node = node->children[1];
-		else break; // crosses the node
+
+		child = SV_WorldArea_SelectLinkChild(
+			ent->v.absmin[node->axis],
+			ent->v.absmax[node->axis],
+			node->dist );
+
+		if( child == SV_WORLD_AREA_CHILD_NONE )
+			break; // crosses the node
+
+		node = node->children[child];
 	}
 
 	// link it in
@@ -722,6 +736,7 @@ static void SV_WaterLinks( const vec3_t origin, int *pCont, areanode_t *node )
 	hull_t	*hull;
 	vec3_t	test, offset;
 	model_t	*mod;
+	int	child_mask;
 
 	// get water edicts
 	for( l = node->solid_edicts.next; l != &node->solid_edicts; l = next )
@@ -775,9 +790,14 @@ static void SV_WaterLinks( const vec3_t origin, int *pCont, areanode_t *node )
 	// recurse down both sides
 	if( node->axis == -1 ) return;
 
-	if( origin[node->axis] > node->dist )
+	child_mask = SV_WorldArea_BuildTraversalMask(
+		origin[node->axis],
+		origin[node->axis],
+		node->dist );
+
+	if( child_mask & SV_WORLD_AREA_CHILD_POSITIVE_MASK )
 		SV_WaterLinks( origin, pCont, node->children[0] );
-	if( origin[node->axis] < node->dist )
+	if( child_mask & SV_WORLD_AREA_CHILD_NEGATIVE_MASK )
 		SV_WaterLinks( origin, pCont, node->children[1] );
 }
 
@@ -1210,6 +1230,7 @@ static void SV_ClipToLinks( areanode_t *node, moveclip_t *clip )
 {
 	link_t	*l, *next;
 	edict_t	*touch;
+	int	child_mask;
 
 	// touch linked edicts
 	for( l = node->solid_edicts.next; l != &node->solid_edicts; l = next )
@@ -1225,9 +1246,14 @@ static void SV_ClipToLinks( areanode_t *node, moveclip_t *clip )
 	// recurse down both sides
 	if( node->axis == -1 ) return;
 
-	if( clip->boxmaxs[node->axis] > node->dist )
+	child_mask = SV_WorldArea_BuildTraversalMask(
+		clip->boxmins[node->axis],
+		clip->boxmaxs[node->axis],
+		node->dist );
+
+	if( child_mask & SV_WORLD_AREA_CHILD_POSITIVE_MASK )
 		SV_ClipToLinks( node->children[0], clip );
-	if( clip->boxmins[node->axis] < node->dist )
+	if( child_mask & SV_WORLD_AREA_CHILD_NEGATIVE_MASK )
 		SV_ClipToLinks( node->children[1], clip );
 }
 
@@ -1242,6 +1268,7 @@ static void SV_ClipToPortals( areanode_t *node, moveclip_t *clip )
 {
 	link_t	*l, *next;
 	edict_t	*touch;
+	int	child_mask;
 
 	// touch linked edicts
 	for( l = node->portal_edicts.next; l != &node->portal_edicts; l = next )
@@ -1257,9 +1284,14 @@ static void SV_ClipToPortals( areanode_t *node, moveclip_t *clip )
 	// recurse down both sides
 	if( node->axis == -1 ) return;
 
-	if( clip->boxmaxs[node->axis] > node->dist )
+	child_mask = SV_WorldArea_BuildTraversalMask(
+		clip->boxmins[node->axis],
+		clip->boxmaxs[node->axis],
+		node->dist );
+
+	if( child_mask & SV_WORLD_AREA_CHILD_POSITIVE_MASK )
 		SV_ClipToPortals( node->children[0], clip );
-	if( clip->boxmins[node->axis] < node->dist )
+	if( child_mask & SV_WORLD_AREA_CHILD_NEGATIVE_MASK )
 		SV_ClipToPortals( node->children[1], clip );
 }
 
@@ -1275,6 +1307,7 @@ static void SV_ClipToWorldBrush( areanode_t *node, moveclip_t *clip )
 	link_t	*l, *next;
 	edict_t	*touch;
 	trace_t	trace;
+	int	child_mask;
 
 	for( l = node->solid_edicts.next; l != &node->solid_edicts; l = next )
 	{
@@ -1298,10 +1331,15 @@ static void SV_ClipToWorldBrush( areanode_t *node, moveclip_t *clip )
 	// recurse down both sides
 	if( node->axis == -1 ) return;
 
-	if( clip->boxmaxs[node->axis] > node->dist )
+	child_mask = SV_WorldArea_BuildTraversalMask(
+		clip->boxmins[node->axis],
+		clip->boxmaxs[node->axis],
+		node->dist );
+
+	if( child_mask & SV_WORLD_AREA_CHILD_POSITIVE_MASK )
 		SV_ClipToWorldBrush( node->children[0], clip );
 
-	if( clip->boxmins[node->axis] < node->dist )
+	if( child_mask & SV_WORLD_AREA_CHILD_NEGATIVE_MASK )
 		SV_ClipToWorldBrush( node->children[1], clip );
 }
 

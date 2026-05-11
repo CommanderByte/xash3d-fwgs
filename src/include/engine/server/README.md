@@ -99,6 +99,9 @@ Current helpers:
   baselines, delta writes, and `client_frame_t` mutation stay legacy-owned.
 - `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,
   cached leaf index, and portal viewentity capacity contracts.
+- `server_world_link_policy.hpp`: area-node split axis, split distance, link
+  child selection, and recursive child traversal mask contracts for
+  `sv_world.c`.
 - `server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
   for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
   digest bytes.

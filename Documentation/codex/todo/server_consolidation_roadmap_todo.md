@@ -319,6 +319,18 @@ Planned path:
 - Phase 133 audits PMove as a bridge boundary and defers risky live movement
   changes until fixtures exist.
 
+Phase 131 outcome:
+
+- `sv_world.c` area-node storage, edict link lists, trigger touch callbacks,
+  water brush content checks, group-filter callers, and collision traversal
+  remain legacy-owned.
+- `server_world_link_policy` now owns only split-axis, split-distance, link
+  child, and recursive traversal-mask decisions from plain values.
+- Further route-through needs synthetic edict/list fixtures, trigger brush hull
+  fixtures, water content fixtures, and callback-order tests.
+  Evidence:
+  `Documentation/codex/modern/engine/server-world-link-boundary.md`.
+
 ## Phase 134: Runtime Save/Restore Owner Audit
 
 Legacy spread:

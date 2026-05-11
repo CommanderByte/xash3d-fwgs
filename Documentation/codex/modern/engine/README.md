@@ -167,6 +167,10 @@ Current implementation notes:
 - `server-visibility-constraints.md`: how Phase 105 routes entity leaf and
   portal viewentity capacity policy through target-neutral helpers while
   keeping BSP traversal, PVS/PAS, and packet ownership legacy-owned.
+- `server-world-link-boundary.md`: how Phase 131 keeps `sv_world.c` area-node
+  storage, edict links, trigger callbacks, water brushes, and collision
+  traversal legacy-owned while routing split-axis and child traversal policy
+  through a plain helper.
 - `server-route-through-review.md`: how Phase 106 reviews the Phase 101-105
   constants lane, confirms no extra broad route-through should be made, and
   lists the next behavior-owner phases.
