@@ -4137,19 +4137,22 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 142: Server Adapter Inventory And Shrink Pass
 
-- [ ] `ENG-ADAPTER-SHRINK-001` Inventory adapter-only duplicated patterns for
+- [x] `ENG-ADAPTER-SHRINK-001` Inventory adapter-only duplicated patterns for
   bit-buffer result translation, resource snapshots, message recipient facts,
   and plain enum conversions.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-ADAPTER-SHRINK-002` Add shared adapter helpers only where the
+  Evidence: `Documentation/codex/modern/engine/server-adapter-shrink-pass.md`.
+- [x] `ENG-ADAPTER-SHRINK-002` Add shared adapter helpers only where the
   helper has one clear domain.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-ADAPTER-SHRINK-003` Avoid merging unrelated adapters just to reduce
+  Evidence: `Documentation/codex/modern/engine/server-adapter-shrink-pass.md`;
+  no new helper was added because `server_message_adapter_shared.hpp` and
+  `resource_adapter_shared.*` already cover the clear shared domains found.
+- [x] `ENG-ADAPTER-SHRINK-003` Avoid merging unrelated adapters just to reduce
   file count.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-ADAPTER-SHRINK-004` Run focused tests plus full validation if any
+  Evidence: `Documentation/codex/modern/engine/server-adapter-shrink-pass.md`.
+- [x] `ENG-ADAPTER-SHRINK-004` Run focused tests plus full validation if any
   adapter code changes.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: documentation-only phase; `git diff --check` passed and
+  `scripts/phase-status.ps1 -PhaseNumber 142` reported 4 done, 0 open.
 
 ## Phase 143: Server Header Boundary Audit
 

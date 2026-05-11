@@ -162,12 +162,21 @@ filesystem mutation remain legacy-owned.
 
 Goal: reduce repeated glue while keeping adapters boring and explicit.
 
-- [ ] Inventory adapter-only duplicated patterns for bit-buffer result
+- [x] Inventory adapter-only duplicated patterns for bit-buffer result
   translation, resource snapshots, message recipient facts, and plain enum
   conversions.
-- [ ] Add shared adapter helpers only where the helper has one clear domain.
-- [ ] Avoid merging unrelated adapters just to reduce file count.
-- [ ] Run focused tests plus full validation if any adapter code changes.
+- [x] Add shared adapter helpers only where the helper has one clear domain.
+- [x] Avoid merging unrelated adapters just to reduce file count.
+- [x] Run focused tests plus full validation if any adapter code changes.
+
+Evidence:
+`Documentation/codex/modern/engine/server-adapter-shrink-pass.md`.
+
+Validation:
+Documentation-only phase. `git diff --check` passed and
+`scripts/phase-status.ps1 -PhaseNumber 142` reported 4 done, 0 open. No
+adapter code changed, so focused adapter tests and full runtime validation were
+not required.
 
 ## Phase 143: Server Header Boundary Audit
 
