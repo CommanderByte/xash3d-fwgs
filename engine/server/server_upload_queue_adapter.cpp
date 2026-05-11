@@ -1,51 +1,12 @@
 #include "server_upload_queue_adapter.h"
 
 #include "engine/server/server_upload_queue.hpp"
+#include "resource_adapter_shared.hpp"
+
+namespace adapter = xash::engine::server::adapter;
 
 namespace
 {
-
-xash::engine::server::ResourceType ToModernResourceType(resourcetype_t type)
-{
-	using xash::engine::server::ResourceType;
-
-	switch (type)
-	{
-	case t_sound:
-		return ResourceType::Sound;
-	case t_skin:
-		return ResourceType::Skin;
-	case t_model:
-		return ResourceType::Model;
-	case t_decal:
-		return ResourceType::Decal;
-	case t_generic:
-		return ResourceType::Generic;
-	case t_eventscript:
-		return ResourceType::EventScript;
-	case t_world:
-		return ResourceType::World;
-	default:
-		return ResourceType::Unknown;
-	}
-}
-
-xash::engine::server::ResourceDescriptor ToModernResource(const resource_t *resource)
-{
-	xash::engine::server::ResourceDescriptor modern = {};
-	modern.type = xash::engine::server::ResourceType::Unknown;
-
-	if (!resource)
-		return modern;
-
-	modern.name = resource->szFileName;
-	modern.type = ToModernResourceType(resource->type);
-	modern.index = resource->nIndex;
-	modern.downloadSize = resource->nDownloadSize;
-	modern.flags = resource->ucFlags;
-	modern.md5Hash = resource->rgucMD5_hash;
-	return modern;
-}
 
 sv_upload_estimate_decision_t ToLegacyDecision(
 	const xash::engine::server::UploadEstimateDecision &decision)
@@ -94,7 +55,7 @@ enum sv_upload_batch_action_e ToLegacyAction(xash::engine::server::UploadBatchAc
 extern "C" int SV_UploadQueue_IsClientResourceDescriptorValid(const resource_t *resource)
 {
 	return xash::engine::server::ClientUploadResourceDescriptorIsValid(
-		ToModernResource(resource)) ? 1 : 0;
+		adapter::ToModernResourceDescriptor(resource)) ? 1 : 0;
 }
 
 extern "C" int SV_UploadQueue_ResourceListUpdateIsTooSoon(
@@ -109,7 +70,7 @@ extern "C" int SV_UploadQueue_ResourceListUpdateIsTooSoon(
 extern "C" int SV_UploadQueue_ShouldEstimateUploadNeed(const resource_t *resource)
 {
 	return xash::engine::server::ResourceShouldEstimateUploadNeed(
-		ToModernResource(resource)) ? 1 : 0;
+		adapter::ToModernResourceDescriptor(resource)) ? 1 : 0;
 }
 
 extern "C" sv_upload_estimate_decision_t SV_UploadQueue_DecideUploadEstimate(
@@ -117,7 +78,7 @@ extern "C" sv_upload_estimate_decision_t SV_UploadQueue_DecideUploadEstimate(
 	int hpak_contains_resource)
 {
 	return ToLegacyDecision(xash::engine::server::DecideUploadEstimate(
-		ToModernResource(resource),
+		adapter::ToModernResourceDescriptor(resource),
 		hpak_contains_resource != 0));
 }
 
@@ -133,7 +94,7 @@ extern "C" int SV_UploadQueue_UploadTotalExceedsLimit(
 extern "C" int SV_UploadQueue_BatchNeedsCustomDataProbe(const resource_t *resource)
 {
 	return xash::engine::server::UploadBatchNeedsCustomDataProbe(
-		ToModernResource(resource)) ? 1 : 0;
+		adapter::ToModernResourceDescriptor(resource)) ? 1 : 0;
 }
 
 extern "C" enum sv_upload_batch_action_e SV_UploadQueue_DecideBatchAction(
@@ -142,7 +103,7 @@ extern "C" enum sv_upload_batch_action_e SV_UploadQueue_DecideBatchAction(
 	int allow_upload)
 {
 	return ToLegacyAction(xash::engine::server::DecideUploadBatchAction(
-		ToModernResource(resource),
+		adapter::ToModernResourceDescriptor(resource),
 		custom_resource_data_exists != 0,
 		allow_upload != 0));
 }

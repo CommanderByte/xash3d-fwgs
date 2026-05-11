@@ -3515,18 +3515,31 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 117: Resource Transfer Adapter Shrink Review
 
-- [ ] `ENG-RESADAPT-001` Review resource-related adapters after Phase 116 and
+- [x] `ENG-RESADAPT-001` Review resource-related adapters after Phase 116 and
   identify any that can merge without hiding separate side effects.
-  Evidence:
-- [ ] `ENG-RESADAPT-002` Keep adapters separate where they map to different
+  Evidence: `Documentation/codex/modern/engine/resource-adapter-shrink-review.md`
+  identifies repeated `resourcetype_t` / `resource_t` conversion as the safe
+  shrink target and rejects a broad adapter merge for now.
+- [x] `ENG-RESADAPT-002` Keep adapters separate where they map to different
   legacy owners or live side-effect families.
-  Evidence:
-- [ ] `ENG-RESADAPT-003` If a grouped adapter is clearer, add compatibility
+  Evidence: download, upload, resource-message, customization, consistency,
+  catalog, reslist, and hot-resource adapters remain separate exported entry
+  points; only private conversion glue moved into
+  `engine/server/resource_adapter_shared.*`.
+- [x] `ENG-RESADAPT-003` If a grouped adapter is clearer, add compatibility
   tests before changing the adapter shape.
-  Evidence:
-- [ ] `ENG-RESADAPT-004` Run focused resource tests and full validation after
+  Evidence: `tests/engine/resource_adapter_shared.cpp` covers type mapping,
+  unknown fallback behavior, `resource_t` descriptor snapshots, null-resource
+  behavior, resource-message rows, and customization-message values before
+  routing legacy adapters through the shared helper.
+- [x] `ENG-RESADAPT-004` Run focused resource tests and full validation after
   any adapter regrouping.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_resource_adapter_shared`
+  passed; `.\scripts\run-phase-validation.ps1 -FocusedTarget test_engine_resource_adapter_shared -StopRunningXash`
+  passed, including `.\waf.bat build --targets=xash`,
+  `.\waf.bat build --alltests` 119/119, runtime DLL refresh, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reaching
+  first frame in 0.517 seconds with stop reason `command`.
 
 ## Phase 118: Server Messaging Consolidation Audit
 

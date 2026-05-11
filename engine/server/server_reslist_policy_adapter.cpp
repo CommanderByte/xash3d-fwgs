@@ -1,40 +1,17 @@
 #include "server_reslist_policy_adapter.h"
 
 #include "engine/server/server_reslist_policy.hpp"
+#include "resource_adapter_shared.hpp"
 #include "utilities/path.hpp"
 
 #include <cstdio>
 
 extern "C" int Sound_SupportedFileFormat(const char *fileext);
 
+namespace adapter = xash::engine::server::adapter;
+
 namespace
 {
-
-resourcetype_t ToLegacyResourceType(xash::engine::server::ResourceType type)
-{
-	using xash::engine::server::ResourceType;
-
-	switch (type)
-	{
-	case ResourceType::Sound:
-		return t_sound;
-	case ResourceType::Skin:
-		return t_skin;
-	case ResourceType::Model:
-		return t_model;
-	case ResourceType::Decal:
-		return t_decal;
-	case ResourceType::Generic:
-		return t_generic;
-	case ResourceType::EventScript:
-		return t_eventscript;
-	case ResourceType::World:
-		return t_world;
-	case ResourceType::Unknown:
-	default:
-		return t_generic;
-	}
-}
 
 int ToLegacyRoute(xash::engine::server::ReslistRoute route)
 {
@@ -75,9 +52,12 @@ extern "C" sv_reslist_decision_t SV_ReslistPolicy_ClassifyToken(const char *toke
 
 	sv_reslist_decision_t legacy = {};
 	legacy.should_index = modern.shouldIndex ? 1 : 0;
-	legacy.type = ToLegacyResourceType(modern.type);
+	legacy.type = adapter::ToLegacyResourceType(modern.type);
 	legacy.route = ToLegacyRoute(modern.route);
-	CopyString(legacy.normalized_path, sizeof(legacy.normalized_path), modern.normalizedPath);
+	CopyString(
+		legacy.normalized_path,
+		sizeof(legacy.normalized_path),
+		modern.normalizedPath);
 	CopyString(legacy.index_path, sizeof(legacy.index_path), modern.indexPath);
 	return legacy;
 }

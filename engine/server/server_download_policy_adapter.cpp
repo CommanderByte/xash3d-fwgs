@@ -1,37 +1,13 @@
 #include "server_download_policy_adapter.h"
 
 #include "engine/server/server_download_policy.hpp"
+#include "resource_adapter_shared.hpp"
 
 #include <cstring>
 #include <vector>
 
 namespace
 {
-
-xash::engine::server::ResourceType ToModernResourceType(resourcetype_t type)
-{
-	using xash::engine::server::ResourceType;
-
-	switch (type)
-	{
-	case t_sound:
-		return ResourceType::Sound;
-	case t_skin:
-		return ResourceType::Skin;
-	case t_model:
-		return ResourceType::Model;
-	case t_decal:
-		return ResourceType::Decal;
-	case t_generic:
-		return ResourceType::Generic;
-	case t_eventscript:
-		return ResourceType::EventScript;
-	case t_world:
-		return ResourceType::World;
-	default:
-		return ResourceType::Unknown;
-	}
-}
 
 sv_download_policy_decision_t ToLegacyDecision(
 	const xash::engine::server::ServerDownloadDecision &decision)
@@ -66,32 +42,6 @@ sv_download_policy_decision_t ToLegacyDecision(
 	return legacy;
 }
 
-std::vector<xash::engine::server::ResourceDescriptor> BuildResourceSnapshot(
-	const resource_t *legacyResources,
-	int resourceCount)
-{
-	std::vector<xash::engine::server::ResourceDescriptor> resources;
-
-	if (!legacyResources || resourceCount <= 0)
-		return resources;
-
-	resources.reserve(static_cast<std::size_t>(resourceCount));
-
-	for (int i = 0; i < resourceCount; ++i)
-	{
-		xash::engine::server::ResourceDescriptor resource = {};
-		resource.name = legacyResources[i].szFileName;
-		resource.type = ToModernResourceType(legacyResources[i].type);
-		resource.index = legacyResources[i].nIndex;
-		resource.downloadSize = legacyResources[i].nDownloadSize;
-		resource.flags = legacyResources[i].ucFlags;
-		resource.md5Hash = legacyResources[i].rgucMD5_hash;
-		resources.push_back(resource);
-	}
-
-	return resources;
-}
-
 }
 
 extern "C" int SV_ServerDownloadPolicy_NeedsModelTextureProbe(
@@ -102,7 +52,9 @@ extern "C" int SV_ServerDownloadPolicy_NeedsModelTextureProbe(
 	int resource_count)
 {
 	std::vector<xash::engine::server::ResourceDescriptor> resourceSnapshot =
-		BuildResourceSnapshot(resources, resource_count);
+		xash::engine::server::adapter::BuildResourceDescriptorSnapshot(
+			resources,
+			resource_count);
 
 	xash::engine::server::ServerDownloadRequest request = {};
 	request.requestedName = requested_name;
@@ -125,7 +77,9 @@ extern "C" sv_download_policy_decision_t SV_ServerDownloadPolicy_Decide(
 	int model_texture_available)
 {
 	std::vector<xash::engine::server::ResourceDescriptor> resourceSnapshot =
-		BuildResourceSnapshot(resources, resource_count);
+		xash::engine::server::adapter::BuildResourceDescriptorSnapshot(
+			resources,
+			resource_count);
 
 	xash::engine::server::ServerDownloadRequest request = {};
 	request.requestedName = requested_name;

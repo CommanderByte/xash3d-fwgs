@@ -1,64 +1,12 @@
 #include "server_hot_resource_adapter.h"
 
 #include "engine/server/server_hot_resource.hpp"
+#include "resource_adapter_shared.hpp"
 
 #include <cstdio>
 
 namespace
 {
-
-xash::engine::server::ResourceType ToModernResourceType(resourcetype_t type)
-{
-	using xash::engine::server::ResourceType;
-
-	switch (type)
-	{
-	case t_sound:
-		return ResourceType::Sound;
-	case t_skin:
-		return ResourceType::Skin;
-	case t_model:
-		return ResourceType::Model;
-	case t_decal:
-		return ResourceType::Decal;
-	case t_generic:
-		return ResourceType::Generic;
-	case t_eventscript:
-		return ResourceType::EventScript;
-	case t_world:
-		return ResourceType::World;
-	default:
-		return ResourceType::Unknown;
-	}
-}
-
-resourcetype_t ToLegacyResourceType(
-	xash::engine::server::ResourceType type,
-	resourcetype_t fallback)
-{
-	using xash::engine::server::ResourceType;
-
-	switch (type)
-	{
-	case ResourceType::Sound:
-		return t_sound;
-	case ResourceType::Skin:
-		return t_skin;
-	case ResourceType::Model:
-		return t_model;
-	case ResourceType::Decal:
-		return t_decal;
-	case ResourceType::Generic:
-		return t_generic;
-	case ResourceType::EventScript:
-		return t_eventscript;
-	case ResourceType::World:
-		return t_world;
-	case ResourceType::Unknown:
-	default:
-		return fallback;
-	}
-}
 
 xash::engine::server::HotResourceRequest ToModernRequest(
 	const char *name,
@@ -67,7 +15,7 @@ xash::engine::server::HotResourceRequest ToModernRequest(
 	unsigned char flags)
 {
 	xash::engine::server::HotResourceRequest request = {};
-	request.type = ToModernResourceType(type);
+	request.type = xash::engine::server::adapter::ToModernResourceType(type);
 	request.name = name;
 	request.index = index;
 	request.flags = flags;
@@ -114,7 +62,9 @@ extern "C" sv_hot_resource_entry_t SV_HotResource_BuildAnnouncement(
 
 	sv_hot_resource_entry_t legacy = {};
 	legacy.should_announce = modern.shouldAnnounce ? 1 : 0;
-	legacy.type = ToLegacyResourceType(modern.resource.type, type);
+	legacy.type = xash::engine::server::adapter::ToLegacyResourceType(
+		modern.resource.type,
+		type);
 	legacy.name = modern.resource.name;
 	legacy.index = modern.resource.index;
 	legacy.download_size = modern.resource.downloadSize;

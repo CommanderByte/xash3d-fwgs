@@ -206,6 +206,7 @@ def build(bld):
 		'server/game_dll_payload_policy_adapter.cpp',
 		'server/game_dll_resource_policy_adapter.cpp',
 		'server/game_dll_user_message_registry_adapter.cpp',
+		'server/resource_adapter_shared.cpp',
 		'server/server_filter_adapter.cpp',
 		'server/server_consistency_list_adapter.cpp',
 		'server/server_consistency_policy_adapter.cpp',
@@ -238,6 +239,16 @@ def build(bld):
 		'server/server_visibility_constraints_adapter.cpp',
 	]
 	libs += ['modern_engine']
+
+	if bld.env.TESTS:
+		bld.program(
+			source = ['server/resource_adapter_shared.cpp', '../tests/engine/resource_adapter_shared.cpp'],
+			target = 'test_engine_resource_adapter_shared',
+			use = 'engine_includes modern_engine public werror',
+			includes = includes,
+			features = 'cxx test',
+			install_path = None,
+		)
 
 	# include platform-specific sources, this shall not fail if directory doesn't exist
 	source += bld.path.ant_glob('platform/%s/*.c' % bld.env.DEST_OS)

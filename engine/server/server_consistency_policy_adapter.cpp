@@ -1,36 +1,12 @@
 #include "server_consistency_policy_adapter.h"
 
 #include "engine/server/server_consistency_policy.hpp"
+#include "resource_adapter_shared.hpp"
 
 #include <cstring>
 
 namespace
 {
-
-xash::engine::server::ResourceType ToModernResourceType(resourcetype_t type)
-{
-	using xash::engine::server::ResourceType;
-
-	switch (type)
-	{
-	case t_sound:
-		return ResourceType::Sound;
-	case t_skin:
-		return ResourceType::Skin;
-	case t_model:
-		return ResourceType::Model;
-	case t_decal:
-		return ResourceType::Decal;
-	case t_generic:
-		return ResourceType::Generic;
-	case t_eventscript:
-		return ResourceType::EventScript;
-	case t_world:
-		return ResourceType::World;
-	default:
-		return ResourceType::Unknown;
-	}
-}
 
 int ToLegacyStatus(xash::engine::server::ConsistencyEntryStatus status)
 {
@@ -74,7 +50,7 @@ extern "C" int SV_ConsistencyPolicy_RequiresModelBounds(
 	int force_type)
 {
 	return xash::engine::server::ConsistencyForceTypeRequiresModelBounds(
-		ToModernResourceType(resource_type),
+		xash::engine::server::adapter::ToModernResourceType(resource_type),
 		force_type) ? 1 : 0;
 }
 
@@ -88,7 +64,8 @@ extern "C" sv_consistency_reservation_result_t SV_ConsistencyPolicy_BuildReserva
 	int model_bounds_available)
 {
 	xash::engine::server::ConsistencyReservationRequest request = {};
-	request.resourceType = ToModernResourceType(resource_type);
+	request.resourceType = xash::engine::server::adapter::ToModernResourceType(
+		resource_type);
 	request.forceType = force_type;
 	request.specifiedMins = specified_mins;
 	request.specifiedMaxs = specified_maxs;
