@@ -2,7 +2,7 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/server_spawn_handshake.hpp"
+#include "engine/server/messaging/server_spawn_handshake.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

@@ -1,7 +1,7 @@
 #include "server_consistency_list_adapter.h"
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/server_consistency_list.hpp"
+#include "engine/server/resources/server_consistency_list.hpp"
 #include "resource_adapter_shared.hpp"
 #include "server_message_adapter_shared.hpp"
 

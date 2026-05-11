@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/connectionless_classifier.hpp"
+#include "engine/server/client/connectionless_classifier.hpp"
 
 using xash::engine::server::ClassifyServerConnectionlessCommand;
 using xash::engine::server::ServerConnectionlessCommand;

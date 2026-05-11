@@ -2,7 +2,7 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/server_consistency_list.hpp"
+#include "engine/server/resources/server_consistency_list.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/game_dll_user_message_registry.hpp"
+#include "engine/server/game_dll/game_dll_user_message_registry.hpp"
 
 using namespace xash::engine::server;
 

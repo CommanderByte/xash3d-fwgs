@@ -1,6 +1,6 @@
 #include "game_dll_resource_policy_adapter.h"
 
-#include "engine/server/game_dll_resource_policy.hpp"
+#include "engine/server/game_dll/game_dll_resource_policy.hpp"
 #include "resource_adapter_shared.hpp"
 
 namespace

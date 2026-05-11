@@ -1,6 +1,6 @@
 #include "server_sound_message_adapter.h"
 
-#include "engine/server/server_sound_message.hpp"
+#include "engine/server/messaging/server_sound_message.hpp"
 #include "server_message_adapter_shared.hpp"
 
 extern "C" sv_sound_message_plan_t SV_SoundMessage_BuildPlan(

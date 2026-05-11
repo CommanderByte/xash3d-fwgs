@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_FRAME_DATAGRAM_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_FRAME_DATAGRAM_FORWARD_HPP
-
-#include "engine/server/messaging/server_frame_datagram.hpp"
-
-#endif

@@ -3,8 +3,8 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/game_dll_message_bridge.hpp"
-#include "engine/server/server_multicast_policy.hpp"
+#include "engine/server/game_dll/game_dll_message_bridge.hpp"
+#include "engine/server/messaging/server_multicast_policy.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_MESSAGE_ENVELOPE_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_MESSAGE_ENVELOPE_FORWARD_HPP
-
-#include "engine/server/messaging/server_message_envelope.hpp"
-
-#endif

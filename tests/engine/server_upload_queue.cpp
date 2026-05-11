@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_upload_queue.hpp"
+#include "engine/server/resources/server_upload_queue.hpp"
 
 using namespace xash::engine::server;
 

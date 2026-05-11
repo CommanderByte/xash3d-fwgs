@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-#include "engine/server/client_session_slots.hpp"
+#include "engine/server/client/client_session_slots.hpp"
 
 static_assert(SV_CLIENT_SESSION_SLOT_FREE ==
 	xash::engine::server::kClientSessionSlotFree,

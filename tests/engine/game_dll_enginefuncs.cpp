@@ -5,7 +5,7 @@
 #include "progdefs.h"
 #include "eiface.h"
 
-#include "engine/server/game_dll_enginefuncs.hpp"
+#include "engine/server/game_dll/game_dll_enginefuncs.hpp"
 
 using namespace xash::engine::server;
 

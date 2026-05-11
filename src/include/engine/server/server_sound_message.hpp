@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_SOUND_MESSAGE_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_SOUND_MESSAGE_FORWARD_HPP
-
-#include "engine/server/messaging/server_sound_message.hpp"
-
-#endif

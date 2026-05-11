@@ -1,6 +1,6 @@
 #include "client_command_dispatch_adapter.h"
 
-#include "engine/server/client_command_dispatch.hpp"
+#include "engine/server/client/client_command_dispatch.hpp"
 
 namespace
 {

@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/server_voice_relay.hpp"
+#include "engine/server/messaging/server_voice_relay.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

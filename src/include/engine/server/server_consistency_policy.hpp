@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_CONSISTENCY_POLICY_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_CONSISTENCY_POLICY_FORWARD_HPP
-
-#include "engine/server/resources/server_consistency_policy.hpp"
-
-#endif

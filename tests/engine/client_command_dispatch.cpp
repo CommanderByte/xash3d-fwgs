@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/client_command_dispatch.hpp"
+#include "engine/server/client/client_command_dispatch.hpp"
 
 using xash::engine::server::ClassifyClientCommand;
 using xash::engine::server::ClientBuiltinCommandCount;

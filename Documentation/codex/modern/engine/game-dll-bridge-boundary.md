@@ -174,4 +174,4 @@ The Phase 86 deep audit turns into this implementation sequence:
 | 100 | DLL load/unload facade plan | Fake-symbol load planner only; real DLL lifetime remains last. |
 
 The detailed checklist for this lane is
-[`Documentation/codex/todo/game_dll_bridge_todo.md`](../../todo/game_dll_bridge_todo.md).
+[`Documentation/codex/done/todo/game_dll_bridge_todo.md`](../../done/todo/game_dll_bridge_todo.md).

@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_packet_entities_delta.hpp"
+#include "engine/server/messaging/server_packet_entities_delta.hpp"
 
 using namespace xash::engine::server;
 

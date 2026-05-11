@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_GAME_DLL_ENTITY_PARSE_FORWARD_HPP
-#define XASH_ENGINE_SERVER_GAME_DLL_ENTITY_PARSE_FORWARD_HPP
-
-#include "engine/server/game_dll/game_dll_entity_parse.hpp"
-
-#endif

@@ -1,6 +1,6 @@
 #include "server_static_messages_adapter.h"
 
-#include "engine/server/server_static_messages.hpp"
+#include "engine/server/messaging/server_static_messages.hpp"
 #include "server_message_adapter_shared.hpp"
 
 extern "C" sv_spawn_static_decision_t SV_StaticMessage_BuildSpawnStaticDecision(

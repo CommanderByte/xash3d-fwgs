@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/server_text_messages.hpp"
+#include "engine/server/messaging/server_text_messages.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

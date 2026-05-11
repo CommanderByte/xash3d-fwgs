@@ -4,7 +4,7 @@ custom_resource_identity_adapter.cpp - private bridge to C++ resource identity h
 
 #include "custom_resource_identity_adapter.h"
 
-#include "engine/server/resource_identity.hpp"
+#include "engine/server/resources/resource_identity.hpp"
 
 #include <cstring>
 

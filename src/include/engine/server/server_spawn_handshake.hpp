@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_SPAWN_HANDSHAKE_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_SPAWN_HANDSHAKE_FORWARD_HPP
-
-#include "engine/server/messaging/server_spawn_handshake.hpp"
-
-#endif

@@ -1,6 +1,6 @@
 #include "server_resource_message_adapter.h"
 
-#include "engine/server/server_resource_message.hpp"
+#include "engine/server/messaging/server_resource_message.hpp"
 #include "resource_adapter_shared.hpp"
 #include "server_message_adapter_shared.hpp"
 

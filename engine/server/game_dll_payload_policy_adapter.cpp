@@ -2,7 +2,7 @@
 
 #include "const.h"
 #include "protocol.h"
-#include "engine/server/game_dll_payload_policy.hpp"
+#include "engine/server/game_dll/game_dll_payload_policy.hpp"
 
 static_assert(MSG_ALL == xash::engine::server::kGameDllPayloadDestinationAll,
 	"MSG_ALL value changed");

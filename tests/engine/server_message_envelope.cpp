@@ -2,18 +2,18 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/server_customization_message.hpp"
-#include "engine/server/server_frame_datagram.hpp"
-#include "engine/server/server_message_envelope.hpp"
-#include "engine/server/server_packet_entities_delta.hpp"
-#include "engine/server/server_resource_message.hpp"
-#include "engine/server/server_service_messages.hpp"
-#include "engine/server/server_sound_message.hpp"
-#include "engine/server/server_spawn_handshake.hpp"
-#include "engine/server/server_static_messages.hpp"
-#include "engine/server/server_text_messages.hpp"
-#include "engine/server/server_userinfo_message.hpp"
-#include "engine/server/server_voice_relay.hpp"
+#include "engine/server/messaging/server_customization_message.hpp"
+#include "engine/server/messaging/server_frame_datagram.hpp"
+#include "engine/server/messaging/server_message_envelope.hpp"
+#include "engine/server/messaging/server_packet_entities_delta.hpp"
+#include "engine/server/messaging/server_resource_message.hpp"
+#include "engine/server/messaging/server_service_messages.hpp"
+#include "engine/server/messaging/server_sound_message.hpp"
+#include "engine/server/messaging/server_spawn_handshake.hpp"
+#include "engine/server/messaging/server_static_messages.hpp"
+#include "engine/server/messaging/server_text_messages.hpp"
+#include "engine/server/messaging/server_userinfo_message.hpp"
+#include "engine/server/messaging/server_voice_relay.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

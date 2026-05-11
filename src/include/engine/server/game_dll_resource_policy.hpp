@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_GAME_DLL_RESOURCE_POLICY_FORWARD_HPP
-#define XASH_ENGINE_SERVER_GAME_DLL_RESOURCE_POLICY_FORWARD_HPP
-
-#include "engine/server/game_dll/game_dll_resource_policy.hpp"
-
-#endif

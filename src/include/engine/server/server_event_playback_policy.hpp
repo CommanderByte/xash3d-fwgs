@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_EVENT_PLAYBACK_POLICY_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_EVENT_PLAYBACK_POLICY_FORWARD_HPP
-
-#include "engine/server/messaging/server_event_playback_policy.hpp"
-
-#endif

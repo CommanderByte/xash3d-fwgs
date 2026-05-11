@@ -2,9 +2,9 @@
 #define XASH_ENGINE_SERVER_RESOURCE_ADAPTER_SHARED_HPP
 
 #include "custom.h"
-#include "engine/server/resource_identity.hpp"
-#include "engine/server/server_customization_message.hpp"
-#include "engine/server/server_resource_message.hpp"
+#include "engine/server/resources/resource_identity.hpp"
+#include "engine/server/messaging/server_customization_message.hpp"
+#include "engine/server/messaging/server_resource_message.hpp"
 
 #include <cstddef>
 #include <string>

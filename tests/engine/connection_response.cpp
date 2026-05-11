@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/connection_response.hpp"
+#include "engine/server/client/connection_response.hpp"
 
 using xash::engine::server::FormatChallengeResponse;
 using xash::engine::server::FormatRejectDisconnectMessage;

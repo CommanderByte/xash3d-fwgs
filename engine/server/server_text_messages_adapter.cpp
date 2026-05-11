@@ -1,6 +1,6 @@
 #include "server_text_messages_adapter.h"
 
-#include "engine/server/server_text_messages.hpp"
+#include "engine/server/messaging/server_text_messages.hpp"
 #include "server_message_adapter_shared.hpp"
 
 extern "C" sv_text_message_write_result_t SV_TextMessage_WritePrintPayload(

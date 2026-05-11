@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/server_hot_resource.hpp"
+#include "engine/server/resources/server_hot_resource.hpp"
 
 using namespace xash::engine::server;
 

@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/resource_identity.hpp"
+#include "engine/server/resources/resource_identity.hpp"
 
 using namespace xash::engine::server;
 

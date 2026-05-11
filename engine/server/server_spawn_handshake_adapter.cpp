@@ -1,6 +1,6 @@
 #include "server_spawn_handshake_adapter.h"
 
-#include "engine/server/server_spawn_handshake.hpp"
+#include "engine/server/messaging/server_spawn_handshake.hpp"
 #include "server_message_adapter_shared.hpp"
 
 namespace

@@ -33,8 +33,9 @@ These files moved from the flat `src/engine/server/` layer into
 - `server_packet_entities_delta.cpp`
 
 The matching C++ contracts moved into
-`src/include/engine/server/messaging/`. The previous flat header paths remain
-as forwarding headers for tests and legacy adapters.
+`src/include/engine/server/messaging/`. A later cleanup pass removed the
+temporary flat forwarding headers, so internal code should include the
+canonical `engine/server/messaging/...` paths.
 
 ## Not Moved
 

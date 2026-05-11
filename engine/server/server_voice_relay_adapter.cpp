@@ -1,6 +1,6 @@
 #include "server_voice_relay_adapter.h"
 
-#include "engine/server/server_voice_relay.hpp"
+#include "engine/server/messaging/server_voice_relay.hpp"
 #include "server_message_adapter_shared.hpp"
 
 extern "C" int SV_VoiceRelay_IsPayloadTooLarge(unsigned int payload_size)

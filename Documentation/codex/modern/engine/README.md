@@ -56,15 +56,16 @@ Current implementation notes:
 - `game-dll-bridge-boundary.md`: how `sv_game.c` should split into modern
   internals while preserving the game DLL ABI, callback table order, edict
   ownership, and message/session compatibility. The post-audit implementation
-  lane is tracked in `Documentation/codex/todo/game_dll_bridge_todo.md`.
+  lane is tracked in `Documentation/codex/done/todo/game_dll_bridge_todo.md`.
 - `game-dll-bridge-submodule-plan.md`: how Phase 121 turns the completed game
   DLL bridge lane into a future `src/engine/server/game_dll/` submodule layout,
   which cross-callback tests should exist first, and which `sv_game.c` regions
   remain too coupled to move.
 - `game-dll-bridge-domain-pilot.md`: how Phase 139 physically groups the
   modern game DLL bridge helpers under `src/engine/server/game_dll/` while
-  keeping flat forwarding headers, callback table publication, DLL lifetime,
-  and live edict/message ownership legacy-bound.
+  keeping callback table publication, DLL lifetime, and live edict/message
+  ownership legacy-bound. The temporary flat forwarding headers were removed
+  later by `server-domain-header-cleanup.md`.
 - `game-dll-changelevel-save-boundary.md`: how Phase 97 models changelevel
   admission, landmark truncation, smooth/classic queuing, and `.HL3`
   entity-patch intent while keeping runtime save/load callbacks legacy-owned.
@@ -126,8 +127,9 @@ Current implementation notes:
   constants/cvars-first split plan while preserving current include behavior.
 - `server-messaging-domain-pilot.md`: how Phase 138 physically groups modern
   message payload, recipient, frame send-gate, and packet-entity cursor helpers
-  under `src/engine/server/messaging/` while keeping flat forwarding headers
-  and legacy packet ownership intact.
+  under `src/engine/server/messaging/` while keeping legacy packet ownership
+  intact. The temporary flat forwarding headers were removed later by
+  `server-domain-header-cleanup.md`.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of
@@ -153,7 +155,11 @@ Current implementation notes:
   adapter shrink work.
 - `resource-transfer-domain-pilot.md`: how Phase 137 physically groups the
   modern resource-domain helpers under `src/engine/server/resources/` while
-  keeping flat forwarding headers and legacy runtime ownership intact.
+  keeping legacy runtime ownership intact. The temporary flat forwarding
+  headers were removed later by `server-domain-header-cleanup.md`.
+- `server-domain-header-cleanup.md`: how the temporary flat forwarding headers
+  for grouped server domains were removed after the aggregate and adapter
+  cleanup passes.
 - `resources/resource_identity.hpp` / `resources/resource_identity.cpp`: Phase
   62's implemented target-neutral custom resource identity helpers.
 - `resources/resource_transfer_manifest.hpp` /

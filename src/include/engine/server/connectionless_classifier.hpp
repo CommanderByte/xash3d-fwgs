@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_CONNECTIONLESS_CLASSIFIER_FORWARD_HPP
-#define XASH_ENGINE_SERVER_CONNECTIONLESS_CLASSIFIER_FORWARD_HPP
-
-#include "engine/server/client/connectionless_classifier.hpp"
-
-#endif

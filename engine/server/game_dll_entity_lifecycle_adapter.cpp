@@ -1,6 +1,6 @@
 #include "game_dll_entity_lifecycle_adapter.h"
 
-#include "engine/server/game_dll_entity_lifecycle.hpp"
+#include "engine/server/game_dll/game_dll_entity_lifecycle.hpp"
 
 namespace
 {

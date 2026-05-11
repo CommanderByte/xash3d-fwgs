@@ -1,6 +1,6 @@
 #include "server_packet_entities_delta_adapter.h"
 
-#include "engine/server/server_packet_entities_delta.hpp"
+#include "engine/server/messaging/server_packet_entities_delta.hpp"
 
 static_assert(SV_PACKET_ENTITY_HEADER_FULL ==
 	static_cast<int>(xash::engine::server::PacketEntityHeaderAction::Full),

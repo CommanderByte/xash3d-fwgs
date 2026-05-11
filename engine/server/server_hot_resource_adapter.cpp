@@ -1,6 +1,6 @@
 #include "server_hot_resource_adapter.h"
 
-#include "engine/server/server_hot_resource.hpp"
+#include "engine/server/resources/server_hot_resource.hpp"
 #include "resource_adapter_shared.hpp"
 
 namespace

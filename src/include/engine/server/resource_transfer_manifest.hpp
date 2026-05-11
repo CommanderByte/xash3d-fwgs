@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_RESOURCE_TRANSFER_MANIFEST_FORWARD_HPP
-#define XASH_ENGINE_SERVER_RESOURCE_TRANSFER_MANIFEST_FORWARD_HPP
-
-#include "engine/server/resources/resource_transfer_manifest.hpp"
-
-#endif

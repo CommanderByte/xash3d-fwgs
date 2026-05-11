@@ -1,6 +1,6 @@
 #include "server_upload_queue_adapter.h"
 
-#include "engine/server/server_upload_queue.hpp"
+#include "engine/server/resources/server_upload_queue.hpp"
 #include "resource_adapter_shared.hpp"
 
 namespace adapter = xash::engine::server::adapter;

@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_USERINFO_MESSAGE_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_USERINFO_MESSAGE_FORWARD_HPP
-
-#include "engine/server/messaging/server_userinfo_message.hpp"
-
-#endif

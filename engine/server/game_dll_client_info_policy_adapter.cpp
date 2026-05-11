@@ -1,6 +1,6 @@
 #include "game_dll_client_info_policy_adapter.h"
 
-#include "engine/server/game_dll_client_info_policy.hpp"
+#include "engine/server/game_dll/game_dll_client_info_policy.hpp"
 
 namespace
 {

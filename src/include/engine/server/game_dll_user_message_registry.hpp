@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_GAME_DLL_USER_MESSAGE_REGISTRY_FORWARD_HPP
-#define XASH_ENGINE_SERVER_GAME_DLL_USER_MESSAGE_REGISTRY_FORWARD_HPP
-
-#include "engine/server/game_dll/game_dll_user_message_registry.hpp"
-
-#endif

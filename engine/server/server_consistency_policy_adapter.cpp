@@ -1,6 +1,6 @@
 #include "server_consistency_policy_adapter.h"
 
-#include "engine/server/server_consistency_policy.hpp"
+#include "engine/server/resources/server_consistency_policy.hpp"
 #include "resource_adapter_shared.hpp"
 
 #include <cstring>

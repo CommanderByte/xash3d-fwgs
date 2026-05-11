@@ -1,6 +1,6 @@
 #include "server_frame_datagram_adapter.h"
 
-#include "engine/server/server_frame_datagram.hpp"
+#include "engine/server/messaging/server_frame_datagram.hpp"
 
 namespace
 {

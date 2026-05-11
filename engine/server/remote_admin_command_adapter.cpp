@@ -1,6 +1,6 @@
 #include "remote_admin_command_adapter.h"
 
-#include "engine/server/remote_admin_command.hpp"
+#include "engine/server/client/remote_admin_command.hpp"
 
 static_assert(SV_REMOTE_ADMIN_AUTH_IGNORE_DISABLED ==
 	static_cast<int>(xash::engine::server::RemoteAdminAuthAction::IgnoreDisabled),

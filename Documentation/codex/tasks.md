@@ -2766,7 +2766,7 @@ Phase 89 covers user-message registry policy.
   `Documentation/codex/legacy/engine/game-dll-callback-inventory.md`.
 - [x] `ENG-GAMEDLL-007` Establish a bounded post-audit phase lane with a clear
   start/end scope for game DLL bridge work.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md` and
+  Evidence: `Documentation/codex/done/todo/game_dll_bridge_todo.md` and
   `Documentation/codex/modern/engine/game-dll-bridge-boundary.md`.
 
 ## Phase 87: Game DLL Enginefuncs Metadata
@@ -2794,7 +2794,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GAMEDLL-MSG-001` Baseline `pfnMessageBegin()`,
   `pfnMessageEnd()`, write primitives, size accounting, overflow clearing, and
   rewrite rules.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+  Evidence: `Documentation/codex/done/todo/game_dll_bridge_todo.md`.
 - [x] `ENG-GAMEDLL-MSG-002` Implement a mockable message-session state machine
   for begin/write/end validation and byte counting.
   Evidence: `src/include/engine/server/game_dll/game_dll_message_session.hpp` and
@@ -2824,7 +2824,7 @@ Phase 89 covers user-message registry policy.
 
 - [x] `ENG-GAMEDLL-USERMSG-001` Baseline `pfnRegUserMsg()` duplicate,
   invalid-name, invalid-size, capacity, and active-server resend behavior.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+  Evidence: `Documentation/codex/done/todo/game_dll_bridge_todo.md`.
 - [x] `ENG-GAMEDLL-USERMSG-002` Implement a target-neutral user-message
   registration policy helper.
   Evidence: `src/include/engine/server/game_dll/game_dll_user_message_registry.hpp`
@@ -2855,7 +2855,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GAMEDLL-OUTPUT-001` Baseline `pfnServerCommand()`,
   `pfnClientCommand()`, `pfnClientPrintf()`, `pfnServerPrint()`,
   `pfnAlertMessage()`, and `pfnEndSection()`.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+  Evidence: `Documentation/codex/done/todo/game_dll_bridge_todo.md`.
 - [x] `ENG-GAMEDLL-OUTPUT-002` Extract command validation and
   output-classification helpers where they can stay target-neutral.
   Evidence: `src/include/engine/server/game_dll/game_dll_output_policy.hpp` and
@@ -3137,7 +3137,7 @@ Phase 89 covers user-message registry policy.
   role.
   Evidence: `Documentation/codex/modern/engine/milestone-100-server-modernization-audit.md`,
   `Documentation/codex/modern/engine/server-constants-constraints.md`,
-  `Documentation/codex/todo/server_constants_todo.md`.
+  `Documentation/codex/done/todo/server_constants_todo.md`.
 - [x] `ENG-SVCONST-002` Add a modern `server_limits` contract for safe mirror
   constants.
   Evidence: `src/include/engine/server/server_limits.hpp` and
@@ -3161,7 +3161,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-SVCHAL-001` Baseline challenge-window behavior in `sv_client.c`.
   Evidence:
   `Documentation/codex/modern/engine/server-challenge-window-policy.md`,
-  `Documentation/codex/todo/server_constants_todo.md`.
+  `Documentation/codex/done/todo/server_constants_todo.md`.
 - [x] `ENG-SVCHAL-002` Extract challenge time-window calculation as a pure
   helper.
   Evidence: `src/include/engine/server/client/server_challenge_policy.hpp`,
@@ -3191,7 +3191,7 @@ Phase 89 covers user-message registry policy.
   client entity count calculation.
   Evidence:
   `Documentation/codex/modern/engine/server-lifecycle-limits-policy.md`,
-  `Documentation/codex/todo/server_constants_todo.md`.
+  `Documentation/codex/done/todo/server_constants_todo.md`.
 - [x] `ENG-SVLIFE-002` Add pure helpers and tests for lifecycle limits.
   Evidence: `src/include/engine/server/server_lifecycle_limits.hpp`,
   `src/engine/server/server_lifecycle_limits.cpp`,
@@ -3219,7 +3219,7 @@ Phase 89 covers user-message registry policy.
   limit, and movement epsilon.
   Evidence:
   `Documentation/codex/modern/engine/server-movement-constraints.md`,
-  `Documentation/codex/todo/server_constants_todo.md`.
+  `Documentation/codex/done/todo/server_constants_todo.md`.
 - [x] `ENG-SVMOVE-002` Add modern constants/tests that distinguish server
   physics constraints from GL and `pm_shared` constants with similar names.
   Evidence: `src/include/engine/server/server_movement_constraints.hpp`,
@@ -3248,7 +3248,7 @@ Phase 89 covers user-message registry policy.
   related visibility capacity behavior.
   Evidence:
   `Documentation/codex/modern/engine/server-visibility-constraints.md`,
-  `Documentation/codex/todo/server_constants_todo.md`.
+  `Documentation/codex/done/todo/server_constants_todo.md`.
 - [x] `ENG-SVVIS-002` Add a shared modern capacity helper and tests.
   Evidence: `src/include/engine/server/server_visibility_constraints.hpp`,
   `src/engine/server/server_visibility_constraints.cpp`,
@@ -3276,7 +3276,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-SVROUTE-001` Review constants mirrored in Phases 101-105.
   Evidence:
   `Documentation/codex/modern/engine/server-route-through-review.md`,
-  `Documentation/codex/todo/server_constants_todo.md`.
+  `Documentation/codex/done/todo/server_constants_todo.md`.
 - [x] `ENG-SVROUTE-002` Choose the safest small route-through call sites.
   Evidence: Phase 106 adds no new route-through because the safe small sites
   were already handled by Phases 102-105; remaining candidates are deferred to
@@ -3297,7 +3297,7 @@ Phase 89 covers user-message registry policy.
 
 - [x] `ENG-SVGROUP-001` Inventory `GROUP_OP_*`, `svs.groupop`,
   `svs.groupmask`, and entity `groupinfo` checks across server code.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`,
+  Evidence: `Documentation/codex/done/todo/engine_next_migration_todo.md`,
   `Documentation/codex/modern/engine/post-106-migration-audit.md`,
   `Documentation/codex/modern/engine/server-group-filter-policy.md`.
 - [x] `ENG-SVGROUP-002` Add target-neutral group-filter predicates and focused
@@ -3324,7 +3324,7 @@ Phase 89 covers user-message registry policy.
 
 - [x] `ENG-SVMAP-001` Baseline `SV_MapIsValid()` flag interpretation in
   changelevel, command lifecycle, and save/load paths.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`,
+  Evidence: `Documentation/codex/done/todo/engine_next_migration_todo.md`,
   `Documentation/codex/modern/engine/server-map-validation-policy.md`.
 - [x] `ENG-SVMAP-002` Add target-neutral result classification for
   `MAP_IS_EXIST`, `MAP_HAS_LANDMARK`, and `MAP_INVALID_VERSION`.
@@ -3348,7 +3348,7 @@ Phase 89 covers user-message registry policy.
 
 - [x] `ENG-SVCLIENTFLAGS-001` Group `FCL_*` uses by owner: fake client, HLTV,
   prediction/local weapons, frame send/resend/skip, resources, and consistency.
-  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`,
+  Evidence: `Documentation/codex/done/todo/engine_next_migration_todo.md`,
   `Documentation/codex/modern/engine/server-client-flag-policy.md`.
 - [x] `ENG-SVCLIENTFLAGS-002` Add typed client flag snapshots and predicates for
   one owner at a time, starting with fake-client and HLTV behavior.
@@ -3469,7 +3469,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-RESGROUP-001` Audit resource-transfer ownership across `sv_init.c`,
   `sv_custom.c`, `sv_client.c`, and `sv_game.c`.
   Evidence: `Documentation/codex/modern/engine/resource-transfer-consolidation-audit.md`,
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`.
 - [x] `ENG-RESGROUP-002` Map existing modern resource helpers into a future
   resource-transfer domain without moving files yet.
   Evidence: `Documentation/codex/modern/engine/resource-transfer-consolidation-audit.md`.
@@ -3549,7 +3549,7 @@ Phase 89 covers user-message registry policy.
   event, frame-datagram, and spawn-handshake message ownership.
   Evidence: `Documentation/codex/modern/engine/server-messaging-consolidation-audit.md`
   maps legacy ownership across `sv_cmds.c`, `sv_client.c`, `sv_game.c`, and
-  `sv_frame.c`; `Documentation/codex/todo/server_consolidation_roadmap_todo.md`
+  `sv_frame.c`; `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`
   now records the Phase 118 outcome.
 - [x] `ENG-MSGGROUP-002` Separate payload writers, recipient routing, reliable
   buffer selection, and rendered-console concerns.
@@ -3629,7 +3629,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GDLLGROUP-001` Audit the current game DLL helper surface against
   bridge, lifecycle, entity, messaging, resource, world-query, movement,
   output, string-pool, and changelevel submodules.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`
+  Evidence: `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`
   and `Documentation/codex/modern/engine/game-dll-bridge-submodule-plan.md`.
 - [x] `ENG-GDLLGROUP-002` Decide which submodules can live under
   `src/engine/server/game_dll` later without changing ABI table order.
@@ -3701,7 +3701,7 @@ Phase 89 covers user-message registry policy.
   Evidence:
   `Documentation/codex/modern/engine/game-dll-message-bridge-adapter-pilot.md`,
   `Documentation/codex/modern/engine/game-dll-message-bridge-aggregate.md`,
-  and `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+  and `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`.
 - [x] `ENG-GDLLADAPT-004` Run focused game DLL bridge tests and full
   validation.
   Evidence: `.\waf.bat build
@@ -3718,7 +3718,7 @@ Phase 89 covers user-message registry policy.
   userinfo, command, transfer, voice, cvar-query, and remote-admin ownership.
   Evidence:
   `Documentation/codex/modern/engine/client-session-boundary-audit.md` and
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`.
 - [x] `ENG-CLIENTGROUP-002` Identify which current helpers are client/session
   concepts and which are still one-call adapters.
   Evidence:
@@ -3797,7 +3797,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-RUNTIME-001` Audit `sv_main.c` cvar registration, read-only cvar
   access, movevars, timeout loops, packet reads, master heartbeat, and shutdown.
   Evidence:
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`;
   `Documentation/codex/modern/engine/server-runtime-configuration-boundary.md`.
 - [x] `ENG-RUNTIME-002` Identify read-only snapshot seams that reduce adapter
   churn without moving cvar ownership.
@@ -3820,7 +3820,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-OPCMD-001` Audit `sv_cmds.c` operator commands, lifecycle commands,
   status/info commands, and registration ownership.
   Evidence:
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`;
   `Documentation/codex/modern/engine/server-operator-command-boundary.md`.
 - [x] `ENG-OPCMD-002` Identify command-table or command-lifecycle concepts
   that are reusable instead of old function wrappers.
@@ -3845,7 +3845,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-FRAMESNAP-001` Audit `sv_frame.c` packet entity selection, baseline
   deltas, events, pings, clientdata, datagrams, and inactive-client handling.
   Evidence:
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`;
   `Documentation/codex/modern/engine/server-frame-snapshot-boundary.md`.
 - [x] `ENG-FRAMESNAP-002` Identify which snapshot decisions can be tested with
   plain fixtures before touching `client_frame_t` mutation.
@@ -3895,7 +3895,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-WORLDLINK-001` Audit `sv_world.c` area tree, link/unlink, touch
   trigger, water links, and group-filter usage.
   Evidence:
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`;
   `Documentation/codex/modern/engine/server-world-link-boundary.md`.
 - [x] `ENG-WORLDLINK-002` Identify fixture needs for touch and link behavior
   before any route-through.
@@ -3919,7 +3919,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-WORLDPHYS-001` Audit `sv_world.c`, `sv_phys.c`, and `sv_move.c` for
   trace, hull, clip, pusher, toss, step, gravity, and monster-move ownership.
   Evidence: `Documentation/codex/modern/engine/server-world-physics-fixture-audit.md`
-  and `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+  and `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`.
 - [x] `ENG-WORLDPHYS-002` Define synthetic or golden fixtures required before
   route-through of traces or physics loops.
   Evidence: `Documentation/codex/modern/engine/server-world-physics-fixture-audit.md`
@@ -3943,7 +3943,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-PMOVE-001` Audit `sv_pmove.c` PMove setup, physent population,
   unlag, interpolants, and `SV_RunCmd()` ownership.
   Evidence: `Documentation/codex/modern/engine/server-pmove-bridge-boundary.md`
-  and `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+  and `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`.
 - [x] `ENG-PMOVE-002` Identify plain-value snapshots that could support future
   PMove bridge tests.
   Evidence: `Documentation/codex/modern/engine/server-pmove-bridge-boundary.md`
@@ -3989,7 +3989,7 @@ Phase 89 covers user-message registry policy.
   without breaking ABI, protocol, save, or game DLL compatibility.
   Evidence: `Documentation/codex/modern/engine/milestone-134-server-progress-audit.md`.
 - [x] `ENG-SERVER-MILESTONE-004` Add the next post-134 server phases.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: `Documentation/codex/done/todo/server_post_134_consolidation_todo.md`.
 
 ## Phase 136: Server Domain Layout Plan
 
@@ -4020,8 +4020,8 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-RES-DOMAIN-003` Move or group modern resource-domain files only if
   the Phase 136 layout makes the change low-risk.
   Evidence: `src/engine/server/resources/`,
-  `src/include/engine/server/resources/`, and flat forwarding headers under
-  `src/include/engine/server/`.
+  `src/include/engine/server/resources/`; temporary flat forwarding headers
+  were removed later by the server domain header cleanup pass.
 - [x] `ENG-RES-DOMAIN-004` Keep HPAK, filesystem probes, resource linked
   lists, netchan fragments, and game DLL callbacks legacy-owned.
   Evidence: `Documentation/codex/modern/engine/resource-transfer-domain-pilot.md`.
@@ -4072,8 +4072,8 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GAMEDLL-DOMAIN-003` Consider grouped implementation files only
   where they reduce adapter confusion.
   Evidence: implementation files stayed split inside
-  `src/engine/server/game_dll/`, with flat forwarding headers kept for
-  compatibility.
+  `src/engine/server/game_dll/`; temporary flat forwarding headers were
+  removed later by the server domain header cleanup pass.
 - [x] `ENG-GAMEDLL-DOMAIN-004` Keep DLL lifetime, `enginefuncs_t` order,
   `svgame`, edict storage, and callback calls legacy-owned.
   Evidence: only target-neutral modern files and private include paths moved;
@@ -4091,8 +4091,8 @@ Phase 89 covers user-message registry policy.
   session slots, userinfo, commands, transfer, voice, cvar query, and remote
   admin.
   Evidence: `src/engine/server/client/`,
-  `src/include/engine/server/client/`, and flat forwarding headers under
-  `src/include/engine/server/`.
+  `src/include/engine/server/client/`; temporary flat forwarding headers were
+  removed later by the server domain header cleanup pass.
 - [x] `ENG-CLIENT-DOMAIN-002` Identify which helpers belong to client/session
   and which should stay with resource or messaging domains.
   Evidence: `Documentation/codex/modern/engine/client-session-domain-pilot.md`
@@ -4615,14 +4615,14 @@ Phase 89 covers user-message registry policy.
 | 2026-05-10 | DEC-054 | After the Phase 50 milestone, use server-side engine code as the next coherent migration lane, starting with `sv_filter.c` and then source-query response building, while deferring renderer, memory, savegame, and rendered-console work. | `modern/milestone-50-structure-audit.md` |
 | 2026-05-10 | DEC-055 | Treat `server.h`, `SV_*`, `Log_*`, `sv`, `svs`, `svgame`, command/cvar names, save/config files, and packet payloads as server compatibility boundaries; pure modern server logic should live under `src/engine/server` and receive snapshots or plain values from legacy adapters. | `legacy/engine/server-boundary-audit.md`, `modern/engine/server-migration-guide.md` |
 | 2026-05-10 | DEC-056 | For the first server filter migration, keep legacy linked lists, commands, file writes, client iteration, and `host.realtime` ownership in `sv_filter.c`; route only rule activity, ID prefix matching, IP matching, and IP removal-selector policy through modern server helpers. | `legacy/engine/server-filter-baseline.md`, `modern/engine/server-filter-migration.md`, `src/engine/server/server_filter.cpp`, `engine/server/server_filter_adapter.cpp` |
-| 2026-05-11 | DEC-057 | After the Phase 101-106 server constants lane, prefer small enabler policies before another broad server sweep: group filtering, map validation flags, client flag predicates, event playback, and read-only cvar snapshots. | `modern/engine/post-106-migration-audit.md`, `todo/engine_next_migration_todo.md` |
+| 2026-05-11 | DEC-057 | After the Phase 101-106 server constants lane, prefer small enabler policies before another broad server sweep: group filtering, map validation flags, client flag predicates, event playback, and read-only cvar snapshots. | `modern/engine/post-106-migration-audit.md`, `done/todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-058 | Treat C++ namespace/facade wrappers as migration scaffolding, not the final architecture; after behavior is protected by tests, regroup helpers into named domain concepts with clearer ownership and thinner adapters. | `modern/cpp-ownership-target.md`, `modern/engine/post-106-migration-audit.md` |
 | 2026-05-11 | DEC-059 | Centralize `SV_MapIsValid()` flag interpretation in a modern map-validation policy while leaving BSP probing, entity parsing, landmark scanning, console output, save state, and changelevel execution legacy-owned. | `modern/engine/server-map-validation-policy.md`, `src/include/engine/server/server_map_validation.hpp` |
 | 2026-05-11 | DEC-060 | Treat private `FCL_*` checks as client capability predicates by owner, starting with source-query fake-client visibility, and avoid broad replacement of the `server.h` macros. | `modern/engine/server-client-flag-policy.md`, `src/include/engine/server/client/client_policy.hpp` |
-| 2026-05-11 | DEC-061 | Treat server event playback as a staged policy boundary: first isolate event admission, recipient decisions, and queue-slot planning while keeping game DLL ABI, PVS/PHS masks, event queues, and message serialization legacy-owned. | `modern/engine/server-event-playback-boundary.md`, `todo/engine_next_migration_todo.md` |
+| 2026-05-11 | DEC-061 | Treat server event playback as a staged policy boundary: first isolate event admission, recipient decisions, and queue-slot planning while keeping game DLL ABI, PVS/PHS masks, event queues, and message serialization legacy-owned. | `modern/engine/server-event-playback-boundary.md`, `done/todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-062 | Route server event playback decisions through `server_event_playback_policy` while keeping event argument mutation, visibility masks, queue mutation, and wire serialization in legacy server code. | `modern/engine/server-event-playback-policy.md`, `engine/server/sv_game.c`, `engine/server/sv_frame.c` |
 | 2026-05-11 | DEC-063 | Introduce read-only cvar snapshots as plain values for modern policy helpers, starting with `SV_ProcessUserAgent()` input-device booleans, while keeping cvar registration, mutation, callbacks, command bindings, and archive persistence legacy-owned. | `modern/engine/read-only-cvar-snapshot.md`, `src/include/engine/cvar_snapshot.hpp`, `engine/server/sv_main.c` |
 | 2026-05-11 | DEC-064 | Defer any broad model/visibility route-through until synthetic or golden fixtures cover BSP visibility and hull traversal; in the meantime, use only small request/route snapshot helpers around legacy-owned `model_t`, PVS/PAS, edict leaf, and trace state. | `modern/engine/model-visibility-service-boundary.md` |
 | 2026-05-11 | DEC-065 | Keep the current one-helper-per-seam layout as migration scaffolding, but use resource transfer, server messaging, game DLL bridge, client/session, and world/runtime concepts as the next consolidation boundaries; do not collapse adapters unless the grouped file maps to one of those domains. | `modern/engine/server-cpp-ownership-consolidation.md`, `modern/cpp-ownership-target.md` |
-| 2026-05-11 | DEC-066 | Use Phases 115-134 as the next server roadmap, ordered from lower-risk consolidation domains toward high-fixture-risk world, PMove, and runtime save/restore ownership; continue the audit-test-helper-adapter-validation pattern for each lane. | `todo/server_consolidation_roadmap_todo.md`, `tasks.md` |
-| 2026-05-11 | DEC-067 | For resource-transfer consolidation, start with aggregate tests around a target-neutral resource manifest/list-view; keep `sv.resources[]`, `resource_t` linked lists, HPAK, filesystem probes, transfer cvars, netchan fragments, and game DLL callbacks legacy-owned until the manifest seam is proven. | `modern/engine/resource-transfer-consolidation-audit.md`, `todo/server_consolidation_roadmap_todo.md` |
+| 2026-05-11 | DEC-066 | Use Phases 115-134 as the next server roadmap, ordered from lower-risk consolidation domains toward high-fixture-risk world, PMove, and runtime save/restore ownership; continue the audit-test-helper-adapter-validation pattern for each lane. | `done/todo/server_consolidation_roadmap_todo.md`, `tasks.md` |
+| 2026-05-11 | DEC-067 | For resource-transfer consolidation, start with aggregate tests around a target-neutral resource manifest/list-view; keep `sv.resources[]`, `resource_t` linked lists, HPAK, filesystem probes, transfer cvars, netchan fragments, and game DLL callbacks legacy-owned until the manifest seam is proven. | `modern/engine/resource-transfer-consolidation-audit.md`, `done/todo/server_consolidation_roadmap_todo.md` |

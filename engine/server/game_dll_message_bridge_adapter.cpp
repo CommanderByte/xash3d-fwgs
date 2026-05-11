@@ -3,8 +3,8 @@
 
 #include "common.h"
 #include "const.h"
-#include "engine/server/game_dll_message_session.hpp"
-#include "engine/server/game_dll_user_message_registry.hpp"
+#include "engine/server/game_dll/game_dll_message_session.hpp"
+#include "engine/server/game_dll/game_dll_user_message_registry.hpp"
 #include "protocol.h"
 
 static_assert(MSG_BROADCAST == xash::engine::server::kGameDllMessageDestinationBroadcast,

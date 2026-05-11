@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_PACKET_ENTITIES_DELTA_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_PACKET_ENTITIES_DELTA_FORWARD_HPP
-
-#include "engine/server/messaging/server_packet_entities_delta.hpp"
-
-#endif

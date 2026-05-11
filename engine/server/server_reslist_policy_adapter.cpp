@@ -1,6 +1,6 @@
 #include "server_reslist_policy_adapter.h"
 
-#include "engine/server/server_reslist_policy.hpp"
+#include "engine/server/resources/server_reslist_policy.hpp"
 #include "resource_adapter_shared.hpp"
 #include "utilities/path.hpp"
 

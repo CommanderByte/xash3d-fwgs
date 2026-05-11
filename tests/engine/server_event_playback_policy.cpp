@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_event_playback_policy.hpp"
+#include "engine/server/messaging/server_event_playback_policy.hpp"
 
 using namespace xash::engine::server;
 

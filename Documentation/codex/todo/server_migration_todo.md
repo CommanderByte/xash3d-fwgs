@@ -5,7 +5,7 @@ This TODO tracks the active server-side engine migration lane opened by Phase
 the main phase tracker until they are selected.
 
 Post-Phase-106 enabler work continues in
-[`engine_next_migration_todo.md`](engine_next_migration_todo.md), which tracks
+[`engine_next_migration_todo.md`](../done/todo/engine_next_migration_todo.md), which tracks
 group filtering, map validation flags, client flag predicates, event playback,
 and read-only cvar snapshots.
 
@@ -701,7 +701,7 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
   Evidence: `git diff --check` passed. No focused adapter tests were added in
   this audit-only phase.
 - [x] Establish the post-audit game DLL bridge phase lane.
-  Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
+  Evidence: `Documentation/codex/done/todo/game_dll_bridge_todo.md`.
 
 ## Deferred Server Items
 
@@ -710,6 +710,6 @@ Goal: plan the long-term `sv_game.c` split without breaking the game DLL ABI.
 - [ ] Runtime save/restore migration after real-save fixtures and game DLL field
   serialization coverage exist.
 - [ ] Game DLL bridge migration through the dedicated post-86 lane in
-  `Documentation/codex/todo/game_dll_bridge_todo.md`, with explicit ABI
+  `Documentation/codex/done/todo/game_dll_bridge_todo.md`, with explicit ABI
   preservation and later licensing review.
 - [ ] Physics/world migration after movement and trace fixtures exist.

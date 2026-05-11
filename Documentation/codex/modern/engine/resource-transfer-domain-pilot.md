@@ -30,9 +30,9 @@ These files moved from the flat `src/engine/server/` layer into
 - `server_reslist_policy.cpp`
 
 The matching C++ contracts moved into
-`src/include/engine/server/resources/`. The previous flat header paths under
-`src/include/engine/server/` remain as forwarding headers, so existing tests
-and legacy adapters can keep their includes until a later cleanup pass.
+`src/include/engine/server/resources/`. A later cleanup pass removed the
+temporary flat forwarding headers under `src/include/engine/server/`, so
+internal code should include the canonical `engine/server/resources/...` paths.
 
 ## Messaging Boundary
 

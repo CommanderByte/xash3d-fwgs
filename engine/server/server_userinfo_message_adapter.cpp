@@ -1,6 +1,6 @@
 #include "server_userinfo_message_adapter.h"
 
-#include "engine/server/server_userinfo_message.hpp"
+#include "engine/server/messaging/server_userinfo_message.hpp"
 #include "server_message_adapter_shared.hpp"
 
 extern "C" sv_userinfo_message_write_result_t SV_UserinfoMessage_WritePayload(

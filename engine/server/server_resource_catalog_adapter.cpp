@@ -1,6 +1,6 @@
 #include "server_resource_catalog_adapter.h"
 
-#include "engine/server/server_resource_catalog.hpp"
+#include "engine/server/resources/server_resource_catalog.hpp"
 #include "resource_adapter_shared.hpp"
 
 namespace

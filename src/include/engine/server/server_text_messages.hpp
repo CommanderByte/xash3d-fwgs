@@ -1,6 +1,0 @@
-#ifndef XASH_ENGINE_SERVER_SERVER_TEXT_MESSAGES_FORWARD_HPP
-#define XASH_ENGINE_SERVER_SERVER_TEXT_MESSAGES_FORWARD_HPP
-
-#include "engine/server/messaging/server_text_messages.hpp"
-
-#endif

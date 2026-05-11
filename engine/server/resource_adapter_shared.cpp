@@ -1,6 +1,6 @@
 #include "resource_adapter_shared.hpp"
 
-#include "engine/server/resource_transfer_manifest.hpp"
+#include "engine/server/resources/resource_transfer_manifest.hpp"
 
 #include <cstddef>
 #include <cstdio>

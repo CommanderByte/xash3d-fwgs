@@ -4,7 +4,7 @@
 #include "engine/server/resources/resource_identity.hpp"
 #include "engine/server/resources/server_download_policy.hpp"
 #include "engine/server/resources/server_resource_catalog.hpp"
-#include "engine/server/server_resource_message.hpp"
+#include "engine/server/messaging/server_resource_message.hpp"
 
 #include <cstddef>
 #include <cstdint>

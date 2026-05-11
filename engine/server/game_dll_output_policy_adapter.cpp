@@ -1,7 +1,7 @@
 #include "game_dll_output_policy_adapter.h"
 
 #include "common.h"
-#include "engine/server/game_dll_output_policy.hpp"
+#include "engine/server/game_dll/game_dll_output_policy.hpp"
 #include "eiface.h"
 
 static_assert(at_notice == xash::engine::server::kGameDllAlertNotice,

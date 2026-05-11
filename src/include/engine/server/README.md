@@ -6,21 +6,18 @@ Headers in this folder should expose plain value types and small services used
 by tests and legacy adapters. They should not expose game DLL, renderer,
 filesystem module, or platform-specific types.
 
-`resources/` contains grouped resource-domain contracts. The flat resource
-headers in this directory currently forward to that subdirectory for adapter
-compatibility.
+`resources/` contains grouped resource-domain contracts. Include these headers
+through their canonical `engine/server/resources/...` paths.
 
 `messaging/` contains grouped message payload, recipient, frame send-gate, and
-packet-entity cursor contracts. The flat messaging headers in this directory
-currently forward to that subdirectory for adapter compatibility.
+packet-entity cursor contracts. Include these headers through their canonical
+`engine/server/messaging/...` paths.
 
-`game_dll/` contains grouped game DLL bridge contracts. The flat game DLL
-headers in this directory currently forward to that subdirectory so legacy
-adapters can keep their includes while the modern module has a clearer home.
+`game_dll/` contains grouped game DLL bridge contracts. Include these headers
+through their canonical `engine/server/game_dll/...` paths.
 
-`client/` contains grouped client/session/admission contracts. The flat
-client-facing headers in this directory currently forward to that subdirectory
-for adapter compatibility.
+`client/` contains grouped client/session/admission contracts. Include these
+headers through their canonical `engine/server/client/...` paths.
 
 Current helpers:
 

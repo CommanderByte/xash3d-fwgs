@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/client_session_slots.hpp"
+#include "engine/server/client/client_session_slots.hpp"
 #include "engine/server/server_limits.hpp"
 
 using namespace xash::engine::server;

@@ -2,8 +2,9 @@
 
 Phase 139 physically groups the modern game DLL bridge helpers under
 `src/engine/server/game_dll/` and `src/include/engine/server/game_dll/`.
-The existing flat headers under `src/include/engine/server/` remain forwarding
-headers so legacy adapters and earlier tests do not need a broad include churn.
+A later cleanup pass removed the temporary flat forwarding headers under
+`src/include/engine/server/`, so internal code now includes the canonical
+`engine/server/game_dll/...` paths directly.
 
 ## Domain Shape
 

@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/server_reslist_policy.hpp"
+#include "engine/server/resources/server_reslist_policy.hpp"
 
 using namespace xash::engine::server;
 

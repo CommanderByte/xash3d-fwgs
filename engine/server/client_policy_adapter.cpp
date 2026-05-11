@@ -1,6 +1,6 @@
 #include "client_policy_adapter.h"
 
-#include "engine/server/client_policy.hpp"
+#include "engine/server/client/client_policy.hpp"
 
 namespace
 {

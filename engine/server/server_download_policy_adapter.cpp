@@ -1,6 +1,6 @@
 #include "server_download_policy_adapter.h"
 
-#include "engine/server/server_download_policy.hpp"
+#include "engine/server/resources/server_download_policy.hpp"
 #include "resource_adapter_shared.hpp"
 
 #include <cstring>

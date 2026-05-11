@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_multicast_policy.hpp"
+#include "engine/server/messaging/server_multicast_policy.hpp"
 
 using namespace xash::engine::server;
 

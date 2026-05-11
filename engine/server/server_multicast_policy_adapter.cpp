@@ -1,7 +1,7 @@
 #include "server_multicast_policy_adapter.h"
 
 #include "const.h"
-#include "engine/server/server_multicast_policy.hpp"
+#include "engine/server/messaging/server_multicast_policy.hpp"
 
 static_assert(MSG_BROADCAST == xash::engine::server::kMulticastDestinationBroadcast,
 	"MSG_BROADCAST value changed");

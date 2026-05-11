@@ -1,6 +1,6 @@
 #include "server_timeout_policy_adapter.h"
 
-#include "engine/server/server_timeout_policy.hpp"
+#include "engine/server/client/server_timeout_policy.hpp"
 
 static_assert(SV_TIMEOUT_CLIENT_ACTION_NONE ==
 	static_cast<int>(xash::engine::server::ServerTimeoutClientAction::None),

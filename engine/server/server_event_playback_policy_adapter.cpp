@@ -1,6 +1,6 @@
 #include "server_event_playback_policy_adapter.h"
 
-#include "engine/server/server_event_playback_policy.hpp"
+#include "engine/server/messaging/server_event_playback_policy.hpp"
 
 namespace
 {

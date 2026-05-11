@@ -270,26 +270,21 @@ Because this glob is recursive, moving modern `.cpp` files below
 
 ### Modern private headers
 
-The project currently includes headers as flat paths, for example:
+Grouped domains now use their canonical include paths directly, for example:
 
 ```cpp
-#include "engine/server/server_resource_catalog.hpp"
-```
-
-Moving headers to subdirectories changes include paths. To avoid touching every
-adapter/test in the same commit, use one of these strategies:
-
-1. keep flat forwarding headers temporarily:
-
-```cpp
-// src/include/engine/server/server_resource_catalog.hpp
 #include "engine/server/resources/server_resource_catalog.hpp"
 ```
 
-2. or update the full domain in one commit and run full tests immediately.
+The temporary flat forwarding headers used during early pilots were removed by
+`server-domain-header-cleanup.md`. Future domain moves should update the affected
+adapter/test include paths in the same commit and run full validation
+immediately.
 
-Forwarding headers are preferred for the first physical move because they
-preserve adapter call sites while making the new layout visible.
+Forwarding headers were preferred for the first physical move because they
+preserved adapter call sites while making the new layout visible. A later
+cleanup pass removed those temporary headers after the grouped include paths
+were proven.
 
 ### Legacy adapters
 
@@ -344,13 +339,17 @@ resource helpers:
 1. create `src/engine/server/resources/` and
    `src/include/engine/server/resources/`;
 2. move only resource-domain `.cpp` and `.hpp` files;
-3. leave flat forwarding headers in `src/include/engine/server/`;
+3. historically, leave flat forwarding headers in `src/include/engine/server/`;
 4. keep adapters flat in `engine/server`;
 5. keep test files and target names unchanged;
 6. run the resource-focused tests, full tests, and a smoke build.
 
 This lets Phase 137 prove the layout policy on a domain with good existing
 coverage and relatively low runtime risk.
+
+Post-149 cleanup note: the temporary forwarding headers from this first move
+were removed once aggregate resource tests and adapter-shrink validation gave
+the grouped include paths enough coverage.
 
 ## Validation
 

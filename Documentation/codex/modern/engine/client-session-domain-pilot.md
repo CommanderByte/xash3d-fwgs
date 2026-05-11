@@ -2,8 +2,9 @@
 
 Phase 140 groups the target-neutral client/session helpers under
 `src/engine/server/client/` and `src/include/engine/server/client/`.
-The flat headers under `src/include/engine/server/` remain forwarding headers
-so adapters and focused tests can keep their includes during the transition.
+A later cleanup pass removed the temporary flat forwarding headers under
+`src/include/engine/server/`, so adapters and focused tests now include the
+canonical `engine/server/client/...` paths directly.
 
 ## Domain Shape
 

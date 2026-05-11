@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_frame_datagram.hpp"
+#include "engine/server/messaging/server_frame_datagram.hpp"
 
 using namespace xash::engine::server;
 

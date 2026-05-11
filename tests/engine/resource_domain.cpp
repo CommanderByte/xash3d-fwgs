@@ -3,18 +3,18 @@
 #include <cstring>
 
 #include "engine/network/network_buffer.hpp"
-#include "engine/server/game_dll_resource_policy.hpp"
-#include "engine/server/resource_identity.hpp"
-#include "engine/server/resource_transfer_manifest.hpp"
-#include "engine/server/server_consistency_list.hpp"
-#include "engine/server/server_consistency_policy.hpp"
-#include "engine/server/server_customization_message.hpp"
-#include "engine/server/server_download_policy.hpp"
-#include "engine/server/server_hot_resource.hpp"
-#include "engine/server/server_reslist_policy.hpp"
-#include "engine/server/server_resource_catalog.hpp"
-#include "engine/server/server_resource_message.hpp"
-#include "engine/server/server_upload_queue.hpp"
+#include "engine/server/game_dll/game_dll_resource_policy.hpp"
+#include "engine/server/resources/resource_identity.hpp"
+#include "engine/server/resources/resource_transfer_manifest.hpp"
+#include "engine/server/resources/server_consistency_list.hpp"
+#include "engine/server/resources/server_consistency_policy.hpp"
+#include "engine/server/messaging/server_customization_message.hpp"
+#include "engine/server/resources/server_download_policy.hpp"
+#include "engine/server/resources/server_hot_resource.hpp"
+#include "engine/server/resources/server_reslist_policy.hpp"
+#include "engine/server/resources/server_resource_catalog.hpp"
+#include "engine/server/messaging/server_resource_message.hpp"
+#include "engine/server/resources/server_upload_queue.hpp"
 
 using namespace xash::engine::network;
 using namespace xash::engine::server;

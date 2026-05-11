@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/user_agent_policy.hpp"
+#include "engine/server/client/user_agent_policy.hpp"
 
 using namespace xash::engine::server;
 

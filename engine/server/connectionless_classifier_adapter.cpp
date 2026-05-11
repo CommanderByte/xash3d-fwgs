@@ -1,6 +1,6 @@
 #include "connectionless_classifier_adapter.h"
 
-#include "engine/server/connectionless_classifier.hpp"
+#include "engine/server/client/connectionless_classifier.hpp"
 
 namespace
 {

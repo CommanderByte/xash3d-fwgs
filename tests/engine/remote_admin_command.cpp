@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/remote_admin_command.hpp"
+#include "engine/server/client/remote_admin_command.hpp"
 
 using namespace xash::engine::server;
 

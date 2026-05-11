@@ -165,7 +165,7 @@ enablers that make future server and engine migrations less adapter-heavy.
   runtime/configuration, operator commands, frame snapshots, world/physics,
   PMove, and runtime save/restore ownership.
   Evidence: `Documentation/codex/tasks.md`,
-  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+  `Documentation/codex/done/todo/server_consolidation_roadmap_todo.md`.
 
 ## Later Candidates
 
