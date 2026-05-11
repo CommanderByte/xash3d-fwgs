@@ -163,36 +163,36 @@ Current implementation notes:
 - `resources/resource_identity.hpp` / `resources/resource_identity.cpp`: Phase
   62's implemented target-neutral custom resource identity helpers.
 - `resources/resource_transfer_manifest.hpp` /
-  `resources/resource_transfer_manifest.cpp`: aggregate resource descriptor
+  `resources/server_resource_flow.cpp`: aggregate resource descriptor
   manifest for catalog-to-download and resource-message flows.
 - `resources/server_resource_catalog.hpp` /
-  `resources/server_resource_catalog.cpp`: startup resource catalog planning
+  `resources/server_resource_flow.cpp`: startup resource catalog planning
   for generic, sound, model, decal, and event precaches.
-- `resources/server_download_policy.hpp` / `resources/server_download_policy.cpp`:
+- `resources/server_download_policy.hpp` / `resources/server_resource_flow.cpp`:
   Phase 63's implemented `SV_DownloadFile_f()` policy helper; legacy code still
   owns filesystem probes, HPAK reads, fail responses, and netchan fragments.
-- `resources/server_consistency_list.hpp` / `resources/server_consistency_list.cpp`:
+- `resources/server_consistency_list.hpp` / `resources/server_consistency.cpp`:
   Phase 67's implemented consistency-list encoder; legacy code still owns
   cvars, client flags, `resource_t`, and the destination message.
-- `resources/server_consistency_policy.hpp` / `resources/server_consistency_policy.cpp`:
+- `resources/server_consistency_policy.hpp` / `resources/server_consistency.cpp`:
   Phase 68's implemented consistency setup and response validation policy;
   legacy code still owns file hashing, model bounds probes, message reads,
   drops, and the game DLL consistency callback.
 - `messaging/server_customization_message.hpp` /
-  `messaging/server_customization_message.cpp`:
+  `messaging/server_state_payloads.cpp`:
   Phase 66's implemented customization payload encoder; legacy code still owns
   `svc_customization`, client netchan routing, and customization propagation.
 - `messaging/server_resource_message.hpp` /
-  `messaging/server_resource_message.cpp`: Phase 65's implemented resource-row
+  `messaging/server_state_payloads.cpp`: Phase 65's implemented resource-row
   encoder; legacy code still owns command wrappers, resource counts,
   consistency serialization, and netchan delivery.
-- `resources/server_upload_queue.hpp` / `resources/server_upload_queue.cpp`:
+- `resources/server_upload_queue.hpp` / `resources/server_resource_flow.cpp`:
   Phase 64's implemented upload queue policy helper; legacy code still owns
   `MSG_*`, HPAK probes, upload command emission, allocation, and resource-list
   mutation.
-- `resources/server_hot_resource.hpp` / `resources/server_hot_resource.cpp`:
+- `resources/server_hot_resource.hpp` / `resources/server_resource_flow.cpp`:
   hot-resource announcement planning for resources added after server startup.
-- `resources/server_reslist_policy.hpp` / `resources/server_reslist_policy.cpp`:
+- `resources/server_reslist_policy.hpp` / `resources/server_resource_flow.cpp`:
   `.res` and `reslist.txt` token classification for safe-download filtering and
   resource indexing.
 - `server-migration-guide.md`: how server-side helpers should move into

@@ -50,6 +50,15 @@ void WriteServerMessageString(
 		WriteServerMessageByte(buffer, static_cast<unsigned char>(value[i]));
 }
 
+void WriteServerMessageBytes(
+	xash::engine::network::NetworkBitBuffer &buffer,
+	const std::uint8_t *data,
+	std::size_t size)
+{
+	for (std::size_t i = 0; i < size; ++i)
+		WriteServerMessageByte(buffer, data ? data[i] : 0);
+}
+
 ServerMessageEnvelope BuildServerMessageEnvelope(
 	std::uint8_t command,
 	ServerMessageDeliveryClass deliveryClass)

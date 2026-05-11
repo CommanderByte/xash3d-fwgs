@@ -55,16 +55,19 @@ Evidence: `Documentation/codex/modern/engine/flat-server-module-rehome.md`.
 Goal: inspect each existing module and collapse only the parts that are clearer
 together than apart.
 
-- [ ] Review Session/client helpers and decide whether admission/query pieces
+- [x] Review Session/client helpers and decide whether admission/query pieces
   should group further.
-- [ ] Review Content/resource helpers and collapse duplicated consistency or
+- [x] Review Content/resource helpers and collapse duplicated consistency or
   transfer setup only where aggregate tests protect it.
-- [ ] Review Replication/messaging helpers and decide whether tiny payload
+- [x] Review Replication/messaging helpers and decide whether tiny payload
   writers or snapshot-adjacent helpers should group.
-- [ ] Review Game API/game DLL helpers and decide whether message
+- [x] Review Game API/game DLL helpers and decide whether message
   bridge/session/registry or entity lifecycle/parse pieces should share
   implementation or setup.
-- [ ] Run focused module tests and full validation.
+- [x] Run focused module tests and full validation.
+
+Phase 163 decisions are recorded in
+`Documentation/codex/modern/engine/submodule-collapse-pass.md`.
 
 ## Phase 164: Test Suite Consolidation Pass
 

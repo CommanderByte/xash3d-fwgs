@@ -4573,22 +4573,40 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 163: Submodule Collapse Pass
 
-- [ ] `ENG-SUBCOLLAPSE-001` Review Session/client helpers and decide whether
+- [x] `ENG-SUBCOLLAPSE-001` Review Session/client helpers and decide whether
   admission/query pieces should group further.
-  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
-- [ ] `ENG-SUBCOLLAPSE-002` Review Content/resource helpers and collapse
+  Evidence: `source_query.cpp` and `netapi_info.cpp` collapsed into
+  `src/engine/server/client/server_query_responses.cpp`; decision notes in
+  `Documentation/codex/modern/engine/submodule-collapse-pass.md`.
+- [x] `ENG-SUBCOLLAPSE-002` Review Content/resource helpers and collapse
   duplicated consistency or transfer setup only where aggregate tests protect
   it.
-  Evidence:
-- [ ] `ENG-SUBCOLLAPSE-003` Review Replication/messaging helpers and decide
+  Evidence: `server_consistency_list.cpp` and `server_consistency_policy.cpp`
+  collapsed into `src/engine/server/resources/server_consistency.cpp`; focused
+  consistency/resource-domain tests passed.
+- [x] `ENG-SUBCOLLAPSE-003` Review Replication/messaging helpers and decide
   whether tiny payload writers or snapshot-adjacent helpers should group.
-  Evidence:
-- [ ] `ENG-SUBCOLLAPSE-004` Review Game API/game DLL helpers and decide
+  Evidence: text/service emitters collapsed into
+  `src/engine/server/messaging/server_basic_messages.cpp`; userinfo,
+  resource-row, and customization emitters collapsed into
+  `src/engine/server/messaging/server_state_payloads.cpp`; shared byte/string
+  primitives centralized in `server_message_envelope`.
+- [x] `ENG-SUBCOLLAPSE-004` Review Game API/game DLL helpers and decide
   whether message bridge/session/registry or entity lifecycle/parse pieces
   should share implementation or setup.
-  Evidence:
-- [ ] `ENG-SUBCOLLAPSE-005` Run focused module tests and full validation.
-  Evidence:
+  Evidence: registry and bridge implementations collapsed into
+  `src/engine/server/game_dll/game_dll_user_messages.cpp`; message session,
+  entity lifecycle, and entity parse stayed separate by decision. Second pass
+  also collapsed shared helpers into `server_limits.cpp` and
+  `server_shared_rules.cpp`, and world helpers into `server_world_policies.cpp`.
+  Third pass collapsed resource flow into `server_resource_flow.cpp`, runtime
+  commands into `server_runtime_commands.cpp`, and save/restore into
+  `save_restore.cpp`.
+- [x] `ENG-SUBCOLLAPSE-005` Run focused module tests and full validation.
+  Evidence: focused collapse suites passed 16/16, 12/12, and 12/12 tests;
+  `xash` build passed, full tests passed 141/141, and
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 0.512 seconds with stop reason `command`.
 
 ## Phase 164: Test Suite Consolidation Pass
 

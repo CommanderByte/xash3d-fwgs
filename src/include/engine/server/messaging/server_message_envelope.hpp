@@ -6,6 +6,7 @@
 #include "engine/server/messaging/server_multicast_policy.hpp"
 #include "engine/server/messaging/server_voice_relay.hpp"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace xash
@@ -66,6 +67,10 @@ void WriteServerMessageCommand(
 void WriteServerMessageString(
 	xash::engine::network::NetworkBitBuffer &buffer,
 	const char *value);
+void WriteServerMessageBytes(
+	xash::engine::network::NetworkBitBuffer &buffer,
+	const std::uint8_t *data,
+	std::size_t size);
 
 ServerMessageEnvelope BuildServerMessageEnvelope(
 	std::uint8_t command,
