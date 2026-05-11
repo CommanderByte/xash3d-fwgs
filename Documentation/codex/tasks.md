@@ -4485,19 +4485,19 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 159: Engine Client And Render Boundary Audit
 
-- [ ] `ENG-CLIENTRENDER-001` Audit `engine/client`, `engine/client/dll_int`,
+- [x] `ENG-CLIENTRENDER-001` Audit `engine/client`, `engine/client/dll_int`,
   menu interfaces, render boundaries, audio/video capture, and rendered
   console ownership.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-CLIENTRENDER-002` Identify low-risk value/policy candidates
+  Evidence: `Documentation/codex/modern/engine/client-render-boundary-audit.md`.
+- [x] `ENG-CLIENTRENDER-002` Identify low-risk value/policy candidates
   analogous to the early server phases.
-  Evidence:
-- [ ] `ENG-CLIENTRENDER-003` Avoid touching renderer or client prediction
+  Evidence: `Documentation/codex/modern/engine/client-render-boundary-audit.md`.
+- [x] `ENG-CLIENTRENDER-003` Avoid touching renderer or client prediction
   runtime without fixtures.
-  Evidence:
-- [ ] `ENG-CLIENTRENDER-004` Produce a recommended client/render/audio phase
+  Evidence: Phase 159 was documentation-only; no runtime source was edited.
+- [x] `ENG-CLIENTRENDER-004` Produce a recommended client/render/audio phase
   list.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/client-render-boundary-audit.md`.
 
 ## Phase 160: Domain Consolidation Checkpoint
 

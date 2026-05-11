@@ -153,12 +153,14 @@ Goal: prepare save/load runtime movement with better fixtures.
 
 Goal: look outside the server for the next major modernization lane.
 
-- [ ] Audit `engine/client`, `engine/client/dll_int`, menu interfaces, render
+- [x] Audit `engine/client`, `engine/client/dll_int`, menu interfaces, render
   boundaries, audio/video capture, and rendered console ownership.
-- [ ] Identify low-risk value/policy candidates analogous to the early server
+- [x] Identify low-risk value/policy candidates analogous to the early server
   phases.
-- [ ] Avoid touching renderer or client prediction runtime without fixtures.
-- [ ] Produce a recommended client/render/audio phase list.
+- [x] Avoid touching renderer or client prediction runtime without fixtures.
+- [x] Produce a recommended client/render/audio phase list.
+
+Evidence: `Documentation/codex/modern/engine/client-render-boundary-audit.md`.
 
 ## Phase 160: Domain Consolidation Checkpoint
 
