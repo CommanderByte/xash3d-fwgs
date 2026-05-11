@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "const.h"
 #include "pm_local.h"
 #include "studio.h"
+#include "server_group_filter_adapter.h"
 #include "server_visibility_constraints_adapter.h"
 
 typedef struct moveclip_s
@@ -529,14 +530,11 @@ static void SV_TouchLinks( edict_t *ent, areanode_t *node )
 			if( touch == ent || touch->v.solid != SOLID_TRIGGER ) // disabled ?
 				continue;
 
-			if( touch->v.groupinfo && ent->v.groupinfo )
-			{
-				if( svs.groupop == GROUP_OP_AND && !FBitSet( touch->v.groupinfo, ent->v.groupinfo ))
-					continue;
-
-				if( svs.groupop == GROUP_OP_NAND && FBitSet( touch->v.groupinfo, ent->v.groupinfo ))
-					continue;
-			}
+			if( !SV_GroupFilter_EntityPairPasses(
+				svs.groupop,
+				touch->v.groupinfo,
+				ent->v.groupinfo ))
+				continue;
 
 			if( !BoundsIntersect( ent->v.absmin, ent->v.absmax, touch->v.absmin, touch->v.absmax ))
 				continue;
@@ -734,14 +732,11 @@ static void SV_WaterLinks( const vec3_t origin, int *pCont, areanode_t *node )
 		if( touch->v.solid != SOLID_NOT ) // disabled ?
 			continue;
 
-		if( touch->v.groupinfo )
-		{
-			if( svs.groupop == GROUP_OP_AND && !FBitSet( touch->v.groupinfo, svs.groupmask ))
-				continue;
-
-			if( svs.groupop == GROUP_OP_NAND && FBitSet( touch->v.groupinfo, svs.groupmask ))
-				continue;
-		}
+		if( !SV_GroupFilter_EntityPassesMask(
+			svs.groupop,
+			touch->v.groupinfo,
+			svs.groupmask ))
+			continue;
 
 		mod = SV_ModelHandle( touch->v.modelindex );
 
@@ -1113,14 +1108,13 @@ static qboolean SV_ClipToEntity( edict_t *touch, moveclip_t *clip )
 	trace_t	trace;
 	model_t	*mod;
 
-	if( touch->v.groupinfo && SV_IsValidEdict( clip->passedict ) && clip->passedict->v.groupinfo != 0 )
-	{
-		if( svs.groupop == GROUP_OP_AND && !FBitSet( touch->v.groupinfo, clip->passedict->v.groupinfo ))
-			return true;
-
-		if( svs.groupop == GROUP_OP_NAND && FBitSet( touch->v.groupinfo, clip->passedict->v.groupinfo ))
-			return true;
-	}
+	if( touch->v.groupinfo &&
+		SV_IsValidEdict( clip->passedict ) &&
+		!SV_GroupFilter_EntityPairPasses(
+			svs.groupop,
+			touch->v.groupinfo,
+			clip->passedict->v.groupinfo ))
+		return true;
 
 	if( touch == clip->passedict || touch->v.solid == SOLID_NOT )
 		return true;

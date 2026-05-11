@@ -3291,6 +3291,139 @@ Phase 89 covers user-message registry policy.
   `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached
   first frame in 0.527 seconds and stopped with reason `command`.
 
+## Phase 107: Server Group Filter Policy
+
+- [x] `ENG-SVGROUP-001` Inventory `GROUP_OP_*`, `svs.groupop`,
+  `svs.groupmask`, and entity `groupinfo` checks across server code.
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`,
+  `Documentation/codex/modern/engine/post-106-migration-audit.md`,
+  `Documentation/codex/modern/engine/server-group-filter-policy.md`.
+- [x] `ENG-SVGROUP-002` Add target-neutral group-filter predicates and focused
+  tests for AND, NAND, zero masks, and unknown operation behavior.
+  Evidence: `src/include/engine/server/server_group_filter.hpp`,
+  `src/engine/server/server_group_filter.cpp`,
+  `tests/engine/server_group_filter.cpp`.
+- [x] `ENG-SVGROUP-003` Route the smallest safe legacy call sites through a C
+  adapter while keeping edict iteration, trace ownership, save context, and
+  multicast/event writes legacy-owned.
+  Evidence: `engine/server/server_group_filter_adapter.h`,
+  `engine/server/server_group_filter_adapter.cpp`, `engine/server/sv_game.c`,
+  `engine/server/sv_world.c`, `engine/server/sv_phys.c`,
+  `engine/server/sv_pmove.c`.
+- [x] `ENG-SVGROUP-004` Run focused tests, full tests, and `+wait +wait`
+  runtime smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_group_filter -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, full tests passed 114/114;
+  `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
+  frame in 1.905 seconds and stopped with reason `command`.
+
+## Phase 108: Map Validation And Landmark Result Policy
+
+- [ ] `ENG-SVMAP-001` Baseline `SV_MapIsValid()` flag interpretation in
+  changelevel, command lifecycle, and save/load paths.
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
+- [ ] `ENG-SVMAP-002` Add target-neutral result classification for
+  `MAP_IS_EXIST`, `MAP_HAS_LANDMARK`, and `MAP_INVALID_VERSION`.
+  Evidence:
+- [ ] `ENG-SVMAP-003` Route safe flag interpretation through a C adapter while
+  leaving map probing, BSP/header checks, and entity parsing legacy-owned.
+  Evidence:
+- [ ] `ENG-SVMAP-004` Run focused tests, full tests, and `+wait +wait` runtime
+  smoke timing.
+  Evidence:
+
+## Phase 109: Client Flag Predicate Policy
+
+- [ ] `ENG-SVCLIENTFLAGS-001` Group `FCL_*` uses by owner: fake client, HLTV,
+  prediction/local weapons, frame send/resend/skip, resources, and consistency.
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
+- [ ] `ENG-SVCLIENTFLAGS-002` Add typed client flag snapshots and predicates for
+  one owner at a time, starting with fake-client and HLTV behavior.
+  Evidence:
+- [ ] `ENG-SVCLIENTFLAGS-003` Route one low-risk owner through the predicates
+  without replacing the broad `server.h` macros.
+  Evidence:
+- [ ] `ENG-SVCLIENTFLAGS-004` Run focused tests, full tests, and `+wait +wait`
+  runtime smoke timing.
+  Evidence:
+
+## Phase 110: Server Event Playback Boundary Audit
+
+- [ ] `ENG-SVEVENT-001` Audit `SV_PlaybackEventFull()` ownership: event flags,
+  invoker handling, group filtering, PVS/PHS masks, recipient iteration, client
+  flags, reliability, and payload fields.
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
+- [ ] `ENG-SVEVENT-002` Decide which inputs can be adapter-provided snapshots
+  and which must remain live legacy state.
+  Evidence:
+- [ ] `ENG-SVEVENT-003` Define the first event playback helper boundary after
+  Phases 107 and 109.
+  Evidence:
+
+## Phase 111: Server Event Playback Policy Helper
+
+- [ ] `ENG-SVEVENTPOL-001` Add target-neutral event admission and recipient
+  decision helpers.
+  Evidence:
+- [ ] `ENG-SVEVENTPOL-002` Add tests for `FEV_NOTHOST`, host/local-weapons
+  suppression, fake clients, HLTV/spectator filtering, reliability, and group
+  filtering.
+  Evidence:
+- [ ] `ENG-SVEVENTPOL-003` Route decisions while keeping PVS/PHS mask
+  generation, message writes, and recipient iteration legacy-owned.
+  Evidence:
+- [ ] `ENG-SVEVENTPOL-004` Run focused tests, full tests, and `+wait +wait`
+  runtime smoke timing.
+  Evidence:
+
+## Phase 112: Read-Only Cvar Snapshot Pilot
+
+- [ ] `ENG-CVARSNAP-001` Inventory server helpers that only need read-only cvar
+  values.
+  Evidence: `Documentation/codex/todo/engine_next_migration_todo.md`.
+- [ ] `ENG-CVARSNAP-002` Add a small target-neutral value snapshot for numeric,
+  boolean, and string cvar reads without owning the cvar registry.
+  Evidence:
+- [ ] `ENG-CVARSNAP-003` Route one low-risk cvar-heavy helper through
+  adapter-provided snapshots while keeping registration, mutation, callbacks,
+  command bindings, and archive persistence legacy-owned.
+  Evidence:
+- [ ] `ENG-CVARSNAP-004` Run focused tests, full tests, and `+wait +wait`
+  runtime smoke timing.
+  Evidence:
+
+## Phase 113: Model And Visibility Service Boundary Audit
+
+- [ ] `ENG-MODELVIS-001` Audit `engine/common/mod_bmodel.c`, `sv_world.c`,
+  `sv_phys.c`, and game DLL trace/visibility callbacks for model, hull, PVS/PAS,
+  and leaf ownership.
+  Evidence:
+- [ ] `ENG-MODELVIS-002` Identify read-only snapshot seams that could support a
+  future model/visibility service without moving BSP storage.
+  Evidence:
+- [ ] `ENG-MODELVIS-003` Decide whether fixture tests can cover PVS/PAS and hull
+  behavior before any runtime route-through.
+  Evidence:
+
+## Phase 114: C++ Ownership Consolidation Checkpoint
+
+- [ ] `ENG-CPPOWN-001` Review the modern server and engine helpers created
+  since Phase 101 and classify each as temporary facade, behavior owner, or
+  reusable domain concept.
+  Evidence: `Documentation/codex/modern/cpp-ownership-target.md`,
+  `Documentation/codex/todo/engine_next_migration_todo.md`.
+- [ ] `ENG-CPPOWN-002` Identify files that should be renamed, regrouped,
+  merged, or split so modern layout follows concepts instead of old C file
+  boundaries.
+  Evidence:
+- [ ] `ENG-CPPOWN-003` Identify adapters that can shrink after related concepts
+  move into one modern module.
+  Evidence:
+- [ ] `ENG-CPPOWN-004` Keep compatibility tests intact while adding or updating
+  concept-level tests where wrappers have become real owners.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current
@@ -3450,3 +3583,5 @@ Phase 89 covers user-message registry policy.
 | 2026-05-10 | DEC-054 | After the Phase 50 milestone, use server-side engine code as the next coherent migration lane, starting with `sv_filter.c` and then source-query response building, while deferring renderer, memory, savegame, and rendered-console work. | `modern/milestone-50-structure-audit.md` |
 | 2026-05-10 | DEC-055 | Treat `server.h`, `SV_*`, `Log_*`, `sv`, `svs`, `svgame`, command/cvar names, save/config files, and packet payloads as server compatibility boundaries; pure modern server logic should live under `src/engine/server` and receive snapshots or plain values from legacy adapters. | `legacy/engine/server-boundary-audit.md`, `modern/engine/server-migration-guide.md` |
 | 2026-05-10 | DEC-056 | For the first server filter migration, keep legacy linked lists, commands, file writes, client iteration, and `host.realtime` ownership in `sv_filter.c`; route only rule activity, ID prefix matching, IP matching, and IP removal-selector policy through modern server helpers. | `legacy/engine/server-filter-baseline.md`, `modern/engine/server-filter-migration.md`, `src/engine/server/server_filter.cpp`, `engine/server/server_filter_adapter.cpp` |
+| 2026-05-11 | DEC-057 | After the Phase 101-106 server constants lane, prefer small enabler policies before another broad server sweep: group filtering, map validation flags, client flag predicates, event playback, and read-only cvar snapshots. | `modern/engine/post-106-migration-audit.md`, `todo/engine_next_migration_todo.md` |
+| 2026-05-11 | DEC-058 | Treat C++ namespace/facade wrappers as migration scaffolding, not the final architecture; after behavior is protected by tests, regroup helpers into named domain concepts with clearer ownership and thinner adapters. | `modern/cpp-ownership-target.md`, `modern/engine/post-106-migration-audit.md` |

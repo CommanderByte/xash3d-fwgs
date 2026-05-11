@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "library.h"
 #include "triangleapi.h"
 #include "ref_common.h"
+#include "server_group_filter_adapter.h"
 
 typedef int (*PHYSICAPI)( int, server_physics_api_t*, physics_interface_t* );
 #if !XASH_DEDICATED
@@ -303,14 +304,11 @@ void SV_Impact( edict_t *e1, edict_t *e2, trace_t *trace )
 	if(( e1->v.flags|e2->v.flags ) & FL_KILLME )
 		return;
 
-	if( e1->v.groupinfo && e2->v.groupinfo )
-	{
-		if( svs.groupop == GROUP_OP_AND && !FBitSet( e1->v.groupinfo, e2->v.groupinfo ))
-			return;
-
-		if( svs.groupop == GROUP_OP_NAND && FBitSet( e1->v.groupinfo, e2->v.groupinfo ))
-			return;
-	}
+	if( !SV_GroupFilter_EntityPairPasses(
+		svs.groupop,
+		e1->v.groupinfo,
+		e2->v.groupinfo ))
+		return;
 
 	if( e1->v.solid != SOLID_NOT )
 	{

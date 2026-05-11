@@ -11,6 +11,9 @@ migration phases and decisions.
 
 - [debugging/](debugging/README.md) contains detailed architecture notes for
   the modern shared debugging utility layer.
+- [cpp-ownership-target.md](cpp-ownership-target.md) records the project-wide
+  rule that C++ namespace/facade wrappers are a transition step, not the final
+  architecture.
 - [engine/](engine/README.md) contains modern engine migration notes for
   command, console, platform, network, filesystem bridge, and future server
   slices.
@@ -30,6 +33,8 @@ migration phases and decisions.
 
 - Preserve legacy C ABI boundaries unless a later decision explicitly changes
   them.
+- Treat C++ facade wrappers as scaffolding; migrate toward named concepts,
+  ownership boundaries, and grouped modules once behavior is protected.
 - Keep third-party utility types behind private facades.
 - Prefer snapshot-based diagnostics over formatting while holding runtime
   locks.

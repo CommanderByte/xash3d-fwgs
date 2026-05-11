@@ -4,6 +4,11 @@ This TODO tracks the active server-side engine migration lane opened by Phase
 52. Keep it focused on near-term work; broader server rewrites should remain in
 the main phase tracker until they are selected.
 
+Post-Phase-106 enabler work continues in
+[`engine_next_migration_todo.md`](engine_next_migration_todo.md), which tracks
+group filtering, map validation flags, client flag predicates, event playback,
+and read-only cvar snapshots.
+
 ## Phase 52: Boundary Audit
 
 - [x] Audit `engine/server/` file ownership and coupling.

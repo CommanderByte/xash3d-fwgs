@@ -17,6 +17,9 @@ Active documents:
   engine/common candidates after the BaseCmd pilot.
 - [engine_memory_todo.md](engine_memory_todo.md) tracks cautious memory pool and
   allocation modernization.
+- [engine_next_migration_todo.md](engine_next_migration_todo.md) tracks the
+  post-Phase-106 enabler lane for group filtering, map validation, client flag
+  predicates, event playback, and cvar snapshots.
 - [file_handle_todo.md](file_handle_todo.md) tracks future `file_t` operation
   migration.
 - [non_windows_console_backend_todo.md](non_windows_console_backend_todo.md)

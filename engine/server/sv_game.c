@@ -30,6 +30,7 @@ GNU General Public License for more details.
 #include "game_dll_payload_policy_adapter.h"
 #include "game_dll_resource_policy_adapter.h"
 #include "game_dll_user_message_registry_adapter.h"
+#include "server_group_filter_adapter.h"
 #include "server_multicast_policy_adapter.h"
 #include "server_service_messages_adapter.h"
 #include "server_sound_message_adapter.h"
@@ -493,14 +494,11 @@ static int SV_Multicast( int dest, const vec3_t origin, const edict_t *ent, qboo
 			!FBitSet( cl->flags, FCL_FAKECLIENT ) &&
 			!( filter && cl == sv.current_client && FBitSet( sv.current_client->flags, FCL_PREDICT_MOVEMENT ));
 
-		if( preliminary_candidate && SV_IsValidEdict( ent ) && ent->v.groupinfo && cl->edict->v.groupinfo )
-		{
-			if( svs.groupop == GROUP_OP_AND && !FBitSet( cl->edict->v.groupinfo, ent->v.groupinfo ))
-				group_passes = false;
-
-			if( svs.groupop == GROUP_OP_NAND && FBitSet( cl->edict->v.groupinfo, ent->v.groupinfo ))
-				group_passes = false;
-		}
+		if( preliminary_candidate && SV_IsValidEdict( ent ) )
+			group_passes = SV_GroupFilter_EntityPairPasses(
+				svs.groupop,
+				cl->edict->v.groupinfo,
+				ent->v.groupinfo );
 
 		if( preliminary_candidate && group_passes )
 			visible = SV_CheckClientVisiblity( cl, mask );
@@ -4346,14 +4344,12 @@ void GAME_EXPORT SV_PlaybackEventFull( int flags, const edict_t *pInvoker, word 
 		if( cl->state != cs_spawned || !cl->edict || FBitSet( cl->flags, FCL_FAKECLIENT ))
 			continue;
 
-		if( SV_IsValidEdict( pInvoker ) && pInvoker->v.groupinfo && cl->edict->v.groupinfo )
-		{
-			if( svs.groupop == GROUP_OP_AND && !FBitSet( cl->edict->v.groupinfo, pInvoker->v.groupinfo ))
-				continue;
-
-			if( svs.groupop == GROUP_OP_NAND && FBitSet( cl->edict->v.groupinfo, pInvoker->v.groupinfo ))
-				continue;
-		}
+		if( SV_IsValidEdict( pInvoker ) &&
+			!SV_GroupFilter_EntityPairPasses(
+				svs.groupop,
+				cl->edict->v.groupinfo,
+				pInvoker->v.groupinfo ))
+			continue;
 
 		if( SV_IsValidEdict( pInvoker ))
 		{

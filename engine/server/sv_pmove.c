@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "pm_local.h"
 #include "event_flags.h"
 #include "studio.h"
+#include "server_group_filter_adapter.h"
 
 static qboolean has_update = false;
 static void SV_GetTrueOrigin( sv_client_t *cl, int edictnum, vec3_t origin );
@@ -203,14 +204,11 @@ static void SV_AddLinksToPmove( areanode_t *node, const vec3_t pmove_mins, const
 		next = l->next;
 		check = EDICT_FROM_AREA( l );
 
-		if( check->v.groupinfo != 0 )
-		{
-			if( svs.groupop == GROUP_OP_AND && !FBitSet( check->v.groupinfo, pl->v.groupinfo ))
-				continue;
-
-			if( svs.groupop == GROUP_OP_NAND && FBitSet( check->v.groupinfo, pl->v.groupinfo ))
-				continue;
-		}
+		if( !SV_GroupFilter_EntityPassesMask(
+			svs.groupop,
+			check->v.groupinfo,
+			pl->v.groupinfo ))
+			continue;
 
 		if( check->v.owner == pl || check->v.solid == SOLID_TRIGGER )
 			continue; // player or player's own missile

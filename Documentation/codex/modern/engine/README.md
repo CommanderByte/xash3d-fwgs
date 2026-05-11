@@ -54,6 +54,10 @@ Current implementation notes:
 - `milestone-100-server-modernization-audit.md`: how the modern server helper
   layer looks after the game DLL bridge lane, and why server constants and
   constraints are the next low-risk migration target.
+- `post-106-migration-audit.md`: how the server constants lane changes the
+  next roadmap, why group filtering, map validation flags, client flags, event
+  playback, and read-only cvar snapshots are better next enablers than another
+  broad server sweep.
 - `game-dll-string-pool-compatibility.md`: how Phase 94 models
   game-DLL-facing string processing, deduplication, overflow, and
   `string_t` offset behavior without moving the live string base out of
@@ -118,6 +122,10 @@ Current implementation notes:
 - `server-filter-migration.md`: how Phase 53 routes ID/IP filter policy through
   target-neutral modern server helpers while legacy command/file ownership
   stays in `sv_filter.c`.
+- `server-group-filter-policy.md`: how Phase 107 routes repeated
+  `GROUP_OP_AND` / `GROUP_OP_NAND` entity and active-mask predicates through a
+  target-neutral helper while collision, trace, multicast, and save ownership
+  stay legacy-owned.
 - `source-query-migration.md`: how Phase 54 routes GoldSrc source-query payload
   bytes through target-neutral builders while live server state and
   `NET_SendPacket` stay legacy-owned.

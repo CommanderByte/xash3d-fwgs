@@ -61,6 +61,8 @@ Current helpers:
 - `server_upload_queue.hpp`: client resource-list admission, missing custom
   decal estimation, upload-limit, and upload batch action decisions.
 - `server_filter.hpp`: ID/IP filter policy and formatting.
+- `server_group_filter.hpp`: entity group-filter operation, pair-filter, and
+  active-mask decision contracts.
 - `server_event_log.hpp`: server event log line and stock message formatting.
 - `server_hot_resource.hpp`: hot-resource announcement planning for resources
   added after server startup.
