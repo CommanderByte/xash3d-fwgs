@@ -262,3 +262,18 @@ behavior.
 This makes Phase 120 a bounded adapter review: look for repeated
 `NetworkBitBuffer` result translation and command-envelope adapter glue, but do
 not collapse game DLL bridge publication into server messaging yet.
+
+## Phase 120 Adapter Review Result
+
+Phase 120 moved repeated adapter-only `NetworkBitBuffer` construction and
+`{ current_bit, overflow }` result translation into
+`engine/server/server_message_adapter_shared.hpp`.
+
+The shrink applies to the small message payload adapters, spawn-handshake
+payload adapter, voice relay payload adapter, resource/customization row
+adapters, and userinfo message adapter. It does not change exported C function
+signatures, legacy result structs, game DLL callback publication, user-message
+session policy, netchan writes, or rendered-console routing.
+
+The detailed boundary note lives in
+`Documentation/codex/modern/engine/server-messaging-adapter-shrink-review.md`.

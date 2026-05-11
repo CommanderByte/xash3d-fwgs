@@ -1,32 +1,10 @@
 #include "server_spawn_handshake_adapter.h"
 
-#include "engine/network/network_buffer.hpp"
 #include "engine/server/server_spawn_handshake.hpp"
-
-#include <cstddef>
+#include "server_message_adapter_shared.hpp"
 
 namespace
 {
-
-xash::engine::network::NetworkBitBuffer MakeBuffer(
-	unsigned char *data,
-	int data_bits,
-	int current_bit)
-{
-	return xash::engine::network::NetworkBitBuffer(
-		data,
-		data_bits < 0 ? 0U : static_cast<std::size_t>(data_bits),
-		current_bit < 0 ? 0U : static_cast<std::size_t>(current_bit));
-}
-
-sv_spawn_handshake_write_result_t MakeResult(
-	const xash::engine::network::NetworkBitBuffer &buffer)
-{
-	sv_spawn_handshake_write_result_t result = {};
-	result.current_bit = static_cast<int>(buffer.tellBit());
-	result.overflow = buffer.overflow() ? 1 : 0;
-	return result;
-}
 
 enum sv_spawn_command_action_e ToLegacyAction(
 	xash::engine::server::SpawnCommandAction action)
@@ -119,9 +97,13 @@ extern "C" sv_spawn_handshake_write_result_t SV_Serverdata_WritePayload(
 	}
 
 	xash::engine::network::NetworkBitBuffer buffer =
-		MakeBuffer(data, data_bits, current_bit);
+		xash::engine::server::adapter::MakeNetworkBitBuffer(
+			data,
+			data_bits,
+			current_bit);
 	xash::engine::server::WriteServerdataPayload(buffer, payload);
-	return MakeResult(buffer);
+	return xash::engine::server::adapter::MakeWriteResult<
+		sv_spawn_handshake_write_result_t>(buffer);
 }
 
 extern "C" sv_spawn_handshake_write_result_t SV_SpawnHandshake_WriteSignonNumberMessage(
@@ -131,9 +113,13 @@ extern "C" sv_spawn_handshake_write_result_t SV_SpawnHandshake_WriteSignonNumber
 	int signon_number)
 {
 	xash::engine::network::NetworkBitBuffer buffer =
-		MakeBuffer(data, data_bits, current_bit);
+		xash::engine::server::adapter::MakeNetworkBitBuffer(
+			data,
+			data_bits,
+			current_bit);
 	xash::engine::server::WriteSignonNumberMessage(buffer, signon_number);
-	return MakeResult(buffer);
+	return xash::engine::server::adapter::MakeWriteResult<
+		sv_spawn_handshake_write_result_t>(buffer);
 }
 
 extern "C" enum sv_spawn_command_action_e SV_SpawnHandshake_BuildNewCommandAction(

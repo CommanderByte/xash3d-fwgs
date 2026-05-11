@@ -3596,17 +3596,31 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 120: Server Messaging Adapter Shrink Review
 
-- [ ] `ENG-MSGADAPT-001` Review message-related adapters after Phase 119.
-  Evidence:
-- [ ] `ENG-MSGADAPT-002` Merge only adapters that map to a coherent messaging
+- [x] `ENG-MSGADAPT-001` Review message-related adapters after Phase 119.
+  Evidence: `Documentation/codex/modern/engine/server-messaging-adapter-shrink-review.md`
+  reviews the text, service, sound, static, spawn-handshake, voice, resource,
+  customization, and userinfo message adapters and leaves game DLL message
+  session/user-message registry adapters for later bridge phases.
+- [x] `ENG-MSGADAPT-002` Merge only adapters that map to a coherent messaging
   domain and preserve C-compatible call sites.
-  Evidence:
-- [ ] `ENG-MSGADAPT-003` Keep game DLL callback publication and client packet
+  Evidence: `engine/server/server_message_adapter_shared.hpp` now owns repeated
+  adapter-only `NetworkBitBuffer` construction and `{ current_bit, overflow }`
+  write-result translation; exported C function names and legacy result structs
+  remain in their existing adapter headers.
+- [x] `ENG-MSGADAPT-003` Keep game DLL callback publication and client packet
   sends explicit at the legacy boundary.
-  Evidence:
-- [ ] `ENG-MSGADAPT-004` Run focused tests and full validation after any
+  Evidence: Phase 120 did not move `pfnMessageBegin()` / `pfnMessageEnd()`,
+  `SV_Multicast()`, netchan writes, user-message registration/rewrite policy,
+  or rendered-console routing; those exclusions are recorded in
+  `Documentation/codex/modern/engine/server-messaging-adapter-shrink-review.md`.
+- [x] `ENG-MSGADAPT-004` Run focused tests and full validation after any
   adapter shape change.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=xash` rebuilt the affected adapters,
+  focused message target invocation passed, and
+  `scripts/run-phase-validation.ps1 -FocusedTarget
+  test_engine_server_message_envelope -StopRunningXash` passed on 2026-05-11
+  with `.\waf.bat build --alltests` at 120/120 and smoke first frame at
+  0.519 seconds.
 
 ## Phase 121: Game DLL Bridge Submodule Plan
 

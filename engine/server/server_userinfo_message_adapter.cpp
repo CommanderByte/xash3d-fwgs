@@ -1,9 +1,7 @@
 #include "server_userinfo_message_adapter.h"
 
-#include "engine/network/network_buffer.hpp"
 #include "engine/server/server_userinfo_message.hpp"
-
-#include <cstddef>
+#include "server_message_adapter_shared.hpp"
 
 extern "C" sv_userinfo_message_write_result_t SV_UserinfoMessage_WritePayload(
 	unsigned char *data,
@@ -15,10 +13,11 @@ extern "C" sv_userinfo_message_write_result_t SV_UserinfoMessage_WritePayload(
 	const char *userinfo,
 	const unsigned char digest[16])
 {
-	xash::engine::network::NetworkBitBuffer buffer(
-		data,
-		data_bits < 0 ? 0U : static_cast<std::size_t>(data_bits),
-		current_bit < 0 ? 0U : static_cast<std::size_t>(current_bit));
+	xash::engine::network::NetworkBitBuffer buffer =
+		xash::engine::server::adapter::MakeNetworkBitBuffer(
+			data,
+			data_bits,
+			current_bit);
 
 	xash::engine::server::UserinfoUpdatePayload payload = {};
 	payload.clientIndex = client_index;
@@ -29,8 +28,6 @@ extern "C" sv_userinfo_message_write_result_t SV_UserinfoMessage_WritePayload(
 
 	xash::engine::server::WriteUserinfoUpdatePayload(buffer, payload);
 
-	sv_userinfo_message_write_result_t result = {};
-	result.current_bit = static_cast<int>(buffer.tellBit());
-	result.overflow = buffer.overflow() ? 1 : 0;
-	return result;
+	return xash::engine::server::adapter::MakeWriteResult<
+		sv_userinfo_message_write_result_t>(buffer);
 }
