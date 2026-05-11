@@ -3427,16 +3427,18 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 113: Model And Visibility Service Boundary Audit
 
-- [ ] `ENG-MODELVIS-001` Audit `engine/common/mod_bmodel.c`, `sv_world.c`,
+- [x] `ENG-MODELVIS-001` Audit `engine/common/mod_bmodel.c`, `sv_world.c`,
   `sv_phys.c`, and game DLL trace/visibility callbacks for model, hull, PVS/PAS,
   and leaf ownership.
-  Evidence:
-- [ ] `ENG-MODELVIS-002` Identify read-only snapshot seams that could support a
+  Evidence: `Documentation/codex/modern/engine/model-visibility-service-boundary.md`.
+- [x] `ENG-MODELVIS-002` Identify read-only snapshot seams that could support a
   future model/visibility service without moving BSP storage.
-  Evidence:
-- [ ] `ENG-MODELVIS-003` Decide whether fixture tests can cover PVS/PAS and hull
+  Evidence: `Documentation/codex/modern/engine/model-visibility-service-boundary.md`.
+- [x] `ENG-MODELVIS-003` Decide whether fixture tests can cover PVS/PAS and hull
   behavior before any runtime route-through.
-  Evidence:
+  Evidence: fixture-safe policy tests are feasible for request snapshots and
+  route choices, but BSP/PVS/PHS generation and hull traversal need synthetic
+  or golden fixtures before route-through; `git diff --check` passed.
 
 ## Phase 114: C++ Ownership Consolidation Checkpoint
 
@@ -3622,3 +3624,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-061 | Treat server event playback as a staged policy boundary: first isolate event admission, recipient decisions, and queue-slot planning while keeping game DLL ABI, PVS/PHS masks, event queues, and message serialization legacy-owned. | `modern/engine/server-event-playback-boundary.md`, `todo/engine_next_migration_todo.md` |
 | 2026-05-11 | DEC-062 | Route server event playback decisions through `server_event_playback_policy` while keeping event argument mutation, visibility masks, queue mutation, and wire serialization in legacy server code. | `modern/engine/server-event-playback-policy.md`, `engine/server/sv_game.c`, `engine/server/sv_frame.c` |
 | 2026-05-11 | DEC-063 | Introduce read-only cvar snapshots as plain values for modern policy helpers, starting with `SV_ProcessUserAgent()` input-device booleans, while keeping cvar registration, mutation, callbacks, command bindings, and archive persistence legacy-owned. | `modern/engine/read-only-cvar-snapshot.md`, `src/include/engine/cvar_snapshot.hpp`, `engine/server/sv_main.c` |
+| 2026-05-11 | DEC-064 | Defer any broad model/visibility route-through until synthetic or golden fixtures cover BSP visibility and hull traversal; in the meantime, use only small request/route snapshot helpers around legacy-owned `model_t`, PVS/PAS, edict leaf, and trace state. | `modern/engine/model-visibility-service-boundary.md` |

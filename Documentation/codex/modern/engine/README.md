@@ -63,6 +63,9 @@ Current implementation notes:
 - `milestone-100-server-modernization-audit.md`: how the modern server helper
   layer looks after the game DLL bridge lane, and why server constants and
   constraints are the next low-risk migration target.
+- `model-visibility-service-boundary.md`: how Phase 113 audits BSP model,
+  hull, PVS/PAS, trace, physics, and game DLL visibility ownership before any
+  runtime route-through.
 - `post-106-migration-audit.md`: how the server constants lane changes the
   next roadmap, why group filtering, map validation flags, client flags, event
   playback, and read-only cvar snapshots are better next enablers than another

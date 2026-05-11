@@ -128,11 +128,23 @@ enablers that make future server and engine migrations less adapter-heavy.
   `run-win32\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit` reached first
   frame in 0.516 seconds and stopped with reason `command`.
 
+## Phase 113: Model And Visibility Service Boundary Audit
+
+- [x] Audit `engine/common/mod_bmodel.c`, `sv_world.c`, `sv_phys.c`, and game
+  DLL trace/visibility callbacks for model, hull, PVS/PAS, and leaf ownership.
+  Evidence: `Documentation/codex/modern/engine/model-visibility-service-boundary.md`.
+- [x] Identify read-only snapshot seams that could support a future
+  model/visibility service without moving BSP storage.
+  Evidence: `Documentation/codex/modern/engine/model-visibility-service-boundary.md`.
+- [x] Decide whether fixture tests can cover PVS/PAS and hull behavior before
+  any runtime route-through.
+  Evidence: `Documentation/codex/modern/engine/model-visibility-service-boundary.md`;
+  documentation-only audit phase, `git diff --check` passed.
+
 ## Later Candidates
 
 - C++ ownership and module consolidation checkpoint after several enabler
   phases have landed.
-- Model/BSP/PVS service boundary audit.
 - Runtime save/restore owner audit after map and entity policies mature.
 - Rendered console sink/router work after client/render ownership is selected.
 - Memory pool modernization in Phase 990.
