@@ -1,6 +1,6 @@
 #include "server_event_log_adapter.h"
 
-#include "engine/server/server_event_log.hpp"
+#include "engine/server/runtime/server_event_log.hpp"
 
 namespace
 {

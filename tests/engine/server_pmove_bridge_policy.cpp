@@ -1,7 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "engine/server/server_pmove_bridge_policy.hpp"
+#include "engine/server/world/server_pmove_bridge_policy.hpp"
 
 using namespace xash::engine::server;
 

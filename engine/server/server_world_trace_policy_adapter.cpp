@@ -1,6 +1,6 @@
 #include "server_world_trace_policy_adapter.h"
 
-#include "engine/server/server_world_trace_policy.hpp"
+#include "engine/server/world/server_world_trace_policy.hpp"
 
 extern "C" sv_world_move_clip_plan_t SV_WorldTrace_BuildMoveClipPlan(
 	int encoded_move_type,

@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <limits>
 
-#include "engine/server/server_lifecycle_limits.hpp"
+#include "engine/server/shared/server_lifecycle_limits.hpp"
 
 using namespace xash::engine::server;
 

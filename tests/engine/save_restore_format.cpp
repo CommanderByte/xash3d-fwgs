@@ -2,7 +2,7 @@
 #include <cstring>
 #include <vector>
 
-#include "engine/server/save_restore_format.hpp"
+#include "engine/server/save/save_restore_format.hpp"
 
 using namespace xash::engine::server;
 

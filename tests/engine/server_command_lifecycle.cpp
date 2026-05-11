@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_command_lifecycle.hpp"
+#include "engine/server/runtime/server_command_lifecycle.hpp"
 
 using namespace xash::engine::server;
 

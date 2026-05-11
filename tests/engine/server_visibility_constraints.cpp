@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_visibility_constraints.hpp"
+#include "engine/server/shared/server_visibility_constraints.hpp"
 
 using namespace xash::engine::server;
 

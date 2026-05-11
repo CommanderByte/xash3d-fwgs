@@ -1,6 +1,6 @@
 #include "server_pmove_bridge_policy_adapter.h"
 
-#include "engine/server/server_pmove_bridge_policy.hpp"
+#include "engine/server/world/server_pmove_bridge_policy.hpp"
 
 namespace
 {

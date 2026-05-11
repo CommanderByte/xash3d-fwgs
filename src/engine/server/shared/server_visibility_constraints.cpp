@@ -1,4 +1,4 @@
-#include "engine/server/server_visibility_constraints.hpp"
+#include "engine/server/shared/server_visibility_constraints.hpp"
 
 namespace xash
 {

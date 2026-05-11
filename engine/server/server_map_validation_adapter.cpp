@@ -1,6 +1,6 @@
 #include "server_map_validation_adapter.h"
 
-#include "engine/server/server_map_validation.hpp"
+#include "engine/server/shared/server_map_validation.hpp"
 
 namespace
 {

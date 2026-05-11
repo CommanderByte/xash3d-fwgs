@@ -1,6 +1,6 @@
 #include "server_group_filter_adapter.h"
 
-#include "engine/server/server_group_filter.hpp"
+#include "engine/server/shared/server_group_filter.hpp"
 
 extern "C" int SV_GroupFilter_EntityPairPasses(
 	int group_op,

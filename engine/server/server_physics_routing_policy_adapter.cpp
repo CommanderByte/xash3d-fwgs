@@ -1,6 +1,6 @@
 #include "server_physics_routing_policy_adapter.h"
 
-#include "engine/server/server_physics_routing_policy.hpp"
+#include "engine/server/world/server_physics_routing_policy.hpp"
 
 static_assert(SV_PHYSICS_HANDLER_UNSUPPORTED ==
 	static_cast<int>(xash::engine::server::ServerPhysicsHandler::Unsupported),

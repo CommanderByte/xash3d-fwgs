@@ -1,7 +1,7 @@
 #ifndef XASH_ENGINE_SERVER_SERVER_CHALLENGE_POLICY_HPP
 #define XASH_ENGINE_SERVER_SERVER_CHALLENGE_POLICY_HPP
 
-#include "engine/server/server_limits.hpp"
+#include "engine/server/shared/server_limits.hpp"
 
 #include <cstdint>
 

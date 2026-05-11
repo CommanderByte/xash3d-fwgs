@@ -13,9 +13,9 @@
 #include "engine/server/client/server_challenge_policy.hpp"
 #include "engine/server/client/server_timeout_policy.hpp"
 #include "engine/server/client/user_agent_policy.hpp"
-#include "engine/server/netapi_info.hpp"
-#include "engine/server/server_limits.hpp"
-#include "engine/server/source_query.hpp"
+#include "engine/server/client/netapi_info.hpp"
+#include "engine/server/shared/server_limits.hpp"
+#include "engine/server/client/source_query.hpp"
 
 using namespace xash::engine::server;
 

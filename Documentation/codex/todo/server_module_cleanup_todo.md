@@ -38,15 +38,17 @@ Evidence: `Documentation/codex/modern/engine/server-module-cleanup-plan.md`.
 Goal: move the remaining flat modern server helpers into real modules in one
 coherent pass.
 
-- [ ] Create the needed `shared/`, `runtime/`, `save/`, and `world/` source and
+- [x] Create the needed `shared/`, `runtime/`, `save/`, and `world/` source and
   include directories.
-- [ ] Move obvious shared constraints, runtime shell helpers, savegame helpers,
+- [x] Move obvious shared constraints, runtime shell helpers, savegame helpers,
   and simulation/world helpers into their modules.
-- [ ] Decide whether `source_query` and `netapi_info` move into `client/` or a
+- [x] Decide whether `source_query` and `netapi_info` move into `client/` or a
   query submodule, and do the move if the owner is clear.
-- [ ] Update includes, READMEs, and Waf references where needed.
-- [ ] Run focused affected tests, full validation, and smoke timing if runtime
+- [x] Update includes, READMEs, and Waf references where needed.
+- [x] Run focused affected tests, full validation, and smoke timing if runtime
   wiring changes.
+
+Evidence: `Documentation/codex/modern/engine/flat-server-module-rehome.md`.
 
 ## Phase 163: Submodule Collapse Pass
 

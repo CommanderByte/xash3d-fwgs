@@ -1,4 +1,4 @@
-#include "engine/server/server_movement_constraints.hpp"
+#include "engine/server/world/server_movement_constraints.hpp"
 
 namespace xash
 {

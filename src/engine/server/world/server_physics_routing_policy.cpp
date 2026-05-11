@@ -1,4 +1,4 @@
-#include "engine/server/server_physics_routing_policy.hpp"
+#include "engine/server/world/server_physics_routing_policy.hpp"
 
 namespace xash
 {

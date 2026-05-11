@@ -1,6 +1,6 @@
 #include "server_command_lifecycle_adapter.h"
 
-#include "engine/server/server_command_lifecycle.hpp"
+#include "engine/server/runtime/server_command_lifecycle.hpp"
 
 #include <cstring>
 #include <string>

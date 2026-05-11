@@ -1,6 +1,6 @@
-#include "engine/server/server_command_lifecycle.hpp"
+#include "engine/server/runtime/server_command_lifecycle.hpp"
 
-#include "engine/server/server_map_validation.hpp"
+#include "engine/server/shared/server_map_validation.hpp"
 
 namespace xash
 {

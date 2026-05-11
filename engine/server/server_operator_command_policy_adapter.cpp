@@ -1,6 +1,6 @@
 #include "server_operator_command_policy_adapter.h"
 
-#include "engine/server/server_operator_command_policy.hpp"
+#include "engine/server/runtime/server_operator_command_policy.hpp"
 
 namespace
 {

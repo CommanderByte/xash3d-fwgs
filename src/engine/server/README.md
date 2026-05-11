@@ -8,6 +8,15 @@ buffers, filesystem mutation, console output, or game DLL ABI layout.
 
 ## Domains
 
+- `shared/`: server-wide limits, lifecycle limits, group filters, map
+  validation, and visibility constraints.
+- `runtime/`: server shell helpers such as filter policy, event-log
+  formatting, lifecycle command planning, and operator command argument
+  policy.
+- `save/`: savegame format fixtures, save value decisions, and save runtime
+  fixture models. Live save streams remain legacy-owned.
+- `world/`: simulation-facing movement constraints, physics routing, PMove
+  bridge policy, world link policy, and world trace setup policy.
 - `resources/`: resource identity, catalogs, manifests, downloads, uploads,
   consistency, hot resources, and reslist policy.
 - `messaging/`: server message envelopes, payload writers, recipient policy,
@@ -18,11 +27,8 @@ buffers, filesystem mutation, console output, or game DLL ABI layout.
   visibility/trace, movement, output, changelevel, and string-pool
   compatibility.
 - `client/`: client admission/session helpers, command dispatch, userinfo,
-  challenge/rejection, connectionless classification, remote admin, timeout,
-  and user-agent policy.
-- flat files: shared constraints, runtime helpers, save fixtures, world/PMove
-  policies, source-query builders, and NetAPI builders that have not yet moved
-  into a grouped domain.
+  challenge/rejection, connectionless classification, query responses, remote
+  admin, timeout, and user-agent policy.
 
 ## Boundaries
 
@@ -42,13 +48,8 @@ Keep these legacy-owned until a dedicated fixture-backed phase says otherwise:
 
 ## Near-Term Shape
 
-The existing grouped domains should stay. The remaining flat files can move
-later into:
-
-- `shared/` for server-wide limits and constraints;
-- `runtime/` for server shell, command, filter, and log policy;
-- `save/` for save/restore fixtures and value objects;
-- `world/` for world, trace, movement, physics, and PMove policies.
-
 Prefer cohesive domain modules over one tiny file per branch condition. A new
 file should introduce a real concept, not just a new noun for a legacy `if`.
+
+Future cleanup should focus on collapsing implementation/test duplication
+inside modules, not on recreating a flat helper layer.

@@ -1,7 +1,7 @@
 #ifndef XASH_ENGINE_SERVER_SERVER_MAP_VALIDATION_HPP
 #define XASH_ENGINE_SERVER_SERVER_MAP_VALIDATION_HPP
 
-#include "engine/server/server_limits.hpp"
+#include "engine/server/shared/server_limits.hpp"
 
 namespace xash
 {

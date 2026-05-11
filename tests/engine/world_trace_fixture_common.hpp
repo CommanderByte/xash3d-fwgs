@@ -1,9 +1,9 @@
 #ifndef XASH_TEST_ENGINE_WORLD_TRACE_FIXTURE_COMMON_HPP
 #define XASH_TEST_ENGINE_WORLD_TRACE_FIXTURE_COMMON_HPP
 
-#include "engine/server/server_group_filter.hpp"
-#include "engine/server/server_world_link_policy.hpp"
-#include "engine/server/server_world_trace_policy.hpp"
+#include "engine/server/shared/server_group_filter.hpp"
+#include "engine/server/world/server_world_link_policy.hpp"
+#include "engine/server/world/server_world_trace_policy.hpp"
 
 namespace xash
 {

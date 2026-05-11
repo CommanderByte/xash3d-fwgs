@@ -1,6 +1,6 @@
 #include "server_world_link_policy_adapter.h"
 
-#include "engine/server/server_world_link_policy.hpp"
+#include "engine/server/world/server_world_link_policy.hpp"
 
 static_assert(SV_WORLD_AREA_CHILD_NONE ==
 	xash::engine::server::kWorldAreaChildNone,

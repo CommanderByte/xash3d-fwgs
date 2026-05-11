@@ -1,4 +1,4 @@
-#include "engine/server/server_group_filter.hpp"
+#include "engine/server/shared/server_group_filter.hpp"
 
 namespace xash
 {

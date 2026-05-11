@@ -15,6 +15,12 @@ adapters; they are not public engine or game DLL ABI.
 
 ## Domains
 
+- `shared/`: server-wide limit, lifecycle, group-filter, map-validation, and
+  visibility-constraint contracts.
+- `runtime/`: server shell, command, filter, and log-formatting contracts.
+- `save/`: savegame format, value, and runtime fixture contracts.
+- `world/`: simulation-facing movement, physics, PMove, world-link, and trace
+  setup contracts.
 - `resources/`: resource identity, transfer, consistency, catalog, upload,
   download, hot-resource, and reslist contracts.
 - `messaging/`: message envelope, payload writer, recipient, event, datagram,
@@ -24,8 +30,6 @@ adapters; they are not public engine or game DLL ABI.
   contracts.
 - `client/`: admission, session, command dispatch, challenge, query, timeout,
   remote-admin, userinfo, and user-agent contracts.
-- flat headers: shared constraints, runtime helpers, save fixtures, world/PMove
-  policies, and query builders that have not yet moved into a grouped domain.
 
 ## Compatibility Rule
 

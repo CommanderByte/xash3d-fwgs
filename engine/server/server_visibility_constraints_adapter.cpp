@@ -1,6 +1,6 @@
 #include "server_visibility_constraints_adapter.h"
 
-#include "engine/server/server_visibility_constraints.hpp"
+#include "engine/server/shared/server_visibility_constraints.hpp"
 
 extern "C" int SV_Visibility_EntityLeafCapacity(int extended_leafs)
 {

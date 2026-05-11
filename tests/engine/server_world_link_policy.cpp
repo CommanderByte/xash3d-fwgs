@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "engine/server/server_world_link_policy.hpp"
+#include "engine/server/world/server_world_link_policy.hpp"
 
 using namespace xash::engine::server;
 

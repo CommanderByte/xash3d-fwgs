@@ -1,7 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "engine/server/server_movement_constraints.hpp"
+#include "engine/server/world/server_movement_constraints.hpp"
 
 using namespace xash::engine::server;
 

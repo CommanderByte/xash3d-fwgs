@@ -4546,22 +4546,30 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 162: Flat Server Module Rehome
 
-- [ ] `ENG-FLATREHOME-001` Create the needed `shared/`, `runtime/`, `save/`,
+- [x] `ENG-FLATREHOME-001` Create the needed `shared/`, `runtime/`, `save/`,
   and `world/` source and include directories.
-  Evidence: `Documentation/codex/todo/server_module_cleanup_todo.md`.
-- [ ] `ENG-FLATREHOME-002` Move obvious shared constraints, runtime shell
+  Evidence: `src/engine/server/shared`, `src/engine/server/runtime`,
+  `src/engine/server/save`, `src/engine/server/world`, and mirrored include
+  directories.
+- [x] `ENG-FLATREHOME-002` Move obvious shared constraints, runtime shell
   helpers, savegame helpers, and simulation/world helpers into their modules.
-  Evidence:
-- [ ] `ENG-FLATREHOME-003` Decide whether `source_query` and `netapi_info`
+  Evidence: `Documentation/codex/modern/engine/flat-server-module-rehome.md`.
+- [x] `ENG-FLATREHOME-003` Decide whether `source_query` and `netapi_info`
   move into `client/` or a query submodule, and do the move if the owner is
   clear.
-  Evidence:
-- [ ] `ENG-FLATREHOME-004` Update includes, READMEs, and Waf references where
+  Evidence: moved both helpers into `src/engine/server/client` and
+  `src/include/engine/server/client` because query payloads are
+  session-facing response behavior.
+- [x] `ENG-FLATREHOME-004` Update includes, READMEs, and Waf references where
   needed while keeping live legacy ownership unchanged.
-  Evidence:
-- [ ] `ENG-FLATREHOME-005` Run focused affected tests, full validation, and
+  Evidence: updated canonical include paths in `src`, `engine`, and `tests`;
+  `src/engine/server/README.md`; `src/include/engine/server/README.md`.
+- [x] `ENG-FLATREHOME-005` Run focused affected tests, full validation, and
   smoke timing if runtime wiring changes.
-  Evidence:
+  Evidence: focused affected targets passed 22/22; full validation and smoke
+  passed with `.\waf.bat build --targets=xash`, `.\waf.bat build --alltests`
+  passing 141/141 tests, and runtime smoke reaching first frame in 0.508
+  seconds with stop reason `command`.
 
 ## Phase 163: Submodule Collapse Pass
 

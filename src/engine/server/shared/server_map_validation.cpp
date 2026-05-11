@@ -1,4 +1,4 @@
-#include "engine/server/server_map_validation.hpp"
+#include "engine/server/shared/server_map_validation.hpp"
 
 namespace xash
 {

@@ -1,6 +1,6 @@
 #include "server_lifecycle_limits_adapter.h"
 
-#include "engine/server/server_lifecycle_limits.hpp"
+#include "engine/server/shared/server_lifecycle_limits.hpp"
 
 extern "C" int SV_Lifecycle_ClampMaxClients(
 	int requested_max_clients,

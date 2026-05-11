@@ -2,7 +2,7 @@
 #include <cstdlib>
 
 #include "engine/server/client/client_policy.hpp"
-#include "engine/server/server_limits.hpp"
+#include "engine/server/shared/server_limits.hpp"
 
 using namespace xash::engine::server;
 

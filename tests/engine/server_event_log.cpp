@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/server_event_log.hpp"
+#include "engine/server/runtime/server_event_log.hpp"
 
 using xash::engine::server::FormatLogFileClosedMessage;
 using xash::engine::server::FormatLogFileStartedMessage;

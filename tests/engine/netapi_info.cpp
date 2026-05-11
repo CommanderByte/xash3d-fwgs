@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/server/netapi_info.hpp"
+#include "engine/server/client/netapi_info.hpp"
 
 using namespace xash::engine::server;
 

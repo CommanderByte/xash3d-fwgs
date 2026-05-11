@@ -2,7 +2,7 @@
 
 #include "client_adapter_shared.hpp"
 #include "common.h"
-#include "engine/server/source_query.hpp"
+#include "engine/server/client/source_query.hpp"
 
 #include <cstddef>
 

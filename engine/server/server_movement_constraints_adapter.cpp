@@ -1,6 +1,6 @@
 #include "server_movement_constraints_adapter.h"
 
-#include "engine/server/server_movement_constraints.hpp"
+#include "engine/server/world/server_movement_constraints.hpp"
 
 extern "C" int SV_MovementConstraints_IsMonsterNormalMoveType(int move_type)
 {

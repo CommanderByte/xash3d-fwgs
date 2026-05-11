@@ -1,7 +1,7 @@
 #include "netapi_info_adapter.h"
 
 #include "client_adapter_shared.hpp"
-#include "engine/server/netapi_info.hpp"
+#include "engine/server/client/netapi_info.hpp"
 
 using xash::engine::server::adapter::client::FromLegacyBool;
 using xash::engine::server::adapter::client::ToLegacyBool;
