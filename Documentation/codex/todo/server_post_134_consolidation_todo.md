@@ -83,15 +83,26 @@ Evidence:
 Goal: turn the broad game DLL bridge helper set into a clearer internal module
 without changing callback table publication.
 
-- [ ] Map bridge helpers into lifecycle, ABI metadata, entities, messages,
+- [x] Map bridge helpers into lifecycle, ABI metadata, entities, messages,
   resources, movement, visibility/world-query, output, string-pool, and
   changelevel areas.
-- [ ] Add a domain-level test that proves cross-helper behavior without a live
+- [x] Add a domain-level test that proves cross-helper behavior without a live
   DLL.
-- [ ] Consider grouped implementation files only where they reduce adapter
+- [x] Consider grouped implementation files only where they reduce adapter
   confusion.
-- [ ] Keep DLL lifetime, `enginefuncs_t` order, `svgame`, edict storage, and
+- [x] Keep DLL lifetime, `enginefuncs_t` order, `svgame`, edict storage, and
   callback calls legacy-owned.
+
+Evidence:
+`Documentation/codex/modern/engine/game-dll-bridge-domain-pilot.md`,
+`src/engine/server/game_dll/`, `src/include/engine/server/game_dll/`, flat
+forwarding headers under `src/include/engine/server/`, and
+`tests/engine/game_dll_bridge_domain.cpp`.
+
+Validation:
+Focused game DLL bridge targets passed 15/15; `.\waf.bat build --alltests`
+passed 130/130; runtime smoke reached first frame in 0.508 seconds and stopped
+with reason `command` on May 11 2026 at 14:14:40 local time.
 
 ## Phase 140: Client Session Domain Consolidation Pilot
 

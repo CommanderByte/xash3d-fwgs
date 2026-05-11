@@ -33,7 +33,7 @@ in the legacy server.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_entity_lifecycle.cpp` owns target-neutral plans for:
+`src/engine/server/game_dll/game_dll_entity_lifecycle.cpp` owns target-neutral plans for:
 
 - entity-index lookup admission and the player-slot bugcompat distinction;
 - null, valid, one-past, and fatal edict-index decisions;

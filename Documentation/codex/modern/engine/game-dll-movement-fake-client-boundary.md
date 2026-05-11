@@ -40,7 +40,7 @@ of the legacy server.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_movement_policy.cpp` owns pure plans for:
+`src/engine/server/game_dll/game_dll_movement_policy.cpp` owns pure plans for:
 
 - `pfnMoveToOrigin()` admission, immobile-entity rejection, normal versus
   strafe route selection, and vertical-goal use;

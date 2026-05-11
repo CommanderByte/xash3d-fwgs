@@ -28,7 +28,7 @@ server.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_client_info_policy.cpp` owns pure decisions for:
+`src/engine/server/game_dll/game_dll_client_info_policy.cpp` owns pure decisions for:
 
 - info-buffer routing;
 - local/server versus client set-value admission;

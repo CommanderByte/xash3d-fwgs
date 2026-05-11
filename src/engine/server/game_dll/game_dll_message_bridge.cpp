@@ -1,6 +1,6 @@
-#include "engine/server/game_dll_message_bridge.hpp"
+#include "engine/server/game_dll/game_dll_message_bridge.hpp"
 
-#include "engine/server/server_message_envelope.hpp"
+#include "engine/server/messaging/server_message_envelope.hpp"
 
 namespace xash
 {

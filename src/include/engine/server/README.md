@@ -14,28 +14,48 @@ compatibility.
 packet-entity cursor contracts. The flat messaging headers in this directory
 currently forward to that subdirectory for adapter compatibility.
 
+`game_dll/` contains grouped game DLL bridge contracts. The flat game DLL
+headers in this directory currently forward to that subdirectory so legacy
+adapters can keep their includes while the modern module has a clearer home.
+
 Current helpers:
 
-- `game_dll_enginefuncs.hpp`: metadata for the stable `enginefuncs_t` game DLL
-  callback table, including slot order, domains, adapter owners, and migration
-  readiness.
-- `game_dll_load_policy.hpp`: fake-symbol game DLL load/unload decision
+- `game_dll/game_dll_changelevel_policy.hpp`: game DLL changelevel request,
+  queued transition, and entity-patch write planning contracts.
+- `game_dll/game_dll_client_info_policy.hpp`: client/userinfo, player stats,
+  cvar-query, and game-directory routing contracts.
+- `game_dll/game_dll_enginefuncs.hpp`: metadata for the stable
+  `enginefuncs_t` game DLL callback table, including slot order, domains,
+  adapter owners, and migration readiness.
+- `game_dll/game_dll_entity_lifecycle.hpp`: game DLL entity lookup, index, and
+  private-data allocation/free planning contracts.
+- `game_dll/game_dll_entity_parse.hpp`: map entity key-value, `angle` rewrite,
+  custom entity, parse, load, and spawn planning contracts.
+- `game_dll/game_dll_load_policy.hpp`: fake-symbol game DLL load/unload decision
   contracts for required exports, API fallback, optional interfaces, and
   cleanup planning.
-- `game_dll_message_bridge.hpp`: aggregate game DLL message bridge contracts
+- `game_dll/game_dll_message_bridge.hpp`: aggregate game DLL message bridge contracts
   for building user-message begin requests and active registration resend
   payloads without owning live `sv.multicast` or callback publication.
-- `game_dll_message_session.hpp`: target-neutral model for game DLL
+- `game_dll/game_dll_message_session.hpp`: target-neutral model for game DLL
   message begin/write/end state, payload accounting, rewrite admission, and
   destination bounds.
-- `game_dll_movement_policy.hpp`: target-neutral movement and fake-client
+- `game_dll/game_dll_movement_policy.hpp`: target-neutral movement and fake-client
   callback plans for angle stepping, walkmove routing, maxspeed clamping, and
   fake-client command snapshots.
-- `game_dll_output_policy.hpp`: target-neutral policy for game DLL command,
+- `game_dll/game_dll_output_policy.hpp`: target-neutral policy for game DLL command,
   client print, server print, alert, and end-section callback routing.
-- `game_dll_user_message_registry.hpp`: target-neutral policy for game DLL
+- `game_dll/game_dll_payload_policy.hpp`: sound, ambient, particle,
+  lightstyle, decal, and make-static payload planning contracts.
+- `game_dll/game_dll_resource_policy.hpp`: resource name normalization, slot,
+  and model-load admission contracts.
+- `game_dll/game_dll_string_pool_compat.hpp`: string processing, string-pool
+  compatibility, override, and `MAKE_STRING` fallback contracts.
+- `game_dll/game_dll_user_message_registry.hpp`: target-neutral policy for game DLL
   user-message registration, duplicate lookup, size validation, and resend
   planning.
+- `game_dll/game_dll_visibility_trace_policy.hpp`: trace, visibility, PVS, and
+  skip-player admission/result planning contracts.
 - `save_restore_format.hpp`: read-only save/restore binary fixture parser
   contracts for headers, sections, entity patches, packed short fields, and
   bundled file entries.

@@ -1,4 +1,4 @@
-#include "engine/server/game_dll_entity_parse.hpp"
+#include "engine/server/game_dll/game_dll_entity_parse.hpp"
 
 #include <cstdio>
 #include <cstdlib>

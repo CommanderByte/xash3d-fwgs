@@ -2774,10 +2774,10 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GAMEDLL-META-001` Build a complete table-slot inventory for
   `enginefuncs_t`, including callback name, domain, adapter owner, and
   route-readiness category.
-  Evidence: `src/include/engine/server/game_dll_enginefuncs.hpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_enginefuncs.hpp`.
 - [x] `ENG-GAMEDLL-META-002` Add target-neutral metadata under
   `src/engine/server` without changing `engine/eiface.h` or `gEngfuncs`.
-  Evidence: `src/engine/server/game_dll_enginefuncs.cpp`; no legacy ABI files
+  Evidence: `src/engine/server/game_dll/game_dll_enginefuncs.cpp`; no legacy ABI files
   changed.
 - [x] `ENG-GAMEDLL-META-003` Add tests or compile-time checks that metadata
   coverage stays complete and intentionally ordered.
@@ -2797,8 +2797,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
 - [x] `ENG-GAMEDLL-MSG-002` Implement a mockable message-session state machine
   for begin/write/end validation and byte counting.
-  Evidence: `src/include/engine/server/game_dll_message_session.hpp` and
-  `src/engine/server/game_dll_message_session.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_message_session.hpp` and
+  `src/engine/server/game_dll/game_dll_message_session.cpp`.
 - [x] `ENG-GAMEDLL-MSG-003` Add tests for malformed sequences, fixed-size
   mismatch, variable-size patching, `pfnWriteByte(-1)`, entity bounds, null
   string accounting, empty finale/cutscene null strings, and rewrite
@@ -2827,8 +2827,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
 - [x] `ENG-GAMEDLL-USERMSG-002` Implement a target-neutral user-message
   registration policy helper.
-  Evidence: `src/include/engine/server/game_dll_user_message_registry.hpp`
-  and `src/engine/server/game_dll_user_message_registry.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_user_message_registry.hpp`
+  and `src/engine/server/game_dll/game_dll_user_message_registry.cpp`.
 - [x] `ENG-GAMEDLL-USERMSG-003` Add tests for duplicate names, fixed and
   variable sizes, too-long names, message count exhaustion, and active resend
   planning.
@@ -2858,8 +2858,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/todo/game_dll_bridge_todo.md`.
 - [x] `ENG-GAMEDLL-OUTPUT-002` Extract command validation and
   output-classification helpers where they can stay target-neutral.
-  Evidence: `src/include/engine/server/game_dll_output_policy.hpp` and
-  `src/engine/server/game_dll_output_policy.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_output_policy.hpp` and
+  `src/engine/server/game_dll/game_dll_output_policy.cpp`.
 - [x] `ENG-GAMEDLL-OUTPUT-003` Add tests for fake-client skips, invalid
   commands, developer verbosity, multiplayer `at_logged`, and aiconsole
   suppression.
@@ -2886,8 +2886,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/modern/engine/game-dll-resource-policy.md`.
 - [x] `ENG-GAMEDLL-RES-002` Extract optional-resource admission, slash
   normalization, case-insensitive lookup, and error-plan decisions.
-  Evidence: `src/include/engine/server/game_dll_resource_policy.hpp` and
-  `src/engine/server/game_dll_resource_policy.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_resource_policy.hpp` and
+  `src/engine/server/game_dll/game_dll_resource_policy.cpp`.
 - [x] `ENG-GAMEDLL-RES-003` Add tests for null or empty names, leading `!`,
   leading slash/backslash, duplicate lookup, missing optional resources, and
   bounds failures.
@@ -2913,7 +2913,7 @@ Phase 89 covers user-message registry policy.
   payload helpers where the callback boundary matches.
   Evidence: `src/include/engine/server/server_sound_message.hpp`,
   `src/include/engine/server/server_static_messages.hpp`, and
-  `src/include/engine/server/game_dll_payload_policy.hpp`.
+  `src/include/engine/server/game_dll/game_dll_payload_policy.hpp`.
 - [x] `ENG-GAMEDLL-PAYLOAD-003` Add tests for callback input validation,
   optional fields, invalid sample/model cases, lightstyle loading no-ops, and
   payload output.
@@ -2941,8 +2941,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/modern/engine/game-dll-client-info-policy.md`.
 - [x] `ENG-GAMEDLL-INFO-002` Extract safe admission and fallback-result
   policies.
-  Evidence: `src/include/engine/server/game_dll_client_info_policy.hpp` and
-  `src/engine/server/game_dll_client_info_policy.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_client_info_policy.hpp` and
+  `src/engine/server/game_dll/game_dll_client_info_policy.cpp`.
 - [x] `ENG-GAMEDLL-INFO-003` Add tests for local/serverinfo selection,
   unchanged key-values, resend-flag decisions, bad-player query results,
   invalid cvar names, and full-path game-dir fallback.
@@ -2971,8 +2971,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `tests/engine/game_dll_string_pool_compat.cpp`.
 - [x] `ENG-GAMEDLL-STR-003` Extract pure policy only after fixtures prove the
   numeric `string_t` compatibility model.
-  Evidence: `src/include/engine/server/game_dll_string_pool_compat.hpp` and
-  `src/engine/server/game_dll_string_pool_compat.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_string_pool_compat.hpp` and
+  `src/engine/server/game_dll/game_dll_string_pool_compat.cpp`.
 - [x] `ENG-GAMEDLL-STR-004` Keep `globalvars_t::pStringBase`, 64-bit near-DLL
   storage, and physics overrides legacy-owned.
   Evidence: Phase 94 adds fixture/policy code only; live string APIs remain in
@@ -2997,8 +2997,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `tests/engine/game_dll_entity_lifecycle.cpp`.
 - [x] `ENG-GAMEDLL-ENT-003` Route only policy decisions that do not own
   `edict_t` memory or call game DLL destructors directly.
-  Evidence: `src/include/engine/server/game_dll_entity_lifecycle.hpp`,
-  `src/engine/server/game_dll_entity_lifecycle.cpp`,
+  Evidence: `src/include/engine/server/game_dll/game_dll_entity_lifecycle.hpp`,
+  `src/engine/server/game_dll/game_dll_entity_lifecycle.cpp`,
   `engine/server/game_dll_entity_lifecycle_adapter.cpp`, and
   `engine/server/sv_game.c`.
 - [x] `ENG-GAMEDLL-ENT-004` Run focused tests, full tests, and smoke timing.
@@ -3021,8 +3021,8 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GAMEDLL-SPAWN-003` Keep `pfnKeyValue()`, `pfnSpawn()`, edict
   allocation, and map text lifetime legacy-owned until loaded-DLL fixtures
   exist.
-  Evidence: `src/include/engine/server/game_dll_entity_parse.hpp`,
-  `src/engine/server/game_dll_entity_parse.cpp`, and no live route-through in
+  Evidence: `src/include/engine/server/game_dll/game_dll_entity_parse.hpp`,
+  `src/engine/server/game_dll/game_dll_entity_parse.cpp`, and no live route-through in
   `engine/server/sv_game.c`.
 - [x] `ENG-GAMEDLL-SPAWN-004` Run focused tests, full tests, and smoke timing
   if any route-through is added.
@@ -3046,8 +3046,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `tests/engine/game_dll_changelevel_policy.cpp`.
 - [x] `ENG-GAMEDLL-CHANGE-003` Keep runtime save/load streams and game DLL
   field serialization legacy-owned.
-  Evidence: `src/include/engine/server/game_dll_changelevel_policy.hpp`,
-  `src/engine/server/game_dll_changelevel_policy.cpp`, and no live
+  Evidence: `src/include/engine/server/game_dll/game_dll_changelevel_policy.hpp`,
+  `src/engine/server/game_dll/game_dll_changelevel_policy.cpp`, and no live
   route-through in `engine/server/sv_game.c` or `engine/server/sv_save.c`.
 - [x] `ENG-GAMEDLL-CHANGE-004` Run focused tests, full tests, and smoke
   timing.
@@ -3069,8 +3069,8 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-GAMEDLL-VIS-003` Decide whether to defer route-through until a
   broader world/trace phase.
   Evidence: Deferred. Phase 98 adds
-  `src/include/engine/server/game_dll_visibility_trace_policy.hpp` and
-  `src/engine/server/game_dll_visibility_trace_policy.cpp` only; live
+  `src/include/engine/server/game_dll/game_dll_visibility_trace_policy.hpp` and
+  `src/engine/server/game_dll/game_dll_visibility_trace_policy.cpp` only; live
   trace/visibility callbacks remain in `engine/server/sv_game.c` and
   collision/PVS/PAS ownership remains in `engine/server/sv_world.c`.
 - [x] `ENG-GAMEDLL-VIS-004` Run focused tests, full tests, and smoke timing.
@@ -3088,8 +3088,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/modern/engine/game-dll-movement-fake-client-boundary.md`.
 - [x] `ENG-GAMEDLL-MOVE-002` Add pure movement-policy tests only after
   movement fixtures exist.
-  Evidence: `src/include/engine/server/game_dll_movement_policy.hpp`,
-  `src/engine/server/game_dll_movement_policy.cpp`, and
+  Evidence: `src/include/engine/server/game_dll/game_dll_movement_policy.hpp`,
+  `src/engine/server/game_dll/game_dll_movement_policy.cpp`, and
   `tests/engine/game_dll_movement_policy.cpp`.
 - [x] `ENG-GAMEDLL-MOVE-003` Keep `SV_RunCmd()`, `playermove_t`,
   `sv.current_client`, and physics callbacks legacy-owned.
@@ -3112,8 +3112,8 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/modern/engine/game-dll-load-unload-boundary.md`.
 - [x] `ENG-GAMEDLL-LOAD-002` Implement a fake-symbol load-plan helper without
   moving real library lifetime.
-  Evidence: `src/include/engine/server/game_dll_load_policy.hpp` and
-  `src/engine/server/game_dll_load_policy.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_load_policy.hpp` and
+  `src/engine/server/game_dll/game_dll_load_policy.cpp`.
 - [x] `ENG-GAMEDLL-LOAD-003` Add tests for required export failures,
   optional extension mismatch, API fallback, and cleanup planning.
   Evidence: `tests/engine/game_dll_load_policy.cpp`.
@@ -4060,19 +4060,30 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 139: Game DLL Bridge Domain Consolidation Pilot
 
-- [ ] `ENG-GAMEDLL-DOMAIN-001` Map game DLL bridge helpers into lifecycle,
+- [x] `ENG-GAMEDLL-DOMAIN-001` Map game DLL bridge helpers into lifecycle,
   ABI metadata, entities, messages, resources, movement, visibility/world
   query, output, string-pool, and changelevel areas.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-GAMEDLL-DOMAIN-002` Add a domain-level test that proves
+  Evidence: `src/engine/server/game_dll/`,
+  `src/include/engine/server/game_dll/`, and
+  `Documentation/codex/modern/engine/game-dll-bridge-domain-pilot.md`.
+- [x] `ENG-GAMEDLL-DOMAIN-002` Add a domain-level test that proves
   cross-helper behavior without a live DLL.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-GAMEDLL-DOMAIN-003` Consider grouped implementation files only
+  Evidence: `tests/engine/game_dll_bridge_domain.cpp`.
+- [x] `ENG-GAMEDLL-DOMAIN-003` Consider grouped implementation files only
   where they reduce adapter confusion.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-GAMEDLL-DOMAIN-004` Keep DLL lifetime, `enginefuncs_t` order,
+  Evidence: implementation files stayed split inside
+  `src/engine/server/game_dll/`, with flat forwarding headers kept for
+  compatibility.
+- [x] `ENG-GAMEDLL-DOMAIN-004` Keep DLL lifetime, `enginefuncs_t` order,
   `svgame`, edict storage, and callback calls legacy-owned.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: only target-neutral modern files and private include paths moved;
+  legacy adapters and `sv_game.c` callback/lifetime ownership were unchanged.
+  Validation: focused game DLL bridge targets passed 15/15;
+  `.\waf.bat build --alltests` passed 130/130; runtime smoke built `xash`,
+  refreshed `run-win32`, ran
+  `.\xash3d.exe -dev 2 -log +fs_path +wait +wait +quit`, reached first frame
+  in 0.508 seconds, and stopped with reason `command` at May 11 2026
+  14:14:40 local time.
 
 ## Phase 140: Client Session Domain Consolidation Pilot
 

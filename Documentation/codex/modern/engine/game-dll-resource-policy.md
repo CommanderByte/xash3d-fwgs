@@ -22,7 +22,7 @@ and precache callbacks without moving ownership of live server resource state.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_resource_policy.cpp` now owns only pure decisions:
+`src/engine/server/game_dll/game_dll_resource_policy.cpp` now owns only pure decisions:
 
 - resource-name admission and normalization;
 - optional model prefix handling;

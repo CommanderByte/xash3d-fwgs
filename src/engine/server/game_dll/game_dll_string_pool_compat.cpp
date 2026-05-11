@@ -1,4 +1,4 @@
-#include "engine/server/game_dll_string_pool_compat.hpp"
+#include "engine/server/game_dll/game_dll_string_pool_compat.hpp"
 
 #include <climits>
 

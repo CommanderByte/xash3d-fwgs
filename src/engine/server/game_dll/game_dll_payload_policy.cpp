@@ -1,4 +1,4 @@
-#include "engine/server/game_dll_payload_policy.hpp"
+#include "engine/server/game_dll/game_dll_payload_policy.hpp"
 
 namespace xash
 {

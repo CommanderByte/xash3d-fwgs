@@ -57,6 +57,10 @@ Current implementation notes:
   DLL bridge lane into a future `src/engine/server/game_dll/` submodule layout,
   which cross-callback tests should exist first, and which `sv_game.c` regions
   remain too coupled to move.
+- `game-dll-bridge-domain-pilot.md`: how Phase 139 physically groups the
+  modern game DLL bridge helpers under `src/engine/server/game_dll/` while
+  keeping flat forwarding headers, callback table publication, DLL lifetime,
+  and live edict/message ownership legacy-bound.
 - `game-dll-changelevel-save-boundary.md`: how Phase 97 models changelevel
   admission, landmark truncation, smooth/classic queuing, and `.HL3`
   entity-patch intent while keeping runtime save/load callbacks legacy-owned.

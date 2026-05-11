@@ -28,10 +28,10 @@ phase.
 ## Phase 87: Enginefuncs Metadata
 
 - [x] Build a table-slot inventory for `enginefuncs_t`.
-  Evidence: `src/include/engine/server/game_dll_enginefuncs.hpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_enginefuncs.hpp`.
 - [x] Categorize every callback by subsystem, adapter owner, and migration
   readiness.
-  Evidence: `src/include/engine/server/game_dll_enginefuncs.hpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_enginefuncs.hpp`.
 - [x] Add tests or compile-time checks that table metadata remains complete.
   Evidence: `tests/engine/game_dll_enginefuncs.cpp`.
 - [x] Keep the concrete `gEngfuncs` table and `engine/eiface.h` ABI unchanged.
@@ -50,8 +50,8 @@ phase.
   compatibility flag is enabled.
 - [x] Implement a target-neutral message-session state machine that writes to
   mock buffers.
-  Evidence: `src/include/engine/server/game_dll_message_session.hpp` and
-  `src/engine/server/game_dll_message_session.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_message_session.hpp` and
+  `src/engine/server/game_dll/game_dll_message_session.cpp`.
 - [x] Add tests for double begin, end without begin, fixed-size mismatch,
   variable-size patching, overflow clearing, `pfnWriteByte(-1)`, string null
   accounting, and rewrite admission.
@@ -76,8 +76,8 @@ phase.
   is active.
 - [x] Implement a target-neutral registry policy that can be tested without
   live `svgame.msg` mutation.
-  Evidence: `src/include/engine/server/game_dll_user_message_registry.hpp`
-  and `src/engine/server/game_dll_user_message_registry.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_user_message_registry.hpp`
+  and `src/engine/server/game_dll/game_dll_user_message_registry.cpp`.
 - [x] Add tests for duplicate names, fixed/variable sizes, max-name length,
   max-message count, and active resend planning.
   Evidence: `tests/engine/game_dll_user_message_registry.cpp`.
@@ -105,8 +105,8 @@ phase.
   `oem_end_credits`, otherwise queues disconnect.
 - [x] Extract command validation and output-classification decisions where
   they do not depend on live sinks.
-  Evidence: `src/include/engine/server/game_dll_output_policy.hpp` and
-  `src/engine/server/game_dll_output_policy.cpp`.
+  Evidence: `src/include/engine/server/game_dll/game_dll_output_policy.hpp` and
+  `src/engine/server/game_dll/game_dll_output_policy.cpp`.
 - [x] Add tests for fake-client skips, invalid commands, developer verbosity,
   multiplayer `at_logged`, and aiconsole suppression.
   Evidence: `tests/engine/game_dll_output_policy.cpp`.
@@ -157,7 +157,7 @@ phase.
   Evidence: `tests/engine/game_dll_string_pool_compat.cpp`.
 - [x] Keep `globalvars_t::pStringBase`, 64-bit near-DLL storage, and physics
   string overrides legacy-owned until fixtures are broad enough.
-  Evidence: Phase 94 adds only `src/engine/server/game_dll_string_pool_compat.cpp`;
+  Evidence: Phase 94 adds only `src/engine/server/game_dll/game_dll_string_pool_compat.cpp`;
   live `SV_AllocString()`, `SV_MakeString()`, and `SV_GetString()` remain in
   `engine/server/sv_game.c`.
 

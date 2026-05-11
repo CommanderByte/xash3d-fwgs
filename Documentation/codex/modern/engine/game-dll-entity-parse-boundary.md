@@ -38,7 +38,7 @@ callbacks, spawn callbacks, edict allocation, and map text cursor remain in
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_entity_parse.cpp` owns pure plans for:
+`src/engine/server/game_dll/game_dll_entity_parse.cpp` owns pure plans for:
 
 - skip versus handle-classname versus deferred key-value storage;
 - duplicate `classname` rejection;

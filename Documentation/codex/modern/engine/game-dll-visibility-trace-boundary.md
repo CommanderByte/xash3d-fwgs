@@ -38,7 +38,7 @@ legacy world/server code.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_visibility_trace_policy.cpp` owns pure plans for:
+`src/engine/server/game_dll/game_dll_visibility_trace_policy.cpp` owns pure plans for:
 
 - invalid hit-entity fallback to world;
 - invalid trace-call admission;

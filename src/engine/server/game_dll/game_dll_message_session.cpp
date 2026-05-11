@@ -1,4 +1,4 @@
-#include "engine/server/game_dll_message_session.hpp"
+#include "engine/server/game_dll/game_dll_message_session.hpp"
 
 #include <cstring>
 

@@ -55,7 +55,7 @@ legacy server.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_load_policy.cpp` owns pure plans for:
+`src/engine/server/game_dll/game_dll_load_policy.cpp` owns pure plans for:
 
 - required symbol admission and load-failure cleanup;
 - preferred `GetEntityAPI2` versus legacy `GetEntityAPI` selection, including

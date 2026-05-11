@@ -28,7 +28,7 @@ Phase 94 models game-DLL-facing string-pool behavior without moving
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_string_pool_compat.cpp` owns a fixture-safe model
+`src/engine/server/game_dll/game_dll_string_pool_compat.cpp` owns a fixture-safe model
 for:
 
 - escape normalization and required byte counts;

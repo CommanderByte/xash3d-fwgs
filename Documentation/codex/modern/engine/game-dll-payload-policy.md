@@ -25,7 +25,7 @@ leaving live engine buffers and entity state in the legacy adapter.
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_payload_policy.cpp` owns pure decisions for:
+`src/engine/server/game_dll/game_dll_payload_policy.cpp` owns pure decisions for:
 
 - sound multicast destinations and prediction filtering;
 - ambient-sound spawning flag propagation;

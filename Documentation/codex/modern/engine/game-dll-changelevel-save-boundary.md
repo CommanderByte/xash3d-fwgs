@@ -51,7 +51,7 @@ Runtime save/load remains legacy-owned, but the critical callback order is:
 
 ## Modern Boundary
 
-`src/engine/server/game_dll_changelevel_policy.cpp` owns pure plans for:
+`src/engine/server/game_dll/game_dll_changelevel_policy.cpp` owns pure plans for:
 
 - `pfnChangeLevel()` request admission and duplicate spawncount suppression;
 - optional landmark truncation;
