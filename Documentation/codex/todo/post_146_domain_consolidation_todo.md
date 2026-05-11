@@ -54,12 +54,12 @@ behavior.
 Goal: test message payload and recipient policy as a domain, not only as
 individual payload writers.
 
-- [ ] Audit message helpers under `src/engine/server/messaging`.
-- [ ] Add aggregate tests for envelope selection, recipient policy, payload
+- [x] Audit message helpers under `src/engine/server/messaging`.
+- [x] Add aggregate tests for envelope selection, recipient policy, payload
   writer output, and event/frame-adjacent message planning.
-- [ ] Keep `sizebuf_t`, datagram ownership, signon buffers, client frames, and
+- [x] Keep `sizebuf_t`, datagram ownership, signon buffers, client frames, and
   actual network sends legacy-owned.
-- [ ] Run focused messaging tests and full validation.
+- [x] Run focused messaging tests and full validation.
 
 ## Phase 151: Messaging Adapter Shrink Pilot
 

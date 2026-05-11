@@ -4296,17 +4296,22 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 150: Messaging Domain Aggregate Tests
 
-- [ ] `ENG-MSGAGG2-001` Audit message helpers under
+- [x] `ENG-MSGAGG2-001` Audit message helpers under
   `src/engine/server/messaging`.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-MSGAGG2-002` Add aggregate tests for envelope selection, recipient
+  Evidence: `Documentation/codex/modern/engine/server-messaging-domain-aggregate.md`;
+  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [x] `ENG-MSGAGG2-002` Add aggregate tests for envelope selection, recipient
   policy, payload writer output, and event/frame-adjacent message planning.
-  Evidence:
-- [ ] `ENG-MSGAGG2-003` Keep `sizebuf_t`, datagram ownership, signon buffers,
+  Evidence: `tests/engine/server_messaging_domain.cpp`;
+  `src/wscript`.
+- [x] `ENG-MSGAGG2-003` Keep `sizebuf_t`, datagram ownership, signon buffers,
   client frames, and actual network sends legacy-owned.
-  Evidence:
-- [ ] `ENG-MSGAGG2-004` Run focused messaging tests and full validation.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/server-messaging-domain-aggregate.md`.
+- [x] `ENG-MSGAGG2-004` Run focused messaging tests and full validation.
+  Evidence: focused messaging target set passed 14/14, including
+  `test_engine_server_messaging_domain`;
+  `.\waf.bat build --targets=test_engine_server_message_envelope` completed;
+  `.\waf.bat build --alltests` passed 136/136.
 
 ## Phase 151: Messaging Adapter Shrink Pilot
 

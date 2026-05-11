@@ -129,6 +129,7 @@ def build(bld):
 			'engine_server_group_filter': '../tests/engine/server_group_filter.cpp',
 			'engine_server_map_validation': '../tests/engine/server_map_validation.cpp',
 			'engine_server_message_envelope': '../tests/engine/server_message_envelope.cpp',
+			'engine_server_messaging_domain': '../tests/engine/server_messaging_domain.cpp',
 			'engine_server_event_playback_policy': '../tests/engine/server_event_playback_policy.cpp',
 			'engine_server_movement_constraints': '../tests/engine/server_movement_constraints.cpp',
 			'engine_server_physics_routing_policy': '../tests/engine/server_physics_routing_policy.cpp',
