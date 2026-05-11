@@ -37,6 +37,18 @@ Planned path:
   duplication between existing helpers.
 - Phase 117 shrinks adapters only where the grouped boundary is clear.
 
+Phase 115 outcome:
+
+- Resource transfer is a real future domain, but the first consolidation should
+  be aggregate tests plus a target-neutral resource manifest/list-view seam, not
+  directory regrouping or adapter merging.
+- `sv.resources[]`, client resource linked lists, HPAK, filesystem probes,
+  transfer cvars, netchan fragments, and game DLL callbacks remain legacy-owned.
+- Phase 116 should start by testing catalog entries, descriptor-list lookup,
+  download decisions, and resource-row serialization against the same manifest.
+  Evidence:
+  `Documentation/codex/modern/engine/resource-transfer-consolidation-audit.md`.
+
 ## Phase 118-120: Server Messaging Domain
 
 Legacy spread:

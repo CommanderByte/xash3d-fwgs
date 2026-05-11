@@ -88,6 +88,10 @@ Current implementation notes:
   quirks.
 - `rendered-console-sink.md`: why the in-game rendered console remains a
   legacy client sink until a later router/client-rendering phase.
+- `resource-transfer-consolidation-audit.md`: how Phase 115 groups startup
+  resource catalogs, downloads, uploads, customizations, consistency checks,
+  hot resources, reslists, and game DLL resource callbacks into a future
+  resource-transfer domain.
 - `resource_identity.hpp` / `resource_identity.cpp`: Phase 62's implemented
   target-neutral custom resource identity helpers under `src/engine/server`.
 - `server_download_policy.hpp` / `server_download_policy.cpp`: Phase 63's

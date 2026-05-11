@@ -3464,23 +3464,27 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 115: Resource Transfer Consolidation Audit
 
-- [ ] `ENG-RESGROUP-001` Audit resource-transfer ownership across `sv_init.c`,
+- [x] `ENG-RESGROUP-001` Audit resource-transfer ownership across `sv_init.c`,
   `sv_custom.c`, `sv_client.c`, and `sv_game.c`.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-RESGROUP-002` Map existing modern resource helpers into a future
+  Evidence: `Documentation/codex/modern/engine/resource-transfer-consolidation-audit.md`,
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [x] `ENG-RESGROUP-002` Map existing modern resource helpers into a future
   resource-transfer domain without moving files yet.
-  Evidence:
-- [ ] `ENG-RESGROUP-003` Identify missing aggregate tests for catalog,
+  Evidence: `Documentation/codex/modern/engine/resource-transfer-consolidation-audit.md`.
+- [x] `ENG-RESGROUP-003` Identify missing aggregate tests for catalog,
   reslist, consistency, download, upload, customization, and hot-resource
   flows.
-  Evidence:
-- [ ] `ENG-RESGROUP-004` Decide whether the first grouped resource seam should
+  Evidence: `Documentation/codex/modern/engine/resource-transfer-consolidation-audit.md`.
+- [x] `ENG-RESGROUP-004` Decide whether the first grouped resource seam should
   be a domain facade, directory regrouping, or adapter shrink.
-  Evidence:
+  Evidence: start Phase 116 with aggregate resource-transfer tests and add a
+  target-neutral manifest/list-view helper only if the tests reveal repeated
+  glue; defer directory regrouping and adapter shrinking; `git diff --check`
+  passed.
 
 ## Phase 116: Resource Transfer Aggregate Helper Pilot
 
-- [ ] `ENG-RESAGG-001` Add focused tests for the smallest aggregate resource
+- [ ] `ENG-RESAGG-001` Add focused tests for the catalog-to-manifest resource
   flow selected in Phase 115.
   Evidence:
 - [ ] `ENG-RESAGG-002` Implement a target-neutral aggregate helper only if it
@@ -3929,3 +3933,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-064 | Defer any broad model/visibility route-through until synthetic or golden fixtures cover BSP visibility and hull traversal; in the meantime, use only small request/route snapshot helpers around legacy-owned `model_t`, PVS/PAS, edict leaf, and trace state. | `modern/engine/model-visibility-service-boundary.md` |
 | 2026-05-11 | DEC-065 | Keep the current one-helper-per-seam layout as migration scaffolding, but use resource transfer, server messaging, game DLL bridge, client/session, and world/runtime concepts as the next consolidation boundaries; do not collapse adapters unless the grouped file maps to one of those domains. | `modern/engine/server-cpp-ownership-consolidation.md`, `modern/cpp-ownership-target.md` |
 | 2026-05-11 | DEC-066 | Use Phases 115-134 as the next server roadmap, ordered from lower-risk consolidation domains toward high-fixture-risk world, PMove, and runtime save/restore ownership; continue the audit-test-helper-adapter-validation pattern for each lane. | `todo/server_consolidation_roadmap_todo.md`, `tasks.md` |
+| 2026-05-11 | DEC-067 | For resource-transfer consolidation, start with aggregate tests around a target-neutral resource manifest/list-view; keep `sv.resources[]`, `resource_t` linked lists, HPAK, filesystem probes, transfer cvars, netchan fragments, and game DLL callbacks legacy-owned until the manifest seam is proven. | `modern/engine/resource-transfer-consolidation-audit.md`, `todo/server_consolidation_roadmap_todo.md` |
