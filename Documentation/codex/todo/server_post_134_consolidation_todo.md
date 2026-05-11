@@ -224,13 +224,23 @@ documentation, and test build registration.
 Goal: prepare PMove bridge fixtures before touching setup/finish or command
 execution.
 
-- [ ] Define usercmd packet, dropped-command, frozen-player, and unlag history
+- [x] Define usercmd packet, dropped-command, frozen-player, and unlag history
   fixtures.
-- [ ] Define `playermove_t` setup/finish snapshots that can be compared safely.
-- [ ] Identify callback mocks needed for PMove trace, contents, texture, and
+- [x] Define `playermove_t` setup/finish snapshots that can be compared safely.
+- [x] Identify callback mocks needed for PMove trace, contents, texture, and
   touch replay behavior.
-- [ ] Keep `SV_RunCmd()`, PMove callback table publication, physent
+- [x] Keep `SV_RunCmd()`, PMove callback table publication, physent
   population, and touch replay legacy-owned.
+
+Evidence: `Documentation/codex/modern/engine/pmove-usercmd-fixture-harness-plan.md`
+defines the fixture boundary and legacy deferrals,
+`tests/engine/pmove_usercmd_fixture_common.hpp` and
+`tests/engine/pmove_usercmd_fixtures.cpp` add the standalone modern fixture
+skeleton, and focused validation passed for
+`test_engine_pmove_usercmd_fixtures` plus `test_engine_server_pmove_bridge_policy`;
+`.\waf.bat build --alltests` passed 134/134. No runtime smoke was required
+because Phase 145 changed only tests, documentation, and test build
+registration.
 
 ## Phase 146: Server Runtime Smoke And Performance Checkpoint
 

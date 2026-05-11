@@ -4193,18 +4193,26 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 145: PMove And Usercmd Fixture Harness Plan
 
-- [ ] `ENG-PMOVE-FIXTURE-001` Define usercmd packet, dropped-command,
+- [x] `ENG-PMOVE-FIXTURE-001` Define usercmd packet, dropped-command,
   frozen-player, and unlag history fixtures.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-PMOVE-FIXTURE-002` Define `playermove_t` setup/finish snapshots
+  Evidence: `Documentation/codex/modern/engine/pmove-usercmd-fixture-harness-plan.md`
+  and `tests/engine/pmove_usercmd_fixture_common.hpp` define plain command,
+  replay, freeze, and unlag-history fixture inputs.
+- [x] `ENG-PMOVE-FIXTURE-002` Define `playermove_t` setup/finish snapshots
   that can be compared safely.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-PMOVE-FIXTURE-003` Identify callback mocks needed for PMove trace,
+  Evidence: `PmoveFixtureSetupSnapshot`, `PmoveFixtureMoveResult`, and
+  `PmoveFixtureFinishSnapshot` model comparable setup/finish fields without
+  including `playermove_t`.
+- [x] `ENG-PMOVE-FIXTURE-003` Identify callback mocks needed for PMove trace,
   contents, texture, and touch replay behavior.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-PMOVE-FIXTURE-004` Keep `SV_RunCmd()`, PMove callback table
+  Evidence: the harness plan records the trace, contents, texture, model,
+  file, sound, event, and touch-replay mock inventory; the fixture skeleton
+  exposes `BuildPmoveFixtureRequiredCallbackMockMask()`.
+- [x] `ENG-PMOVE-FIXTURE-004` Keep `SV_RunCmd()`, PMove callback table
   publication, physent population, and touch replay legacy-owned.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: the harness plan defers those runtime owners; focused validation
+  passed with `.\waf.bat build --targets=test_engine_pmove_usercmd_fixtures,test_engine_server_pmove_bridge_policy`;
+  `.\waf.bat build --alltests` passed 134/134.
 
 ## Phase 146: Server Runtime Smoke And Performance Checkpoint
 

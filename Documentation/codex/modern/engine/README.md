@@ -224,6 +224,9 @@ Current implementation notes:
 - `server-pmove-bridge-boundary.md`: how Phase 133 keeps PMove setup,
   physent population, command execution, and touch replay legacy-owned while
   routing unlag admission and interpolation timing through a plain helper.
+- `pmove-usercmd-fixture-harness-plan.md`: how Phase 145 defines test-only
+  command, setup/finish snapshot, callback mock, and unlag-history fixtures
+  before moving PMove setup, command replay, or callback ownership.
 - `server-route-through-review.md`: how Phase 106 reviews the Phase 101-105
   constants lane, confirms no extra broad route-through should be made, and
   lists the next behavior-owner phases.
