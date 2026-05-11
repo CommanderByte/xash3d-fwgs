@@ -185,6 +185,10 @@ Current implementation notes:
   cvar registration, movevars, packet reads, frame ordering, master heartbeats,
   and shutdown legacy-owned while routing client timeout decisions through a
   plain modern policy helper.
+- `server-save-restore-runtime-ownership.md`: how Phase 134 keeps runtime
+  save/load streams, game DLL field callbacks, filesystem extraction, client
+  renderer/audio restore, and landmark transition effects legacy-owned while
+  identifying value objects that can move later.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

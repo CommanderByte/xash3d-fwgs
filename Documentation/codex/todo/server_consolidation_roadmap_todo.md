@@ -384,6 +384,22 @@ Planned path:
 - Runtime stream mutation, game DLL field descriptors, and filesystem side
   effects stay legacy-owned until a later implementation phase.
 
+Phase 134 outcome:
+
+- `sv_save.c` remains the runtime owner for save/load streams, temporary
+  `.HL?` files, `SAVERESTOREDATA` lifetime, game DLL field callbacks,
+  renderer/audio client state, entity restore, landmark transitions, cvar
+  mutation, map load/spawn flow, and save slot filesystem side effects.
+- Good later value-object candidates include save admission snapshots,
+  save-slot plans, save-comment/version classification, token table views,
+  save/client header snapshots, landmark transition plans, entity table rows,
+  entity patch plans, and outer archive manifests.
+- The next checkpoint after Phases 115-134 should be a server consolidation
+  planning pass that groups stable helpers by domain and names which adapters
+  are temporary, rather than another broad route-through sweep.
+  Evidence:
+  `Documentation/codex/modern/engine/server-save-restore-runtime-ownership.md`.
+
 ## Validation Rhythm
 
 - Documentation-only phases run `git diff --check`.

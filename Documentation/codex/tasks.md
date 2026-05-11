@@ -3964,18 +3964,18 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 134: Runtime Save Restore Owner Audit
 
-- [ ] `ENG-SAVERUNTIME-001` Audit runtime `sv_save.c` save/load ownership after
+- [x] `ENG-SAVERUNTIME-001` Audit runtime `sv_save.c` save/load ownership after
   previous save-format fixture work.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-SAVERUNTIME-002` Identify value objects that could represent
+  Evidence: `Documentation/codex/modern/engine/server-save-restore-runtime-ownership.md`.
+- [x] `ENG-SAVERUNTIME-002` Identify value objects that could represent
   landmark transitions, save headers, token tables, or entity patches without
   changing file formats.
-  Evidence:
-- [ ] `ENG-SAVERUNTIME-003` Document game DLL field serialization and
+  Evidence: `Documentation/codex/modern/engine/server-save-restore-runtime-ownership.md`.
+- [x] `ENG-SAVERUNTIME-003` Document game DLL field serialization and
   filesystem side effects that must remain legacy-owned.
-  Evidence:
-- [ ] `ENG-SAVERUNTIME-004` Recommend the next checkpoint after Phases 115-134.
-  Evidence:
+  Evidence: `Documentation/codex/modern/engine/server-save-restore-runtime-ownership.md`.
+- [x] `ENG-SAVERUNTIME-004` Recommend the next checkpoint after Phases 115-134.
+  Evidence: `Documentation/codex/modern/engine/server-save-restore-runtime-ownership.md`.
 
 ## Phase 800: POSIX Console Backend Validation
 
