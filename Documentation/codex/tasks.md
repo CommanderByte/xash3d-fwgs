@@ -4250,7 +4250,7 @@ Phase 89 covers user-message registry policy.
   adapter-routed.
   Evidence: `Documentation/codex/modern/engine/milestone-146-migration-status.md`.
 - [x] `ENG-ROADMAP-147-003` Pick the next domain consolidation order.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+  Evidence: `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 - [x] `ENG-ROADMAP-147-004` Update this task list with the next phase set.
   Evidence: Phases 148-160 below.
 
@@ -4259,7 +4259,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-RESAGG-001` Audit current resource-domain helpers and adapters
   against `sv_custom.c`, `sv_client.c`, and `sv_game.c` call sites.
   Evidence: `Documentation/codex/modern/engine/resource-domain-aggregate-tests.md`;
-  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+  `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 - [x] `ENG-RESAGG-002` Add aggregate tests covering identity, catalog,
   consistency, download/upload admission, hot-resource decisions, and
   customization payload planning.
@@ -4278,7 +4278,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-RESADAPT-001` Identify resource adapters that only translate plain
   values.
   Evidence: `Documentation/codex/modern/engine/resource-adapter-shrink-pilot.md`;
-  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+  `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 - [x] `ENG-RESADAPT-002` Add a small shared resource adapter utility or grouped
   adapter if it reduces duplication without hiding legacy ownership.
   Evidence: `engine/server/resource_adapter_shared.hpp`;
@@ -4299,7 +4299,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-MSGAGG2-001` Audit message helpers under
   `src/engine/server/messaging`.
   Evidence: `Documentation/codex/modern/engine/server-messaging-domain-aggregate.md`;
-  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+  `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 - [x] `ENG-MSGAGG2-002` Add aggregate tests for envelope selection, recipient
   policy, payload writer output, and event/frame-adjacent message planning.
   Evidence: `tests/engine/server_messaging_domain.cpp`;
@@ -4318,7 +4318,7 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-MSGADAPT2-001` Identify adapters that share
   recipient/envelope/string/byte writer patterns.
   Evidence: `Documentation/codex/modern/engine/server-messaging-adapter-shrink-pilot.md`;
-  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+  `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 - [x] `ENG-MSGADAPT2-002` Add shared adapter glue only for repeated mechanical
   conversions.
   Evidence: `engine/server/server_message_adapter_shared.hpp`;
@@ -4501,21 +4501,30 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 160: Domain Consolidation Checkpoint
 
-- [ ] `ENG-DOMAIN-CHECK-001` Compare adapter counts and modern domain files
+- [x] `ENG-DOMAIN-CHECK-001` Compare adapter counts and modern domain files
   after Phases 147-159.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`,
+  Evidence: `Documentation/codex/modern/engine/domain-consolidation-checkpoint.md`;
   `Documentation/codex/modern/engine/pre-159-simplification-checkpoint.md`.
-- [ ] `ENG-DOMAIN-CHECK-002` Run full validation and runtime smoke timing.
-  Evidence:
-- [ ] `ENG-DOMAIN-CHECK-003` Decide whether to continue server consolidation,
+- [x] `ENG-DOMAIN-CHECK-002` Run full validation and runtime smoke timing.
+  Evidence: `.\scripts\run-phase-validation.ps1 -SkipFocused -CopyLauncher
+  -StopRunningXash -AllowSmokeNonZeroExit` passed; `.\waf.bat build
+  --targets=xash` passed; `.\waf.bat build --alltests` passed 141/141 tests;
+  runtime smoke reached first frame in 0.498 seconds and stopped with reason
+  `command`.
+- [x] `ENG-DOMAIN-CHECK-003` Decide whether to continue server consolidation,
   shift to client/render, or tackle deferred memory/platform/licensing work.
-  Evidence:
-- [ ] `ENG-DOMAIN-CHECK-004` Choose one simplification pilot: grouped adapter,
+  Evidence: continue server consolidation for the next short lane; keep
+  client/render, memory, platform, and licensing work deferred to their
+  dedicated lanes per
+  `Documentation/codex/modern/engine/domain-consolidation-checkpoint.md`.
+- [x] `ENG-DOMAIN-CHECK-004` Choose one simplification pilot: grouped adapter,
   grouped domain module, aggregate test, or README inventory cleanup.
-  Evidence:
-- [ ] `ENG-DOMAIN-CHECK-005` Move completed TODO items to
+  Evidence: chose README inventory cleanup; see `src/engine/server/README.md`
+  and `src/include/engine/server/README.md`.
+- [x] `ENG-DOMAIN-CHECK-005` Move completed TODO items to
   `Documentation/codex/done/` where sensible.
-  Evidence:
+  Evidence: moved the completed post-146 consolidation TODO to
+  `Documentation/codex/done/todo/post_146_domain_consolidation_todo.md`.
 
 ## Phase 800: POSIX Console Backend Validation
 

@@ -1,164 +1,34 @@
 # Modern Server Headers
 
-Private C++ contracts for target-neutral server helpers live here.
+Private C++ contracts for target-neutral server helpers live here. These
+headers are internal to the modernization layer, focused tests, and legacy
+adapters; they are not public engine or game DLL ABI.
 
-Headers in this folder should expose plain value types and small services used
-by tests and legacy adapters. They should not expose game DLL, renderer,
-filesystem module, or platform-specific types.
+## Include Rules
 
-`resources/` contains grouped resource-domain contracts. Include these headers
-through their canonical `engine/server/resources/...` paths.
+- Use canonical grouped include paths, for example
+  `engine/server/resources/server_resource_catalog.hpp`.
+- Expose plain values, enums, small builders, and narrow policy functions.
+- Do not expose game DLL, renderer, filesystem module, platform-specific, or
+  legacy server storage types.
+- Do not include `server.h` from modern headers.
 
-`messaging/` contains grouped message payload, recipient, frame send-gate, and
-packet-entity cursor contracts. Include these headers through their canonical
-`engine/server/messaging/...` paths.
+## Domains
 
-`game_dll/` contains grouped game DLL bridge contracts. Include these headers
-through their canonical `engine/server/game_dll/...` paths.
-
-`client/` contains grouped client/session/admission contracts. Include these
-headers through their canonical `engine/server/client/...` paths.
-
-Current helpers:
-
-- `game_dll/game_dll_changelevel_policy.hpp`: game DLL changelevel request,
-  queued transition, and entity-patch write planning contracts.
-- `game_dll/game_dll_client_info_policy.hpp`: client/userinfo, player stats,
-  cvar-query, and game-directory routing contracts.
-- `game_dll/game_dll_enginefuncs.hpp`: metadata for the stable
-  `enginefuncs_t` game DLL callback table, including slot order, domains,
-  adapter owners, and migration readiness.
-- `game_dll/game_dll_entity_lifecycle.hpp`: game DLL entity lookup, index, and
-  private-data allocation/free planning contracts.
-- `game_dll/game_dll_entity_parse.hpp`: map entity key-value, `angle` rewrite,
-  custom entity, parse, load, and spawn planning contracts.
-- `game_dll/game_dll_load_policy.hpp`: fake-symbol game DLL load/unload decision
-  contracts for required exports, API fallback, optional interfaces, and
-  cleanup planning.
-- `game_dll/game_dll_message_bridge.hpp`: aggregate game DLL message bridge contracts
-  for building user-message begin requests and active registration resend
-  payloads without owning live `sv.multicast` or callback publication.
-- `game_dll/game_dll_message_session.hpp`: target-neutral model for game DLL
-  message begin/write/end state, payload accounting, rewrite admission, and
-  destination bounds.
-- `game_dll/game_dll_movement_policy.hpp`: target-neutral movement and fake-client
-  callback plans for angle stepping, walkmove routing, maxspeed clamping, and
-  fake-client command snapshots.
-- `game_dll/game_dll_output_policy.hpp`: target-neutral policy for game DLL command,
-  client print, server print, alert, and end-section callback routing.
-- `game_dll/game_dll_payload_policy.hpp`: sound, ambient, particle,
-  lightstyle, decal, and make-static payload planning contracts.
-- `game_dll/game_dll_resource_policy.hpp`: resource name normalization, slot,
-  and model-load admission contracts.
-- `game_dll/game_dll_string_pool_compat.hpp`: string processing, string-pool
-  compatibility, override, and `MAKE_STRING` fallback contracts.
-- `game_dll/game_dll_user_message_registry.hpp`: target-neutral policy for game DLL
-  user-message registration, duplicate lookup, size validation, and resend
-  planning.
-- `game_dll/game_dll_visibility_trace_policy.hpp`: trace, visibility, PVS, and
-  skip-player admission/result planning contracts.
-- `save_restore_format.hpp`: read-only save/restore binary fixture parser
-  contracts for headers, sections, entity patches, packed short fields, and
-  bundled file entries.
-- `save_restore_values.hpp`: pure save/restore decision snapshots for save
-  admission, save-comment header classification, and save-comment fallback
-  source selection while live stream mutation stays legacy-owned.
-- `client/client_policy.hpp`: userinfo penalty, rate/update interval, private
-  client-flag snapshot/predicate, and prediction/lag/local-weapon flag decision
+- `resources/`: resource identity, transfer, consistency, catalog, upload,
+  download, hot-resource, and reslist contracts.
+- `messaging/`: message envelope, payload writer, recipient, event, datagram,
+  voice, static, sound, text, service, and packet-entity contracts.
+- `game_dll/`: game DLL ABI metadata, lifecycle, entity, message, resource,
+  payload, movement, visibility/trace, output, changelevel, and string-pool
   contracts.
-- `client/client_command_dispatch.hpp`: server client-command lookup and routing
-  decisions.
-- `client/client_session_slots.hpp`: client slot population, first-free-slot,
-  and master-update reason contracts.
-- `netapi_info.hpp`: short `A2A_INFO` and long `A2A_NETINFO` info-string
-  response builders.
-- `client/connectionless_classifier.hpp`: server connectionless command
-  classification.
-- `client/connection_response.hpp`: challenge and rejection response string
-  formatting.
-- `resources/resource_identity.hpp`: custom resource `!MD5` identity, safe download-name
-  checks, resource matching, and size summaries.
-- `resources/resource_transfer_manifest.hpp`: target-neutral aggregate manifest over
-  modern resource descriptors for catalog-to-download and resource-message
-  flows.
-- `client/remote_admin_command.hpp`: target-neutral rcon enable/password action and
-  quoted command reconstruction helpers while redirects and command execution
-  stay legacy-owned.
-- `resources/server_resource_catalog.hpp`: server startup resource catalog planning for
-  generic, sound, model, decal, and event precaches.
-- `resources/server_download_policy.hpp`: `SV_DownloadFile_f()` allow/reject/send/logo
-  decisions built from resource snapshots and adapter-supplied sidecar probes.
-- `resources/server_consistency_list.hpp`: consistency-list enable and resource-index
-  serialization for server resource checks.
-- `resources/server_consistency_policy.hpp`: consistency setup, reserved bounds payload,
-  and response validation policy.
-- `messaging/server_customization_message.hpp`: propagated customization payload
-  serialization for `svc_customization`.
-- `server_command_lifecycle.hpp`: server lifecycle command request
-  normalization and action planning.
-- `messaging/server_spawn_handshake.hpp`: fixed `svc_serverdata` payload constants,
-  signon-number payload writer, and new/spawn/begin handshake decisions.
-- `messaging/server_frame_datagram.hpp`: frame datagram transfer, overflow, resend, and
-  send-loop gate plans.
-- `messaging/server_resource_message.hpp`: resource-list row serialization using modern
-  bit-buffer primitives.
-- `resources/server_upload_queue.hpp`: client resource-list admission, missing custom
-  decal estimation, upload-limit, and upload batch action decisions.
-- `server_filter.hpp`: ID/IP filter policy and formatting.
-- `server_group_filter.hpp`: entity group-filter operation, pair-filter, and
-  active-mask decision contracts.
-- `server_event_log.hpp`: server event log line and stock message formatting.
-- `resources/server_hot_resource.hpp`: hot-resource announcement planning for resources
-  added after server startup.
-- `resources/server_reslist_policy.hpp`: `.res` and `reslist.txt` token classification
-  for safe-download filtering and resource indexing.
-- `server_limits.hpp`: server-only limits, flags, and private constants
-  mirrored as typed modern values with compatibility-role metadata.
-- `client/server_challenge_policy.hpp`: challenge-window calculation and accepted
-  current/previous window pair contracts.
-- `server_lifecycle_limits.hpp`: maxclient, update-backup, packet-entity
-  capacity, game-entity count, and spawn settling policy contracts.
-- `server_map_validation.hpp`: map validation flag decoding, load
-  classification, changelevel landmark decision, and game DLL existence
-  compatibility contracts.
-- `messaging/server_message_envelope.hpp`: shared server message command/string envelope
-  writers and plain recipient-facts adapters for aggregate messaging tests.
-- `server_movement_constraints.hpp`: server monster movement mode and
-  fly-move clip-plane constraint contracts.
-- `server_physics_routing_policy.hpp`: server `MOVETYPE_*` handler routing,
-  pusher-candidate, and precise-blocking predicates.
-- `server_pmove_bridge_policy.hpp`: PMove unlag admission, interpolation
-  timing, teleport threshold, and player-index predicates.
-- `server_operator_command_policy.hpp`: `kick`, `serverinfo`, and `localinfo`
-  argument classification while command registration, console output, lookup,
-  cvar mutation, and info-string mutation stay legacy-owned.
-- `messaging/server_event_playback_policy.hpp`: event playback admission, flag
-  normalization, recipient decisions, queue-slot planning, and queued emit-count
-  clamping.
-- `messaging/server_packet_entities_delta.hpp`: packet-entity header and sorted cursor
-  planning for `SV_EmitPacketEntities()` while `entity_state_t` storage,
-  baselines, delta writes, and `client_frame_t` mutation stay legacy-owned.
-- `server_visibility_constraints.hpp`: entity leaf capacity, overflow marker,
-  cached leaf index, and portal viewentity capacity contracts.
-- `server_world_link_policy.hpp`: area-node split axis, split distance, link
-  child selection, and recursive child traversal mask contracts for
-  `sv_world.c`.
-- `messaging/server_userinfo_message.hpp`: `svc_updateuserinfo` payload serialization
-  for client slot, user ID, active bit, sanitized userinfo, and hashed CD key
-  digest bytes.
-- `messaging/server_service_messages.hpp`: compact service-message payload writers for
-  file-transfer failure, reconnect, set-view, set-pause, and voice-init.
-- `messaging/server_sound_message.hpp`: `svc_sound` / `svc_restoresound` constants,
-  network flag planning, stream-channel handling, and bit-packed payload
-  writers.
-- `messaging/server_static_messages.hpp`: `svc_bspdecal` payload writer constants and
-  static-entity admission decisions.
-- `messaging/server_text_messages.hpp`: `svc_print` and `svc_stufftext` command constants
-  and NUL-terminated text payload writers.
-- `client/server_timeout_policy.hpp`: `SV_CheckTimeouts()` client timeout and pause
-  release decisions built from plain runtime snapshots while cvar reads, local
-  address checks, client drops, and pause toggles stay legacy-owned.
-- `messaging/server_voice_relay.hpp`: voice relay gates, per-recipient decisions, and
-  `svc_voicedata` payload serialization.
-- `source_query.hpp`: GoldSrc source-query response byte builders.
-- `client/user_agent_policy.hpp`: connection UUID and input-device validation policy.
+- `client/`: admission, session, command dispatch, challenge, query, timeout,
+  remote-admin, userinfo, and user-agent contracts.
+- flat headers: shared constraints, runtime helpers, save fixtures, world/PMove
+  policies, and query builders that have not yet moved into a grouped domain.
+
+## Compatibility Rule
+
+The legacy C ABI remains in the legacy headers and adapters. Modern headers may
+model compatibility behavior, but they should not publish C++ types across
+game DLL, renderer, filesystem, or platform module boundaries.

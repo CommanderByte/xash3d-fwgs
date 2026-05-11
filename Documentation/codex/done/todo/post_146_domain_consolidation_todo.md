@@ -18,10 +18,12 @@ Rules for this lane:
 
 Goal: make the next route explicit before starting new code movement.
 
-- [ ] Record current modern/legacy file-shape inventory.
-- [ ] Identify what is actually modern-owned versus adapter-routed.
-- [ ] Pick the next domain consolidation order.
-- [ ] Update `Documentation/codex/tasks.md` with the next phase set.
+- [x] Record current modern/legacy file-shape inventory.
+- [x] Identify what is actually modern-owned versus adapter-routed.
+- [x] Pick the next domain consolidation order.
+- [x] Update `Documentation/codex/tasks.md` with the next phase set.
+
+Evidence: `Documentation/codex/modern/engine/milestone-146-migration-status.md`.
 
 ## Phase 148: Resource Domain Aggregate Tests
 
@@ -166,10 +168,12 @@ Evidence: `Documentation/codex/modern/engine/client-render-boundary-audit.md`.
 
 Goal: pause after the first post-146 domain consolidation tranche.
 
-- [ ] Compare adapter counts and modern domain files after Phases 147-159.
-- [ ] Run full validation and runtime smoke timing.
-- [ ] Decide whether to continue server consolidation, shift to client/render,
+- [x] Compare adapter counts and modern domain files after Phases 147-159.
+- [x] Run full validation and runtime smoke timing.
+- [x] Decide whether to continue server consolidation, shift to client/render,
   or tackle deferred memory/platform/licensing work.
-- [ ] Choose one simplification pilot: grouped adapter, grouped domain module,
+- [x] Choose one simplification pilot: grouped adapter, grouped domain module,
   aggregate test, or README inventory cleanup.
-- [ ] Move completed TODO items to `Documentation/codex/done/` where sensible.
+- [x] Move completed TODO items to `Documentation/codex/done/` where sensible.
+
+Evidence: `Documentation/codex/modern/engine/domain-consolidation-checkpoint.md`.
