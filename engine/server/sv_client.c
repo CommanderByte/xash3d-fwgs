@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "net_api.h"
 #include "client_command_dispatch_adapter.h"
 #include "client_policy_adapter.h"
+#include "client_session_slots_adapter.h"
 #include "connectionless_classifier_adapter.h"
 #include "connection_response_adapter.h"
 #include "netapi_info_adapter.h"
@@ -34,6 +35,17 @@ GNU General Public License for more details.
 // Challenge hashing, salts, packets, and rejection output remain legacy-owned.
 // The time-window calculation routes through a target-neutral helper.
 
+STATIC_ASSERT( (int)SV_CLIENT_SESSION_SLOT_FREE == (int)cs_free,
+	"client slot free state changed" );
+STATIC_ASSERT( (int)SV_CLIENT_SESSION_SLOT_ZOMBIE == (int)cs_zombie,
+	"client slot zombie state changed" );
+STATIC_ASSERT( (int)SV_CLIENT_SESSION_SLOT_CONNECTED == (int)cs_connected,
+	"client slot connected state changed" );
+STATIC_ASSERT( (int)SV_CLIENT_SESSION_SLOT_SPAWNING == (int)cs_spawning,
+	"client slot spawning state changed" );
+STATIC_ASSERT( (int)SV_CLIENT_SESSION_SLOT_SPAWNED == (int)cs_spawned,
+	"client slot spawned state changed" );
+
 typedef struct ucmd_s
 {
 	qboolean		(*func)( sv_client_t *cl );
@@ -43,6 +55,36 @@ static int	g_userid = 1;
 
 static void SV_UserinfoChanged( sv_client_t *cl );
 static void SV_ExecuteClientCommand( sv_client_t *cl, const char *s );
+
+static int SV_BuildClientSessionSlotSnapshots( sv_client_session_slot_snapshot_t *slots, int capacity )
+{
+	int i, slot_count;
+
+	if( !svs.clients || !slots || capacity <= 0 )
+		return 0;
+
+	slot_count = svs.maxclients;
+	if( slot_count > capacity )
+		slot_count = capacity;
+
+	for( i = 0; i < slot_count; i++ )
+	{
+		slots[i].state = svs.clients[i].state;
+		slots[i].flags = svs.clients[i].flags;
+	}
+
+	return slot_count;
+}
+
+static sv_client_session_population_t SV_BuildClientSessionPopulation( void )
+{
+	sv_client_session_slot_snapshot_t slots[MAX_CLIENTS];
+	const int slot_count = SV_BuildClientSessionSlotSnapshots(
+		slots,
+		ARRAYSIZE( slots ));
+
+	return SV_ClientSession_CountPopulation( slots, slot_count );
+}
 
 static void SV_ApplyServiceMessageWriteResult( sizebuf_t *msg, sv_service_message_write_result_t result )
 {
@@ -133,22 +175,11 @@ SV_GetPlayerCount
 */
 void SV_GetPlayerCount( int *players, int *bots )
 {
-	*players = 0;
-	*bots = 0;
+	const sv_client_session_population_t population =
+		SV_BuildClientSessionPopulation();
 
-	if( !svs.clients )
-		return;
-
-	for( int i = 0; i < svs.maxclients; i++ )
-	{
-		if( svs.clients[i].state >= cs_connected )
-		{
-			if( FBitSet( svs.clients[i].flags, FCL_FAKECLIENT ))
-				(*bots)++;
-			else
-				(*players)++;
-		}
-	}
+	*players = population.players;
+	*bots = population.bots;
 }
 
 /*
@@ -363,31 +394,31 @@ We don't do this search on a "reconnect, we just reuse the slot
 */
 static sv_client_t *SV_FindEmptySlot( void )
 {
-	int i;
+	sv_client_session_slot_snapshot_t slots[MAX_CLIENTS];
+	const int slot_count = SV_BuildClientSessionSlotSnapshots(
+		slots,
+		ARRAYSIZE( slots ));
+	const int slot = SV_ClientSession_FindFirstFreeSlot( slots, slot_count );
 
-	for( i = 0; i < svs.maxclients; i++ )
-	{
-		if( svs.clients[i].state == cs_free )
-			return &svs.clients[i];
-	}
+	if( slot >= 0 && slot < svs.maxclients )
+		return &svs.clients[slot];
 
 	return NULL;
 }
 
 static void SV_MaybeNotifyPlayerCountChange( const sv_client_t *cl, const char *address )
 {
-	int i, count = 0;
+	const sv_client_session_population_t population =
+		SV_BuildClientSessionPopulation();
 
 	// if this was the first client on the server, or the last client
 	// the server can hold, send a heartbeat to the master.
-	for( i = 0; i < svs.maxclients; i++ )
+	if( SV_ClientSession_BuildConnectMasterUpdate(
+		population.connected,
+		svs.maxclients ) != SV_CLIENT_SESSION_MASTER_UPDATE_NONE )
 	{
-		if( svs.clients[i].state >= cs_connected )
-			count++;
-	}
-
-	if( count == 1 || count == svs.maxclients )
 		NET_MasterClear();
+	}
 
 	Log_Printf( "\"%s<%i><%i><>\" connected, address \"%s\"\n",
 		cl->name, cl->userid, (int)( cl - svs.clients ), address );
@@ -685,7 +716,7 @@ or crashing.
 */
 void SV_DropClient( sv_client_t *cl, qboolean crash )
 {
-	int	i;
+	sv_client_session_population_t population;
 
 	if( cl->state == cs_zombie )
 		return;	// already dropped
@@ -737,16 +768,12 @@ void SV_DropClient( sv_client_t *cl, qboolean crash )
 
 	// if this was the last client on the server, send a heartbeat
 	// to the master so it is known the server is empty
-	// send a heartbeat now so the master will get up to date info
-	// if there is already a slot for this ip, reuse it
-	for( i = 0; i < svs.maxclients; i++ )
+	population = SV_BuildClientSessionPopulation();
+	if( SV_ClientSession_BuildDropMasterUpdate( population.connected )
+		!= SV_CLIENT_SESSION_MASTER_UPDATE_NONE )
 	{
-		if( svs.clients[i].state >= cs_connected )
-			break;
-	}
-
-	if( i == svs.maxclients )
 		NET_MasterClear();
+	}
 }
 
 /*

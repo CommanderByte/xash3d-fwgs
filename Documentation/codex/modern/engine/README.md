@@ -18,6 +18,10 @@ Current implementation notes:
   admission, session slots, spawn handshake, userinfo, command, transfer,
   voice, cvar-query, remote-admin, and movement ownership before choosing a
   small client-session slot helper as the next seam.
+- `client-session-slots.md`: how Phase 125 routes player/bot counts,
+  first-free-slot selection, and master heartbeat population decisions through
+  plain client-slot snapshots while leaving live connect/drop ownership in
+  `sv_client.c`.
 - `server-client-flag-policy.md`: how Phase 109 groups private `FCL_*` flags by
   owner and starts routing fake-client/query-visible predicates without broad
   macro replacement.

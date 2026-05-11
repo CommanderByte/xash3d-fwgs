@@ -195,6 +195,7 @@ def build(bld):
 	source += [
 		'server/client_command_dispatch_adapter.cpp',
 		'server/client_policy_adapter.cpp',
+		'server/client_session_slots_adapter.cpp',
 		'server/connectionless_classifier_adapter.cpp',
 		'server/connection_response_adapter.cpp',
 		'server/server_cvar_snapshot_adapter.cpp',

@@ -3741,18 +3741,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 125: Client Session Slot Helper Pilot
 
-- [ ] `ENG-CLIENTSESS-001` Add tests for the selected session slot/population
+- [x] `ENG-CLIENTSESS-001` Add tests for the selected session slot/population
   policy seam.
-  Evidence:
-- [ ] `ENG-CLIENTSESS-002` Implement a target-neutral helper using plain slot
+  Evidence: `tests/engine/client_session_slots.cpp` covers player/bot counts,
+  invalid input, first-free-slot selection, and master-update reasons.
+- [x] `ENG-CLIENTSESS-002` Implement a target-neutral helper using plain slot
   snapshots and result objects.
-  Evidence:
-- [ ] `ENG-CLIENTSESS-003` Keep netchan sends, client slot mutation, cvar
+  Evidence: `src/include/engine/server/client_session_slots.hpp` and
+  `src/engine/server/client_session_slots.cpp`.
+- [x] `ENG-CLIENTSESS-003` Keep netchan sends, client slot mutation, cvar
   reads, and game DLL callbacks legacy-owned.
-  Evidence:
-- [ ] `ENG-CLIENTSESS-004` Run focused client tests, full validation, and
+  Evidence: `engine/server/client_session_slots_adapter.*` routes only
+  `SV_GetPlayerCount()`, `SV_FindEmptySlot()`, and master heartbeat population
+  checks in `engine/server/sv_client.c`; connect/drop state mutation, netchan,
+  edicts, cvars, game DLL callbacks, and packet sends remain legacy-owned.
+- [x] `ENG-CLIENTSESS-004` Run focused client tests, full validation, and
   smoke timing if code changes.
-  Evidence:
+  Evidence: `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_client_session_slots -StopRunningXash` passed; focused test
+  passed, `.\waf.bat build --targets=xash` passed, `.\waf.bat build
+  --alltests` passed 122/122, and `run-win32\xash3d.exe -dev 2 -log
+  +fs_path +wait +wait +quit` reached first frame in 0.511 seconds and
+  stopped with reason `command`.
 
 ## Phase 126: Client Transfer Voice And Admin Split
 

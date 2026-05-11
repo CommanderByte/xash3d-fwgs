@@ -183,6 +183,17 @@ Phase 124 outcome:
   Evidence:
   `Documentation/codex/modern/engine/client-session-boundary-audit.md`.
 
+Phase 125 outcome:
+
+- `client_session_slots` now owns plain snapshot decisions for player/bot
+  counts, first-free-slot selection, and master heartbeat population changes.
+- `sv_client.c` routes only those scans through
+  `engine/server/client_session_slots_adapter.*`; slot mutation, netchan,
+  cvars, edicts, game DLL callbacks, connect/drop side effects, and packet
+  sends remain legacy-owned.
+  Evidence:
+  `Documentation/codex/modern/engine/client-session-slots.md`.
+
 ## Phase 127-128: Runtime Configuration And Operator Commands
 
 Legacy spread:

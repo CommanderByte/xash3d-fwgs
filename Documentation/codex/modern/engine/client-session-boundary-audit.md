@@ -75,6 +75,10 @@ This is small, testable, and genuinely session-shaped. It also gives later
 admission work a typed view of the client array without moving `sv_client_t`,
 netchan, edicts, or game DLL callbacks.
 
+Phase 125 implements this first pass in `client_session_slots`. It keeps the
+helper intentionally snapshot-based and leaves full connect/drop/spawn
+ownership in `sv_client.c`.
+
 ## Deferred Seams
 
 Keep these out of Phase 125:
