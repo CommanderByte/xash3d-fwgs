@@ -213,6 +213,10 @@ Current implementation notes:
   storage, edict links, trigger callbacks, water brushes, and collision
   traversal legacy-owned while routing split-axis and child traversal policy
   through a plain helper.
+- `world-trace-fixture-harness-plan.md`: how Phase 144 defines test-only
+  synthetic world/trace fixtures for area-node, touch, group-filter, and
+  clip-admission planning while keeping exact hull traversal and `SV_Move()`
+  legacy-owned.
 - `server-world-physics-fixture-audit.md`: how Phase 132 keeps exact hull
   tracing, live physics loops, and physics API callbacks legacy-owned while
   routing `MOVETYPE_*` physics dispatch and pusher predicates through a plain

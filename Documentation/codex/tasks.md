@@ -4172,18 +4172,24 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 144: World Trace Fixture Harness Plan
 
-- [ ] `ENG-WORLD-FIXTURE-001` Define synthetic edict/model/area-node inputs
+- [x] `ENG-WORLD-FIXTURE-001` Define synthetic edict/model/area-node inputs
   needed for link, touch, hull, group-mask, and trace admission tests.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-WORLD-FIXTURE-002` Decide whether fixtures should live in modern
+  Evidence: `Documentation/codex/modern/engine/world-trace-fixture-harness-plan.md`
+  and `tests/engine/world_trace_fixture_common.hpp` define the synthetic world
+  bounds, area-node, edict, and move inputs.
+- [x] `ENG-WORLD-FIXTURE-002` Decide whether fixtures should live in modern
   C++ tests, legacy C tests, or a shared harness.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-WORLD-FIXTURE-003` Add one fixture skeleton only if it can compile
+  Evidence: the harness plan keeps the first fixture layer in modern C++ tests
+  so it can depend on modern policies without pulling `server.h`.
+- [x] `ENG-WORLD-FIXTURE-003` Add one fixture skeleton only if it can compile
   without pulling the full engine runtime into the test.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-WORLD-FIXTURE-004` Keep BSP traversal, exact hull tests, trace
+  Evidence: `tests/engine/world_trace_fixtures.cpp` builds as
+  `test_engine_world_trace_fixtures`; focused validation passed with
+  `.\waf.bat build --targets=test_engine_world_trace_fixtures,test_engine_server_world_link_policy,test_engine_server_group_filter`.
+- [x] `ENG-WORLD-FIXTURE-004` Keep BSP traversal, exact hull tests, trace
   globals, and `SV_Move()` legacy-owned.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: the harness plan records these as deferred runtime-owned areas;
+  `.\waf.bat build --alltests` passed 133/133.
 
 ## Phase 145: PMove And Usercmd Fixture Harness Plan
 

@@ -133,6 +133,7 @@ def build(bld):
 			'engine_server_physics_routing_policy': '../tests/engine/server_physics_routing_policy.cpp',
 			'engine_server_visibility_constraints': '../tests/engine/server_visibility_constraints.cpp',
 			'engine_server_world_link_policy': '../tests/engine/server_world_link_policy.cpp',
+			'engine_world_trace_fixtures': '../tests/engine/world_trace_fixtures.cpp',
 			'engine_server_reslist_policy': '../tests/engine/server_reslist_policy.cpp',
 			'engine_server_userinfo_message': '../tests/engine/server_userinfo_message.cpp',
 			'engine_server_service_messages': '../tests/engine/server_service_messages.cpp',

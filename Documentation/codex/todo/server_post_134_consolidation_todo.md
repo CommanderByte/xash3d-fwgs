@@ -202,14 +202,22 @@ constants-only compatibility header, followed by a cvar extern header.
 
 Goal: prepare fixtures before moving exact world/trace ownership.
 
-- [ ] Define synthetic edict/model/area-node inputs needed for link, touch,
+- [x] Define synthetic edict/model/area-node inputs needed for link, touch,
   hull, group-mask, and trace admission tests.
-- [ ] Decide whether fixtures should live in modern C++ tests, legacy C tests,
+- [x] Decide whether fixtures should live in modern C++ tests, legacy C tests,
   or a shared harness.
-- [ ] Add one fixture skeleton only if it can compile without pulling the full
+- [x] Add one fixture skeleton only if it can compile without pulling the full
   engine runtime into the test.
-- [ ] Keep BSP traversal, exact hull tests, trace globals, and `SV_Move()`
+- [x] Keep BSP traversal, exact hull tests, trace globals, and `SV_Move()`
   legacy-owned.
+
+Evidence: `Documentation/codex/modern/engine/world-trace-fixture-harness-plan.md`
+defines the fixture boundary and deferrals, `tests/engine/world_trace_fixture_common.hpp`
+and `tests/engine/world_trace_fixtures.cpp` add the first standalone modern
+fixture skeleton, focused validation passed for
+`test_engine_world_trace_fixtures`, and `.\waf.bat build --alltests` passed
+133/133. No runtime smoke was required because Phase 144 changed only tests,
+documentation, and test build registration.
 
 ## Phase 145: PMove And Usercmd Fixture Harness Plan
 
