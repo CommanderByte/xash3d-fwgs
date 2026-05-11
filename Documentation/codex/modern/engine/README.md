@@ -14,6 +14,10 @@ Current implementation notes:
 - `client-policy-migration.md`: how Phase 85 routes userinfo penalty, rate,
   update interval, and prediction/lag/local-weapon flag decisions through
   target-neutral helpers while info-string mutation stays legacy-owned.
+- `client-session-boundary-audit.md`: how Phase 124 maps `sv_client.c` into
+  admission, session slots, spawn handshake, userinfo, command, transfer,
+  voice, cvar-query, remote-admin, and movement ownership before choosing a
+  small client-session slot helper as the next seam.
 - `server-client-flag-policy.md`: how Phase 109 groups private `FCL_*` flags by
   owner and starts routing fake-client/query-visible predicates without broad
   macro replacement.

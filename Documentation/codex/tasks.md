@@ -3714,26 +3714,38 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 124: Client Session Boundary Audit
 
-- [ ] `ENG-CLIENTGROUP-001` Audit `sv_client.c` by admission, session,
+- [x] `ENG-CLIENTGROUP-001` Audit `sv_client.c` by admission, session,
   userinfo, command, transfer, voice, cvar-query, and remote-admin ownership.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-CLIENTGROUP-002` Identify which current helpers are client/session
+  Evidence:
+  `Documentation/codex/modern/engine/client-session-boundary-audit.md` and
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [x] `ENG-CLIENTGROUP-002` Identify which current helpers are client/session
   concepts and which are still one-call adapters.
   Evidence:
-- [ ] `ENG-CLIENTGROUP-003` Pick the least tangled next client seam for tests
+  `Documentation/codex/modern/engine/client-session-boundary-audit.md`
+  classifies `client_policy`, `client_command_dispatch`, challenge,
+  connection, transfer, voice, spawn, userinfo-message, and service-message
+  helpers by ownership strength.
+- [x] `ENG-CLIENTGROUP-003` Pick the least tangled next client seam for tests
   and extraction.
-  Evidence:
-- [ ] `ENG-CLIENTGROUP-004` Document any client/session seams that should wait
+  Evidence: Phase 125 should start with a client-session slot/population
+  helper for player/bot counts, first-free-slot selection, and
+  heartbeat-relevant population decisions using plain snapshots.
+- [x] `ENG-CLIENTGROUP-004` Document any client/session seams that should wait
   for protocol or movement fixtures.
   Evidence:
+  `Documentation/codex/modern/engine/client-session-boundary-audit.md`
+  defers full connect/drop/spawn, userinfo duplicate-name mutation, movement
+  packet parsing, resource-list parsing, cvar-query callbacks, rcon redirects,
+  and enttools/debug entity commands.
 
-## Phase 125: Client Admission And Session Helper Pilot
+## Phase 125: Client Session Slot Helper Pilot
 
-- [ ] `ENG-CLIENTSESS-001` Add tests for the selected admission or session
+- [ ] `ENG-CLIENTSESS-001` Add tests for the selected session slot/population
   policy seam.
   Evidence:
-- [ ] `ENG-CLIENTSESS-002` Implement a target-neutral helper using plain
-  client snapshots and result objects.
+- [ ] `ENG-CLIENTSESS-002` Implement a target-neutral helper using plain slot
+  snapshots and result objects.
   Evidence:
 - [ ] `ENG-CLIENTSESS-003` Keep netchan sends, client slot mutation, cvar
   reads, and game DLL callbacks legacy-owned.

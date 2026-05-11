@@ -164,9 +164,24 @@ Planned path:
 
 - Phase 124 audits the client/session split and chooses the least tangled
   next seam.
-- Phase 125 adds admission/session helpers and tests only around plain values.
+- Phase 125 adds a session slot/population helper and tests only around plain
+  values.
 - Phase 126 splits transfer, voice, cvar-query, and remote-admin follow-up
   work so `sv_client.c` does not become the next hidden mega-module.
+
+Phase 124 outcome:
+
+- `sv_client.c` should split into admission, session slots/population, spawn
+  handshake, userinfo, client command, transfer/resource, voice, cvar-query,
+  remote-admin, and movement-packet areas.
+- The least tangled Phase 125 seam is a client-session slot/population helper
+  using plain snapshots for player/bot counts, first-free-slot selection, and
+  heartbeat-relevant population decisions.
+- Full connect/drop/spawn, userinfo duplicate-name mutation, movement packet
+  parsing, cvar-query callbacks, resource-list parsing, rcon redirects, and
+  enttools should wait for their own fixtures or domains.
+  Evidence:
+  `Documentation/codex/modern/engine/client-session-boundary-audit.md`.
 
 ## Phase 127-128: Runtime Configuration And Operator Commands
 
