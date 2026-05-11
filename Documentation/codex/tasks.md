@@ -4459,17 +4459,29 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 158: Save Runtime Fixture Expansion
 
-- [ ] `ENG-SAVEFIX-001` Extend save fixtures beyond format/value parsing into
+- [x] `ENG-SAVEFIX-001` Extend save fixtures beyond format/value parsing into
   save admission, comment/version decisions, entity patch planning, and
   manifest behavior.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-SAVEFIX-002` Keep raw stream mutation, filesystem writes, game DLL
+  Evidence: `src/include/engine/server/save_restore_runtime.hpp`,
+  `src/engine/server/save_restore_runtime.cpp`,
+  `tests/engine/save_restore_runtime.cpp`,
+  `Documentation/codex/modern/engine/save-runtime-fixture-expansion.md`.
+- [x] `ENG-SAVEFIX-002` Keep raw stream mutation, filesystem writes, game DLL
   field callbacks, and console output legacy-owned.
-  Evidence:
-- [ ] `ENG-SAVEFIX-003` Run focused save tests and full validation.
-  Evidence:
-- [ ] `ENG-SAVEFIX-004` Decide whether a save-domain aggregate test is ready.
-  Evidence:
+  Evidence: Phase documentation keeps `SAVERESTOREDATA`, game DLL field
+  callbacks, filesystem mutation, renderer/sound/decal restore state, and
+  console output in `engine/server/sv_save.c`.
+- [x] `ENG-SAVEFIX-003` Run focused save tests and full validation.
+  Evidence: focused save targets passed.
+  `.\waf.bat build --targets=test_engine_save_restore_runtime,test_engine_save_restore_values,test_engine_save_restore_format`
+  passed; `.\waf.bat build --alltests` passed 141/141 tests;
+  `.\scripts\run-phase-validation.ps1 -FocusedTarget
+  test_engine_save_restore_runtime -SkipFullTests -AllowSmokeNonZeroExit
+  -StopRunningXash` reached first frame in 0.535 seconds and stopped with
+  reason `command`.
+- [x] `ENG-SAVEFIX-004` Decide whether a save-domain aggregate test is ready.
+  Evidence: `test_engine_save_restore_runtime` is ready as a fixture
+  aggregate, not as a runtime route-through facade.
 
 ## Phase 159: Engine Client And Render Boundary Audit
 

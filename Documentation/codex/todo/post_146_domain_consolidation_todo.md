@@ -142,12 +142,12 @@ Goal: move one fixture-backed world/PMove decision into modern code.
 
 Goal: prepare save/load runtime movement with better fixtures.
 
-- [ ] Extend save fixtures beyond format/value parsing into save admission,
+- [x] Extend save fixtures beyond format/value parsing into save admission,
   comment/version decisions, entity patch planning, and manifest behavior.
-- [ ] Keep raw stream mutation, filesystem writes, game DLL field callbacks,
+- [x] Keep raw stream mutation, filesystem writes, game DLL field callbacks,
   and console output legacy-owned.
-- [ ] Run focused save tests and full validation.
-- [ ] Decide whether a save-domain aggregate test is ready.
+- [x] Run focused save tests and full validation.
+- [x] Decide whether a save-domain aggregate test is ready.
 
 ## Phase 159: Engine Client And Render Boundary Audit
 
