@@ -3462,6 +3462,304 @@ Phase 89 covers user-message registry policy.
   intact, concept-level aggregate tests are deferred until files actually move,
   and `git diff --check` passed.
 
+## Phase 115: Resource Transfer Consolidation Audit
+
+- [ ] `ENG-RESGROUP-001` Audit resource-transfer ownership across `sv_init.c`,
+  `sv_custom.c`, `sv_client.c`, and `sv_game.c`.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-RESGROUP-002` Map existing modern resource helpers into a future
+  resource-transfer domain without moving files yet.
+  Evidence:
+- [ ] `ENG-RESGROUP-003` Identify missing aggregate tests for catalog,
+  reslist, consistency, download, upload, customization, and hot-resource
+  flows.
+  Evidence:
+- [ ] `ENG-RESGROUP-004` Decide whether the first grouped resource seam should
+  be a domain facade, directory regrouping, or adapter shrink.
+  Evidence:
+
+## Phase 116: Resource Transfer Aggregate Helper Pilot
+
+- [ ] `ENG-RESAGG-001` Add focused tests for the smallest aggregate resource
+  flow selected in Phase 115.
+  Evidence:
+- [ ] `ENG-RESAGG-002` Implement a target-neutral aggregate helper only if it
+  removes duplication between existing resource helpers.
+  Evidence:
+- [ ] `ENG-RESAGG-003` Keep HPAK, filesystem probes, cvar checks, and live
+  resource list mutation legacy-owned.
+  Evidence:
+- [ ] `ENG-RESAGG-004` Run focused resource tests, full validation, and
+  `+wait +wait` smoke timing if code changes.
+  Evidence:
+
+## Phase 117: Resource Transfer Adapter Shrink Review
+
+- [ ] `ENG-RESADAPT-001` Review resource-related adapters after Phase 116 and
+  identify any that can merge without hiding separate side effects.
+  Evidence:
+- [ ] `ENG-RESADAPT-002` Keep adapters separate where they map to different
+  legacy owners or live side-effect families.
+  Evidence:
+- [ ] `ENG-RESADAPT-003` If a grouped adapter is clearer, add compatibility
+  tests before changing the adapter shape.
+  Evidence:
+- [ ] `ENG-RESADAPT-004` Run focused resource tests and full validation after
+  any adapter regrouping.
+  Evidence:
+
+## Phase 118: Server Messaging Consolidation Audit
+
+- [ ] `ENG-MSGGROUP-001` Audit text, service, sound, static, voice, multicast,
+  event, frame-datagram, and spawn-handshake message ownership.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-MSGGROUP-002` Separate payload writers, recipient routing, reliable
+  buffer selection, and rendered-console concerns.
+  Evidence:
+- [ ] `ENG-MSGGROUP-003` Identify common envelope or destination concepts that
+  deserve aggregate tests.
+  Evidence:
+- [ ] `ENG-MSGGROUP-004` Decide whether messaging should consolidate before or
+  after game DLL bridge regrouping.
+  Evidence:
+
+## Phase 119: Server Messaging Aggregate Helper Pilot
+
+- [ ] `ENG-MSGAGG-001` Add aggregate tests for the selected message envelope,
+  destination, or recipient concept.
+  Evidence:
+- [ ] `ENG-MSGAGG-002` Implement the smallest target-neutral aggregate helper
+  that reduces duplicated message policy.
+  Evidence:
+- [ ] `ENG-MSGAGG-003` Keep packet buffers, network sends, and rendered console
+  routing legacy-owned.
+  Evidence:
+- [ ] `ENG-MSGAGG-004` Run focused messaging tests, full validation, and smoke
+  timing if code changes.
+  Evidence:
+
+## Phase 120: Server Messaging Adapter Shrink Review
+
+- [ ] `ENG-MSGADAPT-001` Review message-related adapters after Phase 119.
+  Evidence:
+- [ ] `ENG-MSGADAPT-002` Merge only adapters that map to a coherent messaging
+  domain and preserve C-compatible call sites.
+  Evidence:
+- [ ] `ENG-MSGADAPT-003` Keep game DLL callback publication and client packet
+  sends explicit at the legacy boundary.
+  Evidence:
+- [ ] `ENG-MSGADAPT-004` Run focused tests and full validation after any
+  adapter shape change.
+  Evidence:
+
+## Phase 121: Game DLL Bridge Submodule Plan
+
+- [ ] `ENG-GDLLGROUP-001` Audit the current game DLL helper surface against
+  bridge, lifecycle, entity, messaging, resource, world-query, movement,
+  output, string-pool, and changelevel submodules.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-GDLLGROUP-002` Decide which submodules can live under
+  `src/engine/server/game_dll` later without changing ABI table order.
+  Evidence:
+- [ ] `ENG-GDLLGROUP-003` Identify cross-callback tests that should exist
+  before any adapter consolidation.
+  Evidence:
+- [ ] `ENG-GDLLGROUP-004` Document which `sv_game.c` regions remain too
+  coupled to move.
+  Evidence:
+
+## Phase 122: Game DLL Bridge Aggregate Tests
+
+- [ ] `ENG-GDLLAGG-001` Add tests for the first cross-callback game DLL bridge
+  concept selected in Phase 121.
+  Evidence:
+- [ ] `ENG-GDLLAGG-002` Keep live DLL load/unload, `GiveFnptrsToDll()`, edict
+  storage, string base, and callback table ABI legacy-owned.
+  Evidence:
+- [ ] `ENG-GDLLAGG-003` Implement a tiny aggregate helper only if it improves
+  bridge ownership clarity.
+  Evidence:
+- [ ] `ENG-GDLLAGG-004` Run focused game DLL bridge tests, full validation, and
+  smoke timing if code changes.
+  Evidence:
+
+## Phase 123: Game DLL Bridge Adapter Pilot
+
+- [ ] `ENG-GDLLADAPT-001` Pick one low-risk game DLL adapter group to
+  consolidate or explicitly leave split.
+  Evidence:
+- [ ] `ENG-GDLLADAPT-002` Preserve exported callback behavior and table order
+  with tests or metadata checks.
+  Evidence:
+- [ ] `ENG-GDLLADAPT-003` Update docs if the grouped adapter changes the
+  recommended `sv_game.c` split.
+  Evidence:
+- [ ] `ENG-GDLLADAPT-004` Run focused game DLL bridge tests and full
+  validation.
+  Evidence:
+
+## Phase 124: Client Session Boundary Audit
+
+- [ ] `ENG-CLIENTGROUP-001` Audit `sv_client.c` by admission, session,
+  userinfo, command, transfer, voice, cvar-query, and remote-admin ownership.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-CLIENTGROUP-002` Identify which current helpers are client/session
+  concepts and which are still one-call adapters.
+  Evidence:
+- [ ] `ENG-CLIENTGROUP-003` Pick the least tangled next client seam for tests
+  and extraction.
+  Evidence:
+- [ ] `ENG-CLIENTGROUP-004` Document any client/session seams that should wait
+  for protocol or movement fixtures.
+  Evidence:
+
+## Phase 125: Client Admission And Session Helper Pilot
+
+- [ ] `ENG-CLIENTSESS-001` Add tests for the selected admission or session
+  policy seam.
+  Evidence:
+- [ ] `ENG-CLIENTSESS-002` Implement a target-neutral helper using plain
+  client snapshots and result objects.
+  Evidence:
+- [ ] `ENG-CLIENTSESS-003` Keep netchan sends, client slot mutation, cvar
+  reads, and game DLL callbacks legacy-owned.
+  Evidence:
+- [ ] `ENG-CLIENTSESS-004` Run focused client tests, full validation, and
+  smoke timing if code changes.
+  Evidence:
+
+## Phase 126: Client Transfer Voice And Admin Split
+
+- [ ] `ENG-CLIENTSPLIT-001` Audit client transfer, voice, cvar-query, and
+  remote-admin surfaces for follow-up extraction candidates.
+  Evidence:
+- [ ] `ENG-CLIENTSPLIT-002` Add focused tests for the safest selected seam.
+  Evidence:
+- [ ] `ENG-CLIENTSPLIT-003` Implement or defer the seam based on whether live
+  netchan or edict mutation would dominate the helper.
+  Evidence:
+- [ ] `ENG-CLIENTSPLIT-004` Run focused tests and full validation after any
+  code change.
+  Evidence:
+
+## Phase 127: Server Runtime Configuration Boundary
+
+- [ ] `ENG-RUNTIME-001` Audit `sv_main.c` cvar registration, read-only cvar
+  access, movevars, timeout loops, packet reads, master heartbeat, and shutdown.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-RUNTIME-002` Identify read-only snapshot seams that reduce adapter
+  churn without moving cvar ownership.
+  Evidence:
+- [ ] `ENG-RUNTIME-003` Add tests for any selected runtime policy helper.
+  Evidence:
+- [ ] `ENG-RUNTIME-004` Keep live cvar mutation, command registration, packet
+  reads, and shutdown sends legacy-owned.
+  Evidence:
+
+## Phase 128: Server Operator Command Boundary
+
+- [ ] `ENG-OPCMD-001` Audit `sv_cmds.c` operator commands, lifecycle commands,
+  status/info commands, and registration ownership.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-OPCMD-002` Identify command-table or command-lifecycle concepts
+  that are reusable instead of old function wrappers.
+  Evidence:
+- [ ] `ENG-OPCMD-003` Add tests for the safest selected command policy seam.
+  Evidence:
+- [ ] `ENG-OPCMD-004` Keep command registration, console output, filesystem
+  probes, and save/load side effects legacy-owned.
+  Evidence:
+
+## Phase 129: Frame Snapshot Boundary Audit
+
+- [ ] `ENG-FRAMESNAP-001` Audit `sv_frame.c` packet entity selection, baseline
+  deltas, events, pings, clientdata, datagrams, and inactive-client handling.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-FRAMESNAP-002` Identify which snapshot decisions can be tested with
+  plain fixtures before touching `client_frame_t` mutation.
+  Evidence:
+- [ ] `ENG-FRAMESNAP-003` Document packet-entity and visibility dependencies
+  that block route-through.
+  Evidence:
+- [ ] `ENG-FRAMESNAP-004` Decide the first possible frame/snapshot helper or
+  defer if fixtures are insufficient.
+  Evidence:
+
+## Phase 130: Frame Snapshot Helper Pilot
+
+- [ ] `ENG-FRAMEHELP-001` Add tests for the selected frame/snapshot planning
+  seam, if Phase 129 finds a safe one.
+  Evidence:
+- [ ] `ENG-FRAMEHELP-002` Implement a pure helper only around immutable
+  snapshots or simple capacity decisions.
+  Evidence:
+- [ ] `ENG-FRAMEHELP-003` Keep packet-entity storage, delta writes, client
+  frame mutation, and network buffers legacy-owned.
+  Evidence:
+- [ ] `ENG-FRAMEHELP-004` Run focused frame tests, full validation, and smoke
+  timing if code changes.
+  Evidence:
+
+## Phase 131: World Link And Touch Boundary Audit
+
+- [ ] `ENG-WORLDLINK-001` Audit `sv_world.c` area tree, link/unlink, touch
+  trigger, water links, and group-filter usage.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-WORLDLINK-002` Identify fixture needs for touch and link behavior
+  before any route-through.
+  Evidence:
+- [ ] `ENG-WORLDLINK-003` Add pure policy tests only where live `edict_t` and
+  area tree mutation are not required.
+  Evidence:
+- [ ] `ENG-WORLDLINK-004` Keep area nodes, edict links, trigger calls, and
+  collision-owned state legacy-owned.
+  Evidence:
+
+## Phase 132: World Trace And Physics Fixture Audit
+
+- [ ] `ENG-WORLDPHYS-001` Audit `sv_world.c`, `sv_phys.c`, and `sv_move.c` for
+  trace, hull, clip, pusher, toss, step, gravity, and monster-move ownership.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-WORLDPHYS-002` Define synthetic or golden fixtures required before
+  route-through of traces or physics loops.
+  Evidence:
+- [ ] `ENG-WORLDPHYS-003` Add tests for any pure constraints or route
+  decisions discovered during the audit.
+  Evidence:
+- [ ] `ENG-WORLDPHYS-004` Defer live collision, hull traversal, and physics API
+  callback ownership until fixtures exist.
+  Evidence:
+
+## Phase 133: Player Move Bridge Boundary Audit
+
+- [ ] `ENG-PMOVE-001` Audit `sv_pmove.c` PMove setup, physent population,
+  unlag, interpolants, and `SV_RunCmd()` ownership.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-PMOVE-002` Identify plain-value snapshots that could support future
+  PMove bridge tests.
+  Evidence:
+- [ ] `ENG-PMOVE-003` Decide whether any helper can be extracted without
+  changing prediction, lag compensation, or movement command behavior.
+  Evidence:
+- [ ] `ENG-PMOVE-004` Defer route-through if the seam is dominated by live
+  player movement state.
+  Evidence:
+
+## Phase 134: Runtime Save Restore Owner Audit
+
+- [ ] `ENG-SAVERUNTIME-001` Audit runtime `sv_save.c` save/load ownership after
+  previous save-format fixture work.
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+- [ ] `ENG-SAVERUNTIME-002` Identify value objects that could represent
+  landmark transitions, save headers, token tables, or entity patches without
+  changing file formats.
+  Evidence:
+- [ ] `ENG-SAVERUNTIME-003` Document game DLL field serialization and
+  filesystem side effects that must remain legacy-owned.
+  Evidence:
+- [ ] `ENG-SAVERUNTIME-004` Recommend the next checkpoint after Phases 115-134.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current
@@ -3630,3 +3928,4 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-063 | Introduce read-only cvar snapshots as plain values for modern policy helpers, starting with `SV_ProcessUserAgent()` input-device booleans, while keeping cvar registration, mutation, callbacks, command bindings, and archive persistence legacy-owned. | `modern/engine/read-only-cvar-snapshot.md`, `src/include/engine/cvar_snapshot.hpp`, `engine/server/sv_main.c` |
 | 2026-05-11 | DEC-064 | Defer any broad model/visibility route-through until synthetic or golden fixtures cover BSP visibility and hull traversal; in the meantime, use only small request/route snapshot helpers around legacy-owned `model_t`, PVS/PAS, edict leaf, and trace state. | `modern/engine/model-visibility-service-boundary.md` |
 | 2026-05-11 | DEC-065 | Keep the current one-helper-per-seam layout as migration scaffolding, but use resource transfer, server messaging, game DLL bridge, client/session, and world/runtime concepts as the next consolidation boundaries; do not collapse adapters unless the grouped file maps to one of those domains. | `modern/engine/server-cpp-ownership-consolidation.md`, `modern/cpp-ownership-target.md` |
+| 2026-05-11 | DEC-066 | Use Phases 115-134 as the next server roadmap, ordered from lower-risk consolidation domains toward high-fixture-risk world, PMove, and runtime save/restore ownership; continue the audit-test-helper-adapter-validation pattern for each lane. | `todo/server_consolidation_roadmap_todo.md`, `tasks.md` |

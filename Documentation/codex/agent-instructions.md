@@ -143,6 +143,23 @@ task open until <missing test/design decision>.
 - Do not use exceptions across C ABI boundaries.
 - Add comments only where behavior is compatibility-sensitive or non-obvious.
 
+## Server Ownership Classification
+
+- Treat one-helper-per-legacy-seam files as migration scaffolding, not the
+  final architecture.
+- Before adding a new server helper phase, check
+  `Documentation/codex/modern/engine/server-cpp-ownership-consolidation.md`
+  and classify the work under resource transfer, server messaging, game DLL
+  bridge, client/session, world/runtime, save/restore, or another explicit
+  domain.
+- Use old `sv_*.c` files as compatibility maps. Prefer modern grouping by
+  owned concept when the old file mixes unrelated behaviors.
+- Do not merge adapters just to reduce file count. A grouped adapter should
+  correspond to a grouped modern domain and keep C ABI boundaries boring.
+- For repetitive helper extraction, prefer `scripts/scaffold-modern-helper.ps1`
+  and then run `scripts/phase-status.ps1`, `scripts/doc-todo-rollup.ps1`, and
+  `scripts/run-phase-validation.ps1` as appropriate for the phase.
+
 ## Stop Conditions
 
 Stop and ask for direction when:

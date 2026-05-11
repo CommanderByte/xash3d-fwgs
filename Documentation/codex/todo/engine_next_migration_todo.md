@@ -158,6 +158,15 @@ enablers that make future server and engine migrations less adapter-heavy.
   tests until grouped files actually move.
   Evidence: documentation-only audit phase, `git diff --check` passed.
 
+## Phase 115-134: Server Consolidation Roadmap
+
+- [x] Expand the post-114 recommendations into a concrete 20-phase roadmap
+  covering resource transfer, server messaging, game DLL bridge, client/session,
+  runtime/configuration, operator commands, frame snapshots, world/physics,
+  PMove, and runtime save/restore ownership.
+  Evidence: `Documentation/codex/tasks.md`,
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
+
 ## Later Candidates
 
 - Resource transfer consolidation once catalog, reslist, consistency,
