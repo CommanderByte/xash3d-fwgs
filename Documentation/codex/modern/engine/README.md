@@ -176,6 +176,10 @@ Current implementation notes:
 - `server-filter-migration.md`: how Phase 53 routes ID/IP filter policy through
   target-neutral modern server helpers while legacy command/file ownership
   stays in `sv_filter.c`.
+- `server-frame-snapshot-boundary.md`: how Phase 129 audits `sv_frame.c`
+  packet entity selection, baseline deltas, events, pings, clientdata,
+  datagrams, and inactive-client handling before selecting a narrow
+  packet-entity delta cursor as the first possible Phase 130 helper.
 - `server-group-filter-policy.md`: how Phase 107 routes repeated
   `GROUP_OP_AND` / `GROUP_OP_NAND` entity and active-mask predicates through a
   target-neutral helper while collision, trace, multicast, and save ownership

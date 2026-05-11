@@ -271,6 +271,20 @@ Planned path:
 - Phase 130 adds pure snapshot/delta planning tests only if they can avoid live
   `edict_t`, `client_frame_t`, and packet-entity mutation.
 
+Phase 129 outcome:
+
+- Packet entity selection, client frame mutation, baseline scoring, event queue
+  mutation, ping stat lookup, clientdata callbacks, netchan sends, and inactive
+  client transition effects remain legacy-owned in `sv_frame.c`.
+- Existing modern helpers already cover datagram transfer gates, event emit
+  count clamping, and portal viewentity capacity.
+- Phase 130 should pilot only a packet-entity delta cursor/header planner from
+  plain old/new entity numbers and delta-frame freshness facts. Full snapshot
+  building, `MSG_WriteDeltaEntity()`, `SV_FindBestBaseline()`, and circular
+  packet-entity storage remain out of scope.
+  Evidence:
+  `Documentation/codex/modern/engine/server-frame-snapshot-boundary.md`.
+
 ## Phase 131-133: World, Physics, And PMove
 
 Legacy spread:

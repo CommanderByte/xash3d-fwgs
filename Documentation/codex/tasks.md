@@ -3842,18 +3842,28 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 129: Frame Snapshot Boundary Audit
 
-- [ ] `ENG-FRAMESNAP-001` Audit `sv_frame.c` packet entity selection, baseline
+- [x] `ENG-FRAMESNAP-001` Audit `sv_frame.c` packet entity selection, baseline
   deltas, events, pings, clientdata, datagrams, and inactive-client handling.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-FRAMESNAP-002` Identify which snapshot decisions can be tested with
+  Evidence:
+  `Documentation/codex/todo/server_consolidation_roadmap_todo.md`;
+  `Documentation/codex/modern/engine/server-frame-snapshot-boundary.md`.
+- [x] `ENG-FRAMESNAP-002` Identify which snapshot decisions can be tested with
   plain fixtures before touching `client_frame_t` mutation.
-  Evidence:
-- [ ] `ENG-FRAMESNAP-003` Document packet-entity and visibility dependencies
+  Evidence: Phase 130 should pilot only a packet-entity delta cursor/header
+  planner from plain old/new entity numbers and delta-frame freshness facts;
+  existing helpers already cover datagram transfer gates, event emit-count
+  clamping, and portal viewentity capacity.
+- [x] `ENG-FRAMESNAP-003` Document packet-entity and visibility dependencies
   that block route-through.
-  Evidence:
-- [ ] `ENG-FRAMESNAP-004` Decide the first possible frame/snapshot helper or
+  Evidence: `Documentation/codex/modern/engine/server-frame-snapshot-boundary.md`
+  documents the blocking dependencies on `edict_t`, `client_frame_t`,
+  `svs.packet_entities`, game DLL visibility callbacks, baseline scoring,
+  `MSG_WriteDeltaEntity()`, ping stats, clientdata callbacks, and netchan sends.
+- [x] `ENG-FRAMESNAP-004` Decide the first possible frame/snapshot helper or
   defer if fixtures are insufficient.
-  Evidence:
+  Evidence: first possible helper is a narrow packet-entity delta cursor/header
+  planner for Phase 130; Phase 129 is documentation-only, so no build or smoke
+  test was required.
 
 ## Phase 130: Frame Snapshot Helper Pilot
 
