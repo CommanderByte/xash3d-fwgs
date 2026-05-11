@@ -84,6 +84,14 @@ Goal: reduce test target noise without making failures harder to diagnose.
 Phase 164 decisions are recorded in
 `Documentation/codex/modern/engine/test-suite-consolidation-pass.md`.
 
+Bis pass:
+
+- [x] Collapse resource consistency list/policy tests into
+  `test_engine_server_consistency`.
+- [x] Collapse resource catalog/download/upload/hot/reslist tests into
+  `test_engine_server_resource_flow`.
+- [x] Run focused resource tests and full validation.
+
 ## Phase 165: Adapter And Common Glue Cleanup
 
 Goal: remove repeated adapter and common-structure boilerplate where it is

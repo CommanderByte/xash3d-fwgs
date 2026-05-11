@@ -4632,6 +4632,19 @@ Phase 89 covers user-message registry policy.
   `.\waf.bat build --targets=xash` passed; `.\waf.bat build --alltests`
   passed 132/132; runtime smoke reached first frame in 0.540 seconds with stop
   reason `command`.
+- [x] `ENG-TESTCOLLAPSE-BIS-001` Run a second pass against remaining resource
+  test fragmentation.
+  Evidence: `tests/engine/server_consistency.cpp` and
+  `tests/engine/server_resource_flow.cpp`; `src/wscript` now uses
+  `test_engine_server_consistency` and `test_engine_server_resource_flow`
+  instead of seven smaller resource-flow targets.
+- [x] `ENG-TESTCOLLAPSE-BIS-002` Run focused resource tests and full
+  validation after the bis pass.
+  Evidence: focused resource targets passed with
+  `.\waf.bat build --targets=test_engine_server_resource_flow,test_engine_server_consistency,test_engine_resource_domain,test_engine_resource_transfer_manifest`;
+  `.\waf.bat build --targets=xash` passed; `.\waf.bat build --alltests`
+  passed 127/127; runtime smoke reached first frame in 0.541 seconds with stop
+  reason `command`.
 
 ## Phase 165: Adapter And Common Glue Cleanup
 
