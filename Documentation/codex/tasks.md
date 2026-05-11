@@ -3977,6 +3977,193 @@ Phase 89 covers user-message registry policy.
 - [x] `ENG-SAVERUNTIME-004` Recommend the next checkpoint after Phases 115-134.
   Evidence: `Documentation/codex/modern/engine/server-save-restore-runtime-ownership.md`.
 
+## Phase 135: Milestone 134 Server Progress Audit
+
+- [x] `ENG-SERVER-MILESTONE-001` Count modern server helpers, headers,
+  adapters, legacy files, and focused tests after the Phase 115-134 sweep.
+  Evidence: `Documentation/codex/modern/engine/milestone-134-server-progress-audit.md`.
+- [x] `ENG-SERVER-MILESTONE-002` Summarize which server domains are covered by
+  modern tests and which runtime surfaces remain legacy-owned.
+  Evidence: `Documentation/codex/modern/engine/milestone-134-server-progress-audit.md`.
+- [x] `ENG-SERVER-MILESTONE-003` Identify simplifications that can be made now
+  without breaking ABI, protocol, save, or game DLL compatibility.
+  Evidence: `Documentation/codex/modern/engine/milestone-134-server-progress-audit.md`.
+- [x] `ENG-SERVER-MILESTONE-004` Add the next post-134 server phases.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 136: Server Domain Layout Plan
+
+- [ ] `ENG-SERVER-LAYOUT-001` Define target domain directories for resources,
+  messaging, game DLL bridge, client/session, runtime, world/physics,
+  save/restore, and shared contracts.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-LAYOUT-002` Map current helper files to those domains and
+  mark temporary facades.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-LAYOUT-003` Decide which include paths and Waf target lists
+  would change during a physical move.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-LAYOUT-004` Document no-move/no-rename boundaries for
+  public ABI and legacy C adapters.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 137: Resource Transfer Domain Consolidation Pilot
+
+- [ ] `ENG-RES-DOMAIN-001` Review resource identity, manifest, catalog,
+  download/upload, consistency, customization, hot-resource, and reslist
+  helpers as one domain.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-RES-DOMAIN-002` Add or extend aggregate tests that exercise
+  catalog-to-transfer flows.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-RES-DOMAIN-003` Move or group modern resource-domain files only if
+  the Phase 136 layout makes the change low-risk.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-RES-DOMAIN-004` Keep HPAK, filesystem probes, resource linked
+  lists, netchan fragments, and game DLL callbacks legacy-owned.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 138: Server Messaging Domain Consolidation Pilot
+
+- [ ] `ENG-MSG-DOMAIN-001` Review text, service, sound, static, voice,
+  multicast, envelope, spawn handshake, event playback, and frame datagram
+  helpers as one domain.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-MSG-DOMAIN-002` Add aggregate tests around representative complete
+  messages plus recipient facts.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-MSG-DOMAIN-003` Expand shared adapter/result translation only where
+  duplication is obvious.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-MSG-DOMAIN-004` Keep `sizebuf_t`, `MSG_*`, signon/datagram
+  mutation, netchan sends, and rendered console ownership legacy-bound.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 139: Game DLL Bridge Domain Consolidation Pilot
+
+- [ ] `ENG-GAMEDLL-DOMAIN-001` Map game DLL bridge helpers into lifecycle,
+  ABI metadata, entities, messages, resources, movement, visibility/world
+  query, output, string-pool, and changelevel areas.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-GAMEDLL-DOMAIN-002` Add a domain-level test that proves
+  cross-helper behavior without a live DLL.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-GAMEDLL-DOMAIN-003` Consider grouped implementation files only
+  where they reduce adapter confusion.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-GAMEDLL-DOMAIN-004` Keep DLL lifetime, `enginefuncs_t` order,
+  `svgame`, edict storage, and callback calls legacy-owned.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 140: Client Session Domain Consolidation Pilot
+
+- [ ] `ENG-CLIENT-DOMAIN-001` Group existing client helpers around admission,
+  session slots, userinfo, commands, transfer, voice, cvar query, and remote
+  admin.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-CLIENT-DOMAIN-002` Identify which helpers belong to client/session
+  and which should stay with resource or messaging domains.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-CLIENT-DOMAIN-003` Add aggregate tests for admission/session/
+  userinfo facts if they reduce repeated adapter code.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-CLIENT-DOMAIN-004` Keep connect/drop/spawn mutation, netchan,
+  command execution, resource-list mutation, voice packet reads, and cvar
+  query callbacks legacy-owned.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 141: Save Restore Value Objects
+
+- [ ] `ENG-SAVE-VALUE-001` Add tests for save admission snapshots, save
+  version classification, or save-comment fallback selection.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SAVE-VALUE-002` Implement the smallest value object that can be
+  tested without `SAVERESTOREDATA` mutation.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SAVE-VALUE-003` Route a tiny legacy call site only if it preserves
+  console output and callback ordering exactly.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SAVE-VALUE-004` Keep game DLL field callbacks, `.HL?` filesystem
+  effects, entity restore, and landmark transition mutation legacy-owned.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 142: Server Adapter Inventory And Shrink Pass
+
+- [ ] `ENG-ADAPTER-SHRINK-001` Inventory adapter-only duplicated patterns for
+  bit-buffer result translation, resource snapshots, message recipient facts,
+  and plain enum conversions.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-ADAPTER-SHRINK-002` Add shared adapter helpers only where the
+  helper has one clear domain.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-ADAPTER-SHRINK-003` Avoid merging unrelated adapters just to reduce
+  file count.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-ADAPTER-SHRINK-004` Run focused tests plus full validation if any
+  adapter code changes.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 143: Server Header Boundary Audit
+
+- [ ] `ENG-SERVER-HDR-001` Classify `server.h` contents as ABI-facing structs,
+  private flags, declarations, constants, or runtime globals.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-HDR-002` Identify declarations already replaced by modern
+  private headers.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-HDR-003` Propose a split plan that does not change struct
+  layout or public include behavior.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-HDR-004` Defer actual splitting unless tests and build
+  fallout are understood.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 144: World Trace Fixture Harness Plan
+
+- [ ] `ENG-WORLD-FIXTURE-001` Define synthetic edict/model/area-node inputs
+  needed for link, touch, hull, group-mask, and trace admission tests.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-WORLD-FIXTURE-002` Decide whether fixtures should live in modern
+  C++ tests, legacy C tests, or a shared harness.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-WORLD-FIXTURE-003` Add one fixture skeleton only if it can compile
+  without pulling the full engine runtime into the test.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-WORLD-FIXTURE-004` Keep BSP traversal, exact hull tests, trace
+  globals, and `SV_Move()` legacy-owned.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 145: PMove And Usercmd Fixture Harness Plan
+
+- [ ] `ENG-PMOVE-FIXTURE-001` Define usercmd packet, dropped-command,
+  frozen-player, and unlag history fixtures.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-PMOVE-FIXTURE-002` Define `playermove_t` setup/finish snapshots
+  that can be compared safely.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-PMOVE-FIXTURE-003` Identify callback mocks needed for PMove trace,
+  contents, texture, and touch replay behavior.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-PMOVE-FIXTURE-004` Keep `SV_RunCmd()`, PMove callback table
+  publication, physent population, and touch replay legacy-owned.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
+## Phase 146: Server Runtime Smoke And Performance Checkpoint
+
+- [ ] `ENG-SERVER-SMOKE-001` Run focused/full validation after the
+  consolidation docs are in place.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-SMOKE-002` Launch the game with `scripts/run-game.ps1` and
+  manually start a new game.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-SMOKE-003` Record first-frame time from the validation smoke
+  and the manual new-game result in this task list.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+- [ ] `ENG-SERVER-SMOKE-004` Compare current startup evidence with recent
+  server-phase smoke timings and flag obvious regressions for later
+  investigation.
+  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current

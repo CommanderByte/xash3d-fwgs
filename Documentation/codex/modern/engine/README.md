@@ -86,6 +86,9 @@ Current implementation notes:
 - `milestone-100-server-modernization-audit.md`: how the modern server helper
   layer looks after the game DLL bridge lane, and why server constants and
   constraints are the next low-risk migration target.
+- `milestone-134-server-progress-audit.md`: how the server helper layer looks
+  after the Phase 115-134 ownership sweep, what remains legacy-owned, and why
+  the next lane should be consolidation rather than more one-helper extraction.
 - `model-visibility-service-boundary.md`: how Phase 113 audits BSP model,
   hull, PVS/PAS, trace, physics, and game DLL visibility ownership before any
   runtime route-through.
