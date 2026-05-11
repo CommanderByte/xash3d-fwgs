@@ -42,6 +42,10 @@ Current implementation notes:
   internals while preserving the game DLL ABI, callback table order, edict
   ownership, and message/session compatibility. The post-audit implementation
   lane is tracked in `Documentation/codex/todo/game_dll_bridge_todo.md`.
+- `game-dll-bridge-submodule-plan.md`: how Phase 121 turns the completed game
+  DLL bridge lane into a future `src/engine/server/game_dll/` submodule layout,
+  which cross-callback tests should exist first, and which `sv_game.c` regions
+  remain too coupled to move.
 - `game-dll-changelevel-save-boundary.md`: how Phase 97 models changelevel
   admission, landmark truncation, smooth/classic queuing, and `.HL3`
   entity-patch intent while keeping runtime save/load callbacks legacy-owned.

@@ -107,6 +107,22 @@ Planned path:
 - Phase 123 tries one low-risk grouped adapter pilot if it makes `sv_game.c`
   easier to read without hiding ABI details.
 
+Phase 121 outcome:
+
+- The future physical layout should use `src/engine/server/game_dll/` with
+  mirrored include folders for bridge, messaging, resources, entities,
+  client-info, output, string-pool, changelevel, world-query, and movement
+  submodules.
+- Do not move files yet. First add aggregate tests for cross-callback behavior,
+  starting with the game DLL message bridge because the supporting message
+  session, user-message registry, payload, multicast, and envelope helpers
+  already exist.
+- Keep real DLL lifetime, callback table publication, edict/private-data
+  storage, string-base memory, `sv.multicast`, netchan writes, trace/world,
+  movement, save/restore streams, and live output sinks legacy-owned.
+  Evidence:
+  `Documentation/codex/modern/engine/game-dll-bridge-submodule-plan.md`.
+
 ## Phase 124-126: Client And Session Domain
 
 Legacy spread:

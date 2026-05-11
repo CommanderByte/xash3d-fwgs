@@ -3624,19 +3624,31 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 121: Game DLL Bridge Submodule Plan
 
-- [ ] `ENG-GDLLGROUP-001` Audit the current game DLL helper surface against
+- [x] `ENG-GDLLGROUP-001` Audit the current game DLL helper surface against
   bridge, lifecycle, entity, messaging, resource, world-query, movement,
   output, string-pool, and changelevel submodules.
-  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`.
-- [ ] `ENG-GDLLGROUP-002` Decide which submodules can live under
+  Evidence: `Documentation/codex/todo/server_consolidation_roadmap_todo.md`
+  and `Documentation/codex/modern/engine/game-dll-bridge-submodule-plan.md`.
+- [x] `ENG-GDLLGROUP-002` Decide which submodules can live under
   `src/engine/server/game_dll` later without changing ABI table order.
-  Evidence:
-- [ ] `ENG-GDLLGROUP-003` Identify cross-callback tests that should exist
+  Evidence: the Phase 121 plan recommends future `bridge`, `messaging`,
+  `resources`, `entities`, `client_info`, `output`, `string_pool`,
+  `changelevel`, `world_queries`, and `movement` submodules under
+  `src/engine/server/game_dll/`, while keeping the concrete `enginefuncs_t`
+  publication and table order legacy-owned.
+- [x] `ENG-GDLLGROUP-003` Identify cross-callback tests that should exist
   before any adapter consolidation.
-  Evidence:
-- [ ] `ENG-GDLLGROUP-004` Document which `sv_game.c` regions remain too
+  Evidence: `Documentation/codex/modern/engine/game-dll-bridge-submodule-plan.md`
+  identifies message bridge aggregate, build-sound composition, active
+  user-message resend, output-to-message routing, entity spawn sequence,
+  private-data lifecycle, string-pool/entity interaction, changelevel/save,
+  and trace/visibility/movement boundary test groups.
+- [x] `ENG-GDLLGROUP-004` Document which `sv_game.c` regions remain too
   coupled to move.
-  Evidence:
+  Evidence: the Phase 121 plan keeps real DLL lifetime, `GiveFnptrsToDll()`,
+  concrete `gEngfuncs`, edict/private-data storage, `globalvars_t::pStringBase`,
+  entity parse callback ordering, `sv.multicast`, trace/world, movement,
+  save/restore streams, and live output sinks legacy-owned.
 
 ## Phase 122: Game DLL Bridge Aggregate Tests
 
