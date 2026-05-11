@@ -3,6 +3,7 @@
 #include "engine/server/resource_transfer_manifest.hpp"
 
 #include <cstddef>
+#include <cstdio>
 
 namespace xash
 {
@@ -94,6 +95,39 @@ std::vector<ResourceDescriptor> BuildResourceDescriptorSnapshot(
 	return snapshot;
 }
 
+std::vector<int> BuildCheckedResourceIndexSnapshot(
+	const resource_t *resources,
+	int resourceCount)
+{
+	std::vector<int> indexes;
+
+	if (!resources || resourceCount <= 0)
+		return indexes;
+
+	indexes.reserve(static_cast<std::size_t>(resourceCount));
+
+	for (int i = 0; i < resourceCount; ++i)
+	{
+		if ((resources[i].ucFlags & RES_CHECKFILE) != 0)
+			indexes.push_back(i);
+	}
+
+	return indexes;
+}
+
+LegacyResourceDescriptorFields ToLegacyResourceDescriptorFields(
+	const ResourceDescriptor &resource,
+	resourcetype_t fallback)
+{
+	LegacyResourceDescriptorFields fields = {};
+	fields.type = ToLegacyResourceType(resource.type, fallback);
+	fields.name = resource.name;
+	fields.index = resource.index;
+	fields.downloadSize = resource.downloadSize;
+	fields.flags = static_cast<unsigned char>(resource.flags);
+	return fields;
+}
+
 ResourceMessageRow ToModernResourceMessageRow(const resource_t *resource)
 {
 	const ResourceDescriptor descriptor = ToModernResourceDescriptor(resource);
@@ -117,6 +151,17 @@ CustomizationMessage ToModernCustomizationMessage(
 	message.flags = descriptor.flags;
 	message.md5Hash = descriptor.md5Hash;
 	return message;
+}
+
+void CopyStringToLegacyBuffer(
+	char *dst,
+	std::size_t capacity,
+	const std::string &src)
+{
+	if (!dst || capacity == 0)
+		return;
+
+	std::snprintf(dst, capacity, "%s", src.c_str());
 }
 
 }

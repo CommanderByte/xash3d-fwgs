@@ -9,14 +9,16 @@ namespace
 sv_resource_catalog_entry_t ToLegacyEntry(
 	const xash::engine::server::ResourceCatalogEntry &entry)
 {
+	const xash::engine::server::adapter::LegacyResourceDescriptorFields fields =
+		xash::engine::server::adapter::ToLegacyResourceDescriptorFields(
+			entry.resource);
 	sv_resource_catalog_entry_t legacy = {};
 	legacy.should_add = entry.shouldAdd ? 1 : 0;
-	legacy.type = xash::engine::server::adapter::ToLegacyResourceType(
-		entry.resource.type);
-	legacy.name = entry.resource.name;
-	legacy.download_size = entry.resource.downloadSize;
-	legacy.flags = static_cast<unsigned char>(entry.resource.flags);
-	legacy.index = entry.resource.index;
+	legacy.type = fields.type;
+	legacy.name = fields.name;
+	legacy.download_size = fields.downloadSize;
+	legacy.flags = fields.flags;
+	legacy.index = fields.index;
 	return legacy;
 }
 

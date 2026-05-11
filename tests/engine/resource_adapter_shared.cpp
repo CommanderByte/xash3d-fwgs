@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <string>
 #include <vector>
 
 #include "server/resource_adapter_shared.hpp"
@@ -79,6 +80,66 @@ static bool TestResourceDescriptorSnapshot()
 		snapshot[1].flags == RES_FATALIFMISSING;
 }
 
+static bool TestCheckedResourceIndexSnapshot()
+{
+	resource_t resources[] =
+	{
+		Resource("models/a.mdl", t_model, 0, 10, 0),
+		Resource("models/b.mdl", t_model, 1, 20, RES_CHECKFILE),
+		Resource("models/c.mdl", t_model, 2, 30, RES_CHECKFILE | RES_CUSTOM),
+	};
+
+	const std::vector<int> indexes =
+		BuildCheckedResourceIndexSnapshot(resources, 3);
+	const std::vector<int> empty =
+		BuildCheckedResourceIndexSnapshot(nullptr, 3);
+	const std::vector<int> negative =
+		BuildCheckedResourceIndexSnapshot(resources, -1);
+
+	return indexes.size() == 2 &&
+		indexes[0] == 1 &&
+		indexes[1] == 2 &&
+		empty.empty() &&
+		negative.empty();
+}
+
+static bool TestLegacyResourceDescriptorFields()
+{
+	ResourceDescriptor resource = {};
+	resource.name = "models/player.mdl";
+	resource.type = ResourceType::Model;
+	resource.index = 7;
+	resource.downloadSize = 321;
+	resource.flags = RES_FATALIFMISSING | 0xF0U;
+
+	const LegacyResourceDescriptorFields fields =
+		ToLegacyResourceDescriptorFields(resource);
+
+	resource.type = ResourceType::Unknown;
+	const LegacyResourceDescriptorFields fallback =
+		ToLegacyResourceDescriptorFields(resource, t_decal);
+
+	return fields.type == t_model &&
+		std::strcmp(fields.name, "models/player.mdl") == 0 &&
+		fields.index == 7 &&
+		fields.downloadSize == 321 &&
+		fields.flags == static_cast<unsigned char>(RES_FATALIFMISSING | 0xF0U) &&
+		fallback.type == t_decal;
+}
+
+static bool TestCopyStringToLegacyBuffer()
+{
+	char small[6] = {};
+	char exact[6] = {};
+
+	CopyStringToLegacyBuffer(small, sizeof(small), std::string("abcdef"));
+	CopyStringToLegacyBuffer(exact, sizeof(exact), std::string("abcde"));
+	CopyStringToLegacyBuffer(nullptr, 0, std::string("ignored"));
+
+	return std::strcmp(small, "abcde") == 0 &&
+		std::strcmp(exact, "abcde") == 0;
+}
+
 static bool TestNullResourceDescriptor()
 {
 	const ResourceDescriptor descriptor = ToModernResourceDescriptor(nullptr);
@@ -130,6 +191,9 @@ int main()
 {
 	if (!TestResourceTypeMapping() ||
 		!TestResourceDescriptorSnapshot() ||
+		!TestCheckedResourceIndexSnapshot() ||
+		!TestLegacyResourceDescriptorFields() ||
+		!TestCopyStringToLegacyBuffer() ||
 		!TestNullResourceDescriptor() ||
 		!TestResourceMessageRowConversion() ||
 		!TestCustomizationMessageConversion())

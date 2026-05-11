@@ -41,12 +41,12 @@ Goal: prove resource helpers work together before adapter consolidation.
 Goal: reduce duplicated resource glue only where aggregate tests cover the
 behavior.
 
-- [ ] Identify resource adapters that only translate plain values.
-- [ ] Add a small shared resource adapter utility or grouped adapter if it
+- [x] Identify resource adapters that only translate plain values.
+- [x] Add a small shared resource adapter utility or grouped adapter if it
   reduces duplication without hiding legacy ownership.
-- [ ] Avoid merging unrelated `sv_custom.c`, `sv_client.c`, and `sv_game.c`
+- [x] Avoid merging unrelated `sv_custom.c`, `sv_client.c`, and `sv_game.c`
   side effects.
-- [ ] Run focused resource tests, full validation, and smoke timing if runtime
+- [x] Run focused resource tests, full validation, and smoke timing if runtime
   code changes.
 
 ## Phase 150: Messaging Domain Aggregate Tests

@@ -114,6 +114,9 @@ Current implementation notes:
 - `server-adapter-shrink-pass.md`: how Phase 142 inventories duplicated server
   adapter glue, confirms existing bit-buffer and resource helpers are the only
   clear shared domains for now, and avoids a vague cross-domain adapter utility.
+- `resource-adapter-shrink-pilot.md`: how Phase 149 uses the resource aggregate
+  tests to remove repeated plain-value resource adapter glue while keeping
+  HPAK, filesystem, netchan, and game DLL side effects at legacy call sites.
 - `server-domain-layout-plan.md`: how Phase 136 maps the current flat modern
   server helper layer to future `shared`, `resources`, `messaging`,
   `game_dll`, `client`, `runtime`, `world`, and `save` domains before any

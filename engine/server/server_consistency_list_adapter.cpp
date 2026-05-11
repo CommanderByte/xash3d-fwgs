@@ -2,32 +2,11 @@
 
 #include "engine/network/network_buffer.hpp"
 #include "engine/server/server_consistency_list.hpp"
+#include "resource_adapter_shared.hpp"
+#include "server_message_adapter_shared.hpp"
 
 #include <cstddef>
 #include <vector>
-
-namespace
-{
-
-std::vector<int> BuildConsistencyIndexSnapshot(const resource_t *resources, int resourceCount)
-{
-	std::vector<int> indexes;
-
-	if (!resources || resourceCount <= 0)
-		return indexes;
-
-	indexes.reserve(static_cast<std::size_t>(resourceCount));
-
-	for (int i = 0; i < resourceCount; ++i)
-	{
-		if ((resources[i].ucFlags & RES_CHECKFILE) != 0)
-			indexes.push_back(i);
-	}
-
-	return indexes;
-}
-
-}
 
 extern "C" sv_consistency_list_write_result_t SV_ConsistencyList_Write(
 	const resource_t *resources,
@@ -41,7 +20,10 @@ extern "C" sv_consistency_list_write_result_t SV_ConsistencyList_Write(
 	int data_bits,
 	int current_bit)
 {
-	const std::vector<int> indexes = BuildConsistencyIndexSnapshot(resources, resource_count);
+	const std::vector<int> indexes =
+		xash::engine::server::adapter::BuildCheckedResourceIndexSnapshot(
+			resources,
+			resource_count);
 
 	xash::engine::server::ConsistencyListRequest request = {};
 	request.maxClients = max_clients;
@@ -60,10 +42,11 @@ extern "C" sv_consistency_list_write_result_t SV_ConsistencyList_Write(
 	if (already_overflow)
 		return legacy;
 
-	xash::engine::network::NetworkBitBuffer buffer(
-		data,
-		data_bits < 0 ? 0U : static_cast<std::size_t>(data_bits),
-		current_bit < 0 ? 0U : static_cast<std::size_t>(current_bit));
+	xash::engine::network::NetworkBitBuffer buffer =
+		xash::engine::server::adapter::MakeNetworkBitBuffer(
+			data,
+			data_bits,
+			current_bit);
 
 	const xash::engine::server::ConsistencyListWriteResult result =
 		xash::engine::server::WriteConsistencyList(buffer, request);

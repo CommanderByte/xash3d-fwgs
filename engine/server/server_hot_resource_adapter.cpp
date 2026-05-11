@@ -3,8 +3,6 @@
 #include "engine/server/server_hot_resource.hpp"
 #include "resource_adapter_shared.hpp"
 
-#include <cstdio>
-
 namespace
 {
 
@@ -38,11 +36,10 @@ extern "C" sv_hot_resource_file_size_query_t SV_HotResource_BuildFileSizeQuery(
 
 	if (!modern.path.empty())
 	{
-		std::snprintf(
+		xash::engine::server::adapter::CopyStringToLegacyBuffer(
 			legacy.file_size_path,
 			sizeof(legacy.file_size_path),
-			"%s",
-			modern.path.c_str());
+			modern.path);
 	}
 
 	return legacy;
@@ -59,15 +56,17 @@ extern "C" sv_hot_resource_entry_t SV_HotResource_BuildAnnouncement(
 		xash::engine::server::BuildHotResourceAnnouncement(
 			ToModernRequest(name, type, index, flags),
 			probed_download_size);
+	const xash::engine::server::adapter::LegacyResourceDescriptorFields fields =
+		xash::engine::server::adapter::ToLegacyResourceDescriptorFields(
+			modern.resource,
+			type);
 
 	sv_hot_resource_entry_t legacy = {};
 	legacy.should_announce = modern.shouldAnnounce ? 1 : 0;
-	legacy.type = xash::engine::server::adapter::ToLegacyResourceType(
-		modern.resource.type,
-		type);
-	legacy.name = modern.resource.name;
-	legacy.index = modern.resource.index;
-	legacy.download_size = modern.resource.downloadSize;
-	legacy.flags = static_cast<unsigned char>(modern.resource.flags);
+	legacy.type = fields.type;
+	legacy.name = fields.name;
+	legacy.index = fields.index;
+	legacy.download_size = fields.downloadSize;
+	legacy.flags = fields.flags;
 	return legacy;
 }

@@ -4275,18 +4275,24 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 149: Resource Adapter Shrink Pilot
 
-- [ ] `ENG-RESADAPT-001` Identify resource adapters that only translate plain
+- [x] `ENG-RESADAPT-001` Identify resource adapters that only translate plain
   values.
-  Evidence: `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
-- [ ] `ENG-RESADAPT-002` Add a small shared resource adapter utility or grouped
+  Evidence: `Documentation/codex/modern/engine/resource-adapter-shrink-pilot.md`;
+  `Documentation/codex/todo/post_146_domain_consolidation_todo.md`.
+- [x] `ENG-RESADAPT-002` Add a small shared resource adapter utility or grouped
   adapter if it reduces duplication without hiding legacy ownership.
-  Evidence:
-- [ ] `ENG-RESADAPT-003` Avoid merging unrelated `sv_custom.c`, `sv_client.c`,
+  Evidence: `engine/server/resource_adapter_shared.hpp`;
+  `engine/server/resource_adapter_shared.cpp`;
+  `tests/engine/resource_adapter_shared.cpp`.
+- [x] `ENG-RESADAPT-003` Avoid merging unrelated `sv_custom.c`, `sv_client.c`,
   and `sv_game.c` side effects.
-  Evidence:
-- [ ] `ENG-RESADAPT-004` Run focused resource tests, full validation, and
+  Evidence: `Documentation/codex/modern/engine/resource-adapter-shrink-pilot.md`.
+- [x] `ENG-RESADAPT-004` Run focused resource tests, full validation, and
   smoke timing if runtime code changes.
-  Evidence:
+  Evidence: `.\waf.bat build --targets=test_engine_resource_adapter_shared`
+  passed 1/1; focused adapter/domain executables passed; xash target build
+  passed; `.\waf.bat build --alltests` passed 135/135; smoke reached first
+  frame in 0.482 seconds.
 
 ## Phase 150: Messaging Domain Aggregate Tests
 

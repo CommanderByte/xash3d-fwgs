@@ -1,8 +1,7 @@
 #include "game_dll_resource_policy_adapter.h"
 
 #include "engine/server/game_dll_resource_policy.hpp"
-
-#include <cstdio>
+#include "resource_adapter_shared.hpp"
 
 namespace
 {
@@ -76,14 +75,6 @@ int ToLegacyLoadAction(
 	}
 }
 
-void CopyString(char *dst, std::size_t capacity, const std::string &src)
-{
-	if (!dst || capacity == 0)
-		return;
-
-	std::snprintf(dst, capacity, "%s", src.c_str());
-}
-
 }
 
 extern "C" sv_gamedll_resource_name_decision_t
@@ -101,7 +92,7 @@ SV_GameDllResource_BuildNameDecision(
 	sv_gamedll_resource_name_decision_t legacy = {};
 	legacy.action = ToLegacyAction(modern.action);
 	legacy.optional = modern.optional ? 1 : 0;
-	CopyString(
+	xash::engine::server::adapter::CopyStringToLegacyBuffer(
 		legacy.normalized_name,
 		sizeof(legacy.normalized_name),
 		modern.normalizedName);
