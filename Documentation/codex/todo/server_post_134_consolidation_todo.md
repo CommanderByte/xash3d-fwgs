@@ -135,14 +135,28 @@ frame in 0.494 seconds and stopped with reason `command` on May 11 2026 at
 Goal: begin save/restore implementation work with pure values, not runtime
 stream ownership.
 
-- [ ] Add tests for save admission snapshots, save version classification, or
+- [x] Add tests for save admission snapshots, save version classification, or
   save-comment fallback selection.
-- [ ] Implement the smallest value object that can be tested without
+- [x] Implement the smallest value object that can be tested without
   `SAVERESTOREDATA` mutation.
-- [ ] Route a tiny legacy call site only if it preserves console output and
+- [x] Route a tiny legacy call site only if it preserves console output and
   callback ordering exactly.
-- [ ] Keep game DLL field callbacks, `.HL?` filesystem effects, entity restore,
+- [x] Keep game DLL field callbacks, `.HL?` filesystem effects, entity restore,
   and landmark transition mutation legacy-owned.
+
+Evidence:
+`Documentation/codex/modern/engine/save-restore-value-objects.md`,
+`src/include/engine/server/save_restore_values.hpp`,
+`src/engine/server/save_restore_values.cpp`, and
+`tests/engine/save_restore_values.cpp`.
+
+Validation:
+`test_engine_save_restore_values` and `test_engine_save_restore_format`
+passed; `.\waf.bat build --alltests` passed 132/132; runtime smoke reached
+first frame in 0.481 seconds and stopped with reason `command` on
+May 11 2026 at 14:40 local time. No legacy save/restore call site was routed
+in this phase because callback reads, console output, raw field parsing, and
+filesystem mutation remain legacy-owned.
 
 ## Phase 142: Server Adapter Inventory And Shrink Pass
 

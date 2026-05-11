@@ -63,6 +63,9 @@ Current helpers:
 - `save_restore_format.hpp`: read-only save/restore binary fixture parser
   contracts for headers, sections, entity patches, packed short fields, and
   bundled file entries.
+- `save_restore_values.hpp`: pure save/restore decision snapshots for save
+  admission, save-comment header classification, and save-comment fallback
+  source selection while live stream mutation stays legacy-owned.
 - `client/client_policy.hpp`: userinfo penalty, rate/update interval, private
   client-flag snapshot/predicate, and prediction/lag/local-weapon flag decision
   contracts.

@@ -65,6 +65,9 @@ Current helpers:
 - `save_restore_format.cpp`: read-only save/restore file-format fixture
   parsing for headers, token tables, field sections, `.HL3` entity patches,
   packed short fields, and bundled save files.
+- `save_restore_values.cpp`: target-neutral save/restore value decisions for
+  save admission, save-comment header/version classification, and fallback
+  source selection without touching `SAVERESTOREDATA` or filesystem effects.
 - `client/client_policy.cpp`: target-neutral userinfo penalty, rate/update interval,
   private client-flag snapshots, fake/HLTV/prediction predicates, and
   prediction/lag/local-weapon flag decisions.

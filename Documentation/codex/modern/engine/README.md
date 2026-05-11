@@ -225,6 +225,9 @@ Current implementation notes:
   save/load streams, game DLL field callbacks, filesystem extraction, client
   renderer/audio restore, and landmark transition effects legacy-owned while
   identifying value objects that can move later.
+- `save-restore-value-objects.md`: how Phase 141 adds pure save/restore value
+  decisions for save admission, save-comment header classification, and
+  fallback source selection while leaving runtime save streams legacy-owned.
 - `server-event-log-migration.md`: how Phase 58 routes server event log line
   and stock message formatting through target-neutral helpers while sinks stay
   legacy-owned.

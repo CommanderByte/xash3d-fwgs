@@ -4116,18 +4116,24 @@ Phase 89 covers user-message registry policy.
 
 ## Phase 141: Save Restore Value Objects
 
-- [ ] `ENG-SAVE-VALUE-001` Add tests for save admission snapshots, save
+- [x] `ENG-SAVE-VALUE-001` Add tests for save admission snapshots, save
   version classification, or save-comment fallback selection.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SAVE-VALUE-002` Implement the smallest value object that can be
+  Evidence: `tests/engine/save_restore_values.cpp`; focused command
+  `.\waf.bat build --targets=test_engine_save_restore_values,test_engine_save_restore_format`
+  passed.
+- [x] `ENG-SAVE-VALUE-002` Implement the smallest value object that can be
   tested without `SAVERESTOREDATA` mutation.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SAVE-VALUE-003` Route a tiny legacy call site only if it preserves
+  Evidence: `src/include/engine/server/save_restore_values.hpp`,
+  `src/engine/server/save_restore_values.cpp`.
+- [x] `ENG-SAVE-VALUE-003` Route a tiny legacy call site only if it preserves
   console output and callback ordering exactly.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
-- [ ] `ENG-SAVE-VALUE-004` Keep game DLL field callbacks, `.HL?` filesystem
+  Evidence: no legacy call site was routed; rationale documented in
+  `Documentation/codex/modern/engine/save-restore-value-objects.md`.
+- [x] `ENG-SAVE-VALUE-004` Keep game DLL field callbacks, `.HL?` filesystem
   effects, entity restore, and landmark transition mutation legacy-owned.
-  Evidence: `Documentation/codex/todo/server_post_134_consolidation_todo.md`.
+  Evidence: `Documentation/codex/modern/engine/save-restore-value-objects.md`;
+  `.\waf.bat build --alltests` passed 132/132; runtime smoke reached first
+  frame in 0.481 seconds and stopped with reason `command` on 2026-05-11.
 
 ## Phase 142: Server Adapter Inventory And Shrink Pass
 
