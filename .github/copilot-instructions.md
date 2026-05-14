@@ -31,14 +31,14 @@ for the full Windows smoke-test setup including SDL2 download and HLSDK.
 
 ## ABI Surfaces — Do Not Break
 
-These C-compatible contracts must be preserved by the rewrite:
+Only the SDK-facing contracts that game DLLs and client DLLs depend on are
+fixed. Renderer, filesystem, and other internal plugin interfaces will be
+redesigned as part of the rewrite.
 
 | Surface | Headers |
 |---------|---------|
 | Game DLL | `engine/eiface.h`, `engine/edict.h` |
 | Client DLL | `engine/cdll_int.h`, `engine/cdll_exp.h` |
-| Renderer | `engine/ref_api.h` |
-| Filesystem plugin | `filesystem/filesystem.h` |
 | Shared SDK structures | `common/`, `pm_shared/`, `engine/*.h` |
 
 ## Commit Convention
