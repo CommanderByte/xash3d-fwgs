@@ -26,12 +26,6 @@ the architecture for this rewrite will be determined by a fresh analysis.
 
 ```
 xash3dpp/
-  src/          C++ source, one subdirectory per subsystem
-    engine/       Host, client, server state (highest risk, comes last)
-    filesystem/   Filesystem backend rewrite (pilot subsystem)
-    platform/     OS, dynamic library, clock, and file-handle abstractions
-    public/       Rewritten public utility library (string, CRC, math, UTF-8, …)
-    ref/          Renderer internals (after smoke-test coverage exists)
   include/      Public C-compatible headers (ABI surfaces exposed to game DLLs)
   tests/        Unit and integration tests
   docs/         Project-local design and architecture notes
