@@ -54,10 +54,12 @@ Headers define the immutable ABI surface for game and client DLLs:
 ## Modernization Opportunities
 
 Critically distinguish:
+
 - `common/` + `pm_shared/` headers must be preserved bit-for-bit (SDK ABI)
 - `public/` utilities are free to be rewritten in C++ behind a clean facade
 
 Concrete directions:
+
 - **C++ wrapper facade** — rewrite `public/` utilities in modern C++ (SIMD-optimized matrixlib, move semantics); thin C API for ABI preservation
 - **Fixed-point physics option** — migrate `pm_shared/` predictor/simulator pair to fixed-point arithmetic to guarantee determinism across CPUs
 - **Standardize type aliases** — consolidate `vec_t`, `float32_t`, platform-specific overrides

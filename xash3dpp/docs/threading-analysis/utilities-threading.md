@@ -90,6 +90,7 @@ shared across threads without external locking.
 
 1. **Add a `static_assert` or comment to `build::number()`** noting the
    magic-static dependency:
+
    ```cpp
    // Thread-safety relies on C++11 magic-static guards.
    // Do not compile this TU with -fno-threadsafe-statics.

@@ -1,24 +1,29 @@
 # ref/
 
 ## Purpose
+
 Pluggable renderer implementations for Xash3D. Each renderer (GL, software, null) exposes a common interface (`ref_interface_t`) loaded dynamically by the engine, handling scene rendering, entity management, lighting, texture management, decals, studio models, and frame composition. Renderers compile as separate DLLs/SOs and communicate with the engine through the `ref_api.h` ABI.
 
 ## Source Files
 
 **ref/gl** — OpenGL renderer (primary desktop backend)
+
 - `gl_rmain.c`, `gl_studio.c`, `gl_image.c`, `gl_rsurf.c`, `gl_beams.c`, `gl_decals.c`, `gl_backend.c`, `gl_context.c`
 - `gl2_shim/` — ES2 fixed-function pipeline emulation
 - `vgl_shim/` — PSVita nanoGL wrapper
 
 **ref/soft** — software renderer (legacy CPU rasterization)
+
 - `r_main.c`, `r_studio.c`, `r_bsp.c`, `r_rast.c`, `r_scan.c`, `r_image.c`, `r_edge.c`, `r_polyse.c`
 
 **ref/common** — shared code across renderers
+
 - `ref_context.c`, `ref_image.c`, `ref_light.c`, `ref_math.c`
 
 ## Renderer ABI
 
 `engine/ref_api.h` (version 17) defines the bidirectional contract:
+
 - **Engine → Renderer**: `GetRefAPI(version, ref_interface_t*, ref_api_t*, ref_globals_t*)` — renderer fills `ref_interface_t` with callbacks (`R_Init`, `R_RenderScene`, `R_AddEntity`, `GL_LoadTextureFromBuffer`, …) and receives engine functions (`Cvar_Get`, `Cmd_AddCommand`, `FS_LoadImage`, `Mod_ForName`, particle/dlight allocators, memory pools)
 - **Callbacks**: scene lifecycle (`R_BeginFrame`, `R_RenderScene`, `R_EndFrame`), entity drawing, texture/decal/light management, studio/sprite rendering, screenshot capture
 - **Engine parameters** via `EngineGetParm()`: client/host pointers, lightstyles, dlights, gamma tables, world pointer, connection state, demo playback

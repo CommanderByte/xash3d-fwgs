@@ -1,6 +1,7 @@
 # engine/server
 
 ## Purpose
+
 The server module implements the Half-Life dedicated server runtime: entity/edict management, world physics simulation, client connection handling, game DLL bridge (`eiface.h`/`edict.h` ABI), networking (multicast & PVS filtering), save/restore, master-server reporting, and frame processing. It coordinates the game DLL, physics, and networking subsystems.
 
 ## Source Files
@@ -25,10 +26,12 @@ The server module implements the Half-Life dedicated server runtime: entity/edic
 ## Public Surface to Other Subsystems
 
 **Game DLL ABI (`enginefuncs_t` from `eiface.h`)**:
+
 - `sv_game.c` implements ~100+ callbacks: entity queries, tracing, messaging, precaching, model/sound registration, CVar access, file I/O, entity private data allocation
 - DLL-exported `pfnSpawn`, `pfnThink`, `pfnTouch`, `pfnSetAbsBox` called from `sv_world.c` (touch/think), `sv_phys.c` (physics), `sv_pmove.c` (player move)
 
 **Outward dependencies**:
+
 - **filesystem/** — asset precaching, save file I/O
 - **public/** — memory pools, CRC, string hashing
 - **common/, pm_shared/** — shared constants, edict/entvars/pmove definitions

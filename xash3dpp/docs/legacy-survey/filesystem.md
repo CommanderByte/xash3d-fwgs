@@ -1,6 +1,7 @@
 # filesystem/
 
 ## Purpose
+
 Virtual filesystem abstraction layer for game asset I/O. Multiplexes multiple archive backends (PAK, WAD, ZIP, directories, Android assets) with configurable search paths and GoldSrc compatibility semantics (case-insensitive lookup, embedded resource indexing). Loaded as a plugin by the engine; both C and C++ interfaces provided.
 
 ## Source Files

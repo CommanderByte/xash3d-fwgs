@@ -1,6 +1,7 @@
 # engine/common + engine/platform
 
 ## Purpose
+
 These directories implement the host loop, command/cvar subsystems, console I/O, networking stack, memory management, and platform abstraction layer. They bridge the engine core with platform-specific implementations (Win32, POSIX, SDL, Android, iOS) and provide foundational services (messaging, configuration, networking) consumed by client, server, and renderer subsystems.
 
 ## Source Files

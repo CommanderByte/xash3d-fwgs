@@ -6,7 +6,7 @@ and where the rewrite has the most freedom.
 
 ## Subsystem Dependency Graph
 
-```
+```text
                   ┌─────────────────────┐
                   │   game_launch/      │  (loads engine binary)
                   │   android/          │
@@ -41,7 +41,7 @@ and where the rewrite has the most freedom.
 ## ABI Boundaries
 
 | Boundary | Headers | Status |
-|---|---|---|
+| --- | --- | --- |
 | **Game DLL ABI** | `engine/eiface.h`, `engine/edict.h`, `common/entity_state.h`, `common/const.h`, `pm_shared/*` | **FROZEN** — external SDK |
 | **Client DLL ABI** | `engine/cdll_int.h`, `engine/cdll_exp.h`, `common/cl_entity.h`, `common/event_args.h`, `common/ref_params.h` | **FROZEN** — external SDK |
 | Renderer plugin | `engine/ref_api.h` | Internal — free to redesign |
@@ -53,7 +53,7 @@ and where the rewrite has the most freedom.
 A short census of the heaviest globals — these are the chokepoints any rewrite has to deal with explicitly:
 
 | Owner | Subsystem | Holds |
-|---|---|---|
+| --- | --- | --- |
 | `host` (`host_parm_t`) | engine/common | timing, game state, mempools, feature flags, config, frame count |
 | `cl`, `cls`, `clgame`, `gameui` | engine/client | per-level state, connection, demo, client DLL, MainUI |
 | `sv`, `svs`, `svgame` | engine/server | frame state, persistent slots, game DLL handle + edict array |

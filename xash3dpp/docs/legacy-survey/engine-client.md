@@ -1,6 +1,7 @@
 # engine/client
 
 ## Purpose
+
 The client subsystem manages all client-side game state and rendering lifecycle, from network connection through game update/render. It owns command creation and network I/O, processes server messages (parse/), implements client-side movement prediction (`dll_int/cl_pmove.c`), renders the HUD/screen (console, `cl_scrn.c`), manages audio (`sound/`, `soundlib/`), input (`input/`), and bridges to the client DLL (`dll_int/`). Also handles demos (`cl_demo.c`), download queueing, temporary entities, and VGUI rendering.
 
 ## Source Files
@@ -26,6 +27,7 @@ The client subsystem manages all client-side game state and rendering lifecycle,
 ## Public Surface to Other Subsystems
 
 **Engine-facing**:
+
 - `CL_Init/Connect/Disconnect/Frame` — main lifecycle
 - `CL_Parse*` — network message routing
 - `CL_WriteUsercmd` — encode client commands
@@ -33,6 +35,7 @@ The client subsystem manages all client-side game state and rendering lifecycle,
 - State queries: `CL_IsInGame`, `CL_IsPlaybackDemo`
 
 **Client DLL ABI** (`cdll_int.h`, `cdll_exp.h`):
+
 - `pfnInitialize`, `HUD_VidInit`, `HUD_Redraw` — DLL lifecycle
 - `CL_CreateMove`, `PlayerMove`, `CalcRefdef` — predict & camera
 - `CL_DrawNormalTriangles`, `CL_DrawTransparentTriangles`
