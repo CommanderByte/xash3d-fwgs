@@ -11,6 +11,9 @@ implementation evidence is recorded.
 
 Active documents:
 
+- [common_structure_modernization_todo.md](common_structure_modernization_todo.md)
+  tracks the root `common/` header audit, layout-test, and private C++ wrapper
+  lane.
 - [debugging_todo.md](debugging_todo.md) tracks remaining work for the modern
   debugging utility layer.
 - [engine_deferred_todo.md](engine_deferred_todo.md) tracks deferred
@@ -25,5 +28,8 @@ Active documents:
   tracks deferred non-Windows `system.c` runtime validation.
 - [posix_console_backend_todo.md](posix_console_backend_todo.md) tracks POSIX
   console backend validation.
+- [platform_portability_todo.md](platform_portability_todo.md) tracks
+  platform-profile, defaults, path, library-locator, and launcher handoff
+  modernization.
 - [server_migration_todo.md](server_migration_todo.md) tracks the active
   server-side migration lane opened by Phase 52.

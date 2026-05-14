@@ -19,6 +19,8 @@ Planned subfolders:
 
 - `debugging/`: private contracts for shared debug snapshots, sinks,
   formatters, JSON writers, and trace helpers
+- `engine/common/`: private C++ views and wrappers for legacy root `common/`
+  contracts after layout tests prove the boundary
 - `filesystem/`: private modern filesystem records and helper interfaces
 - `launcher/`: private contracts for launcher settings, library loading,
   application sequencing, and argument ownership

@@ -4694,6 +4694,248 @@ Phase 89 covers user-message registry policy.
   Evidence: `Documentation/codex/done/todo/server_module_cleanup_todo.md` and
   `Documentation/codex/done/todo/README.md`.
 
+## Phase 167: Common Header Ownership Audit
+
+- [x] `COMMON-AUDIT-001` Inventory all root `common/*.h` files by ownership
+  group and high-risk consumer.
+  Evidence: `Documentation/codex/modern/common/header-ownership-audit.md`.
+- [x] `COMMON-AUDIT-002` Classify each header as public ABI, wire/disk layout,
+  internal helper, platform macro glue, or mixed responsibility.
+  Evidence: `Documentation/codex/modern/common/header-ownership-audit.md`.
+- [x] `COMMON-AUDIT-003` Decide the modern include and implementation homes for
+  each safe migration candidate before adding code.
+  Evidence: `Documentation/codex/modern/common/header-ownership-audit.md`;
+  `src/include/engine/common/README.md`; `src/engine/common/README.md`.
+- [x] `COMMON-AUDIT-004` Identify headers that must stay C-compatible until
+  external SDK, renderer, sound, or game DLL compatibility is deliberately
+  changed.
+  Evidence: `Documentation/codex/modern/common/header-ownership-audit.md`.
+
+## Phase 168: Platform Layer Architecture
+
+- [x] `PLAT-LAYER-001` Scan `engine/platform/` folder structure and Waf source
+  selection.
+  Evidence: `Documentation/codex/modern/engine/platform-portability-architecture.md`.
+- [x] `PLAT-LAYER-002` Identify OS/platform folders, framework backend folders,
+  and support/fallback folders.
+  Evidence: `Documentation/codex/modern/engine/platform-portability-architecture.md`.
+- [x] `PLAT-LAYER-003` Define layered platform hooks under one compile-time
+  selected platform layer instead of one broad runtime-swappable interface.
+  Evidence: `Documentation/codex/modern/engine/platform-portability-architecture.md`.
+- [x] `PLAT-LAYER-004` Record launcher handoff opportunities and migration
+  constraints.
+  Evidence: `Documentation/codex/modern/engine/platform-portability-architecture.md`;
+  `Documentation/codex/todo/platform_portability_todo.md`.
+
+## Phase 169: Platform Targets And Defaults
+
+- [ ] `PLAT-DEFAULTS-001` Add private `PlatformProfile` and
+  `PlatformDefaults` records.
+  Evidence:
+- [ ] `PLAT-DEFAULTS-002` Cover Windows, SDL2, SDL3, Linux fbdev, dedicated,
+  Android, Vita, Switch, DOS, static-library, and low-memory synthetic
+  profiles.
+  Evidence:
+- [ ] `PLAT-DEFAULTS-003` Compare default selections against
+  `common/defaults.h` and `common/backends.h`.
+  Evidence:
+- [ ] `PLAT-DEFAULTS-004` Keep production defaults macro-owned until parity
+  tests prove the helper.
+  Evidence:
+
+## Phase 170: Game Folder And Base Path Setup
+
+- [ ] `PLAT-PATHS-001` Audit launcher startup, `FS_Engine_GetBaseDir`,
+  `FS_Engine_GetRoDir`, user/write path behavior, and native object lookup.
+  Evidence:
+- [ ] `PLAT-PATHS-002` Add target-neutral game/base path records and tests.
+  Evidence:
+- [ ] `PLAT-PATHS-003` Preserve current SDL/Win32/POSIX/Android/Vita/iOS/Switch
+  behavior through legacy adapters.
+  Evidence:
+- [ ] `PLAT-PATHS-004` Route only one low-risk path decision after parity
+  tests.
+  Evidence:
+
+## Phase 171: Engine Library Loading
+
+- [ ] `PLAT-LIB-001` Audit `Sys_LoadLibrary`, platform library loaders,
+  launcher `EngineLibrary`, filesystem library lookup, renderer/client/menu/game
+  DLL lookup, and static/internal game-library behavior.
+  Evidence:
+- [ ] `PLAT-LIB-002` Add private engine-library name/search helper with fake
+  filesystem probes.
+  Evidence:
+- [ ] `PLAT-LIB-003` Cover `.dll`, `.so`, `.dylib`, `.prx`, `lib` prefix,
+  Android custom loader, and static-library cases.
+  Evidence:
+- [ ] `PLAT-LIB-004` Avoid changing loader lifetime or unload behavior until
+  smoke-tested.
+  Evidence:
+
+## Phase 172: Launcher Startup Handoff
+
+- [ ] `PLAT-STARTUP-001` Define a private launcher startup snapshot with
+  argc/argv, executable path, config path, requested game dir, engine library
+  path, and platform profile.
+  Evidence:
+- [ ] `PLAT-STARTUP-002` Add tests around snapshot construction without
+  starting the engine.
+  Evidence:
+- [ ] `PLAT-STARTUP-003` Decide how the engine can query the snapshot through a
+  C-compatible adapter.
+  Evidence:
+- [ ] `PLAT-STARTUP-004` Keep `Host_Main` and legacy entry signatures stable.
+  Evidence:
+
+## Phase 173: Platform Runtime Hooks
+
+- [ ] `PLAT-RUNTIME-001` Split runtime hooks into small groups behind one
+  platform layer: time/sleep, console, window, input, clipboard, haptics, crash,
+  native objects, restart.
+  Evidence:
+- [ ] `PLAT-RUNTIME-002` Document which hooks are mandatory, optional,
+  client-only, or dedicated-safe.
+  Evidence:
+- [ ] `PLAT-RUNTIME-003` Keep SDL, Win32, Android, Vita, and Switch SDK types
+  out of generic platform headers.
+  Evidence:
+- [ ] `PLAT-RUNTIME-004` Defer fatal/restart/crash route-through until target
+  validation exists.
+  Evidence:
+
+## Phase 174: Platform Layer Checkpoint
+
+- [ ] `PLAT-CHECK-001` Compare default/path/library test coverage, platform
+  folder clarity, and smoke-test needs after the platform layer lane.
+  Evidence:
+- [ ] `PLAT-CHECK-002` Decide whether to continue platform work or return to
+  client/render fixtures.
+  Evidence:
+- [ ] `PLAT-CHECK-003` Move completed platform TODOs to `done/` where sensible.
+  Evidence:
+- [ ] `PLAT-CHECK-004` Run full validation and runtime smoke timing after any
+  production route-through.
+  Evidence:
+
+## Phase 760: Deferred Common Layout Test Harness
+
+- [ ] `COMMON-LAYOUT-001` Add a `tests/common/` layout-test harness and README.
+  Evidence:
+- [ ] `COMMON-LAYOUT-002` Cover `netadr_t`, `wrect_t`, `con_nprint_t`, and
+  selected entity/event records with `sizeof`, alignment, and `offsetof`
+  checks.
+  Evidence:
+- [ ] `COMMON-LAYOUT-003` Add golden checks for packed or byte-order-sensitive
+  helpers.
+  Evidence:
+- [ ] `COMMON-LAYOUT-004` Document which root `common/` records are layout
+  frozen.
+  Evidence:
+
+## Phase 761: Deferred Core Types And Platform Macro Boundary
+
+- [ ] `COMMON-CORE-001` Audit `xash3d_types.h`, `port.h`, `backends.h`, and
+  `defaults.h`.
+  Evidence:
+- [ ] `COMMON-CORE-002` Add private C++ enum/constant wrappers only where they
+  reduce raw macro usage in modern internals.
+  Evidence:
+- [ ] `COMMON-CORE-003` Preserve Waf-selected platform behavior and public
+  compile-time macros.
+  Evidence:
+- [ ] `COMMON-CORE-004` Add tests for any byte-order, bit, or FourCC helper
+  routed through modern code.
+  Evidence:
+
+## Phase 762: Deferred Network Address Pilot
+
+- [ ] `COMMON-NETADR-001` Create a private C++ view/helper around `netadr_t`
+  without changing `common/netadr.h`.
+  Evidence:
+- [ ] `COMMON-NETADR-002` Preserve the 20-byte packed layout and current
+  `NET_NetadrType()` / `NET_NetadrSetType()` behavior.
+  Evidence:
+- [ ] `COMMON-NETADR-003` Add IPv4, IPv6, undefined, loopback, broadcast, and
+  multicast tests.
+  Evidence:
+- [ ] `COMMON-NETADR-004` Route only one narrow low-risk call path if the helper
+  proves useful.
+  Evidence:
+
+## Phase 763: Deferred Entity And Event Contract Wrappers
+
+- [ ] `COMMON-ENTITY-001` Audit `const.h`, `entity_state.h`, `event_flags.h`,
+  `event_args.h`, `weaponinfo.h`, `pmove.h`, and `q_client.h`.
+  Evidence:
+- [ ] `COMMON-ENTITY-002` Add typed flag/value helpers for modern internals
+  while keeping public macro names intact.
+  Evidence:
+- [ ] `COMMON-ENTITY-003` Add layout tests for `entity_state_t`,
+  `clientdata_t`, `local_state_t`, and `usercmd_t`.
+  Evidence:
+- [ ] `COMMON-ENTITY-004` Defer network delta encoding changes until golden
+  packet tests exist.
+  Evidence:
+
+## Phase 764: Deferred Asset And Model Format Contracts
+
+- [ ] `COMMON-ASSET-001` Audit `bspfile.h`, `wadfile.h`, `qfont.h`,
+  `com_image.h`, and disk-format portions of `com_model.h`.
+  Evidence:
+- [ ] `COMMON-ASSET-002` Document the split between disk-format POD and runtime
+  model graph concepts before moving implementation.
+  Evidence:
+- [ ] `COMMON-ASSET-003` Add golden layout, magic, and version tests for WAD,
+  BSP, qfont, and selected model records.
+  Evidence:
+- [ ] `COMMON-ASSET-004` Reuse filesystem/model fixtures where possible.
+  Evidence:
+
+## Phase 765: Deferred Renderer, Client, And Sound API Boundary
+
+- [ ] `COMMON-API-001` Audit `render_api.h`, `r_efx.h`, `r_studioint.h`,
+  `triangleapi.h`, `ref_params.h`, `cl_entity.h`, `sound_api.h`, `demo_api.h`,
+  `event_api.h`, and `net_api.h`.
+  Evidence:
+- [ ] `COMMON-API-002` Add ABI table-order and layout tests for callback
+  tables that cross module boundaries.
+  Evidence:
+- [ ] `COMMON-API-003` Decide which wrappers belong in client/render/sound
+  phases instead of a generic common phase.
+  Evidence:
+- [ ] `COMMON-API-004` Keep public callback tables free of C++ types,
+  exceptions, RTTI, and changed calling conventions.
+  Evidence:
+
+## Phase 766: Deferred Include Diet And Modern Homes
+
+- [ ] `COMMON-HOMES-001` Reduce unnecessary broad includes discovered during
+  Phase 167 and the deferred common phases.
+  Evidence:
+- [ ] `COMMON-HOMES-002` Add private `src/include/engine/common/` headers only
+  for proven wrappers.
+  Evidence:
+- [ ] `COMMON-HOMES-003` Keep public `common/*.h` headers stable and
+  C-compatible.
+  Evidence:
+- [ ] `COMMON-HOMES-004` Promote wrappers into specific engine domains when
+  they stop being generic common concepts.
+  Evidence:
+
+## Phase 767: Deferred Common Modernization Checkpoint
+
+- [ ] `COMMON-CHECK-001` Compare include fanout, test count, and source layout
+  after the common pilot phases.
+  Evidence:
+- [ ] `COMMON-CHECK-002` Decide whether to continue common contracts or switch
+  to the client/render fixture lane recommended by Phase 166.
+  Evidence:
+- [ ] `COMMON-CHECK-003` Move completed common TODOs to `done/` where sensible.
+  Evidence:
+- [ ] `COMMON-CHECK-004` Run full validation and runtime smoke timing.
+  Evidence:
+
 ## Phase 800: POSIX Console Backend Validation
 
 - [ ] `ENG-POSIX-CON-001` Build on a POSIX/Linux target with the current
@@ -4864,3 +5106,6 @@ Phase 89 covers user-message registry policy.
 | 2026-05-11 | DEC-065 | Keep the current one-helper-per-seam layout as migration scaffolding, but use resource transfer, server messaging, game DLL bridge, client/session, and world/runtime concepts as the next consolidation boundaries; do not collapse adapters unless the grouped file maps to one of those domains. | `modern/engine/server-cpp-ownership-consolidation.md`, `modern/cpp-ownership-target.md` |
 | 2026-05-11 | DEC-066 | Use Phases 115-134 as the next server roadmap, ordered from lower-risk consolidation domains toward high-fixture-risk world, PMove, and runtime save/restore ownership; continue the audit-test-helper-adapter-validation pattern for each lane. | `done/todo/server_consolidation_roadmap_todo.md`, `tasks.md` |
 | 2026-05-11 | DEC-067 | For resource-transfer consolidation, start with aggregate tests around a target-neutral resource manifest/list-view; keep `sv.resources[]`, `resource_t` linked lists, HPAK, filesystem probes, transfer cvars, netchan fragments, and game DLL callbacks legacy-owned until the manifest seam is proven. | `modern/engine/resource-transfer-consolidation-audit.md`, `done/todo/server_consolidation_roadmap_todo.md` |
+| 2026-05-11 | DEC-068 | Treat root `common/` headers as compatibility contracts first; modernize them by adding private C++ views, typed wrappers, layout tests, and narrow adapters beside the legacy C headers rather than rewriting SDK-facing structures in place. | `modern/common/structure-modernization-plan.md`, `todo/common_structure_modernization_todo.md`, `src/include/engine/common/README.md` |
+| 2026-05-11 | DEC-069 | Reduce porting burden through one compile-time selected platform layer: synthetic `PlatformProfile` defaults, game/base path setup, engine library loading, launcher startup handoff, and small runtime hook groups, while keeping OS/SDK calls out of generic headers and legacy C facades stable. | `modern/engine/platform-portability-architecture.md`, `todo/platform_portability_todo.md` |
+| 2026-05-11 | DEC-070 | Defer the common-structure implementation lane to Phases 760-767 and make the platform layer the active lane in Phases 168-174, using game-developer terminology instead of abstract terminology. | `tasks.md`, `todo/common_structure_modernization_todo.md`, `todo/platform_portability_todo.md` |

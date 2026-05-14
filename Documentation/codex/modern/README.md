@@ -14,6 +14,8 @@ migration phases and decisions.
 - [cpp-ownership-target.md](cpp-ownership-target.md) records the project-wide
   rule that C++ namespace/facade wrappers are a transition step, not the final
   architecture.
+- [common/](common/README.md) covers modernization plans for the root
+  `common/` compatibility headers and their private C++ counterparts.
 - [engine/](engine/README.md) contains modern engine migration notes for
   command, console, platform, network, filesystem bridge, and future server
   slices.

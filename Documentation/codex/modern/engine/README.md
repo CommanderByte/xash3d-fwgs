@@ -113,6 +113,9 @@ Current implementation notes:
   next roadmap, why group filtering, map validation flags, client flags, event
   playback, and read-only cvar snapshots are better next enablers than another
   broad server sweep.
+- `platform-portability-architecture.md`: how `engine/platform/`,
+  `common/defaults.h`, `common/port.h`, system path/library behavior, and the
+  launcher can be split into small tested platform contracts.
 - `server-cpp-ownership-consolidation.md`: how Phase 114 classifies the modern
   server helper surface as reusable concepts, behavior owners, or temporary
   facades, and where the old `sv_*.c` grouping should eventually split.
