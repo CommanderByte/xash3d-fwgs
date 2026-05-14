@@ -39,4 +39,12 @@ When reading the legacy code, ask: *what does this do and what invariants must b
 
 ## Current State
 
-The `xash3dpp/` tree is an empty scaffold. No architecture has been decided yet. Start with analysis, not assumptions.
+The `xash3dpp/` utilities module is complete and tested:
+
+- **Library**: `xash3dpp_utilities` static library — `xash3dpp/src/utilities/` + headers in `xash3dpp/include/xash3dpp/utilities/`
+- **Modules**: `atlas`, `build`, `dynlib`, `hash`, `math`, `matrix`, `path`, `string`, `swap`, `utf`
+- **Tests**: `xash3dpp/tests/utilities/` — one `test_<module>.cpp` per module, CTest target `test_utilities`
+- **Docs**: boundary notes in `xash3dpp/docs/boundaries/`; legacy survey in `xash3dpp/docs/legacy-survey/`
+- **Build**: CMake at `xash3dpp/CMakeLists.txt`; C++20; no exceptions; no RTTI; build tree at `xash3dpp/build/`
+
+No other subsystem has been started yet. Use `analyse-subsystem` to scope and begin the next module.
