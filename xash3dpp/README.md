@@ -26,6 +26,7 @@ the architecture for this rewrite will be determined by a fresh analysis.
 
 ```
 xash3dpp/
+  src/          C++ source
   include/      Public C-compatible headers (ABI surfaces exposed to game DLLs)
   tests/        Unit and integration tests
   docs/         Project-local design and architecture notes
