@@ -18,19 +18,9 @@ tree stays buildable and runnable throughout.
   before the next subsystem starts.
 - Record compatibility-sensitive quirks instead of silently removing them.
 
-See [Documentation/codex/modular-cpp-rewrite-feasibility.md](../Documentation/codex/modular-cpp-rewrite-feasibility.md)
-for full rationale, and [Documentation/codex/modularization-plan/](../Documentation/codex/modularization-plan/)
-for the phased migration roadmap (legacy reference).
-
-## Subsystem Migration Order
-
-| Phase | Subsystem     | Source dir              | Status      |
-|-------|---------------|-------------------------|-------------|
-| 1     | Filesystem    | `src/filesystem/`       | Not started |
-| 2     | Public utils  | `src/public/`           | Not started |
-| 3     | Platform      | `src/platform/`         | Not started |
-| 4     | Renderer      | `src/ref/`              | Not started |
-| 5     | Engine core   | `src/engine/`           | Not started |
+The legacy incremental-upgrade analysis lives in
+[Documentation/codex/](../Documentation/codex/) and is kept for reference, but
+the architecture for this rewrite will be determined by a fresh analysis.
 
 ## Directory Layout
 
