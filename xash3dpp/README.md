@@ -24,7 +24,7 @@ the architecture for this rewrite will be determined by a fresh analysis.
 
 ## Directory Layout
 
-```
+```text
 xash3dpp/
   src/          C++ source
   include/      Public C-compatible headers (ABI surfaces exposed to game DLLs)
