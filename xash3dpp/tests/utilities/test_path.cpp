@@ -1,7 +1,7 @@
 // xash3dpp — path utility tests
 // Covers: file_extension, filename, file_base, strip_extension,
 //         fix_slashes, extract_dir, default_extension, replace_extension,
-//         remove_line_feed, trim_space
+//         remove_line_feed, trim_space, path_join
 
 #include <xash3dpp/utilities/path.hpp>
 
@@ -165,6 +165,34 @@ static void test_trim_space()
     CHECK( xash::utilities::trim_space( "a" )         == "a" );
 }
 
+// ---------------------------------------------------------------------------
+// path_join
+// ---------------------------------------------------------------------------
+
+static void test_path_join()
+{
+    // Two-argument overload.
+    CHECK( xash::utilities::path_join( "dir", "file" )   == "dir/file" );
+    CHECK( xash::utilities::path_join( "a/b", "c" )      == "a/b/c" );
+
+    // Trailing separator in dir → no double slash.
+    CHECK( xash::utilities::path_join( "dir/",  "file" ) == "dir/file" );
+    CHECK( xash::utilities::path_join( "dir\\", "file" ) == "dir\\file" );
+
+    // Empty dir → return rel unchanged.
+    CHECK( xash::utilities::path_join( "", "file" )  == "file" );
+
+    // Empty rel → return dir unchanged.
+    CHECK( xash::utilities::path_join( "dir", "" )   == "dir" );
+
+    // Both empty → empty string.
+    CHECK( xash::utilities::path_join( "", "" )      == "" );
+
+    // Three-argument overload — delegates to two nested calls.
+    CHECK( xash::utilities::path_join( "a", "b", "c" )       == "a/b/c" );
+    CHECK( xash::utilities::path_join( "root/", "game", "maps" ) == "root/game/maps" );
+}
+
 int main()
 {
     test_file_extension();
@@ -177,6 +205,7 @@ int main()
     test_replace_extension();
     test_remove_line_feed();
     test_trim_space();
+    test_path_join();
 
     std::printf( "path: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

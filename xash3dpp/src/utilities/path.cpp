@@ -265,4 +265,23 @@ std::string remove_line_feed( std::string_view s )
     return result;
 }
 
+std::string path_join( std::string_view dir, std::string_view rel )
+{
+    if( dir.empty() ) return std::string( rel );
+    if( rel.empty()  ) return std::string( dir );
+    std::string result;
+    result.reserve( dir.size() + 1 + rel.size() );
+    result.assign( dir );
+    const char last = result.back();
+    if( last != '/' && last != '\\' )
+        result += '/';
+    result.append( rel );
+    return result;
+}
+
+std::string path_join( std::string_view a, std::string_view b, std::string_view c )
+{
+    return path_join( path_join( a, b ), c );
+}
+
 } // namespace xash::utilities

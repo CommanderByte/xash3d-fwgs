@@ -35,6 +35,33 @@ inline std::size_t strlen( const char *s ) noexcept
 int stricmp( const char *a, const char *b ) noexcept;
 int strnicmp( const char *a, const char *b, std::size_t n ) noexcept;
 
+// Case-insensitive predicates for string_view pairs.
+// Suitable as std::sort / std::lower_bound comparators.
+// Subsumes private ci_less / ci_equal / iequal_sv helpers in the backends.
+inline bool ci_less( std::string_view a, std::string_view b ) noexcept
+{
+    const std::size_t n = ( a.size() > b.size() ? a.size() : b.size() ) + 1;
+    return strnicmp( a.data(), b.data(), n ) < 0;
+}
+inline bool ci_equal( std::string_view a, std::string_view b ) noexcept
+{
+    if ( a.size() != b.size() ) return false;
+    return strnicmp( a.data(), b.data(), a.size() ) == 0;
+}
+
+// ASCII-only in-place and value-returning lowercase conversion.
+inline void to_lower( std::string& s ) noexcept
+{
+    for( char& c : s )
+        c = static_cast<char>( c >= 'A' && c <= 'Z' ? c + ( 'a' - 'A' ) : c );
+}
+inline std::string to_lower( std::string_view s )
+{
+    std::string result( s );
+    to_lower( result );
+    return result;
+}
+
 // Bounded snprintf — always null-terminates; returns chars written (< size).
 // Legacy: Q_snprintf / Q_vsnprintf
 int snprintf( char *buf, std::size_t size, const char *fmt, ... ) noexcept;

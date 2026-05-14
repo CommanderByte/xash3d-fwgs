@@ -62,4 +62,11 @@ std::string default_extension( std::string_view path, std::string_view ext );
 std::string replace_extension( std::string_view path, std::string_view ext );
 std::string trim_space( std::string_view src );
 
+// Join a directory and a relative path with a single '/' separator.
+// If 'dir' already ends with '/' or '\\', no extra separator is added.
+std::string path_join( std::string_view dir, std::string_view rel );
+
+// Three-segment convenience overload: path_join(a, b, c) == path_join(path_join(a,b), c).
+std::string path_join( std::string_view a, std::string_view b, std::string_view c );
+
 } // namespace xash::utilities
