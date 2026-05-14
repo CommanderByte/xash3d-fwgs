@@ -1,5 +1,11 @@
 # Codex Onboarding Notes
 
+> **Legacy reference.** This documentation was produced during an earlier
+> incremental-upgrade attempt on this fork. It is preserved here for
+> historical context and as a source of architectural analysis, audit
+> findings, and compatibility notes. Active planning for the new modular
+> C++ rewrite lives in [`xash-ng/`](../../xash-ng/README.md).
+
 This folder is a working documentation layer for this fork. It is meant for
 repo orientation, modernization planning, and design notes that may not belong
 in upstream-facing user documentation yet.
