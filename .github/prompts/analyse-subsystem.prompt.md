@@ -41,7 +41,7 @@ Everything else is internal and free to redesign.
 
 ## Step 4 — Write the boundary spec
 
-Create `xash3dpp/docs/$ARGUMENTS-boundary.md` with the following sections:
+Create `xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md` with the following sections:
 
 ```markdown
 # <Subsystem> Boundary Spec
