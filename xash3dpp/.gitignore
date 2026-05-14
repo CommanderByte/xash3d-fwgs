@@ -1,0 +1,3 @@
+# The repo-root .gitignore excludes CMakeLists.txt for the Waf-based legacy
+# engine.  Re-include them here so xash3dpp's CMake build files are tracked.
+!CMakeLists.txt

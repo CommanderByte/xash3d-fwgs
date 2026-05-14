@@ -1,0 +1,49 @@
+#pragma once
+// xash3dpp — virtual file handle for streaming I/O
+// Legacy reference: filesystem/filesystem_internal.h  (file_t)
+//
+// File is the public abstract base.  Callers always hold std::unique_ptr<File>.
+// The concrete OsFile class lives entirely inside src/filesystem/file.cpp.
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <string>
+
+namespace xash::filesystem {
+
+using FsOffset = std::int64_t;
+
+// Seek origin — typed replacement for the SEEK_SET / SEEK_CUR / SEEK_END macros.
+enum class SeekOrigin : int {
+    Begin   = 0,   // SEEK_SET
+    Current = 1,   // SEEK_CUR
+    End     = 2,   // SEEK_END
+};
+
+// Non-copyable, non-movable streaming file handle.
+// Transparent decompression is handled internally for archive-backed files.
+class File {
+public:
+    File()                       = default;
+    virtual ~File()              = default;
+
+    File(const File&)            = delete;
+    File& operator=(const File&) = delete;
+
+    virtual FsOffset Read(std::span<std::byte> buf)        = 0;
+    virtual FsOffset Write(std::span<const std::byte> buf) = 0;
+    virtual FsOffset Seek(FsOffset offset, SeekOrigin origin) = 0;
+    virtual FsOffset Tell()   const                        = 0;
+    virtual FsOffset Length() const                        = 0;  // uncompressed size
+    virtual bool     Eof()    const                        = 0;
+    virtual void     Flush()                               = 0;
+
+    // Text helpers — return owned values; no caller-provided buffer needed.
+    virtual std::optional<std::string> Gets()        = 0;
+    virtual int                        Getc()        = 0;
+    virtual void                       UnGetc(int c) = 0;
+};
+
+} // namespace xash::filesystem

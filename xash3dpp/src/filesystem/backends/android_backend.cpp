@@ -1,0 +1,170 @@
+// xash3dpp — Android AAsset search backend  (internal)
+// Compiled only when XASH_ANDROID is defined.
+// Legacy reference: filesystem/android.c
+
+#if defined(XASH_ANDROID)
+
+#include <xash3dpp/private/filesystem/backends/android_backend.hpp>
+#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/private/filesystem/os_file_factory.hpp>
+#include <xash3dpp/utilities/path.hpp>
+#include <xash3dpp/utilities/string.hpp>
+
+#include <strings.h>  // strncasecmp
+#include <unistd.h>   // SEEK_END, SEEK_SET
+
+namespace xash::filesystem::backends {
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Open the asset at full_path into an anonymous fd and return the fd plus its
+// length (obtained by seeking to end).  Both are 0/invalid on failure.
+struct AssetFd { OsFd fd; FsOffset length; };
+
+AssetFd open_asset_fd(platform::AssetManagerHandle* mgr,
+                      std::string_view full_path) noexcept {
+    OsFd fd = platform::open_asset(mgr, full_path);
+    if (!fd.valid()) return {OsFd{}, 0};
+
+    const FsOffset len = platform::seek(fd, 0, SEEK_END);
+    platform::seek(fd, 0, SEEK_SET);
+    if (len < 0) return {OsFd{}, 0};
+
+    return {std::move(fd), len};
+}
+
+} // anonymous namespace
+
+// ---------------------------------------------------------------------------
+// Construction
+// ---------------------------------------------------------------------------
+
+AndroidBackend::AndroidBackend(std::string_view base_path,
+                                SearchPathFlags  flags,
+                                bool             engine_package)
+    : base_path_{base_path},
+      flags_{flags},
+      mgr_{platform::get_asset_manager(engine_package)}
+{}
+
+std::unique_ptr<ISearchBackend>
+AndroidBackend::Create(std::string_view path, SearchPathFlags flags) {
+    return std::make_unique<AndroidBackend>(path, flags, /*engine_package=*/false);
+}
+
+// ---------------------------------------------------------------------------
+// Info
+// ---------------------------------------------------------------------------
+
+std::string AndroidBackend::Info() const {
+    return "android-assets://" + base_path_;
+}
+
+// ---------------------------------------------------------------------------
+// OpenFile
+// ---------------------------------------------------------------------------
+
+std::unique_ptr<File> AndroidBackend::OpenFile(std::string_view path,
+                                                std::string_view /*mode*/)
+{
+    if (!mgr_) return nullptr;
+
+    const std::string full = xash::utilities::path_join(base_path_, path);
+    auto [fd, len] = open_asset_fd(mgr_, full);
+    if (!fd.valid()) return nullptr;
+
+    return make_os_file(std::move(fd), len);
+}
+
+// ---------------------------------------------------------------------------
+// FileTime — Android assets carry no mtime.
+// ---------------------------------------------------------------------------
+
+std::optional<std::filesystem::file_time_type>
+AndroidBackend::FileTime(std::string_view /*path*/) {
+    return std::nullopt;
+}
+
+// ---------------------------------------------------------------------------
+// FindFile — case-insensitive resolution via directory listing.
+// ---------------------------------------------------------------------------
+
+std::optional<std::string> AndroidBackend::FindFile(std::string_view path) {
+    if (!mgr_) return std::nullopt;
+
+    // Split path into optional directory prefix and filename.
+    const std::size_t slash = path.rfind('/');
+    const std::string_view dir_sv  = (slash != std::string_view::npos)
+                                       ? path.substr(0, slash)
+                                       : std::string_view{};
+    const std::string_view name_sv = (slash != std::string_view::npos)
+                                       ? path.substr(slash + 1)
+                                       : path;
+
+    const std::string lookup = xash::utilities::path_join(base_path_, dir_sv);
+    const auto entries = platform::list_assets(mgr_, lookup);
+
+    for (const auto& entry : entries) {
+        if (entry.size() == name_sv.size() &&
+                ::strncasecmp(entry.c_str(), name_sv.data(), name_sv.size()) == 0) {
+            // Reconstruct relative path using the canonical (packaged) casing.
+            return xash::utilities::path_join(dir_sv, entry);
+        }
+    }
+    return std::nullopt;
+}
+
+// ---------------------------------------------------------------------------
+// Search — glob matching over the directory listing.
+// ---------------------------------------------------------------------------
+
+std::vector<std::string> AndroidBackend::Search(std::string_view pattern,
+                                                  bool             case_insensitive)
+{
+    if (!mgr_) return {};
+
+    // Extract the directory prefix from the pattern.
+    const std::size_t slash = pattern.rfind('/');
+    const std::string_view dir_sv  = (slash != std::string_view::npos)
+                                       ? pattern.substr(0, slash)
+                                       : std::string_view{};
+    const std::string_view glob_sv = (slash != std::string_view::npos)
+                                       ? pattern.substr(slash + 1)
+                                       : pattern;
+
+    const std::string lookup = xash::utilities::path_join(base_path_, dir_sv);
+    const auto entries = platform::list_assets(mgr_, lookup);
+
+    std::vector<std::string> result;
+    for (const auto& entry : entries) {
+        if (match_pattern(entry, glob_sv, case_insensitive)) {
+            result.push_back(xash::utilities::path_join(dir_sv, entry));
+        }
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// LoadFile
+// ---------------------------------------------------------------------------
+
+std::vector<std::byte> AndroidBackend::LoadFile(std::string_view path) {
+    if (!mgr_) return {};
+
+    const std::string full = xash::utilities::path_join(base_path_, path);
+    auto [fd, len] = open_asset_fd(mgr_, full);
+    if (!fd.valid() || len == 0) return {};
+
+    std::vector<std::byte> buf(static_cast<std::size_t>(len));
+    const std::int64_t n = platform::read(fd, buf.data(), buf.size());
+    if (n != len) buf.clear();
+    return buf;
+}
+
+} // namespace xash::filesystem::backends
+
+#endif // XASH_ANDROID
