@@ -25,6 +25,7 @@ add_library(xash3dpp_miniz STATIC ${CMAKE_CURRENT_SOURCE_DIR}/../public/miniz.c)
 target_include_directories(xash3dpp_miniz INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../public)
 
 add_subdirectory(src/filesystem)
+add_subdirectory(src/cmd_cvar)
 add_subdirectory(src/host)
 add_subdirectory(src/launcher)
 
@@ -35,4 +36,5 @@ if(XASH3DPP_BUILD_TESTS)
     add_subdirectory(tests/filesystem)
     add_subdirectory(tests/memory)
     add_subdirectory(tests/platform)
+    add_subdirectory(tests/cmd_cvar)
 endif()
