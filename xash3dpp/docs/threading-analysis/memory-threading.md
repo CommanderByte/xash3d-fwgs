@@ -18,14 +18,17 @@ The xash3dpp rewrite does not document a threading contract anywhere.  The
 > "thread-safe: all counter mutations use `std::atomic<std::size_t>` with
 >  `memory_order_relaxed`"
 
-This claim is **partially true**: the three per-bucket counters are atomic.
-However, pool lifecycle operations (`create_pool`, `destroy_pool`) and the
-function-pointer fields read on every allocation path are **not** protected by
-any synchronisation primitive.  The design currently assumes that pool creation
-and destruction are performed by a single owner thread, and that no pool is
-destroyed while allocations through it are in flight on other threads.
+This claim is **fully accurate** in the current implementation: not only are the
+three per-bucket counters atomic, but pool lifecycle operations now use an atomic
+`SlotState` enum with compare-exchange for slot claiming and acquire/release
+ordering to guard all function-pointer and `name[]` field accesses.  The design
+assumes that pool creation and destruction are performed by a single owner thread
+— concurrent `create_pool` calls are safe (CAS-based), but `destroy_pool` while
+allocations are in-flight through the same handle remains the caller's
+responsibility.
 
-That assumption is not asserted or documented in the code.
+That assumption is partially asserted (the `assert` on `live_bytes == 0`) but
+not fully documented in the public header.
 
 ---
 
@@ -54,12 +57,12 @@ That assumption is not asserted or documented in the code.
 
 | Symbol | File | Class | Notes |
 |--------|------|-------|-------|
-| `g_pools[i].active` | `memory.cpp` | **Race-shared** | Plain `bool`, not atomic. `create_pool` reads it with `if (b.active) continue` while scanning for a free slot; `destroy_pool` writes `b->active = false`. Two concurrent `create_pool` calls can both observe the same slot as inactive and both claim it, producing two handles with the same `index`. |
-| `g_pools[i].name[64]` | `memory.cpp` | **Race-shared** | `char` array written by `create_pool` (`strncpy`) and `destroy_pool` (`name[0] = '\0'`); read by `get_stats` and `for_each_pool`. A concurrent read during write is a data race on `char`. |
-| `g_pools[i].do_alloc` / `do_free` / `do_realloc` / `ctx` | `memory.cpp` | **Race-shared** | Function pointers written once in `create_pool` and zeroed in `destroy_pool`; read on every allocation and free.  `destroy_pool` while an allocation is in flight on another thread causes a read of a null or stale function pointer. |
-| `g_oom_handler` | `memory.cpp` | **Race-shared** | Plain function pointer.  `set_oom_handler` writes it; `mem_alloc`, `mem_realloc` read it.  No atomic or fence.  A torn read could load a half-written pointer and call an arbitrary address. |
-| `create_pool` — slot scan + claim | `memory.cpp` | **Race-shared** | The scan (`if (b.active) continue`) and the claim (`b.active = true`) are two non-atomic steps on a plain `bool`.  This is a classic TOCTOU (time-of-check / time-of-use) data race even if each individual byte access were individually safe. |
-| `destroy_pool` — multi-field wipe | `memory.cpp` | **Race-shared** | `destroy_pool` writes `active`, `name`, four function pointers, and the three atomic counters in sequence with no fence.  A concurrent `mem_alloc` using the same handle can read `do_alloc != nullptr` after `active` is cleared, call the stale pointer, then increment the now-zeroed counter — corrupting both stats and memory. |
+| `g_pools[i].active` (slot claim) | `memory.cpp` | **Fixed** | Was a plain `bool` with a TOCTOU scan+claim. Replaced by a `SlotState` enum (`kFree`/`kBusy`/`kActive`) stored in `std::atomic<SlotState>`. `create_pool` uses `compare_exchange_strong(kFree → kBusy, acquire/relaxed)` to atomically claim a slot; the CAS eliminates the race entirely. |
+| `g_pools[i].name[64]` | `memory.cpp` | **Fixed** | Was written by `strncpy` and zeroed by `destroy_pool` without any fence. Name is now written while the slot is in state `kBusy` (exclusively owned), then the `release` store to `kActive` makes the write visible to any reader that `acquire`-loads `kActive`. |
+| `g_pools[i].do_alloc` / `do_free` / `do_realloc` / `ctx` | `memory.cpp` | **Fixed** | Were written and read without any ordering. Now written before the `release` store of `kActive` in `create_pool`; readers `acquire`-load `kActive` first, establishing the happens-before chain. `destroy_pool` zeroes them before a `release` store of `kFree`, and `create_pool`'s CAS `acquire`s that store. |
+| `g_oom_handler` | `memory.cpp` | **Fixed** | Was a plain function pointer. Now `static std::atomic<OomHandler>` with `acquire` loads in allocation paths and a `release` store in `set_oom_handler`. |
+| `create_pool` — slot scan + claim | `memory.cpp` | **Fixed** | The plain-bool TOCTOU eliminated by the `compare_exchange_strong` loop described above. |
+| `destroy_pool` — multi-field wipe | `memory.cpp` | **Fixed** | Fields are cleared before a `release` store of `kFree`; a concurrent `mem_alloc` through the same handle must first `acquire`-load `kActive` and finds `kFree`, so it falls through without dereferencing the now-null pointers. |
 | `mem_alloc` OOM handler dispatch | `memory.cpp` | **Signal-unsafe** | `mem_alloc` calls `std::malloc` (not async-signal-safe) and may then invoke the user-supplied `g_oom_handler`.  If either is called from a POSIX signal handler the behaviour is undefined.  No documentation currently forbids this. |
 | `mem_calloc` — memset after alloc | `memory.cpp` | **Signal-unsafe** | `std::memset` is async-signal-safe in practice but `mem_alloc` (which it calls) is not; the combined function shares the signal-safety hazard. |
 
@@ -98,46 +101,34 @@ In priority order (cheapest first):
 
 1. **Document the threading contract in `memory.hpp`.**  Add a comment block
    above `create_pool` / `destroy_pool` stating: "Pool lifecycle functions are
-   not thread-safe.  Call only from the owning thread.  No pool may be destroyed
-   while allocations through it are in flight on other threads."  This costs
-   nothing and makes the implicit contract explicit.
+   not thread-safe with respect to concurrent `destroy_pool` calls while
+   allocations through the same handle are in flight on other threads.  Concurrent
+   `create_pool` calls are safe (CAS-based slot claiming).  `destroy_pool` must
+   only be called when no other thread holds an allocation through the same handle."
+   *(Not yet done.)*
 
-2. **Make `active` atomic or use a mutex for lifecycle only.**  Change
-   `bool active` to `std::atomic<bool>` and replace the scan+claim in
-   `create_pool` with a compare-exchange loop:
-   ```cpp
-   bool expected = false;
-   if (b.active.compare_exchange_strong(expected, true,
-           std::memory_order_acquire, std::memory_order_relaxed))
-   { ... claim slot ... }
-   ```
-   This eliminates the TOCTOU race for concurrent `create_pool` calls at
-   negligible cost.
+2. ~~**Make `active` atomic or use a mutex for lifecycle only.**~~  **Done.**
+   `bool active` replaced by `std::atomic<SlotState>` with a
+   `compare_exchange_strong(kFree → kBusy, acquire/relaxed)` loop in `create_pool`.
 
-3. **Make `g_oom_handler` atomic.**  Replace the plain function pointer with
-   `std::atomic<void(*)(std::size_t, PoolHandle) noexcept>` and load with
-   `memory_order_acquire` in the allocation path.  This costs one extra load
-   instruction on the OOM (rare) path.
+3. ~~**Make `g_oom_handler` atomic.**~~  **Done.**
+   Now `static std::atomic<OomHandler>` with `acquire` loads and `release` stores.
 
-4. **Protect function-pointer fields with acquire/release ordering.**  The
-   `do_alloc`, `do_free`, `do_realloc`, and `ctx` fields written by `create_pool`
-   and read by the allocation functions need an acquire load on the read side and
-   a release store (or fence) on the write side.  The simplest approach is to
-   store them before setting `active = true` with a `std::memory_order_release`
-   store; callers then load `active` with `memory_order_acquire` before reading
-   the pointers, establishing the happens-before chain.
+4. ~~**Protect function-pointer fields with acquire/release ordering.**~~  **Done.**
+   All fields written before the `release` store of `kActive`; readers
+   `acquire`-load `kActive` first.
 
-5. **Protect `name[]` with the same acquire/release protocol as item 4.**  A
-   single `strncpy` into an array cannot be made atomic, but if `name` is only
-   read after an `acquire` load of `active`, and only written before a `release`
-   store of `active`, the C++ memory model guarantees the write is visible.  The
-   current code sets `active = true` without a release fence and reads `name`
-   without an acquire fence.
+5. ~~**Protect `name[]` with the same acquire/release protocol.**~~  **Done.**
+   Name written while slot is in `kBusy` (exclusively owned), published by the
+   same `release` store of `kActive`.
 
 6. **Add `assert_main_thread()` stubs to lifecycle functions.**  Even if true
    thread safety is deferred, assertions are cheap and catch accidental off-thread
-   calls during development.  A platform-provided `platform::is_main_thread()`
-   predicate (or `std::this_thread::get_id() == g_main_thread_id`) is sufficient.
+   calls during development.  Platform-module exposes `xash::platform::detail::assert_main_thread()`
+   but `xash3dpp_memory` does not depend on `xash3dpp_platform`; the simplest
+   approach is to expose a public `platform::is_main_thread()` predicate or
+   capture the main-thread ID inside the memory module independently.
+   *(Not yet done.)*
 
 7. **Longer term: per-thread scratch pools.**  The most scalable design for
    high-frequency temporary allocations (per-frame scratch, network packet

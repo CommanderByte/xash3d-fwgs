@@ -66,6 +66,8 @@ int number_from_date( std::string_view iso_date ) noexcept
 int number() noexcept
 {
     // Magic-static: evaluated once at first call, then a plain load.
+    // Thread-safety relies on C++11 magic-static guards.
+    // Do not compile this TU with -fno-threadsafe-statics.
     static const int cached = number_from_date( commit_date );
     return cached;
 }

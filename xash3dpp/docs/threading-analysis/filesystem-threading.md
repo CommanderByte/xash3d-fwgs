@@ -73,8 +73,8 @@ are **caller-owned** (not shared).  No locking is needed inside those classes.
 | `Impl::rootdir` / `basedir` / `rodir` | `filesystem.cpp:42–44` | **Race-shared** (weak) | Written in `Init()` only — before other threads start — and never written again. Safe in expected usage but the contract is implicit; there is no `assert_main_thread()` guard. If `Init()` is called a second time from a background thread while queries are in flight the reads in `Rescan()` / `ScanGameDirectories()` / `FindLibrary()` / `GetRootDirectory()` will race. Classified as **Safe-RO** in practice, noted here because the invariant is unenforced. |
 | `Rescan()` path-list gap | `filesystem.cpp:94–122` | **Race-shared** (TOCTOU) | `Rescan` calls `ClearPaths()` (acquires + releases `unique_lock`), then reads `active_game` (no lock), then calls `AddGameHierarchy` (acquires `unique_lock` again per `AddGameDirectory`). Between `ClearPaths` and the first `AddGameDirectory` call the `search_paths` deque is empty. A concurrent query thread holding `shared_lock` will find no paths and silently return not-found / nullptr. This is not a data race, but it is an observable TOCTOU window. |
 | `FindLibrary` game-state reads before lock | `filesystem.cpp:396–411` | **Race-shared** | `FindLibrary` reads `impl_->game_loaded` and `impl_->active_game` (both unprotected) *before* acquiring `shared_lock` on `paths_mutex`. The shared_lock therefore does not cover these reads. |
-| `g_jni` | `platform/android.cpp:48` | **Race-shared** | File-scope `JniState` struct in anonymous namespace. Written (all fields) in `android_init_jni()`. Read in `get_asset_manager()` and `list_assets()`. No lock anywhere. Concurrent calls (e.g. JNI callbacks on different JNI threads) would race. |
-| `g_handles[2]` | `platform/android.cpp:51` | **Race-lazy-init** | `get_asset_manager()` checks `h->mgr` and then writes `h->mgr`, `h->engine`, `h->package_name` without any lock or atomic. Classic unsynchronised double-checked locking: two concurrent callers can both observe `mgr == nullptr`, then both write all fields. Writing `h->package_name` (a `std::string`) simultaneously from two threads is undefined behaviour. |
+| `g_jni` | ~~`platform/android.cpp:48`~~ `src/platform/android/os_io.cpp` | **Fixed (moved to platform module)** | Android JNI state was previously a file-scope `JniState` struct in the filesystem's `platform/android.cpp` with no synchronisation. That file was deleted when the Android I/O porting layer was extracted to the platform module (`src/platform/android/os_io.cpp`). The new code uses `std::call_once` for one-shot initialisation. See `platform-threading.md` for the resolved hazard. |
+| `g_handles[2]` | ~~`platform/android.cpp:51`~~ `src/platform/android/os_io.cpp` | **Fixed (moved to platform module)** | Unsynchronised double-checked locking on `h->mgr` was eliminated along with the old file. The platform module uses `static std::once_flag g_init_flags[2]` with `std::call_once`. See `platform-threading.md`. |
 
 ## Required caller contracts
 
@@ -95,7 +95,8 @@ are **caller-owned** (not shared).  No locking is needed inside those classes.
 
 4. **Android: `android_init_jni` is one-shot, main-thread-only.**  All JNI setup
    must complete before any thread calls `get_asset_manager()`.  The current code
-   has no mechanism to enforce or detect concurrent initialisation.
+   (in `src/platform/android/os_io.cpp`) uses `std::call_once` per handle slot,
+   which enforces one-shot initialisation correctly.
 
 ## Recommendations
 
@@ -132,18 +133,12 @@ Ordered from simplest/safest to deeper redesign:
    a multi-threaded engine that pattern is racy by design; prefer passing the flag
    as an argument to `Open()` instead of mutating shared state.
 
-4. **Fix the `g_handles` lazy-init race on Android** (`platform/android.cpp`).
-   The simplest fix is a `std::once_flag` per handle slot:
-
-   ```cpp
-   static std::once_flag g_init_flags[2];
-
-   AssetManagerHandle* get_asset_manager(bool engine_package) noexcept {
-       const int idx = engine_package ? 0 : 1;
-       std::call_once(g_init_flags[idx], [&] { /* ... populate g_handles[idx] ... */ });
-       return g_handles[idx].mgr ? &g_handles[idx] : nullptr;
-   }
-   ```
+4. ~~**Fix the `g_handles` lazy-init race on Android**~~  **Done (moved to platform module).**
+   The old `platform/android.cpp` was deleted when Android I/O was extracted to
+   `src/platform/android/os_io.cpp`.  The new implementation uses
+   `static std::once_flag g_init_flags[2]` and `std::call_once` to guarantee
+   one-shot initialisation.  This hazard now lives in `platform-threading.md`
+   and is marked resolved.
 
 5. **Close the `Rescan()` TOCTOU window** by holding the `unique_lock` for the
    entire rescan operation (clear + repopulate), building the new path list into a

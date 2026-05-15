@@ -13,6 +13,8 @@ namespace xash::utilities {
 
 static constexpr int ATLAS_MAX_SIZE = 1024;
 
+// Not thread-safe: one owner thread only.  If an Atlas instance is shared
+// across threads, the caller must provide external synchronisation.
 class Atlas
 {
 public:

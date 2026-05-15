@@ -65,8 +65,8 @@ shared across threads without external locking.
 
 | Symbol | File | Class | Notes |
 |--------|------|-------|-------|
-| `static const int cached` inside `build::number()` | `build.cpp:69` | Race-lazy-init (mitigated) | C++11 magic static. Thread-safe by the standard **when** the runtime's static-init guard is present. CMakeLists.txt does **not** pass `-fno-threadsafe-statics` (GCC/Clang) and targets MSVC ≥ 2015, so the guard is active. Becomes a real data race if the project is ever compiled with `-fno-threadsafe-statics`. |
-| `Atlas::m_allocated`, `Atlas::m_max_height` | `atlas.cpp` | Race-shared (caller responsibility) | Instance-level mutable arrays. Multiple threads calling `alloc()` on the **same** `Atlas` object concurrently will corrupt the strip-height table. This is safe in the expected single-owner usage model but is not enforced by the class. |
+| `static const int cached` inside `build::number()` | `build.cpp:69` | Race-lazy-init (mitigated, documented) | C++11 magic static. Thread-safe by the standard **when** the runtime's static-init guard is present. CMakeLists.txt does **not** pass `-fno-threadsafe-statics` (GCC/Clang) and targets MSVC ≥ 2015, so the guard is active. A comment now explicitly documents the dependency on magic-static guards and warns against compiling with `-fno-threadsafe-statics`. |
+| `Atlas::m_allocated`, `Atlas::m_max_height` | `atlas.cpp` | Race-shared (caller responsibility, documented) | Instance-level mutable arrays. Multiple threads calling `alloc()` on the **same** `Atlas` object concurrently will corrupt the strip-height table. This is safe in the expected single-owner usage model; `atlas.hpp` now carries an explicit "Not thread-safe: one owner thread only" comment. |
 
 ## Required caller contracts
 
@@ -88,17 +88,20 @@ shared across threads without external locking.
 
 ## Recommendations
 
-1. **Add a `static_assert` or comment to `build::number()`** noting the
-   magic-static dependency:
-
+1. ~~**Add a `static_assert` or comment to `build::number()`**~~ **Done.**
+   `build.cpp` now has:
    ```cpp
    // Thread-safety relies on C++11 magic-static guards.
    // Do not compile this TU with -fno-threadsafe-statics.
    ```
 
-2. **Document the Atlas single-owner contract in `atlas.hpp`** with a brief
-   `// Not thread-safe: one owner thread only` comment on the class, matching
-   the pattern used by legacy `atlas.h`.
+2. ~~**Document the Atlas single-owner contract in `atlas.hpp`**~~ **Done.**
+   `atlas.hpp` now carries:
+   ```cpp
+   // Not thread-safe: one owner thread only.  If an Atlas instance is shared
+   // across threads, the caller must provide external synchronisation.
+   class Atlas {
+   ```
 
 3. **No synchronisation should be added to the library itself.**  These are
    low-level utilities that are intentionally lock-free.  Any needed locking
