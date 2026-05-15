@@ -55,12 +55,11 @@ static void test_create_and_find()
     NullPolicy      policy;
     auto ctx = make_test_context(oracle, policy);
 
-    // TODO: uncomment when cvar_get_or_create is implemented:
-    // Cvar *cv = ctx.cvar_get_or_create("test_cvar", "42", 0);
-    // CHECK( cv != nullptr );
-    // CHECK( cv->abi.name != nullptr );
-    // CHECK( ctx.cvar_find("test_cvar") == cv );
-    // CHECK( ctx.cvar_find("TEST_CVAR") == cv ); // case-insensitive
+    Cvar *cv = ctx.cvar_get_or_create("test_cvar", "42", 0);
+    CHECK( cv != nullptr );
+    CHECK( cv->abi.name != nullptr );
+    CHECK( ctx.cvar_find("test_cvar") == cv );
+    CHECK( ctx.cvar_find("TEST_CVAR") == cv ); // case-insensitive
 
     ctx.shutdown();
 }
@@ -75,12 +74,12 @@ static void test_set_value()
     NullPolicy      policy;
     auto ctx = make_test_context(oracle, policy);
 
-    // TODO: uncomment when cvar_get_or_create + cvar_set_direct are implemented:
-    // Cvar *cv = ctx.cvar_get_or_create("test_setval", "0", 0);
-    // const auto gen_before = cv->generation.load();
-    // ctx.cvar_set("test_setval", "1");
-    // CHECK( cv->generation.load() > gen_before );
-    // CHECK( cv->abi.value == 1.0f );
+    Cvar *cv = ctx.cvar_get_or_create("test_setval", "0", 0);
+    CHECK( cv != nullptr );
+    const auto gen_before = cv->generation.load();
+    ctx.cvar_set("test_setval", "1");
+    CHECK( cv->generation.load() > gen_before );
+    CHECK( cv->abi.value == 1.0f );
 
     ctx.shutdown();
 }
@@ -95,8 +94,23 @@ static void test_unlink()
     NullPolicy      policy;
     auto ctx = make_test_context(oracle, policy);
 
-    // TODO: register a cvar with FCVAR_EXTDLL, call cvar_unlink(FCVAR_EXTDLL),
-    //       then verify cvar_find returns nullptr.
+    // Simulate a DLL-registered cvar using a stack-allocated CvarAbi struct.
+    // (In production, the DLL owns the struct; we just need the shape right.)
+    static char cv_name[] = "test_extdll_cvar";
+    static char cv_val[]  = "0";
+    CvarAbi dll_cv {};
+    dll_cv.name   = cv_name;
+    dll_cv.string = cv_val;
+    dll_cv.flags  = FCVAR_EXTDLL;
+    dll_cv.value  = 0.0f;
+    dll_cv.next   = nullptr;
+
+    Cvar *registered = ctx.cvar_register_dll(&dll_cv);
+    CHECK( registered != nullptr );
+    CHECK( ctx.cvar_find("test_extdll_cvar") == registered );
+
+    ctx.cvar_unlink(FCVAR_EXTDLL);
+    CHECK( ctx.cvar_find("test_extdll_cvar") == nullptr );
 
     ctx.shutdown();
 }

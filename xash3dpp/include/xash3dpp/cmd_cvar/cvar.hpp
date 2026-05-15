@@ -43,6 +43,7 @@ enum CvarFlags : std::uint32_t {
     FCVAR_TEMPORARY         = 1u << 21, // may be unlinked between map loads
     FCVAR_MOVEVARS          = 1u << 22, // mirrored in movevars_t
     FCVAR_USER_CREATED      = 1u << 23, // created by a "set" command (no DLL owner)
+    FCVAR_DLL_WRAPPER       = 1u << 24, // pool-alloc'd engine wrapper around a DLL CvarAbi
     FCVAR_REFDLL            = 1u << 29, // registered by the renderer DLL
     FCVAR_LATCH             = 1u << 30, // change deferred until server restart
 };
