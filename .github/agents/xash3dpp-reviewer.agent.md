@@ -40,6 +40,68 @@ they are the fixed SDK surfaces listed above.
 Each subsystem in `xash3dpp/src/` should have a corresponding spec in
 `xash3dpp/docs/`. Flag subsystems that have implementation but no spec.
 
+### 5. Stats and debug instrumentation
+
+Check all subsystems against the three-tier model
+(`xash3dpp/docs/design/debug-stats-design.md`):
+
+- Any subsystem with a non-trivial hot path should define a `<Subsystem>Stats`
+  struct and expose it via `const Stats& stats() const noexcept`. Flag
+  subsystems that accumulate state but have no stats accessor.
+- Counter increments must **not** be gated on a runtime boolean or cvar value.
+  If you see `if (some_flag) ++counter`, flag it as a WARNING.
+- String formatting (`snprintf`, `std::format`, `Con_Printf` equivalents) inside
+  a loop or per-event path is a **WARNING**. Raw values only on hot paths.
+- `XASH_DEBUG_<SUBSYSTEM>` guards must only wrap heavy tracing (circular
+  buffers, break-on-write, histograms). Lightweight atomic counters belong at
+  the always-on or `XASH_STATS` tier, not behind a `XASH_DEBUG_*` guard.
+
+### 6. Framework reuse
+
+Check that new code does not bypass the framework primitives listed in
+`xash3dpp.instructions.md` (`## Use Existing Framework Primitives`):
+
+- `malloc`, `calloc`, `realloc`, `free` anywhere in `xash3dpp/src/` is a
+  **BLOCKER** (unless it is inside `memory/` itself).
+- `new` / `delete` outside of a pimpl `std::make_unique<Impl>()` is a **BLOCKER**.
+- `fopen`, `fclose`, `FILE *`, Win32 `CreateFile`, POSIX `open()` outside of
+  `platform/` or `filesystem/` is a **BLOCKER** — file I/O must go through
+  the `IFilesystem` interface.
+- Raw `strlen`, `strcpy`, `strcmp`, `strcat`, `sprintf` in new code are a
+  **WARNING**; prefer `utilities::` equivalents (`strncpy`, `stricmp`,
+  `snprintf`, etc.).
+- A custom CRC, MD5, or general-purpose hash implementation when
+  `utilities::Crc32Hasher`, `Md5Hasher`, or `crc32()` already covers the need
+  is a **WARNING**.
+- Direct OS time calls (`GetTickCount`, `clock()`, `gettimeofday`) outside
+  `platform/` are a **WARNING** — use `platform::get_time()`.
+- Console/log output via `printf`, `fprintf(stderr, ...)`, or Win32
+  `OutputDebugString` outside `platform/` is a **WARNING** — use
+  `platform::console::write`.
+
+### 7. Threading model compliance
+
+Check against `xash3dpp/docs/design/threading-model.md` and the threading rules
+in `xash3dpp.instructions.md`:
+
+- A public function that is main-thread-only missing `assert_thread_role(ThreadRole::Main)`
+  is a **WARNING**.
+- Any call into a game DLL (`pfnThink`, `pfnClientMove`, `pfnClientCommand`,
+  etc.) not on `T_Main` is a **BLOCKER**.
+- A query function that reads a mutable global instead of taking `const T&`
+  context is a **WARNING** (blocks concurrent-read safety).
+- A new mutable global variable anywhere in `xash3dpp/src/` is a **BLOCKER**
+  — state must live in a context object.
+- `recvfrom()` or `sendto()` called outside `src/networking/` is a **BLOCKER**.
+- Any allocation (`mem_alloc`, `pool_new`, `new`) inside an audio callback
+  (code reachable from `T_AudioCallback`) is a **BLOCKER**.
+- Any mutex lock, `condition_variable::wait`, or blocking I/O inside an audio
+  callback is a **BLOCKER**.
+- `std::future` or `std::promise` used for job completion instead of the
+  `JobToken<T>` pattern is a **WARNING** (requires exceptions).
+- A compute loop that interleaves reads and writes to entity state without a
+  clear commit phase is a **NOTE** (reduces future parallelism potential).
+
 ## Output Format
 
 For each issue found, report:
