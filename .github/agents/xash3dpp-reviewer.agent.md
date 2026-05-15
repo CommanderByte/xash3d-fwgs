@@ -143,6 +143,38 @@ Check against `xash3dpp/docs/design/design-paradigms-round1.md` Q-9:
 - `std::string_view` crossing an `extern "C"` or DLL boundary is a **BLOCKER**
   — use `const char*` at the boundary and wrap on entry.
 
+### 11. Naming conventions
+
+Check against `xash3dpp/docs/design/design-paradigms-round2.md` QE, QF:
+
+- A **PascalCase member function** on an implementation class (not an `I<X>` vtable
+  method) is a **WARNING** — use `snake_case`.
+- An `enum class` value with a `k` prefix (e.g. `kSystem`) in **new** code (not in
+  `memory.hpp` which is grandfathered) is a **WARNING** — use `PascalCase` without
+  the `k` prefix.
+- A type name in `snake_case` (e.g. `my_context` as a class name) is a **WARNING**
+  — types must be `PascalCase`.
+- A file under `xash3dpp/include/` or `xash3dpp/src/` named in `PascalCase` or
+  `camelCase` is a **WARNING** — file names must be `snake_case`.
+
+### 12. Integer types, `[[nodiscard]]`, assertions, and logging
+
+Check against `xash3dpp/docs/design/design-paradigms-round2.md` QA, QG, QH, QI:
+
+- A non-`void` return that lacks `[[nodiscard]]` with no documented reason is a
+  **WARNING** — `[[nodiscard]]` is the default.
+- `unsigned` or `unsigned int` used without a width qualifier is a **WARNING** —
+  use `uint32_t` or `size_t` as appropriate.
+- `assert()` from `<cassert>` used instead of `XASH_ASSERT` is a **WARNING**.
+- `printf`, `fprintf`, `puts`, `fputs`, or Win32 `OutputDebugString` used for
+  diagnostic output is a **WARNING** — use `platform::log` or `platform::logf`.
+  (Exception: test files may use `std::puts` for the `CHECK` macro output.)
+- A failure return path (`return false`, `return std::nullopt`, `return nullptr`)
+  with no preceding `platform::log` call is a **WARNING** (exception: `nullopt`
+  for a silent "not found" query).
+- `int64_t` used for a size or count (should be `size_t`) or `size_t` used for a
+  file offset (should be `int64_t`) is a **WARNING**.
+
 ## Output Format
 
 For each issue found, report:

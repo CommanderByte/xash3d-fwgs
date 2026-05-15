@@ -176,3 +176,21 @@ Full decisions: [`xash3dpp/docs/design/design-paradigms-round1.md`](../../xash3d
 **Ownership vocabulary:**
 - `pool_ptr<T>` (pool-backed owned) · `unique_ptr<T>` (pimpl only) · raw `T*` (borrowed, `// @lifetime: engine`) · `span<const T>` (default view) · `string_view` (string view).
 - Pool selection reflects lifetime: process pool / session pool / frame pool.
+
+### Code Style and Conventions (Round 2)
+
+Full decisions: [`xash3dpp/docs/design/design-paradigms-round2.md`](../../xash3dpp/docs/design/design-paradigms-round2.md)
+
+**Naming:**
+- Types: `PascalCase` · Member functions: `snake_case` · Free functions: `snake_case` · Namespaces: `lowercase` · Macros: `UPPER_SNAKE_CASE` · Files: `snake_case.{hpp,cpp}` · Private members: `trailing_` · `enum class` values: `PascalCase` (no `k` prefix) · `constexpr` constants: `k_snake_case`
+
+**Instrumentation:**
+- `[[nodiscard]]` is the default on all non-`void` returns; omission requires justification.
+- `XASH_ASSERT(expr)` — debug-only invariant check. `XASH_FATAL(expr, msg)` — always-on unrecoverable invariant. Never use `assert()` from `<cassert>`.
+- `platform::log(LogLevel, tag, msg)` for all diagnostic output — not `printf`, not `console::write` directly.
+
+**Integer types:** `size_t` for sizes · `int` for GoldSrc ABI · `uint32_t` for internal tokens · `int64_t` for file offsets · `bool` for booleans · no bare `unsigned`.
+
+**Copy/move:** Subsystem context = move-only. `EngineContext` = non-moveable. Value aggregates = copyable. Handles = copyable unless exclusive-ownership.
+
+**Tests:** Hand-rolled `CHECK`/`REQUIRE` macros from `test_helpers.hpp`. Revisit with doctest at ~15 test files.

@@ -14,6 +14,37 @@ The legacy engine at the repo root is the behavioural reference only.
 - **Third-party deps**: vendor under `xash3dpp/3rdparty/`. Do not reuse the repo-root `3rdparty/`.
 - **Design notes** for a subsystem go in `xash3dpp/docs/` before implementation starts.
 
+## Confirmed Style Conventions
+
+These are unanimous across all subsystems — no debate:
+
+- `#pragma once` in every header; no `#ifndef` include guards.
+- `using T = ...` for all type aliases; never `typedef`.
+- `noexcept` on all public functions — no exceptions cross subsystem boundaries.
+- Full `std::` qualification everywhere in headers; no `using namespace` or `using std::X` at header scope.
+- `inline constexpr` for all named constants and limits.
+
+## Naming Conventions — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QE, QF.
+
+| Category | Convention | Examples |
+|----------|-----------|---------|
+| Types (class, struct, enum) | `PascalCase` | `Filesystem`, `PoolHandle`, `LogLevel` |
+| Member functions | `snake_case` | `init()`, `open()`, `file_exists()` |
+| Free functions | `snake_case` | `mem_alloc()`, `cvar_find()`, `create_pool()` |
+| Namespaces | `lowercase` | `xash::filesystem`, `xash::memory` |
+| Macros | `UPPER_SNAKE_CASE` | `XASH_ASSERT`, `XASH_GOLDSRC_COMPAT` |
+| File names | `snake_case.{hpp,cpp}` | `filesystem.hpp`, `cmd_cvar.cpp` |
+| Private member variables | `snake_case_` (trailing `_`) | `impl_`, `handle_`, `stats_` |
+| Local variables | `snake_case` | `pool`, `pos`, `entries` |
+| `inline constexpr` constants | `k_snake_case` | `k_null_pool`, `k_max_path` |
+| `enum class` values | `PascalCase` (no `k` prefix) | `LogLevel::Error`, `AllocStrategy::Arena` |
+
+**Exceptions**: `I<X>` vtable method names that are dictated by a legacy ABI are
+exempt (e.g. `IFilesystem::Open` must match VFileSystem009). These are ABI-fixed.
+
+
 ## Before Writing Any Code
 
 1. Read the corresponding legacy subsystem using search and file tools.
@@ -218,3 +249,82 @@ session pool for `changelevel`-scoped objects, frame pool for per-frame scratch.
 
 Raw `T*` in public APIs means "borrowed reference with engine lifetime". Document
 with `// @lifetime: engine` on the declaration. No `BorrowedRef<T>` type alias.
+
+### `[[nodiscard]]` Completeness — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QA.
+
+`[[nodiscard]]` is the **default** for every non-`void` return. Omitting it requires
+a documented reason at the declaration site. Apply to:
+- All error-indicator returns (`bool`, `optional<T>`, `expected<T,E>`)
+- All owned-resource returns (`pool_ptr`, `unique_ptr`, handles)
+- All computed values where discarding is a likely bug (`stats()`, hash results)
+
+### Integer Type Policy — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QG.
+
+| Context | Type |
+|---------|------|
+| Sizes, counts, buffer capacities | `std::size_t` |
+| GoldSrc ABI values (entity index, edict number, model index) | `int` — match the ABI exactly |
+| Internal tokens and handles | `uint32_t` |
+| File offsets | `int64_t` |
+| Bitmask flags (internal) | `uint32_t` |
+| Boolean quantities | `bool` — never `int` or `uint8_t` |
+| Loop counters over small known ranges | `int` |
+
+Never use bare `unsigned` — qualify with width (`uint32_t`) or semantic type (`size_t`).
+Never silently cast `size_t` to `int`; validate `count ≤ INT_MAX` first.
+
+### Assertions — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QH.
+Defined in `platform/assert.hpp`.
+
+- **`XASH_ASSERT(expr)`** — debug-only (no-op in `NDEBUG`). For invariants that
+  "should never be violated" but where a release build might limp on.
+- **`XASH_FATAL(expr, msg)`** — always-on. For unrecoverable invariants in any build.
+  Calls `platform::log(LogLevel::Fatal, ...)` then `platform::crash::abort()`.
+- Do **not** use `assert()` from `<cassert>` directly.
+- Assertions are for invariant violations. Expected failures (file not found,
+  network error) use Q-5 error returns.
+
+### Logging — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QI.
+Defined in `platform/log.hpp`.
+
+Use `platform::log(LogLevel, tag, msg)` or `platform::logf(LogLevel, tag, fmt, ...)`
+for all diagnostic output — not `platform::console::write` directly, not `printf`.
+
+| Level | Use for |
+|-------|---------|
+| `LogLevel::Verbose` | High-frequency debug — wrap in `#ifdef XASH_VERBOSE` |
+| `LogLevel::Info` | Normal operational messages |
+| `LogLevel::Warning` | Unexpected but recoverable |
+| `LogLevel::Error` | Operation failed; caller also notified via return value |
+| `LogLevel::Fatal` | Assertion violations — called by `XASH_ASSERT`/`XASH_FATAL` |
+
+**Q-5 compliance**: call `platform::log(LogLevel::Error, tag, msg)` *before*
+every `return false` / `return std::nullopt` failure path.
+
+### Copy/Move Semantics — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QJ.
+
+| Category | Copy | Move |
+|----------|------|------|
+| Subsystem context class (pimpl) | `= delete` | declared in header, `= default` in `.cpp` |
+| `EngineContext` itself | `= delete` | `= delete` |
+| Value aggregates (`*Stats`, `*InitParams`) | compiler-generated | compiler-generated |
+| Copyable handle (value/index type) | compiler-generated | compiler-generated |
+| RAII wrapper / exclusive-ownership handle | `= delete` | declared + defined |
+
+### Test Conventions
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QK.
+
+Use the standard macro set from `xash3dpp/tests/test_helpers.hpp`:
+`CHECK`, `CHECK_EQ`, `CHECK_NE`, `CHECK_STREQ`, `CHECK_LT`, `CHECK_LE`, `REQUIRE`.
+Test functions: `static void test_<feature>()`. Entry point returns `(g_fail > 0) ? 1 : 0`.
