@@ -11,7 +11,7 @@
 
 #include <xash3dpp/platform/crash.hpp>
 
-#include "../detail/assert_main.hpp"
+#include <xash3dpp/private/platform/assert_main.hpp>
 
 #include <execinfo.h>    // backtrace, backtrace_symbols_fd
 #include <signal.h>      // sigaction, siginfo_t, SIGSEGV…

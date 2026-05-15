@@ -19,7 +19,7 @@
 
 #include <cstring>   // std::memcpy
 
-#include "../detail/assert_main.hpp"
+#include <xash3dpp/private/platform/assert_main.hpp>
 
 namespace xash::platform {
 

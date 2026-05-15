@@ -7,7 +7,7 @@
 
 #include <xash3dpp/platform/crash.hpp>
 
-#include "../detail/assert_main.hpp"
+#include <xash3dpp/private/platform/assert_main.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN

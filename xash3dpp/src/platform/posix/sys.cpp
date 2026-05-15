@@ -21,7 +21,7 @@
 #include <cstdio>       // std::fprintf
 #include <cerrno>       // errno, EINTR
 
-#include "../detail/assert_main.hpp"
+#include <xash3dpp/private/platform/assert_main.hpp>
 
 #if defined(__APPLE__)
 #  include <mach-o/dyld.h>  // _NSGetExecutablePath

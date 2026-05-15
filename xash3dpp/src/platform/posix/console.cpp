@@ -7,7 +7,7 @@
 
 #include <xash3dpp/platform/console.hpp>
 
-#include "../detail/assert_main.hpp"
+#include <xash3dpp/private/platform/assert_main.hpp>
 
 #include <sys/select.h>
 #include <unistd.h>   // STDIN_FILENO, STDOUT_FILENO, read, write
