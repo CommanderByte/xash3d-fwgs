@@ -1,33 +1,31 @@
-// xash3dpp — cmd_cvar: shared hash map for commands, cvars, and aliases
+// xash3dpp — cmd_cvar: shared registry types and hash map (PRIVATE)
 // Legacy reference: engine/common/base_cmd.c, engine/common/base_cmd.h
 //
-// Existing subsystems used:
-//   xash3dpp_utilities — utilities::stricmp (case-insensitive name lookup)
-//   xash3dpp_memory    — pool-backed node allocation
+// CmdHashMap<V> is defined as a header-only template in:
+//   include/xash3dpp/private/cmd_cvar/cmd_hash_map.hpp
+//
+// Internal Command and AliasDef structs are defined in:
+//   include/xash3dpp/private/cmd_cvar/registry_types.hpp
+//
+// This translation unit exists to:
+//   1. Verify both private headers compile in isolation.
+//   2. Carry any future non-template helpers for the shared registry.
 
+#include <xash3dpp/private/cmd_cvar/cmd_hash_map.hpp>
+#include <xash3dpp/private/cmd_cvar/registry_types.hpp>
 #include <xash3dpp/cmd_cvar/cvar.hpp>
-#include <xash3dpp/cmd_cvar/command.hpp>
-#include <xash3dpp/limits.hpp>
-#include <xash3dpp/utilities/string.hpp>
-#include <xash3dpp/memory/memory.hpp>
 
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
+#include <type_traits>
 
 namespace xash::cmd_cvar {
 
-// TODO: implement hash map keyed on case-insensitive cvar/command name.
-//
-// Design constraints (from boundary doc):
-//   • Key type: const char* (NUL-terminated, case-insensitive compare)
-//   • Fixed bucket count: limits::cvar_hash_buckets
-//   • Separate chaining via singly-linked nodes
-//   • Nodes allocated from a PoolHandle passed at construction
-//   • find()   — O(1) average; returns void* or typed pointer
-//   • insert() — adds a new node; caller guarantees the name is unique
-//   • remove() — unlinks and frees the node; pointer returned for caller cleanup
-//
-// The single map is shared by commands, cvars, and aliases (legacy behaviour).
+static_assert(limits::alias_name_max >= 2,
+    "alias_name_max must be at least 2 (one char + NUL)");
+
+static_assert(std::is_trivially_destructible_v<Command>,
+    "Command must be trivially destructible so bulk pool-free is safe");
+
+static_assert(std::is_trivially_destructible_v<AliasDef>,
+    "AliasDef must be trivially destructible so bulk pool-free is safe");
 
 } // namespace xash::cmd_cvar

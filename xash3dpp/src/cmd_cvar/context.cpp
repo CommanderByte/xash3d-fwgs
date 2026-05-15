@@ -9,6 +9,8 @@
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/private/cmd_cvar/compat_policy.hpp>
 #include <xash3dpp/private/cmd_cvar/circular_buffer.hpp>
+#include <xash3dpp/private/cmd_cvar/cmd_hash_map.hpp>
+#include <xash3dpp/private/cmd_cvar/registry_types.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
@@ -49,6 +51,22 @@ struct CmdCvarContext::Impl {
 
     // Stats
     CmdCvarStats stats_block;
+
+    // ---------------------------------------------------------------------------
+    // Registry — populated during init(); torn down during shutdown().
+    // ---------------------------------------------------------------------------
+
+    // Cvar registry
+    CmdHashMap<Cvar>   cvar_map;                 // case-insensitive lookup
+    Cvar              *cvar_list_head { nullptr }; // ABI linked list (CvarAbi.next chain)
+
+    // Command registry
+    CmdHashMap<Command>   cmd_map;
+    Command              *cmd_list_head { nullptr };
+
+    // Alias registry
+    CmdHashMap<AliasDef>  alias_map;
+    AliasDef             *alias_list_head { nullptr };
 
     // Tokenizer scratch — valid only while cmd_dispatch_line() is on the call stack.
     // Written by cbuf_execute before invoking a CommandFn; reset after.
@@ -133,6 +151,11 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 
     impl_->trust_oracle  = params.trust_oracle;
     impl_->compat_policy = params.compat_policy;
+
+    // Wire the hash maps to the subsystem pool now that it exists.
+    impl_->cvar_map.set_pool(impl_->pool);
+    impl_->cmd_map.set_pool(impl_->pool);
+    impl_->alias_map.set_pool(impl_->pool);
 
     // TODO: register built-in commands (exec, echo, alias, wait, if/else, ...)
     // TODO: register built-in cvars (cmd_scripting, cl_filterstuffcmd, ...)
