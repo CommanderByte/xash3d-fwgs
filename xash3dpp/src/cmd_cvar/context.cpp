@@ -17,6 +17,7 @@
 #include <xash3dpp/utilities/string.hpp>
 
 #include <atomic>
+#include <cstdio>
 #include <cstring>
 #include <deque>
 #include <string>
@@ -244,12 +245,77 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 
     // alias — create or list command aliases.
     cmd_add("alias", []() noexcept {
-        // TODO: use tls_ctx to read argc/argv; create/update AliasDef in alias_map
+        if (!tls_ctx) return;
+        Impl &impl           = *tls_ctx->impl_;
+        const int   argc     = tls_ctx->cmd_argc();
+        const char *al_name  = (argc >= 2) ? tls_ctx->cmd_argv(1) : nullptr;
+        const char *al_value = (argc >= 3) ? tls_ctx->cmd_argv(2) : nullptr;
+
+        if (!al_name) {
+            // No args: list all aliases.
+            for (AliasDef *a = impl.alias_list_head; a; a = a->abi_next) {
+                platform::console::write(a->name);
+                if (a->value) {
+                    platform::console::write(" = ");
+                    platform::console::write(a->value);
+                }
+                platform::console::write("\n");
+            }
+            return;
+        }
+
+        AliasDef *al = impl.alias_map.find(al_name);
+
+        if (!al_value) {
+            // One arg: delete the alias if it exists.
+            if (!al) return;
+            impl.alias_map.remove(al_name);
+            AliasDef *new_head = nullptr, **tail = &new_head;
+            for (AliasDef *a = impl.alias_list_head; a; ) {
+                AliasDef *next = a->abi_next;
+                if (a != al) { *tail = a; a->abi_next = nullptr; tail = &a->abi_next; }
+                a = next;
+            }
+            impl.alias_list_head = new_head;
+            if (al->value) memory::mem_free(const_cast<char *>(al->value));
+            memory::mem_free(al);
+            return;
+        }
+
+        if (al) {
+            // Update existing alias value.
+            if (al->value) memory::mem_free(const_cast<char *>(al->value));
+            al->value = pool_dup(impl.pool, al_value);
+            return;
+        }
+
+        // Create new alias.
+        al = static_cast<AliasDef *>(memory::mem_calloc(impl.pool, sizeof(AliasDef)));
+        if (!al) return;
+        utilities::strncpy(al->name, al_name, sizeof(al->name));
+        al->value    = pool_dup(impl.pool, al_value);
+        al->abi_next = impl.alias_list_head;
+        impl.alias_list_head = al;
+        impl.alias_map.insert(al->name, al);
     }, 0, "create a command alias");
 
     // unalias — remove an alias.
     cmd_add("unalias", []() noexcept {
-        // TODO: use tls_ctx->cmd_argv(1) to remove from alias_map
+        if (!tls_ctx) return;
+        Impl &impl          = *tls_ctx->impl_;
+        const char *al_name = (tls_ctx->cmd_argc() >= 2) ? tls_ctx->cmd_argv(1) : nullptr;
+        if (!al_name) return;
+        AliasDef *al = impl.alias_map.remove(al_name);
+        if (!al) return;
+        AliasDef *new_head = nullptr, **tail = &new_head;
+        for (AliasDef *a = impl.alias_list_head; a; ) {
+            AliasDef *next = a->abi_next;
+            if (a != al) { *tail = a; a->abi_next = nullptr; tail = &a->abi_next; }
+            a = next;
+        }
+        impl.alias_list_head = new_head;
+        if (al->value) memory::mem_free(const_cast<char *>(al->value));
+        memory::mem_free(al);
     }, 0, "remove a command alias");
 
     // stuffcmds — replay +cmd arguments from the host command line.
@@ -796,28 +862,68 @@ void CmdCvarContext::cmd_add(const char    *name,
 
 void CmdCvarContext::cmd_remove(const char *name) noexcept
 {
-    // TODO
-    (void)name;
+    if (!name || !*name) return;
+
+    Command *cmd = impl_->cmd_map.remove(name);
+    if (!cmd) return;
+
+    // Rebuild ABI list without this entry.
+    Command *new_head = nullptr;
+    Command **tail    = &new_head;
+    for (Command *c = impl_->cmd_list_head; c; ) {
+        Command *next = c->abi_next;
+        if (c != cmd) {
+            *tail       = c;
+            c->abi_next = nullptr;
+            tail        = &c->abi_next;
+        }
+        c = next;
+    }
+    impl_->cmd_list_head = new_head;
+
+    // Free pool-owned fields.
+    if (cmd->name) memory::mem_free(const_cast<char *>(cmd->name));
+    if (cmd->desc) memory::mem_free(const_cast<char *>(cmd->desc));
+    memory::mem_free(cmd);
 }
 
 void CmdCvarContext::cmd_unlink(std::uint32_t flags_mask) noexcept
 {
-    // TODO
-    (void)flags_mask;
+    // Unlink guard: don't remove DLL commands while that DLL is still loaded.
+    if ((flags_mask & FCMD_EXTDLL)    && impl_->server_dll_loaded) return;
+    if ((flags_mask & FCMD_CLIENTDLL) && impl_->client_dll_loaded) return;
+
+    Command *new_head = nullptr;
+    Command **tail    = &new_head;
+    for (Command *cmd = impl_->cmd_list_head; cmd; ) {
+        Command *next = cmd->abi_next;
+        if (cmd->flags & flags_mask) {
+            impl_->cmd_map.remove(cmd->name);
+            if (cmd->name) memory::mem_free(const_cast<char *>(cmd->name));
+            if (cmd->desc) memory::mem_free(const_cast<char *>(cmd->desc));
+            memory::mem_free(cmd);
+        } else {
+            *tail       = cmd;
+            cmd->abi_next = nullptr;
+            tail        = &cmd->abi_next;
+        }
+        cmd = next;
+    }
+    impl_->cmd_list_head = new_head;
 }
 
 CommandDesc CmdCvarContext::cmd_describe(const char *name) const noexcept
 {
-    // TODO
-    (void)name;
-    return {};
+    if (!name || !*name) return {};
+    const Command *cmd = impl_->cmd_map.find(name);
+    if (!cmd) return {};
+    return { cmd->name, cmd->desc, cmd->flags };
 }
 
 bool CmdCvarContext::cmd_exists(const char *name) const noexcept
 {
-    // TODO: hash map lookup
-    (void)name;
-    return false;
+    if (!name || !*name) return false;
+    return impl_->cmd_map.find(name) != nullptr;
 }
 
 // cmd_execute_string implemented below (after dispatch_cmd is defined).
@@ -1160,7 +1266,42 @@ void CmdCvarContext::debug_break_on_cvar_write(const char *cvar_name) noexcept
 
 void CmdCvarContext::dump_hash_stats() const noexcept
 {
-    // TODO: print bucket fill distribution to platform console
+    // Accumulate stats for each of the three maps.
+    struct MapStats {
+        const char *label;
+        std::size_t used_buckets;
+        std::size_t total_entries;
+        std::size_t max_chain;
+    };
+
+    auto gather = [](const auto &map, const char *label) -> MapStats {
+        std::size_t hist[limits::cvar_hash_buckets] = {};
+        map.bucket_histogram(hist, limits::cvar_hash_buckets);
+        MapStats s{ label, 0, 0, 0 };
+        for (std::size_t i = 0; i < limits::cvar_hash_buckets; ++i) {
+            if (hist[i]) ++s.used_buckets;
+            s.total_entries += hist[i];
+            if (hist[i] > s.max_chain) s.max_chain = hist[i];
+        }
+        return s;
+    };
+
+    const MapStats maps[] = {
+        gather(impl_->cvar_map,  "cvar_map "),
+        gather(impl_->cmd_map,   "cmd_map  "),
+        gather(impl_->alias_map, "alias_map"),
+    };
+
+    char buf[128];
+    platform::console::write("cmd_cvar hash stats:\n");
+    for (const auto &m : maps) {
+        std::snprintf(buf, sizeof(buf),
+                      "  %s: %zu/%zu buckets used, %zu entries, max chain %zu\n",
+                      m.label,
+                      m.used_buckets, static_cast<std::size_t>(limits::cvar_hash_buckets),
+                      m.total_entries, m.max_chain);
+        platform::console::write(buf);
+    }
 }
 #endif
 

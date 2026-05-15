@@ -31,8 +31,7 @@ static void test_stuffcmd_blocked_when_untrusted()
     ctx.cbuf_stuff_text("privileged_cmd\n");
     ctx.cbuf_execute();
 
-    // TODO: uncomment when cbuf_execute privilege gating is implemented:
-    // CHECK( called == 0 );
+    CHECK( called == 0 );
 
     ctx.shutdown();
 }
@@ -53,8 +52,7 @@ static void test_stuffcmd_allowed_when_trusted()
     ctx.cbuf_stuff_text("privileged_cmd2\n");
     ctx.cbuf_execute();
 
-    // TODO: uncomment when cbuf_execute is implemented:
-    // CHECK( called == 1 );
+    CHECK( called == 1 );
 
     ctx.shutdown();
 }
@@ -75,8 +73,7 @@ static void test_stuffcmd_unprivileged_always_runs()
     ctx.cbuf_stuff_text("safe_cmd\n");
     ctx.cbuf_execute();
 
-    // TODO: uncomment when cbuf_execute is implemented:
-    // CHECK( called == 1 );
+    CHECK( called == 1 );
 
     ctx.shutdown();
 }
