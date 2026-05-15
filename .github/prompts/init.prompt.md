@@ -72,5 +72,15 @@ next one.
   `std::call_once`
 - **Tests**: `xash3dpp/tests/platform/`
 
+### `xash3dpp_cmd_cvar` — complete
+- **Library**: `xash3dpp/src/cmd_cvar/`; public headers in
+  `xash3dpp/include/xash3dpp/cmd_cvar/`; private headers in
+  `xash3dpp/include/xash3dpp/private/cmd_cvar/`
+- **Design**: Single `CmdCvarContext` pimpl class; pimpl move ctor/dtor defined
+  in `context.cpp` (not `= default` in header); `XASH_GOLDSRC_COMPAT` CMake
+  option selects `compat_goldsrc.cpp` vs `compat_null.cpp` at link time —
+  zero `#ifdef` in core; `CircularBuffer<T,N>` private template for change log
+- **Tests**: `xash3dpp/tests/cmd_cvar/`
+
 **Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++20;
 no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.

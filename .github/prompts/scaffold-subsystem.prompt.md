@@ -47,7 +47,7 @@ in a brief comment at the top of the implementation stub.
 
 ---
 
-## Step 2 — Write the boundary doc
+## Step 1 — Write the boundary doc
 
 Create `xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md` before writing any
 code. Use this template:
@@ -85,7 +85,7 @@ Design decisions still outstanding.
 
 ---
 
-## Step 3 — Create the public header
+## Step 2 — Create the public header
 
 Create `xash3dpp/include/xash3dpp/$ARGUMENTS/$ARGUMENTS.hpp`:
 
@@ -136,9 +136,21 @@ namespace xash::$ARGUMENTS {
 Follow the pimpl pattern used by `xash::filesystem::Filesystem` — no internal
 types leak into the public header.
 
+**Pimpl move operations**: Deleting the copy constructor (required when owning
+`std::unique_ptr<Impl>`) also suppresses the implicit move constructor.
+Explicitly *declare* the move constructor and move-assignment in the header:
+```cpp
+    <Class>(<Class>&&) noexcept;
+    <Class>& operator=(<Class>&&) noexcept;
+```
+But **define them as `= default` in the `.cpp` file** where `Impl` is
+complete — never `= default` in the header.  Putting `= default` in the
+header instantiates `unique_ptr<Impl>`'s destructor in every TU that includes
+the header, before `Impl` is defined, causing a compile error.
+
 ---
 
-## Step 4 — Create the CMake target
+## Step 3 — Create the CMake target
 
 Create `xash3dpp/src/$ARGUMENTS/CMakeLists.txt`:
 
@@ -177,9 +189,16 @@ Then add to `xash3dpp/CMakeLists.txt` (or the appropriate parent
 add_subdirectory(src/$ARGUMENTS)
 ```
 
+**Subsystem limits**: If `$ARGUMENTS` uses any fixed buffer sizes, pool
+capacities, or count limits, add them to
+`xash3dpp/include/xash3dpp/limits.hpp` under a new `// $ARGUMENTS subsystem`
+comment block, following the existing `#ifndef XASH_LIMIT_* / inline constexpr /
+#else / #endif` pattern.  Do not put magic number literals in headers or
+source files.
+
 ---
 
-## Step 5 — Create the stub implementation
+## Step 4 — Create the stub implementation
 
 Create `xash3dpp/src/$ARGUMENTS/$ARGUMENTS.cpp`:
 
@@ -228,13 +247,19 @@ void <Subsystem>::Shutdown()
 } // namespace xash::$ARGUMENTS
 ```
 
+Add the move-operation definitions here (alongside the destructor):
+```cpp
+<Class>::<Class>(<Class>&&) noexcept            = default;
+<Class>& <Class>::operator=(<Class>&&) noexcept = default;
+```
+
 **Note**: `Impl` itself is heap-allocated via `std::make_unique` (before the
 pool exists). Everything the subsystem allocates *after* `Init()` must go
 through `impl_->pool_`.
 
 ---
 
-## Step 6 — Create the test harness
+## Step 5 — Create the test harness
 
 Create `xash3dpp/tests/$ARGUMENTS/CMakeLists.txt`:
 
@@ -305,7 +330,7 @@ add_subdirectory($ARGUMENTS)
 
 ---
 
-## Step 7 — Verify
+## Step 6 — Verify
 
 Run `get_errors` on every file you created or modified. Fix any diagnostics
 before finishing.
@@ -320,3 +345,5 @@ Confirm:
 - [ ] Test harness compiles and runs cleanly
 - [ ] No `malloc`, `free`, `new`, `delete` outside of `std::make_unique<Impl>`
 - [ ] No `.hpp` files under `src/`.  Any header shared between TUs but not public lives in `include/xash3dpp/private/$ARGUMENTS/`.
+- [ ] Pimpl move ctor/assignment declared in header, defined `= default` in `.cpp`
+- [ ] Any fixed buffer/count limits added to `limits.hpp` with `XASH_LIMIT_*` override macros

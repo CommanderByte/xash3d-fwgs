@@ -19,3 +19,36 @@ The legacy engine at the repo root is the behavioural reference only.
 1. Read the corresponding legacy subsystem using search and file tools.
 2. Write a short boundary note in `xash3dpp/docs/` covering: what the module exposes, what invariants it must preserve, and any quirks found in the legacy code.
 3. Then implement.
+
+## Recurring Patterns — Mandatory
+
+### limits.hpp
+Subsystem-specific buffer sizes, pool capacities, and fixed-count limits belong
+in `xash3dpp/include/xash3dpp/limits.hpp`, not as magic literals in headers or
+source files.  Use the `#ifndef XASH_LIMIT_<NAME>` / `inline constexpr` /
+`#else` / `#endif` override pattern.  Group limits under a `// <subsystem>
+subsystem` comment block.
+
+### Pimpl move operations
+When a class owns a `std::unique_ptr<Impl>`, deleting its copy constructor
+also suppresses the implicit move constructor.  The correct pattern:
+
+- **Header** (where `Impl` is incomplete): *declare* the move operations:
+  ```cpp
+  <Class>(<Class>&&) noexcept;
+  <Class>& operator=(<Class>&&) noexcept;
+  ```
+- **`.cpp`** (where `Impl` is complete): *define* them:
+  ```cpp
+  <Class>::<Class>(<Class>&&) noexcept            = default;
+  <Class>& <Class>::operator=(<Class>&&) noexcept = default;
+  ```
+
+Writing `= default` in the header triggers instantiation of
+`unique_ptr<Impl>`'s destructor before `Impl` is defined, causing a
+compile error in every TU that includes the header.
+
+### Compat isolation
+Use a CMake option (e.g. `XASH_GOLDSRC_COMPAT`) to select between two `.cpp`
+files at link time (`compat_goldsrc.cpp` / `compat_null.cpp`).  Zero
+`#ifdef` guards in core logic.
