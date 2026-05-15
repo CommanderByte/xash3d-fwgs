@@ -111,3 +111,4 @@ analyse-modernization      ← optional, after compliance is clean
 | `analyse-modernization` | Optional future cleanup | No |
 | `analyse-utility-consolidation` | Deduplication planning | No |
 | `migrate-to-memory` | Memory migration pass | Yes |
+| `retriever` | Enforce one rule across the entire codebase until clean | Yes |
