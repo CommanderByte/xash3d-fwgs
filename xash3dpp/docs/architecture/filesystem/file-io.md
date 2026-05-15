@@ -4,7 +4,7 @@
 > `xash3dpp/include/xash3dpp/private/filesystem/mem_file.hpp`,
 > `xash3dpp/include/xash3dpp/platform/os_fd.hpp` (owned by `xash3dpp_platform`),
 > `xash3dpp/include/xash3dpp/private/filesystem/os_file_factory.hpp`,
-> `xash3dpp/src/filesystem/file.cpp`  
+> `xash3dpp/src/filesystem/file.cpp`\
 > **Namespace**: `xash::filesystem` (`File`, `OsFile`, `MemFile`); `xash::platform` (`OsFd`)
 
 ## Overview
@@ -15,8 +15,7 @@ and the caller reading data from it. There are three concrete implementations of
 optional zlib inflate), `MemFile` (fully in-memory, used by `WadBackend`), and
 any future implementation.
 
-All file handles are returned as `std::unique_ptr<File>`. The custom `operator
-delete` on the `File` base ensures pool-backed allocation is reclaimed correctly
+All file handles are returned as `std::unique_ptr<File>`. The custom `operator delete` on the `File` base ensures pool-backed allocation is reclaimed correctly
 when the `unique_ptr` goes out of scope.
 
 ## `File` — abstract streaming handle
@@ -64,7 +63,7 @@ std::unique_ptr<File> f = backend->open_file("foo.txt", "rb");
 `unique_ptr<File>`. There is no shared ownership; no locking is needed inside
 `File` implementations.
 
----
+______________________________________________________________________
 
 ## `OsFile` — native fd + optional inflate
 
@@ -101,6 +100,7 @@ records (WAD lump metadata, BSP lump headers) without system-call overhead.
 ### Zlib inflate
 
 When `deflated_ == true`:
+
 - The constructor seeks `fd_` to `real_offset_` and initialises a `ZlibState`
   (`mz_inflateInit2` with raw deflate window, -15 bits).
 - `inflate_read` feeds compressed data from `fd_` into miniz's `mz_inflate` in
@@ -128,7 +128,7 @@ Defined in `file.cpp`. Allocates `OsFile` via `pool_new<OsFile>(pool, ...)` and
 returns it as `unique_ptr<File>`. Backends call this instead of constructing
 `OsFile` directly, because `OsFile` is not declared in any header.
 
----
+______________________________________________________________________
 
 ## `MemFile` — in-memory vector file
 
@@ -156,7 +156,7 @@ construction time and serves them without further I/O.
   the `MemFile` object itself is created with `pool_new<MemFile>(pool_, ...)`.
   Its `operator delete` falls back to the base `File` override → `mem_free`.
 
----
+______________________________________________________________________
 
 ## `OsFd` — RAII file descriptor
 
@@ -179,7 +179,7 @@ careful `goto cleanup` logic in the legacy C code.
 `OsFd::close()` is implemented in `src/platform/posix/os_io.cpp` and
 `src/platform/win32/os_io.cpp` (calls `::close` / `::CloseHandle` respectively).
 
----
+______________________________________________________________________
 
 ## `mode_flags` helper
 
@@ -195,7 +195,7 @@ Defined inline in `os_file_factory.hpp`. Maps a C-style `fopen` mode string to
 | `"a"`, `"ab"` | `WriteOnly | Create | Append` |
 | `"a+"`, `"a+b"` | `ReadWrite | Create | Append` |
 
----
+______________________________________________________________________
 
 ## Threading model
 

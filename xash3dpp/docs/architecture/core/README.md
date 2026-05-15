@@ -1,8 +1,8 @@
 # core — Architecture Overview
 
-> **Source**: `xash3dpp/src/core/`  
-> **Public API**: `xash3dpp/include/xash3dpp/core/`  
-> **Private utilities**: `xash3dpp/include/xash3dpp/private/core/`  
+> **Source**: `xash3dpp/src/core/`\
+> **Public API**: `xash3dpp/include/xash3dpp/core/`\
+> **Private utilities**: `xash3dpp/include/xash3dpp/private/core/`\
 > **Legacy reference**: `engine/common/con_utils.c`, `engine/common/host.c`,
 > `engine/common/system.h`
 
@@ -78,7 +78,7 @@ cross-thread invariant violations early.
 `xash3dpp_core` is a leaf library from any subsystem's perspective but
 internally depends on `xash3dpp_platform` for its default log sink:
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │  xash3dpp_cmd_cvar / xash3dpp_filesystem / …             │
 │  (subsystems) — link core PRIVATE                        │

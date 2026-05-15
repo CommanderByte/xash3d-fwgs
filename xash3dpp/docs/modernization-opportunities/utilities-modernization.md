@@ -9,18 +9,19 @@
 The utilities subsystem (`hash`, `atlas`, `utf`, `build`, `string`, `path`,
 `matrix`, `swap`, `dynlib`) is largely modern: `std::array`, `std::span`,
 `std::optional`, `std::numbers::pi`, and `enum class` with bitwise operators
-are already in place after earlier modernization passes.  Remaining issues fall
+are already in place after earlier modernization passes. Remaining issues fall
 into two groups: (1) legacy `const char *` interfaces paired with their modern
 equivalents that are now deletable (2-J), and (2) a handful of residual C-array
 locals, duplicate constants, and one critical missing implementation.
 
----
+______________________________________________________________________
 
 ## High-priority opportunities
 
 ### H-1: `vec_to_yaw` and `vector_angles` are declared but never implemented
 
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/math.hpp` lines ~94–98
+
 - **Current pattern**:
 
   ```cpp
@@ -30,7 +31,8 @@ locals, duplicate constants, and one critical missing implementation.
 
   No definition exists in any `.cpp` under `xash3dpp/src/utilities/`. Any
   translation unit that calls either function will fail to link.
-- **Suggested replacement**: Implement both in `matrix.cpp`.  Legacy reference
+
+- **Suggested replacement**: Implement both in `matrix.cpp`. Legacy reference
   implementations (`SV_VecToYaw`, `VectorAngles`) live in
   `engine/server/sv_studio.c`.
 
@@ -62,18 +64,21 @@ locals, duplicate constants, and one critical missing implementation.
   ```
 
 - **Boundary-safe**: Yes
+
 - **Rationale**: Missing definitions cause linker errors for any caller. This is
   a blocking gap, not a cosmetic issue.
 
----
+______________________________________________________________________
 
 ## Medium-priority opportunities
 
 ### M-1: `DEG2RAD` duplicated in `matrix.cpp` (two `static constexpr` definitions)
 
 - **File(s)**: `xash3dpp/src/utilities/matrix.cpp` lines ~86 and ~191
+
 - **Current pattern**: `static constexpr float DEG2RAD = …` declared
   independently inside both `from_angles()` and `angle_vectors()`.
+
 - **Suggested replacement**: Hoist to a single file-scope constant before both
   functions:
 
@@ -82,7 +87,9 @@ locals, duplicate constants, and one critical missing implementation.
   ```
 
   Replace the two local definitions with uses of `k_deg2rad`.
+
 - **Boundary-safe**: Yes
+
 - **Rationale**: DRY; the value cannot drift between the two functions; naming
   `k_deg2rad` is consistent with the `k_` prefix convention already used for
   `k_crc32table` in `hash.cpp`.
@@ -91,6 +98,7 @@ locals, duplicate constants, and one critical missing implementation.
 
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` line ~46;
   `xash3dpp/src/utilities/string.cpp` lines ~171–184
+
 - **Current pattern**: A raw-pointer overload exists alongside the modern span
   overload:
 
@@ -100,10 +108,13 @@ locals, duplicate constants, and one critical missing implementation.
   ```
 
   Zero call sites for the raw overload exist anywhere in `xash3dpp/`.
+
 - **Suggested replacement**: Delete the `(float*, const char*, size_t)` overload
-  from both the header and `string.cpp`.  Call sites (when they arrive) use
+  from both the header and `string.cpp`. Call sites (when they arrive) use
   `atov( std::span{arr}, sv )`.
+
 - **Boundary-safe**: Yes — engine-internal, no callers.
+
 - **Rationale**: Two overloads for the same operation with different safety
   profiles invites accidental use of the unsafe one.
 
@@ -111,6 +122,7 @@ locals, duplicate constants, and one critical missing implementation.
 
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` line ~51;
   `xash3dpp/src/utilities/string.cpp` lines ~206–215
+
 - **Current pattern**: Raw in+out-buffer overload alongside `std::string` return:
 
   ```cpp
@@ -119,15 +131,19 @@ locals, duplicate constants, and one critical missing implementation.
   ```
 
   Zero call sites for the raw overload exist in `xash3dpp/`.
+
 - **Suggested replacement**: Delete the raw overload; keep only the
   `std::string_view` → `std::string` version.
+
 - **Boundary-safe**: Yes
+
 - **Rationale**: Same argument as M-2; eliminates a shared mutable output buffer.
 
 ### M-4: `atoi` / `atof` accept `const char *` with defensive null guards
 
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` lines ~44–45;
   `xash3dpp/src/utilities/string.cpp` lines ~123–165
+
 - **Current pattern**:
 
   ```cpp
@@ -138,6 +154,7 @@ locals, duplicate constants, and one critical missing implementation.
   Both guard `if (!s || !*s) return 0;` and `skip_spaces` also null-guards.
   The test in `tests/utilities/test_string.cpp` line 40 explicitly passes
   `nullptr` and expects `0`.
+
 - **Suggested replacement**: Add `std::string_view` overloads that remove the
   null checks; keep the `const char *` overloads as thin forwarders for legacy
   callers passing null:
@@ -153,14 +170,17 @@ locals, duplicate constants, and one critical missing implementation.
   Update `atov(std::span<float>, std::string_view)` to call the new string_view
   `atof` overload directly; remove the pointer-arithmetic walk from
   `atov(std::span<float>, …)`.
+
 - **Boundary-safe**: Yes
+
 - **Rationale**: The modern overloads become the canonical interface; new callers
-  never see the null-guard defensive code.  The legacy wrappers keep the
+  never see the null-guard defensive code. The legacy wrappers keep the
   existing test passing without change.
 
 ### M-5: `pretify_mem` uses `char val[32]` / `char buf[48]` local C arrays
 
 - **File(s)**: `xash3dpp/src/utilities/string.cpp` lines ~237–262
+
 - **Current pattern**:
 
   ```cpp
@@ -190,14 +210,17 @@ locals, duplicate constants, and one critical missing implementation.
 
   The inner comma-insertion loop remains but operates on `std::string` rather
   than a fixed-size `char[]`.
+
 - **Boundary-safe**: Yes
+
 - **Rationale**: Eliminates two fixed-size stack buffers that could overrun if
-  `decimals` is very large or `value` is extreme.  `std::format` is also
+  `decimals` is very large or `value` is extreme. `std::format` is also
   exception-safe for compile-time checked format strings.
 
 ### M-6: `number_from_date` uses pointer arithmetic on `string_view::data()`
 
 - **File(s)**: `xash3dpp/src/utilities/build.cpp` lines ~30–75
+
 - **Current pattern**:
 
   ```cpp
@@ -209,6 +232,7 @@ locals, duplicate constants, and one critical missing implementation.
 
   Pointer increments through a `std::string_view` backing store are technically
   valid but unusual and bypass the `string_view` API entirely.
+
 - **Suggested replacement**: Use indexed subscript access instead:
 
   ```cpp
@@ -219,11 +243,13 @@ locals, duplicate constants, and one critical missing implementation.
   ```
 
   Since `size() != 10` is checked up front, all indexed accesses are safe.
+
 - **Boundary-safe**: Yes
+
 - **Rationale**: Eliminates raw pointer manipulation; the indexed form makes the
   "YYYY-MM-DD" pattern visually obvious and can be verified at a glance.
 
----
+______________________________________________________________________
 
 ## Low-priority / cosmetic opportunities
 
@@ -247,7 +273,7 @@ locals, duplicate constants, and one critical missing implementation.
   helper to match `file_extension(std::string_view)`.
 - **Boundary-safe**: Yes
 - **Rationale**: The `std::string_view`-based `file_extension` already
-  duplicates its logic cleanly.  This is a maintenance hazard.
+  duplicates its logic cleanly. This is a maintenance hazard.
 
 ### L-3: `Tokenizer::buf_` is a raw `char[]` member
 
@@ -273,12 +299,12 @@ locals, duplicate constants, and one critical missing implementation.
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/swap.hpp` lines ~44–48
 - **Current**: `const SwapField *subdef;` — `nullptr` means "not a sub-struct".
 - **Replacement**: `std::span<const SwapField> subdef{};` — empty span is the
-  "not a sub-struct" sentinel.  `size < 0` check becomes `!subdef.empty()`.
+  "not a sub-struct" sentinel. `size < 0` check becomes `!subdef.empty()`.
 - **Boundary-safe**: Yes — `SwapField` is engine-internal.
 - **Rationale**: Removes a raw pointer with a sentinel convention; `std::span`
   expresses "optional array" more clearly.
 
----
+______________________________________________________________________
 
 ## Out of scope / ABI-frozen
 
@@ -287,30 +313,28 @@ locals, duplicate constants, and one critical missing implementation.
   code that calls it via `Q_strncpy`.
 - Raw `file_base(const char*, char*, size_t)` and related path functions — kept
   intentionally as "hot-path" C-API overloads alongside the string-returning
-  versions.  Per the header comment they are not slated for removal.
+  versions. Per the header comment they are not slated for removal.
 - `void *` in `ExportEntry::slot` — function pointer type erasure for a generic
   export table; typed generics would require templates throughout the loader,
   which changes the callers' code significantly.
 
----
+______________________________________________________________________
 
 ## Open questions
 
 1. **`vec_to_yaw` / `vector_angles` intent (H-1)**: Are these deliberately left
    unimplemented as stubs for a future content-loaders subsystem, or were they
-   simply overlooked when `angle_vectors` was added?  If the former, the
+   simply overlooked when `angle_vectors` was added? If the former, the
    declarations should be removed or guarded with `// not yet implemented`.
 
-2. **`atoi(nullptr)` contract (M-4)**: The unit test explicitly exercises
-   `atoi(nullptr) == 0`.  Is this a deliberate legacy-compat guarantee for
+1. **`atoi(nullptr)` contract (M-4)**: The unit test explicitly exercises
+   `atoi(nullptr) == 0`. Is this a deliberate legacy-compat guarantee for
    engine code paths that may receive null config tokens, or a test artefact?
    The answer determines whether the `const char *` overloads can be removed
    entirely or must be kept as forwarders.
 
-3. **`Utf8Decoder::feed` U+0000 vs invalid-byte ambiguity**: Both a valid U+0000
+1. **`Utf8Decoder::feed` U+0000 vs invalid-byte ambiguity**: Both a valid U+0000
    byte (0x00) and an isolated continuation byte (0x80–0xBF) return
-   `optional{0}`.  The comment says "optional{0} for invalid byte sequences"
-   but this is the same value as valid U+0000.  If callers need to detect
-   invalid sequences, the return type should be `std::expected<uint32_t,
-   Utf8Error>` (or a wrapper enum).  Needs design decision.
-
+   `optional{0}`. The comment says "optional{0} for invalid byte sequences"
+   but this is the same value as valid U+0000. If callers need to detect
+   invalid sequences, the return type should be `std::expected<uint32_t, Utf8Error>` (or a wrapper enum). Needs design decision.

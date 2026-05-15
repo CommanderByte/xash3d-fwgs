@@ -1,7 +1,7 @@
 # utilities — Architecture Overview
 
-> **Source**: `xash3dpp/src/utilities/`  
-> **Public API**: `xash3dpp/include/xash3dpp/utilities/`  
+> **Source**: `xash3dpp/src/utilities/`\
+> **Public API**: `xash3dpp/include/xash3dpp/utilities/`\
 > **Legacy reference**: `public/crtlib.c`, `public/crclib.c`, `public/matrixlib.c`,
 > `public/atlas.c`, `public/utflib.c`, `public/swaplib.h`, `public/build.c`,
 > `public/dllhelpers.c`, `filesystem/filesystem.c` (gameinfo parser)
@@ -58,6 +58,7 @@ except for the magic-static build number cached by `build::number()`.
 The legacy `public/` directory contained a flat mix of C string macros
 (`Q_strncpy`, `Q_snprintf`, `Q_atoi`, …) interleaved with engine-specific
 concerns. The rewrite:
+
 - Replaces C macros with proper C++20 functions and `inline` helpers.
 - Adds `std::string_view` overloads wherever legacy code took `const char *`.
 - Replaces `vec_t[3]` raw arrays with typed `Vec3`/`Vec2`/`Vec4` structs.
@@ -75,7 +76,7 @@ concerns. The rewrite:
 All symbols are pure functions or value-type classes; there is no subsystem
 initialisation or shutdown. Callers `#include` only the headers they need.
 
-```
+```text
  ┌──────────────────────────────────────────────────────────────────┐
  │  xash3dpp_utilities  (STATIC, no deps beyond C++20 stdlib)       │
  │                                                                  │
@@ -99,7 +100,7 @@ initialisation or shutdown. Callers `#include` only the headers they need.
 
 - [index.md](./index.md) — full file/symbol index
 - [string-utils.md](./string-utils.md) — bounded string ops, numeric conversion, tokenizer, wildcards
-- [path-utils.md](./path-utils.md) — COM_* path helpers, dual raw/`std::string` API
+- [path-utils.md](./path-utils.md) — COM\_\* path helpers, dual raw/`std::string` API
 - [math.md](./math.md) — Vec2/3/4, Matrix3x4/4x4, angle and projection helpers
 - [hash.md](./hash.md) — CRC32, MD5, RAII hasher wrappers
 - [encoding.md](./encoding.md) — UTF-8/16 streaming decode/encode, codepage tables, byte-swap

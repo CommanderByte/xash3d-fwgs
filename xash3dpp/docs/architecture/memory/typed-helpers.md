@@ -1,6 +1,6 @@
 # Typed Helpers
 
-> **Defined in**: `xash3dpp/include/xash3dpp/memory/memory.hpp`  
+> **Defined in**: `xash3dpp/include/xash3dpp/memory/memory.hpp`\
 > **Namespace**: `xash::memory`
 
 ## Overview
@@ -10,7 +10,7 @@ objects. They handle constructor and destructor calls, `std::unique_ptr`
 integration, and RAII pool lifetime. No new memory management logic is introduced
 — every function delegates to the core allocation API.
 
----
+______________________________________________________________________
 
 ## `pool_new<T>`
 
@@ -20,14 +20,14 @@ T* pool_new(PoolHandle pool, Args&&... args) noexcept;
 ```
 
 1. Calls `mem_alloc(pool, sizeof(T))`.
-2. On success, calls `::new (ptr) T(std::forward<Args>(args)...)` (placement
+1. On success, calls `::new (ptr) T(std::forward<Args>(args)...)` (placement
    new).
-3. Returns the typed pointer, or `nullptr` if `mem_alloc` failed.
+1. Returns the typed pointer, or `nullptr` if `mem_alloc` failed.
 
 All allocation counter effects of `mem_alloc` apply. Because exceptions are
 disabled (`/EHs-c-`), placement new must not throw; use `noexcept` constructors.
 
----
+______________________________________________________________________
 
 ## `pool_delete<T>`
 
@@ -37,14 +37,14 @@ void pool_delete(T* ptr) noexcept;
 ```
 
 1. No-op if `ptr == nullptr`.
-2. Calls `ptr->~T()` (explicit destructor invocation).
-3. Calls `mem_free(ptr)`.
+1. Calls `ptr->~T()` (explicit destructor invocation).
+1. Calls `mem_free(ptr)`.
 
 All counter effects of `mem_free` apply. Must only be called with pointers
 returned by `pool_new<T>` (or `mem_alloc` for POD types); passing foreign
 pointers is undefined behaviour.
 
----
+______________________________________________________________________
 
 ## `ScopedPool`
 
@@ -85,7 +85,7 @@ have been freed. Violating this triggers the `assert(live_bytes == 0)` in
 For heap-allocated pools with shared lifetime, use a raw `PoolHandle` and call
 `create_pool`/`destroy_pool` explicitly.
 
----
+______________________________________________________________________
 
 ## `PoolDeleter`
 
@@ -99,7 +99,7 @@ struct PoolDeleter {
 Custom deleter for use as the second template argument to `std::unique_ptr`.
 Calls `pool_delete<T>(ptr)` (destructor + `mem_free`).
 
----
+______________________________________________________________________
 
 ## `pool_ptr<T>`
 
@@ -116,7 +116,7 @@ pool_ptr<Widget> w { pool_new<Widget>(pool, 42, 1.5f) };
 // w is released automatically when it goes out of scope
 ```
 
----
+______________________________________________________________________
 
 ## Integrating with class-level `operator delete`
 
@@ -141,7 +141,7 @@ from.
 Use `pool_ptr<T>` when `T` does not define `operator delete`, or when you want
 the deleter type to be explicit in the `unique_ptr` type signature.
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -153,7 +153,7 @@ the deleter type to be explicit in the `unique_ptr` type signature.
 | `PoolDeleter` | As a deleter type when constructing `std::unique_ptr` by other means |
 | Class `operator delete` | Objects that always live in this subsystem's allocator |
 
----
+______________________________________________________________________
 
 ## Thread safety
 
@@ -166,7 +166,7 @@ The typed helpers add no synchronisation of their own.
 | `ScopedPool` | Non-thread-safe for the pool lifecycle calls themselves; allocations through `handle()` follow the same rules as `mem_alloc`/`mem_free` |
 | `PoolDeleter` / `pool_ptr<T>` | Same as the `unique_ptr` model: the owning thread holds exclusive access to the pointer |
 
----
+______________________________________________________________________
 
 ## See also
 

@@ -11,7 +11,7 @@ allocations — records the source filename and line number at allocation time. 
 does **not** manage virtual address space, NUMA topology, or raw OS allocations;
 it is purely a heap bookkeeping layer.
 
----
+______________________________________________________________________
 
 ## External ABI contracts
 
@@ -33,7 +33,7 @@ The `poolhandle_t` type (`uint32_t`) is part of the stable SDK (`common/xash3d_t
 and is embedded inside `model_t` (a 32-bit field reused to hold the pool handle).
 The 32-bit handle width is therefore a **fixed ABI constraint**.
 
----
+______________________________________________________________________
 
 ## Interface (what the rest of the engine calls)
 
@@ -51,7 +51,7 @@ The 32-bit handle width is therefore a **fixed ABI constraint**.
 | `Mem_PrintStats()` / `Mem_Stats_f()` | Console `memlist` command output |
 | **Convenience macros** | `Mem_Malloc`, `Mem_Calloc`, `Mem_Realloc`, `Mem_Free`, `Mem_Free2`, `Mem_AllocPool`, `Mem_AllocPoolExt`, `Mem_FreePool`, `Mem_EmptyPool`, `Mem_IsAllocated`, `Mem_Check` (all inject `__FILE__`/`__LINE__`) |
 
----
+______________________________________________________________________
 
 ## Dependencies (what this module calls)
 
@@ -65,7 +65,7 @@ The 32-bit handle width is therefore a **fixed ABI constraint**.
 
 No subsystem other than the platform layer is required at init time.
 
----
+______________________________________________________________________
 
 ## Owned state
 
@@ -90,7 +90,7 @@ they use the stub wrappers in `filesystem.c` that bypass the pool system entirel
 - `svgame.mempool` / `svgame.stringspool` — server game
 - `com_studiocache` — studio model extra data
 
----
+______________________________________________________________________
 
 ## Quirks and invariants
 
@@ -142,7 +142,7 @@ they use the stub wrappers in `filesystem.c` that bypass the pool system entirel
   backing allocations through `SWAP_Malloc`/`SWAP_Free` in that case. The rewrite
   must preserve this abstraction point.
 
----
+______________________________________________________________________
 
 ## Open questions
 
@@ -151,24 +151,24 @@ they use the stub wrappers in `filesystem.c` that bypass the pool system entirel
    allocate from engine pools without wrappers — but adds template complexity and
    requires `<memory_resource>`.
 
-2. **Thread safety.** The legacy allocator has none. Should the new module be
+1. **Thread safety.** The legacy allocator has none. Should the new module be
    lock-free (e.g. per-thread pool arenas) or use a lightweight mutex? The
    filesystem module is the main thread-safety concern today.
 
-3. **Drop `MEM_SMALL_ALLOC_OPT`?** The compact header exists to save ~24 bytes
+1. **Drop `MEM_SMALL_ALLOC_OPT`?** The compact header exists to save ~24 bytes
    per small allocation. With modern allocators (tcmalloc, jemalloc, or even
    a slab allocator) the pool bookkeeping overhead can be eliminated entirely.
    Decision needed before designing the pool API.
 
-4. **Stale handle safety.** Pool slot reuse means a stale `poolhandle_t` may
+1. **Stale handle safety.** Pool slot reuse means a stale `poolhandle_t` may
    silently alias a live pool. The rewrite should decide whether to use
    generation counters or a different handle scheme.
 
-5. **`XASH_CUSTOM_SWAP` port.** Does the rewrite need to support platforms that
+1. **`XASH_CUSTOM_SWAP` port.** Does the rewrite need to support platforms that
    lack a heap allocator? If yes, the backing allocator must be injectable. If
    no, the platform variant can be dropped.
 
-6. **`pfnMemAlloc` pool-less surface.** The legacy/GoldSrc renderer API,
+1. **`pfnMemAlloc` pool-less surface.** The legacy/GoldSrc renderer API,
    GameUI, and physics interfaces use a two-function `(alloc, free)` pair with
    no pool parameter. The engine side hardcodes allocating from a single fixed
    pool per plugin. The rewrite should decide whether to keep this pattern or

@@ -1,7 +1,7 @@
 # cmd_cvar Modernization Opportunities
 
-> C++ standard in use: **C++20** (from `xash3dpp/CMakeLists.txt`)  
-> Boundary spec: [`docs/boundaries/cmd_cvar-boundary.md`](../boundaries/cmd_cvar-boundary.md)  
+> C++ standard in use: **C++20** (from `xash3dpp/CMakeLists.txt`)\
+> Boundary spec: [`docs/boundaries/cmd_cvar-boundary.md`](../boundaries/cmd_cvar-boundary.md)\
 > ABI-frozen symbols in this subsystem: `CvarAbi` layout, `CvarFlags` values,
 > `CommandFn = void (*)()`, all `pfn*` signatures in `engine/eiface.h` /
 > `engine/cdll_int.h` / `engine/menu_int.h`
@@ -22,20 +22,20 @@ safer. Everything else is low-priority polish.
 
 | Item | Status |
 |------|--------|
-| H-1 reinterpret\_cast helpers | **Implemented** |
-| H-2 pool-owned fields → `char *` | **Implemented** (Command/AliasDef only; Cvar::def\_string/desc kept `const char *` — set from string literals at init) |
-| M-1 cmd\_execute\_string stack buf | **Implemented** |
+| H-1 reinterpret_cast helpers | **Implemented** |
+| H-2 pool-owned fields → `char *` | **Implemented** (Command/AliasDef only; Cvar::def_string/desc kept `const char *` — set from string literals at init) |
+| M-1 cmd_execute_string stack buf | **Implemented** |
 | M-2 Public API `string_view` | Remaining |
-| M-3 bucket\_histogram `std::span` | **Implemented** |
+| M-3 bucket_histogram `std::span` | **Implemented** |
 | M-4 `utilities::snprintf` | **Implemented** |
 | L-1 `std::array` for observers | Remaining |
-| L-2 `std::array` for tok\_argv/buf | Remaining |
+| L-2 `std::array` for tok_argv/buf | Remaining |
 | L-3 `std::array` for local hist | Remaining |
 | L-4 `std::array` for MapStats | Remaining |
 | L-5 Compat tables `string_view` | Remaining |
-| L-6 `std::strlen` in pool\_dup | Remaining |
+| L-6 `std::strlen` in pool_dup | Remaining |
 
----
+______________________________________________________________________
 
 ## High-priority opportunities
 
@@ -50,6 +50,7 @@ rewritten using a `new_tail` pointer to avoid the type-punning alias entirely.
 
 - **File(s)**: `src/cmd_cvar/cvar_ops.cpp` lines ~75, ~100, ~120, ~250, ~260,
   ~290, ~310, ~320, ~355, ~365; `src/cmd_cvar/context_init.cpp` lines ~214, ~238
+
 - **Current pattern**:
 
   ```cpp
@@ -73,11 +74,11 @@ rewritten using a `new_tail` pointer to avoid the type-punning alias entirely.
   }
   ```
 
-  Every call site becomes `cvar_list_next(cv)` or `cvar_list_set_next(cv,
-  next)`. The `reinterpret_cast` is reviewed and tested in one place only.
+  Every call site becomes `cvar_list_next(cv)` or `cvar_list_set_next(cv, next)`. The `reinterpret_cast` is reviewed and tested in one place only.
 
 - **Boundary-safe**: Yes — the cast is already correct and ABI-required; this
   just consolidates 11 open-coded copies into two reviewed, named helpers.
+
 - **Rationale**: Any future reordering of `CvarAbi` fields, or any wrong
   substitution of `cv->abi.next` with a different field, silently miscompiles
   all 11 sites. Consolidation into a named helper makes the cast auditable in
@@ -86,7 +87,7 @@ rewritten using a `new_tail` pointer to avoid the type-punning alias entirely.
   explicitly deferred; this report records it as the highest-value remaining
   mechanical improvement.
 
----
+______________________________________________________________________
 
 ### H-2: `const char *` pool-owned fields force `const_cast` at every free site
 
@@ -99,6 +100,7 @@ pool-dups them), so changing to `char *` would require adding `const_cast` at
 those init sites. Net: removed 8 casts, added 0.
 
 - **File(s)**:
+
   - `include/xash3dpp/private/cmd_cvar/registry_types.hpp` lines ~29–32
     (`Command::name`, `Command::desc`); line ~39 (`AliasDef::value`)
   - `include/xash3dpp/cmd_cvar/cvar.hpp` lines ~153, ~155
@@ -106,6 +108,7 @@ those init sites. Net: removed 8 casts, added 0.
   - Free sites: `src/cmd_cvar/cvar_ops.cpp` lines ~260–280 (`cvar_unlink`);
     `src/cmd_cvar/context_init.cpp` lines ~242–285 (`shutdown`);
     `src/cmd_cvar/cmd_ops.cpp` lines ~30, ~60, ~90 (`cmd_remove`, `cmd_unlink`)
+
 - **Current pattern** (~10 occurrences):
 
   ```cpp
@@ -151,11 +154,12 @@ those init sites. Net: removed 8 casts, added 0.
 
 - **Boundary-safe**: Yes — `Command`, `AliasDef`, and the non-ABI fields of
   `Cvar` are internal; no frozen header exposes them.
+
 - **Rationale**: Ten scattered `const_cast<char *>` + `mem_free` calls obscure
   intent and make audits harder. Each site requires the reader to verify that
   the pointer is genuinely pool-owned before concluding the cast is safe.
 
----
+______________________________________________________________________
 
 ## Medium-priority opportunities
 
@@ -166,6 +170,7 @@ a `char buf[limits::cmd_line_max]` stack buffer. `#include <string>` removed fro
 `cmd_dispatch.cpp`.
 
 - **File(s)**: `src/cmd_cvar/cmd_dispatch.cpp` lines ~185–188
+
 - **Current pattern**:
 
   ```cpp
@@ -193,18 +198,20 @@ a `char buf[limits::cmd_line_max]` stack buffer. `#include <string>` removed fro
   done for `line_copy` internally; the outer conversion becomes unnecessary).
 
 - **Boundary-safe**: Yes — `cmd_execute_string` is internal.
+
 - **Rationale**: With `/EHs-c-` (no exceptions), a `std::string` constructor
   failure produces a `std::bad_alloc` that cannot be caught. Using a stack
   buffer matches the no-allocation contract the rest of the dispatch path
   honours (all other callers pass already-null-terminated strings).
 
----
+______________________________________________________________________
 
 ### M-2: Public registry API takes `const char *` where `std::string_view` is natural
 
 **Status: Remaining.**
 
 - **File(s)**: `include/xash3dpp/cmd_cvar/context.hpp` lines ~80–180
+
 - **Current pattern**:
 
   ```cpp
@@ -219,16 +226,18 @@ a `char buf[limits::cmd_line_max]` stack buffer. `#include <string>` removed fro
   are unaffected (implicit conversion). Internal call chains that ultimately
   need null-terminated strings for `pool_dup` or `CmdHashMap::find` add a
   `sv.data()` / local-copy step only once at the boundary.
+
 - **Boundary-safe**: Yes — `context.hpp` is not a frozen header. `std::string_view`
   is implicitly constructible from `const char *`, so all existing call sites
   continue to compile unchanged.
+
 - **Rationale**: Five methods on the command-buffer side already use
   `std::string_view` (`cbuf_add_text`, `cbuf_insert_text`, `cbuf_stuff_text`,
   `cbuf_clear`-adjacent, `cmd_execute_string`). Completing the migration removes
   the inconsistency and prevents accidental passing of unterminated spans to
   internal C-string APIs.
 
----
+______________________________________________________________________
 
 ### M-3: `CmdHashMap::bucket_histogram` takes a raw pointer + length
 
@@ -236,6 +245,7 @@ a `char buf[limits::cmd_line_max]` stack buffer. `#include <string>` removed fro
 `cmd_hash_map.hpp`. Call site in `context_misc.cpp` simplified to `map.bucket_histogram(hist)`.
 
 - **File(s)**: `include/xash3dpp/private/cmd_cvar/cmd_hash_map.hpp` line ~138
+
 - **Current pattern**:
 
   ```cpp
@@ -253,11 +263,12 @@ a `char buf[limits::cmd_line_max]` stack buffer. `#include <string>` removed fro
   and would become `bucket_histogram(hist)`.
 
 - **Boundary-safe**: Yes — debug-only method, not exposed outside the subsystem.
+
 - **Rationale**: C-array + length is pattern 2-C in the audit; `std::span` is
   the C++20 replacement and reduces accidental mismatch between the array size
   and the explicit length argument.
 
----
+______________________________________________________________________
 
 ### M-4: `std::snprintf` used directly instead of `utilities::snprintf`
 
@@ -266,8 +277,10 @@ handlers, `context_misc.cpp` `dump_hash_stats`) changed to `utilities::snprintf`
 Orphaned `#include <cstdio>` removed from both files.
 
 - **File(s)**:
+
   - `src/cmd_cvar/context_init.cpp` lines ~204, ~222 (cmdlist, cvarlist handlers)
   - `src/cmd_cvar/context_misc.cpp` line ~118 (dump_hash_stats)
+
 - **Current pattern**:
 
   ```cpp
@@ -298,11 +311,12 @@ Orphaned `#include <cstdio>` removed from both files.
 
 - **Boundary-safe**: Yes — all three sites are in built-in command handlers
   and debug utilities.
+
 - **Rationale**: `utilities::snprintf` is the project-standard safe wrapper;
   using raw `std::snprintf` in three places is inconsistent. The `std::format`
   option is the clean C++20 path but requires verifying allocation acceptability.
 
----
+______________________________________________________________________
 
 ## Low-priority / cosmetic opportunities
 
@@ -315,7 +329,7 @@ Orphaned `#include <cstdio>` removed from both files.
 | L-5 | `compat_goldsrc.cpp` lines ~37–57 | `constexpr const char *kFilterableExemptions[]`, `kOverridableCommands[]` | `constexpr std::array<std::string_view, N>` | Remaining |
 | L-6 | `context_impl.hpp` ~L122 | `utilities::strlen(src)` in `pool_dup` — null guard already above | `std::strlen(src)` (src guaranteed non-null at that point) | Remaining |
 
----
+______________________________________________________________________
 
 ## Out of scope / ABI-frozen
 
@@ -327,7 +341,7 @@ Orphaned `#include <cstdio>` removed from both files.
 | `CommandFn = void (*)()` | ABI-compatible with legacy `xcommand_t`. Cannot become `std::function` (different calling convention and layout). |
 | `pfnCvar_RegisterVariable`, `pfnCVarGetPointer`, `pfnCvar_DirectSet`, `pfnAddServerCommand`, all `pfnRegister*` / `pfnGetCvar*` / `pfnAddCommand` / `pfnClientCmd` / `pfnServerCmd` | Defined in `engine/eiface.h`, `engine/cdll_int.h`, `engine/menu_int.h` — fully frozen SDK headers. |
 
----
+______________________________________________________________________
 
 ## Open questions
 

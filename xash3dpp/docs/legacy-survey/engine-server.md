@@ -42,10 +42,10 @@ Does **not** depend on `ref/` or `engine/client/` even in dedicated mode.
 ## Coupling and Risks
 
 1. **Rigid edict layout** — entity fields baked into `entvars_t`; game DLLs assume fixed offsets. Reordering breaks the ABI.
-2. **Monolithic DLL interface** — `eiface.h` is ~150 function pointers; adding/removing breaks compatibility. No version negotiation.
-3. **Save format brittle** — binary serialization (0x71) assumes field ordering & sizes; mismatches crash.
-4. **Physics/world coupling** — `sv_world.c` directly manipulates edict state; physics callbacks (`svgame.physFuncs`) optional but deeply threaded.
-5. **String pool bottleneck** — entity names/models cached in global string pool; collisions on large maps.
+1. **Monolithic DLL interface** — `eiface.h` is ~150 function pointers; adding/removing breaks compatibility. No version negotiation.
+1. **Save format brittle** — binary serialization (0x71) assumes field ordering & sizes; mismatches crash.
+1. **Physics/world coupling** — `sv_world.c` directly manipulates edict state; physics callbacks (`svgame.physFuncs`) optional but deeply threaded.
+1. **String pool bottleneck** — entity names/models cached in global string pool; collisions on large maps.
 
 ## Modernization Opportunities
 

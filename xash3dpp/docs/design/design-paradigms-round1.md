@@ -1,10 +1,10 @@
 # Design Paradigms — Round 1: Survey and Open Questions
 
-> **Status**: all questions decided — see individual Q sections below  
-> **Scope**: all five completed subsystems  
+> **Status**: all questions decided — see individual Q sections below\
+> **Scope**: all five completed subsystems\
 > **Application**: §4 records what applies now, when next touched, and new code only
 
----
+______________________________________________________________________
 
 ## 1. What This Document Is
 
@@ -18,7 +18,7 @@ The goal is not to rewrite what works. It is to identify where the ad-hoc choice
 across subsystems will create friction as the engine grows — and to agree on
 defaults that new subsystems should follow.
 
----
+______________________________________________________________________
 
 ## 2. Current Pattern Inventory
 
@@ -37,7 +37,7 @@ defaults that new subsystems should follow.
 pimpl-context-class (filesystem, cmd_cvar). None of these is wrong per se, but
 there is no documented rule for when to choose each one.
 
----
+______________________________________________________________________
 
 ### 2.2 Pimpl variants
 
@@ -63,13 +63,13 @@ header and defining them in the `.cpp`.
 Both approaches are correct. Two valid approaches to the same problem, both in
 active use, is a maintenance surprise for anyone writing a third class.
 
----
+______________________________________________________________________
 
 ### 2.3 Init / shutdown lifecycle patterns
 
 | Subsystem | Init style | Return type | Shutdown |
 |-----------|-----------|------------|---------|
-| `Filesystem` | `Init(sv, sv, sv, sv={})`  direct positional args | `bool` | `void Shutdown()` |
+| `Filesystem` | `Init(sv, sv, sv, sv={})` direct positional args | `bool` | `void Shutdown()` |
 | `CmdCvarContext` | `init(const CmdCvarInitParams &)` — struct | `bool` | `void shutdown() noexcept` |
 | `memory` | No init call — pools created on demand | — | No shutdown — `destroy_pool()` per pool |
 | `platform` | No init except `crash::install_handler()` | — | No shutdown |
@@ -79,7 +79,7 @@ active use, is a maintenance surprise for anyone writing a third class.
 `CmdCvarContext` uses a params struct. When a third subsystem with a non-trivial
 init is written, which style should it use?
 
----
+______________________________________________________________________
 
 ### 2.4 Error handling
 
@@ -100,7 +100,7 @@ returning `nullptr`. The current split looks opportunistic rather than systemati
 `optional<T>` is used where `T` is small and value-semantic; `nullptr` where the
 return type is already a pointer; `bool` for void-or-fail operations.
 
----
+______________________________________________________________________
 
 ### 2.5 Threading contracts
 
@@ -118,7 +118,7 @@ The threading analyses document five distinct postures:
 in `filesystem/` (where it would prevent the undocumented lifecycle races) or
 `cmd_cvar/`. The pattern exists but is applied inconsistently.
 
----
+______________________________________________________________________
 
 ### 2.6 C++ feature usage
 
@@ -148,7 +148,7 @@ Features **available in C++20 but not yet used**:
 - `std::format` — intentionally avoided (heap allocation risk in `bad_alloc` paths)
 - `std::coroutine` — not yet relevant
 
----
+______________________________________________________________________
 
 ### 2.7 ABI / plugin interface patterns
 
@@ -176,14 +176,14 @@ All four are intra-process seams, Q-7 conformant (small, focused interfaces with
 a single concrete production implementation plus a test fake), and none of them
 cross a DLL boundary.
 
----
+______________________________________________________________________
 
 ## 3. Open Questions
 
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
----
+______________________________________________________________________
 
 ### Q-1: When should a subsystem be a class vs free functions?
 
@@ -203,7 +203,7 @@ Applied to existing subsystems: `utilities` and `platform` are correctly free
 functions and stay that way. `filesystem` and `cmd_cvar` are correctly pimpl
 classes. `memory` is the documented singleton exception.
 
----
+______________________________________________________________________
 
 ### Q-2: Should there be a root `EngineContext` that owns all subsystem instances?
 
@@ -232,7 +232,7 @@ capture subsystem references — no global access needed.
 `memory` and `platform` are explicitly exempt: memory must outlive `EngineContext`;
 platform has no meaningful state to own.
 
----
+______________________________________________________________________
 
 ### Q-3: Standardize the pimpl variant — `unique_ptr<Impl>` or raw `Impl*`?
 
@@ -245,7 +245,7 @@ declare-in-header / define-in-`.cpp` pattern documented in
 `cmd_cvar`'s raw `Impl*` variant is grandfathered in; not changed proactively.
 Bring into conformance the next time `cmd_cvar` is modified for another reason.
 
----
+______________________________________________________________________
 
 ### Q-4: Init params — positional args or params struct?
 
@@ -262,7 +262,7 @@ Subsystems with no init at all (`utilities`, `platform`, `memory`) are exempt.
 to the params struct form when `EngineContext` is written and the init call moves
 there.
 
----
+______________________________________________________________________
 
 ### Q-5: Standardize error return patterns
 
@@ -289,13 +289,14 @@ diagnostics channel is ready, error events flow as typed
 
 All error return values carry `[[nodiscard]]`.
 
----
+______________________________________________________________________
 
 ### Q-6: Threading model — what threads will the engine have?
 
 > **Status**: ✅ DECIDED — see `threading-model.md` for the full specification.
 
 **Summary of decisions**:
+
 - Six `ThreadRole` values: `Main`, `AudioCallback`, `AudioDecoder`, `Worker`,
   `Render` (deferred Chunk 10), `NetIO` (deferred).
 - Worker pool (2–4 threads) started at `Host::init()`; audio threads at
@@ -313,7 +314,7 @@ All error return values carry `[[nodiscard]]`.
 - Interface rule: query functions take `const T&`; mutation is explicit;
   compute and commit phases are separated in the server tick.
 
----
+______________________________________________________________________
 
 ### Q-7: Every `ISubsystem` vtable interface or only for legacy ABI?
 
@@ -336,7 +337,7 @@ the engine uses the C++ interface internally; a DLL shim translates at the edge.
 Any method on an `I<X>` interface exposed via a DLL shim must be implementable
 with `const char*` on the outer face (no `std::string_view` crossing the DLL edge).
 
----
+______________________________________________________________________
 
 ### Q-8: How should `std::string_view` cross DLL/ABI boundaries?
 
@@ -350,7 +351,7 @@ optional `size_t` length if the callee needs it). The receiving side wraps in
 No custom `StringRef` type is needed — the rule is simple enough to follow
 without a new type.
 
----
+______________________________________________________________________
 
 ### Q-9: Ownership vocabulary across subsystem boundaries
 
@@ -380,7 +381,7 @@ type aliasing.
 `std::span<const T>` is the default for non-owning views; `std::span<T>` requires
 explicit justification at the call site.
 
----
+______________________________________________________________________
 
 ### Q-10: Modular plugin / DLL bootstrap convention
 
@@ -415,7 +416,7 @@ descriptor loads on an older engine — the engine reads only up to its own
 
 Deferred to Chunk 10. No new plugin types before then.
 
----
+______________________________________________________________________
 
 ## 4. Application Schedule
 
@@ -458,7 +459,7 @@ These rules apply from the first line of any new subsystem:
 - `std::expected<T, ErrorCode>` for rich failure modes, from Chunk 2 (Q-5)
 - Versioned C plugin descriptor for new plugin types, from Chunk 10 (Q-10)
 
----
+______________________________________________________________________
 
 ## 5. What Is Already Working Well
 

@@ -29,11 +29,11 @@ void CmdCvarContext::cbuf_execute() noexcept;
 ```
 
 1. If `cmd_wait > 0`: decrement and return (skip this frame's dispatch).
-2. Dispatch commands from `cmd_text` (privileged) until the queue is drained.
-3. When `cmd_text` is empty, check `ITrustOracle::stuffcmd_is_trusted()`.
+1. Dispatch commands from `cmd_text` (privileged) until the queue is drained.
+1. When `cmd_text` is empty, check `ITrustOracle::stuffcmd_is_trusted()`.
    - If **trusted**: promote all `filteredcmd_text` entries to `cmd_text` and dispatch them with full privilege.
    - If **untrusted**: dispatch `filteredcmd_text` entries through the filter check.
-4. Each command line is tokenised and routed by `cmd_dispatch_line()`.
+1. Each command line is tokenised and routed by `cmd_dispatch_line()`.
 
 `cbuf_execute` must not be called re-entrantly. A `CommandFn` that calls `cbuf_execute()` again will overwrite the tokenizer scratch state in `Impl`.
 

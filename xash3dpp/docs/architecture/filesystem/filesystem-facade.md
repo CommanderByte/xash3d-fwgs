@@ -1,7 +1,7 @@
 # Filesystem Facade
 
 > **Defined in**: `xash3dpp/include/xash3dpp/filesystem/filesystem.hpp` /
-> `xash3dpp/src/filesystem/filesystem.cpp`  
+> `xash3dpp/src/filesystem/filesystem.cpp`\
 > **Namespace**: `xash::filesystem`
 
 ## Overview
@@ -39,30 +39,32 @@ the lifetime of a game session, created before worker threads start.
 #### `init(rootdir, basedir, gamedir, rodir)`
 
 Stores the four root strings and creates the `PoolHandle`:
-```
+
+```cpp
 impl_->pool_ = xash::memory::create_pool("filesystem");
 ```
+
 Returns `false` if pool creation fails. Must be called on the main thread before
 any other method and before worker threads start issuing queries.
 
 #### `activate_game(gamefolder, mount_flags, language)`
 
 1. Calls `scan_game_directories(rootdir)` to find all `GameInfo` candidates.
-2. Finds the matching `gamefolder` entry.
-3. Under `unique_lock(game_mutex)`: stores `active_game`, `gamedir`,
+1. Finds the matching `gamefolder` entry.
+1. Under `unique_lock(game_mutex)`: stores `active_game`, `gamedir`,
    `game_loaded = true`.
-4. Calls `rescan(mount_flags, language)` to rebuild search paths.
+1. Calls `rescan(mount_flags, language)` to rebuild search paths.
 
 Returns `false` if the gamefolder is not found.
 
 #### `rescan(mount_flags, language)`
 
 1. Snapshots `active_game` under `shared_lock(game_mutex)`.
-2. Releases the game lock.
-3. Calls `clear_paths()` (exclusive lock on `paths_mutex`).
-4. Rebuilds the full hierarchy (`basedir → falldir → gamedir`) by calling
+1. Releases the game lock.
+1. Calls `clear_paths()` (exclusive lock on `paths_mutex`).
+1. Rebuilds the full hierarchy (`basedir → falldir → gamedir`) by calling
    `add_game_hierarchy` (which calls `add_game_directory` for each level).
-5. Each `add_game_directory` call acquires an exclusive lock on `paths_mutex`.
+1. Each `add_game_directory` call acquires an exclusive lock on `paths_mutex`.
 
 **Known TOCTOU window**: between `clear_paths()` and the first `add_game_directory`,
 `search_paths` is empty. A concurrent reader acquiring a `shared_lock` during
@@ -71,8 +73,8 @@ this window will find no paths and silently return not-found / nullptr.
 #### `shutdown()`
 
 1. Clears `search_paths` under `unique_lock(paths_mutex)` — destroys all backends.
-2. Resets `active_game` and `game_loaded` under `unique_lock(game_mutex)`.
-3. Calls `xash::memory::destroy_pool(pool_)`.
+1. Resets `active_game` and `game_loaded` under `unique_lock(game_mutex)`.
+1. Calls `xash::memory::destroy_pool(pool_)`.
 
 **Pre-condition**: all `unique_ptr<File>` handles returned by `open` must have
 been destroyed before `shutdown()`. Their `operator delete` calls `mem_free`
@@ -176,6 +178,7 @@ concurrently, which is the expected usage.
 ## Error handling
 
 All methods signal failure via return values:
+
 - `bool` for `init`, `activate_game`, `write_file`, `rename`, `remove`, `mount_archive`
 - `nullptr` / empty `vector` / empty `optional` for file and query operations
 - No exceptions are thrown.

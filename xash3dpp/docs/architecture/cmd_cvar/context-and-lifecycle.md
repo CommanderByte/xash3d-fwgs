@@ -63,10 +63,10 @@ The two built-in cvars (`builtin_cmd_scripting`, `builtin_cl_filterstuffcmd`) ar
 ```
 
 1. Creates the `cmd_cvar` memory pool via `memory::create_pool("cmd_cvar")`. Returns `false` (with a logged `Error`-level message) if OOM.
-2. Stores the injected `trust_oracle` and `compat_policy` pointers.
-3. Wires `cvar_map`, `cmd_map`, and `alias_map` to the new pool.
-4. Registers the two built-in engine cvars (`cmd_scripting`, `cl_filterstuffcmd`).
-5. Registers the built-in commands (`echo`, `alias`, `exec`, `wait`, `if`, `else`, `cmdlist`, `cvarlist`, `hashstats`).
+1. Stores the injected `trust_oracle` and `compat_policy` pointers.
+1. Wires `cvar_map`, `cmd_map`, and `alias_map` to the new pool.
+1. Registers the two built-in engine cvars (`cmd_scripting`, `cl_filterstuffcmd`).
+1. Registers the built-in commands (`echo`, `alias`, `exec`, `wait`, `if`, `else`, `cmdlist`, `cvarlist`, `hashstats`).
 
 `init()` is callable again after `shutdown()` — reinitialises cleanly.
 
@@ -77,9 +77,9 @@ void CmdCvarContext::shutdown() noexcept;
 ```
 
 1. Clears both command queues (`cmd_text`, `filteredcmd_text`).
-2. Calls `clear_nodes()` on all three hash maps (frees chain nodes; does not touch `V*`).
-3. Destroys the `cmd_cvar` pool (frees all pool-allocated strings and structs in bulk).
-4. Resets all `Impl` fields to their zero-initialised defaults (ready for a future `init()` call).
+1. Calls `clear_nodes()` on all three hash maps (frees chain nodes; does not touch `V*`).
+1. Destroys the `cmd_cvar` pool (frees all pool-allocated strings and structs in bulk).
+1. Resets all `Impl` fields to their zero-initialised defaults (ready for a future `init()` call).
 
 `pending_unlink` is allocated on the system heap (not the pool) so it can be safely drained and cleared after pool destruction. The command queues (`std::deque<std::string>`) use the system heap for the same reason; they are always empty at the point `destroy_pool` runs.
 

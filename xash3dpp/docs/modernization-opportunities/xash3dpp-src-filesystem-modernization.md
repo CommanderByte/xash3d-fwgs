@@ -1,28 +1,28 @@
 # C++ Modernization Opportunities — `xash3dpp/src/filesystem`
 
-**Standard**: C++20  
-**Exceptions**: disabled (`/EHs-c-` / `-fno-exceptions`)  
-**RTTI**: disabled  
-**ABI boundary**: None — filesystem is fully internal; only `GetFSAPI` is exported.  
+**Standard**: C++20\
+**Exceptions**: disabled (`/EHs-c-` / `-fno-exceptions`)\
+**RTTI**: disabled\
+**ABI boundary**: None — filesystem is fully internal; only `GetFSAPI` is exported.\
 See `xash3dpp/docs/boundaries/filesystem-boundary.md`.
 
----
+______________________________________________________________________
 
 ## Summary
 
-| Tier   | Count | Key theme |
+| Tier | Count | Key theme |
 |--------|-------|-----------|
-| High   | 2     | Stack-allocation hazards |
-| Medium | 6     | Type safety, portability, verbosity |
-| Low    | 5     | Readability and minor cleanup |
+| High | 2 | Stack-allocation hazards |
+| Medium | 6 | Type safety, portability, verbosity |
+| Low | 5 | Readability and minor cleanup |
 
----
+______________________________________________________________________
 
 ## High Priority
 
 ### H-1 — 64 KB stack allocation in `OsFile::Seek` backward path
 
-**File**: `src/filesystem/file.cpp` ~L233  
+**File**: `src/filesystem/file.cpp` ~L233\
 **Category**: 2-C (raw array), safety hazard
 
 ```cpp
@@ -45,11 +45,11 @@ keeps the scratch buffer with its logical owner.
 **Proposed fix**: Replace `mz_uint8 sink[65536]` with `zlib_->in_buf.data()` /
 `zlib_->in_buf.size()` in the discard loop. Requires no API change.
 
----
+______________________________________________________________________
 
 ### H-2 — Fixed-size `wchar_t` and `char` stack buffers in `platform/win32.cpp`
 
-**File**: `src/filesystem/platform/win32.cpp` — six sites  
+**File**: `src/filesystem/platform/win32.cpp` — six sites\
 **Category**: 2-A (char/wchar_t buffer), latent truncation bug
 
 | Function | Variable | Size |
@@ -89,13 +89,13 @@ static std::optional<std::wstring> to_wide(std::string_view s) noexcept {
 Call sites become `auto wp = to_wide(path); if (!wp) return {};` and then use
 `wp->c_str()`.
 
----
+______________________________________________________________________
 
 ## Medium Priority
 
 ### M-1 — `::strnlen` POSIX extension in `pak_backend.cpp`
 
-**File**: `src/filesystem/backends/pak_backend.cpp` L80  
+**File**: `src/filesystem/backends/pak_backend.cpp` L80\
 **Category**: 2-C (non-standard C function), portability
 
 ```cpp
@@ -115,13 +115,13 @@ const std::size_t len = static_cast<std::size_t>(
 
 This is zero-overhead, fully standard, and equally readable with the `std::begin`/`std::end` ADL range.
 
----
+______________________________________________________________________
 
 ### M-2 — `File::Seek` takes a raw `int` whence parameter
 
 **File**: `include/xash3dpp/filesystem/file.hpp`,
-          `src/filesystem/file.cpp`,
-          `src/filesystem/platform/{win32,posix}.cpp`  
+`src/filesystem/file.cpp`,
+`src/filesystem/platform/{win32,posix}.cpp`\
 **Category**: 2-E (raw integer "enum"), API type safety
 
 ```cpp
@@ -146,11 +146,11 @@ Remove the `#include <cstdio>` pulled in solely for these macros from `file.cpp`
 Internal `platform::seek` still takes `int whence` (OS API) — convert at the call
 site with `static_cast<int>(origin)`.
 
----
+______________________________________________________________________
 
 ### M-3 — `inflate_read(void* out, size_t n)` raw void pointer
 
-**File**: `src/filesystem/file.cpp` (private method)  
+**File**: `src/filesystem/file.cpp` (private method)\
 **Category**: 2-F (function pointer / C-style signature), type clarity
 
 ```cpp
@@ -166,14 +166,14 @@ to `std::span<mz_uint8>` (matching miniz's native type):
 FsOffset OsFile::inflate_read( std::span<mz_uint8> out );
 ```
 
-Call sites update from `inflate_read(ptr, n)` to `inflate_read({ptr, n})`.  
+Call sites update from `inflate_read(ptr, n)` to `inflate_read({ptr, n})`.\
 The `mz_uint8*` cast at the `mz_stream` assignment becomes unnecessary.
 
----
+______________________________________________________________________
 
 ### M-4 — `reinterpret_cast<const char*>(buf.data())` byte-to-string conversion in `filesystem.cpp`
 
-**File**: `src/filesystem/filesystem.cpp` L122, L134  
+**File**: `src/filesystem/filesystem.cpp` L122, L134\
 **Category**: 2-G (cast), repeated unsafe-looking pattern
 
 ```cpp
@@ -192,11 +192,11 @@ inline std::string bytes_as_string( std::span<const std::byte> s ) noexcept {
 }
 ```
 
----
+______________________________________________________________________
 
 ### M-5 — Remaining manual 3-segment path joins in `FindLibrary`
 
-**File**: `src/filesystem/filesystem.cpp` L~392–400  
+**File**: `src/filesystem/filesystem.cpp` L~392–400\
 **Category**: 2-I (miscellaneous), consistency with established `path_join` utility
 
 ```cpp
@@ -216,16 +216,17 @@ const std::string candidate =
 ```
 
 Or add a three-argument overload:
+
 ```cpp
 std::string path_join( std::string_view a, std::string_view b, std::string_view c );
 ```
 
----
+______________________________________________________________________
 
 ### M-6 — WAD / PAK magic constants use verbose bit-shift form
 
 **Files**: `src/filesystem/backends/wad_backend.cpp` L31–38,
-           `src/filesystem/backends/pak_backend.cpp` L28–30  
+`src/filesystem/backends/pak_backend.cpp` L28–30\
 **Category**: 2-G (cast), readability
 
 ```cpp
@@ -247,13 +248,13 @@ static constexpr std::uint32_t k_WAD2 =
 **Note**: Only valid on little-endian platforms. Add a static_assert or keep the
 current form if big-endian support is ever planned.
 
----
+______________________________________________________________________
 
 ## Low Priority
 
 ### L-1 — `#pragma pack` in `zip_backend.cpp`
 
-**File**: `src/filesystem/backends/zip_backend.cpp`  
+**File**: `src/filesystem/backends/zip_backend.cpp`\
 **Category**: 2-I (miscellaneous)
 
 `#pragma pack(push,1)` / `#pragma pack(pop)` is compiler-specific but is supported
@@ -261,11 +262,11 @@ by all targeted compilers (MSVC, GCC, Clang). The only portable C++ alternative
 would be `[[gnu::packed]]` (GCC/Clang only) or manual `std::memcpy`-based deserialisation.
 Given universal `#pragma pack` support, this is acceptable as-is. **No action needed.**
 
----
+______________________________________________________________________
 
 ### L-2 — Unnamed padding bytes `pad0/pad1` in `DiskLump` (wad_backend.cpp)
 
-**File**: `src/filesystem/backends/wad_backend.cpp`  
+**File**: `src/filesystem/backends/wad_backend.cpp`\
 **Category**: 2-I (miscellaneous)
 
 ```cpp
@@ -288,11 +289,11 @@ std::uint16_t : 16;  // unused
 
 Low value change. **Optional only.**
 
----
+______________________________________________________________________
 
 ### L-3 — `any(SearchPathFlags)` free function could become `operator bool`
 
-**File**: `include/xash3dpp/filesystem/search_path_flags.hpp`  
+**File**: `include/xash3dpp/filesystem/search_path_flags.hpp`\
 **Category**: 2-J (deletion candidate)
 
 `any(f)` wraps `static_cast<uint32_t>(f) != 0`. Adding `operator bool` to the enum
@@ -307,23 +308,22 @@ constexpr explicit operator bool(SearchPathFlags f); // also not valid for enum 
 Actually `operator bool` cannot be defined for an `enum class` — `any()` is the
 correct idiomatic approach for scoped enums. **No change needed.**
 
----
+______________________________________________________________________
 
 ### L-4 — `SEEK_SET` / `SEEK_CUR` / `SEEK_END` macros at internal call sites
 
-**File**: `src/filesystem/file.cpp`, `src/filesystem/backends/*.cpp`  
+**File**: `src/filesystem/file.cpp`, `src/filesystem/backends/*.cpp`\
 **Category**: 2-E, cross-references M-2
 
-Once M-2 (`SeekOrigin` enum) is implemented, all internal `platform::seek(fd, off,
-SEEK_SET)` calls should be updated to use `static_cast<int>(SeekOrigin::Begin)` or a
+Once M-2 (`SeekOrigin` enum) is implemented, all internal `platform::seek(fd, off, SEEK_SET)` calls should be updated to use `static_cast<int>(SeekOrigin::Begin)` or a
 local alias, eliminating the `#include <cstdio>` solely for these macros.
 
----
+______________________________________________________________________
 
 ### L-5 — Arithmetic `static_cast` noise in binary-format readers
 
 **Files**: `backends/wad_backend.cpp`, `backends/pak_backend.cpp`,
-           `backends/zip_backend.cpp`  
+`backends/zip_backend.cpp`\
 **Category**: 2-G (cast)
 
 Every disk-struct field requires `static_cast<std::int64_t>`, `static_cast<std::uint32_t>`,
@@ -333,7 +333,7 @@ narrow fixed-width types. A thin `narrow_cast<>` helper (no-op in release, asser
 in debug) would add safety but increase verbosity. **Acceptable as-is** given the
 explicit intent of the casts.
 
----
+______________________________________________________________________
 
 ## Already Modern — No Action Needed
 
@@ -350,18 +350,18 @@ explicit intent of the casts.
 | `std::vector<std::byte>` for buffers | throughout | ✅ No raw `malloc`/`free` |
 | `std::string_view` parameters | throughout | ✅ No raw `const char*` in new APIs |
 
----
+______________________________________________________________________
 
 ## Application Order
 
 When implementing, apply in this order to minimise merge conflicts:
 
 1. **H-1** — replace `sink[65536]` in `OsFile::Seek`
-2. **H-2** — dynamic `to_wide` in win32.cpp
-3. **M-1** — `strnlen` → range algorithm
-4. **M-3** — `inflate_read` void* → span
-5. **M-2** — `SeekOrigin` enum in `file.hpp`; update L-4 alongside
-6. **M-5** — variadic `path_join`; remove remaining manual joins in `FindLibrary`
-7. **M-4** — `bytes_as_string` helper
-8. **M-6** — bit_cast magic constants
-9. **L-2** — unnamed padding (cosmetic, batch with other wad edits)
+1. **H-2** — dynamic `to_wide` in win32.cpp
+1. **M-1** — `strnlen` → range algorithm
+1. **M-3** — `inflate_read` void\* → span
+1. **M-2** — `SeekOrigin` enum in `file.hpp`; update L-4 alongside
+1. **M-5** — variadic `path_join`; remove remaining manual joins in `FindLibrary`
+1. **M-4** — `bytes_as_string` helper
+1. **M-6** — bit_cast magic constants
+1. **L-2** — unnamed padding (cosmetic, batch with other wad edits)

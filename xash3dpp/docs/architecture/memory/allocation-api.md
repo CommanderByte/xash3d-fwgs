@@ -1,7 +1,7 @@
 # Allocation API
 
 > **Defined in**: `xash3dpp/include/xash3dpp/memory/memory.hpp` (declarations),
-> `xash3dpp/src/memory/memory.cpp` (implementations)  
+> `xash3dpp/src/memory/memory.cpp` (implementations)\
 > **Namespace**: `xash::memory`
 
 ## Overview
@@ -12,13 +12,13 @@ Four functions handle all dynamic memory: `mem_alloc`, `mem_calloc`,
 bookkeeping. The backing allocator is dispatched through `PoolBucket::do_alloc` /
 `do_free` / `do_realloc`, which today points to `malloc`/`free`/`realloc`.
 
----
+______________________________________________________________________
 
 ## `AllocHeader` — the allocation contract
 
 Every live allocation has this layout in memory:
 
-```
+```text
   low address
   ┌──────────────────────────────────────┐
   │ AllocHeader (8 bytes)                │
@@ -38,7 +38,7 @@ block will carry `dst_pool`'s index.
 Callers **must not** overwrite the header. Any write that reads `ptr - 8` bytes
 before the returned pointer is undefined behaviour.
 
----
+______________________________________________________________________
 
 ## `mem_alloc`
 
@@ -51,16 +51,16 @@ void* mem_alloc(PoolHandle pool, std::size_t size) noexcept;
 1. **Null pool / `k_null_pool`**: calls `malloc(size)` directly, returning
    untracked memory. This is intentional — `k_null_pool` is a valid sentinel for
    "unowned" allocations.
-2. **Resolve bucket**: `acquire`-load `state`; if not `Active`, fall back to
+1. **Resolve bucket**: `acquire`-load `state`; if not `Active`, fall back to
    raw `malloc` (pool is being destroyed or was not created; counters stay at 0).
-3. **Overflow guard**: check `size + sizeof(AllocHeader)` overflows `size_t`
+1. **Overflow guard**: check `size + sizeof(AllocHeader)` overflows `size_t`
    before calling `malloc`. On overflow, invoke the OOM handler and return
    `nullptr`.
-4. **Allocate raw**: `bucket.do_alloc(sizeof(AllocHeader) + size, bucket.ctx)`.
-5. **Write header**: store `pool.index` and `size` into the `AllocHeader` prefix.
-6. **Update counters**: `live_bytes.fetch_add(size, relaxed)`,
+1. **Allocate raw**: `bucket.do_alloc(sizeof(AllocHeader) + size, bucket.ctx)`.
+1. **Write header**: store `pool.index` and `size` into the `AllocHeader` prefix.
+1. **Update counters**: `live_bytes.fetch_add(size, relaxed)`,
    `total_allocs.fetch_add(1, relaxed)`.
-7. Return `raw + sizeof(AllocHeader)` as the payload pointer.
+1. Return `raw + sizeof(AllocHeader)` as the payload pointer.
 
 On `malloc` failure, the OOM handler is called (if set) and `nullptr` is
 returned. No exception is thrown.
@@ -73,7 +73,7 @@ all supported targets (x86, x86-64, ARM, ARM64). Types requiring alignment
 greater than 8 bytes (e.g. AVX-512 data) must use `_aligned_malloc` outside this
 subsystem.
 
----
+______________________________________________________________________
 
 ## `mem_calloc`
 
@@ -84,7 +84,7 @@ void* mem_calloc(PoolHandle pool, std::size_t size) noexcept;
 `mem_alloc(pool, size)` followed by `memset(ptr, 0, size)`. All counter effects
 match `mem_alloc`.
 
----
+______________________________________________________________________
 
 ## `mem_free`
 
@@ -93,19 +93,19 @@ void mem_free(void* ptr) noexcept;
 ```
 
 1. `nullptr` is a no-op.
-2. `header_of(ptr)` reads the `AllocHeader` at `ptr - sizeof(AllocHeader)`.
-3. If `pool_index == 0` (untracked): calls `free(header)` and returns.
-4. Otherwise resolves `g_pools[pool_index - 1]`; `acquire`-loads `state`.
-5. `live_bytes.fetch_sub(payload_size, relaxed)`,
+1. `header_of(ptr)` reads the `AllocHeader` at `ptr - sizeof(AllocHeader)`.
+1. If `pool_index == 0` (untracked): calls `free(header)` and returns.
+1. Otherwise resolves `g_pools[pool_index - 1]`; `acquire`-loads `state`.
+1. `live_bytes.fetch_sub(payload_size, relaxed)`,
    `total_frees.fetch_add(1, relaxed)`.
-6. Calls `bucket.do_free(header, bucket.ctx)` (which calls `free`).
+1. Calls `bucket.do_free(header, bucket.ctx)` (which calls `free`).
 
 The `acquire`-load in step 4 pairs with the `release` store of `Active` in
 `create_pool`, ensuring the `do_free` pointer and `ctx` are visible.
 
 **No double-free detection** is performed at runtime. Use ASan for that.
 
----
+______________________________________________________________________
 
 ## `mem_realloc`
 
@@ -125,13 +125,13 @@ Handles four cases:
 ### Same-pool fast path
 
 1. `old_pool_index = header.pool_index`, `old_size = header.payload_size`.
-2. `acquire`-load `state` on both old and new buckets; fall through to cross-pool migration if not `Active`.
-3. `bucket.do_realloc(raw, sizeof(AllocHeader) + new_size, ctx)` (which calls
+1. `acquire`-load `state` on both old and new buckets; fall through to cross-pool migration if not `Active`.
+1. `bucket.do_realloc(raw, sizeof(AllocHeader) + new_size, ctx)` (which calls
    `realloc`).
-4. Update `header.payload_size = new_size`.
-5. `live_bytes.fetch_add(new_size - old_size, relaxed)` (or subtract if
+1. Update `header.payload_size = new_size`.
+1. `live_bytes.fetch_add(new_size - old_size, relaxed)` (or subtract if
    shrinking).
-6. `total_allocs.fetch_add(1, relaxed)`, `total_frees.fetch_add(1, relaxed)`.
+1. `total_allocs.fetch_add(1, relaxed)`, `total_frees.fetch_add(1, relaxed)`.
 
 ### Cross-pool migration
 
@@ -143,7 +143,7 @@ gains `new_size` and one alloc counter.
 same-pool). The test suite asserts this explicitly in
 `test_realloc_same_pool_counts`.
 
----
+______________________________________________________________________
 
 ## OOM handler
 
@@ -164,7 +164,7 @@ called on overflow detection — it is only called when `malloc` itself fails.
 Setting `nullptr` clears the handler; calling `set_oom_handler(nullptr)` is safe
 from any thread.
 
----
+______________________________________________________________________
 
 ## Thread safety
 
@@ -181,7 +181,7 @@ counters are **eventually consistent** — they reflect the true state after all
 threads quiesce, but may appear briefly inconsistent to concurrent readers. The
 test suite (`test_concurrent_alloc_free`) verifies consistency after `join`.
 
----
+______________________________________________________________________
 
 ## Error handling
 

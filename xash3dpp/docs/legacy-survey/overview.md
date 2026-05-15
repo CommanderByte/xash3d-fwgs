@@ -65,11 +65,11 @@ A short census of the heaviest globals — these are the chokepoints any rewrite
 The following themes appear in **most** subsystem summaries — they are the things the rewrite must address structurally rather than locally.
 
 1. **Monolithic singletons.** `host`, `cl/cls/clgame`, `sv/svs/svgame`, `tr/glState/RI` — each is a god-object that every part of its subsystem touches.
-2. **Function-pointer plugin ABIs.** Filesystem (`fs_api_t`), renderer (`ref_api.h`), game DLL (`enginefuncs_t`) all use large flat callback tables with no version negotiation.
-3. **`#ifdef` platform soup.** `engine/platform/` should be an abstraction layer but most platform code is conditionally compiled inline across the codebase.
-4. **Implicit ordering.** Cvar/command registration, frame-loop phase order, search-path mount order, edict free-list — all order-dependent with no explicit lifecycle model.
-5. **Replication of physics.** `pm_shared/` is run on both client (prediction) and server (authority). Any divergence breaks netplay.
-6. **Bug-compat behaviour.** GoldSrc quirks (lightmap math, rendering hacks, save format, WAD nesting) are deliberately preserved and undocumented in code.
+1. **Function-pointer plugin ABIs.** Filesystem (`fs_api_t`), renderer (`ref_api.h`), game DLL (`enginefuncs_t`) all use large flat callback tables with no version negotiation.
+1. **`#ifdef` platform soup.** `engine/platform/` should be an abstraction layer but most platform code is conditionally compiled inline across the codebase.
+1. **Implicit ordering.** Cvar/command registration, frame-loop phase order, search-path mount order, edict free-list — all order-dependent with no explicit lifecycle model.
+1. **Replication of physics.** `pm_shared/` is run on both client (prediction) and server (authority). Any divergence breaks netplay.
+1. **Bug-compat behaviour.** GoldSrc quirks (lightmap math, rendering hacks, save format, WAD nesting) are deliberately preserved and undocumented in code.
 
 ## Strategic Boundaries for the Rewrite
 

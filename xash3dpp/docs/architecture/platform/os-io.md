@@ -1,7 +1,7 @@
 # OS file I/O
 
-> **Defined in**: `include/xash3dpp/platform/os_fd.hpp`, `include/xash3dpp/platform/os_io.hpp`  
-> **Source**: `src/platform/win32/os_io.cpp`, `src/platform/posix/os_io.cpp`, `src/platform/android/os_io.cpp`  
+> **Defined in**: `include/xash3dpp/platform/os_fd.hpp`, `include/xash3dpp/platform/os_io.hpp`\
+> **Source**: `src/platform/win32/os_io.cpp`, `src/platform/posix/os_io.cpp`, `src/platform/android/os_io.cpp`\
 > **Namespace**: `xash::platform`
 
 ## Overview
@@ -133,7 +133,7 @@ on failure.
 Returns the names (not full paths) of all entries under `path`, excluding `.` and
 `..`. Returns an empty vector on error or an empty directory.
 
-Win32: `FindFirstFileW` / `FindNextFileW` loop.  
+Win32: `FindFirstFileW` / `FindNextFileW` loop.\
 POSIX: `opendir` / `readdir` loop.
 
 ### `is_case_insensitive(path) → bool`

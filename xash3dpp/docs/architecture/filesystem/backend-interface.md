@@ -1,7 +1,7 @@
 # Backend Interface
 
 > **Defined in**: `xash3dpp/include/xash3dpp/private/filesystem/i_search_backend.hpp`,
-> `xash3dpp/include/xash3dpp/private/filesystem/archive_registry.hpp`  
+> `xash3dpp/include/xash3dpp/private/filesystem/archive_registry.hpp`\
 > **Namespace**: `xash::filesystem`
 
 ## Overview
@@ -32,10 +32,12 @@ as their first argument and pass it to the base.
 ### Key operations
 
 #### `info() const → std::string`
+
 Returns a human-readable path description for debug / `FS_Path_f` output.
 Replaces the legacy `pfnPrintInfo(char *dst, size_t size)` out-buffer pattern.
 
 #### `open_file(path, mode) → unique_ptr<File>`
+
 Returns a new file handle allocated from `pool_`, or `nullptr` if the path
 does not exist in this backend. Archive backends (PAK, ZIP, WAD) call
 `make_os_file(pool_, fd, length, offset, deflated)` or construct a `MemFile`.
@@ -47,23 +49,28 @@ performs only reads on their entry tables and is safe to call concurrently.
 the volume requires case-insensitive emulation.
 
 #### `file_time(path) → optional<file_time_type>`
+
 Returns the mtime of the named entry, or `nullopt` if not found. Archive
 backends return their archive file's mtime (cached in the constructor).
 
 #### `find_file(path) → optional<string>`
+
 Case-insensitive name resolution. Returns the canonical (exact on-disk) spelling
 of `path` within this backend, or `nullopt`. Used by `file_exists` and `disk_path`.
 
 #### `search(pattern, case_insensitive) → vector<string>`
+
 Glob search. Returns all entry names within this backend whose paths match
 `pattern`. `DirBackend` delegates to `CIDirectory::Glob`; archive backends use
 `archive_search_by_name()` from `archive_helpers.hpp`.
 
 #### `load_file(path) → vector<byte>`
+
 Whole-file load. Returns the full file contents or an empty vector. Avoids
 allocating a `File` handle for the common one-shot load pattern.
 
 #### `invalidate_directory(subdir)` (virtual, default no-op)
+
 Signals that a write has occurred in `subdir`. `DirBackend` overrides this to
 call `CIDirectory::Invalidate(subdir)`, purging the name cache for that
 subdirectory. Archive backends do nothing (their contents are immutable).
@@ -98,6 +105,7 @@ does **not** extend the pool's lifetime; the pool is owned exclusively by
 ```cpp
 inline bool is_write_mode(std::string_view mode) noexcept;
 ```
+
 Returns `true` if `mode` contains `'w'` or `'a'`. All read-only backends
 (PAK, ZIP, WAD) call this at the top of `open_file` and return `nullptr`
 immediately for write/append requests.
@@ -129,6 +137,7 @@ type (e.g. multiple `.pak` files), alphabetical order determines priority —
 `pak1.pak` beats `pak0.pak` because it is pushed later.
 
 `BackendFactory` is:
+
 ```cpp
 using BackendFactory =
     std::unique_ptr<ISearchBackend>(*)(xash::memory::PoolHandle pool,

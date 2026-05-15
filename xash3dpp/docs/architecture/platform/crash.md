@@ -1,7 +1,7 @@
 # Crash handler
 
-> **Defined in**: `include/xash3dpp/platform/crash.hpp`  
-> **Source**: `src/platform/win32/crash.cpp`, `src/platform/posix/crash.cpp`, `src/platform/android/crash.cpp`  
+> **Defined in**: `include/xash3dpp/platform/crash.hpp`\
+> **Source**: `src/platform/win32/crash.cpp`, `src/platform/posix/crash.cpp`, `src/platform/android/crash.cpp`\
 > **Namespace**: `xash::platform::crash`
 
 ## Overview
@@ -51,16 +51,18 @@ handler.
 ### Win32 SEH filter
 
 The `seh_filter` function:
+
 1. Calls `print_trace()`.
-2. Returns `EXCEPTION_CONTINUE_SEARCH`, allowing downstream handlers such as
+1. Returns `EXCEPTION_CONTINUE_SEARCH`, allowing downstream handlers such as
    the Visual Studio JIT debugger to run after the trace is printed.
 
 ### POSIX signal handler
 
 The signal handler function:
+
 1. Calls `print_trace()`.
-2. Restores the default signal disposition (done automatically by `SA_RESETHAND`).
-3. Calls `raise(signum)` to re-deliver the signal under the default handler,
+1. Restores the default signal disposition (done automatically by `SA_RESETHAND`).
+1. Calls `raise(signum)` to re-deliver the signal under the default handler,
    producing the correct signal-death exit status and triggering core dump
    generation.
 

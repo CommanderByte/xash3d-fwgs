@@ -1,13 +1,14 @@
 # Hash utilities
 
-> **Header**: `xash3dpp/include/xash3dpp/utilities/hash.hpp`  
-> **Source**: `xash3dpp/src/utilities/hash.cpp`  
-> **Namespace**: `xash::utilities`  
+> **Header**: `xash3dpp/include/xash3dpp/utilities/hash.hpp`\
+> **Source**: `xash3dpp/src/utilities/hash.cpp`\
+> **Namespace**: `xash::utilities`\
 > **Legacy reference**: `public/crclib.h`, `public/crclib.c`
 
 ## Purpose
 
 Provides CRC32 (IEEE 802.3 polynomial) and MD5 digest functions used for:
+
 - Resource checksum verification (map files, model files, WAD archives)
 - Demo consistency checks (`crc32_block_sequence`)
 - File integrity validation in the filesystem module

@@ -1,17 +1,18 @@
 # Threading Model
 
-> **Date**: 2026-05  
-> **Scope**: all xash3dpp subsystems — present and future  
-> **Status**: decisions made; binding on all new subsystem work  
+> **Date**: 2026-05\
+> **Scope**: all xash3dpp subsystems — present and future\
+> **Status**: decisions made; binding on all new subsystem work\
 > **Related**: `design-paradigms-round1.md` (Q-6), `debug-stats-design.md`
 
 > **Status snapshot (what is built vs planned):**
+>
 > - **IMPLEMENTED today:** filesystem locking under `shared_mutex` (both hazards in §10 are RESOLVED — see [filesystem.cpp L162-183](../../src/filesystem/filesystem.cpp) and [filesystem.cpp L497-520](../../src/filesystem/filesystem.cpp)); `assert_main_thread()` debug helper at [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp) (internal-only, 4 call sites).
 > - **BEING INTRODUCED with this doc:** public `ThreadRole` API at `xash3dpp/include/xash3dpp/core/thread_role.hpp` — `register_thread_role`, `current_thread_role`, `assert_thread_role`. `assert_main_thread()` becomes a thin wrapper over `assert_thread_role(ThreadRole::Main)`; new code uses `assert_thread_role` directly.
 > - **PLANNED:** `JobToken` worker-pool API (Chunk 4), `dev_worker_threads` cvar (Chunk 4), render thread + `RenderFrame` (Chunk 10), `T_NetIO` thread (deferred), audio threads (Chunk 6), `// @thread-safety:` annotation rollout (Appendix A).
 > - **Chunk ordering:** Chunk 1 = cmd_cvar (**DONE**); Chunk 2 = networking; Chunk 3 = host. JobToken/worker jobs land in Chunk 4 (world/content).
 
----
+______________________________________________________________________
 
 ## 1. Purpose and Scope
 
@@ -28,7 +29,7 @@ The core principle throughout is:
 > Writing the right signatures now means enabling parallelism later requires
 > removing artificial serialisation, not redesigning synchronisation.
 
----
+______________________________________________________________________
 
 ## 2. Thread Taxonomy
 
@@ -81,7 +82,7 @@ existing `assert_main_thread()` helper at
 delegates to `assert_thread_role(ThreadRole::Main)`. New code uses
 `assert_thread_role` directly; existing call sites are not churned.
 
----
+______________________________________________________________________
 
 ## 3. Threading Model — Evolution by Chunk
 
@@ -95,6 +96,7 @@ Chunk 4 alongside the `JobToken` API. Audio threads do not exist (Sound
 subsystem not yet implemented).
 
 Chunk numbering for the remainder of this doc:
+
 - Chunk 1 = cmd_cvar (**complete**)
 - Chunk 2 = networking
 - Chunk 3 = host
@@ -164,7 +166,7 @@ No new threads. All subsystems run on `T_MAIN`.
 
 `T_NetIO` is deferred until dedicated server load demonstrates a need. See §7.
 
----
+______________________________________________________________________
 
 ## 4. Async Work: JobToken Pattern (PLANNED — Chunk 4)
 
@@ -204,10 +206,10 @@ struct JobToken {
 **Worker thread protocol:**
 
 1. `status.store(Running, relaxed)`
-2. Perform I/O and parsing; populate a local `T`.
-3. On success: move local into `token.result`; then
+1. Perform I/O and parsing; populate a local `T`.
+1. On success: move local into `token.result`; then
    `token.status.store(Complete, release)`.
-4. On failure: write `token.error`; then
+1. On failure: write `token.error`; then
    `token.status.store(Failed, release)`.
 
 The `store(..., release)` in steps 3 and 4 is the only synchronisation needed.
@@ -248,7 +250,7 @@ the subsystem that requested it. After that move the token may be discarded. The
 is no reference back into the worker pool — the pool has released its
 `shared_ptr` on job completion.
 
----
+______________________________________________________________________
 
 ## 5. Cross-Thread Communication Primitives
 
@@ -289,7 +291,7 @@ The pool size is `min(4, std::thread::hardware_concurrency() - 2)`, clamped to
 at least 1. A `dev_worker_threads` cvar (**PLANNED — registered when the pool
 lands in Chunk 4**) overrides this at startup for profiling.
 
----
+______________________________________________________________________
 
 ## 6. Render Thread (T_Render) — PLANNED — Chunk 10
 
@@ -357,7 +359,7 @@ in place, then move to `T_Render` once the data boundary is verified correct.
 This matches the async-loading pattern: design the ownership boundary first;
 threading is mechanical once the boundary is clean.
 
----
+______________________________________________________________________
 
 ## 7. Network I/O Thread (T_NetIO) — PLANNED — Deferred
 
@@ -403,7 +405,7 @@ packets arriving mid-tick are not processed until the next tick. `T_NetIO`
 receiving continuously into an inbound queue reduces effective round-trip latency
 by up to one server tick.
 
----
+______________________________________________________________________
 
 ## 8. Hard Constraints — What Will Not Be Parallelised
 
@@ -451,7 +453,7 @@ This is the highest-priority retrofit candidate; see Appendix A.
 Same constraint as the game DLL: the client DLL ABI is not re-entrant. All
 client DLL calls happen on `T_Main`.
 
----
+______________________________________________________________________
 
 ## 9. Interface Design Rules for Thread Safety
 
@@ -520,7 +522,7 @@ prevents the slow drift where "probably safe" assumptions accumulate unexamined.
 > this doc forward MUST include the annotation; existing swept subsystems get
 > them opportunistically. See Appendix A.
 
----
+______________________________________________________________________
 
 ## 10. Filesystem Threading Hazards — RESOLVED
 
@@ -543,7 +545,7 @@ function, and walks the search-path list under a `std::shared_lock` on
 No `// THREADING HAZARD` comments remain in the source. The filesystem is safe
 for a worker thread to call into the moment the worker pool lands in Chunk 4.
 
----
+______________________________________________________________________
 
 ## 11. Per-Subsystem Thread Assignment Reference
 
@@ -571,7 +573,7 @@ for a worker thread to call into the moment the worker pool lands in Chunk 4.
 | GPU upload | `T_Render` | Planned (Chunk 10) | Via `RenderFrame` texture upload commands |
 | save / demo / UI | `T_Main` | Planned | No parallelism benefit; state is sequential |
 
----
+______________________________________________________________________
 
 ## Appendix A — Thread-safety annotation rollout plan
 
@@ -582,9 +584,9 @@ headers today. Rollout strategy:
    new subsystem headers with one of the four annotations enumerated in Rule 5.
    This is non-negotiable for new subsystems — Chunk 2 networking is the first
    subsystem under this rule.
-2. **Existing swept subsystems get annotations opportunistically** when next
+1. **Existing swept subsystems get annotations opportunistically** when next
    touched for unrelated work. No dedicated annotation-only pass is scheduled.
-3. **cmd_cvar is the highest-priority retrofit** because Chunk 2 networking
+1. **cmd_cvar is the highest-priority retrofit** because Chunk 2 networking
    will be the first cross-thread caller into cmd/cvar. The retrofit happens
    at the same time as the `shared_mutex` work described in §8.3.
 

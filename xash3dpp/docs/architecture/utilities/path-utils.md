@@ -1,8 +1,8 @@
 # Path utilities
 
-> **Header**: `xash3dpp/include/xash3dpp/utilities/path.hpp`  
-> **Source**: `xash3dpp/src/utilities/path.cpp`  
-> **Namespace**: `xash::utilities`  
+> **Header**: `xash3dpp/include/xash3dpp/utilities/path.hpp`\
+> **Source**: `xash3dpp/src/utilities/path.cpp`\
+> **Namespace**: `xash::utilities`\
 > **Legacy reference**: `public/crtlib.h`, `public/crtlib.c` (`COM_FileBase`,
 > `COM_FileExtension`, `COM_DefaultExtension`, `COM_ExtractFilePath`, etc.)
 

@@ -1,10 +1,10 @@
 # Debug and Stats Infrastructure — Design Analysis
 
-> **Date**: 2026-05  
-> **Scope**: cross-cutting; all xash3dpp subsystems  
+> **Date**: 2026-05\
+> **Scope**: cross-cutting; all xash3dpp subsystems\
 > **Status**: analysis + recommendations; no code changed
 
----
+______________________________________________________________________
 
 ## 1. What Exists Today
 
@@ -34,7 +34,7 @@ Every category of information uses a different, incompatible mechanism:
 - Compile-time guards are sparse and inconsistent (`#ifdef _DEBUG` in some files,
   absent entirely in others).
 
----
+______________________________________________________________________
 
 ### 1.2 xash3dpp rewrite (current state)
 
@@ -72,7 +72,7 @@ to `core::log`.
 - There is no external (network) channel.
 - There is no shared stats-reporting contract that subsystems can implement uniformly.
 
----
+______________________________________________________________________
 
 ## 2. Design Goals
 
@@ -80,18 +80,18 @@ Before choosing mechanisms, fix the goals:
 
 1. **Zero overhead when not needed** — release builds must not pay for debug
    infrastructure that is never read.
-2. **Non-blocking measurement** — counters must not block the main loop or game
+1. **Non-blocking measurement** — counters must not block the main loop or game
    threads, regardless of whether any consumer is attached.
-3. **Separation of measurement and reporting** — increment a counter cheaply;
+1. **Separation of measurement and reporting** — increment a counter cheaply;
    decide at runtime where (or whether) to send the data.
-4. **Structured data** — export typed key/value pairs, not ad-hoc console text,
+1. **Structured data** — export typed key/value pairs, not ad-hoc console text,
    so external tools can parse and graph them without screen-scraping.
-5. **External visibility** — attach an external tool to a running instance without
+1. **External visibility** — attach an external tool to a running instance without
    restarting or recompiling.
-6. **Incremental** — the infrastructure must not require all subsystems to be
+1. **Incremental** — the infrastructure must not require all subsystems to be
    finished before anything works.
 
----
+______________________________________________________________________
 
 ## 3. Compile-Time vs Runtime — Detailed Analysis
 
@@ -121,7 +121,7 @@ break-on-write, histograms) and for any counters whose measurement cost is not
 negligible. They are **not** the right tool for the primary stats data that operators
 need to inspect in production.
 
----
+______________________________________________________________________
 
 ### 3.2 Always-on lightweight counters (what the memory subsystem does)
 
@@ -143,7 +143,7 @@ to "always-on" (no guard). Reserve `XASH_STATS` for counters that require more
 bookkeeping (e.g. tracking peak values, computing moving averages) and
 `XASH_DEBUG_*` for everything that touches memory proportional to event count.
 
----
+______________________________________________________________________
 
 ### 3.3 Runtime gating
 
@@ -160,6 +160,7 @@ Cost: ~1 ns. Correct for all tiers.
 
 Putting an `if (debug_enabled)` in front of the counter increment itself. This is what
 the legacy engine does (`if (net_showpackets.value) Con_Printf(...)`). Problems:
+
 - The `if` is not optimised away; it stays in the binary.
 - Measuring *and* reporting are coupled; you cannot read the counter unless the cvar
   is on.
@@ -168,7 +169,7 @@ the legacy engine does (`if (net_showpackets.value) Con_Printf(...)`). Problems:
 **Conclusion**: measure always (or at compile-time tier boundary); gate *output* at
 runtime.
 
----
+______________________________________________________________________
 
 ## 4. External Inspection Channel Design
 
@@ -186,7 +187,7 @@ all interfaces for remote tooling.
 
 ### 4.2 Stats stream architecture (UDP)
 
-```
+```text
 [Main loop / subsystem threads]
         │  atomic reads (zero alloc)
         ▼
@@ -209,14 +210,16 @@ struct StatsSample {
 ```
 
 **Hot path** (called from any thread):
+
 1. Atomic read of the counter (already exists).
-2. `ring.try_push(sample)` — one CAS on the write index. If the buffer is full,
+1. `ring.try_push(sample)` — one CAS on the write index. If the buffer is full,
    the sample is dropped silently (stale metric, not a correctness issue).
 
 **Background serializer thread** (low priority):
+
 1. Drain ring buffer.
-2. Encode samples as msgpack or a trivial binary frame (4-byte length + payload).
-3. `sendto` on UDP socket. If no consumer, the OS drops the packet immediately.
+1. Encode samples as msgpack or a trivial binary frame (4-byte length + payload).
+1. `sendto` on UDP socket. If no consumer, the OS drops the packet immediately.
 
 **Cost when no consumer is attached**: the ring push still happens (~5 ns), but the
 serializer thread drains it immediately into a no-op send (OS drops in kernel). This
@@ -238,7 +241,7 @@ command interface.
 
 For the UDP stats stream, a minimal self-describing binary frame is preferable to JSON:
 
-```
+```text
 [4 bytes: magic 0x58535453 "XSTS"]
 [4 bytes: frame length]
 [8 bytes: server uptime us]
@@ -250,7 +253,7 @@ This is trivially parseable in Python/Rust/Go for tooling, and emitting it requi
 heap allocation on the engine side (serialize directly from the stack into a fixed
 `uint8_t buf[4096]`).
 
----
+______________________________________________________________________
 
 ## 5. Performance Analysis
 
@@ -298,6 +301,7 @@ during normal gameplay.
 The legacy engine's biggest debug performance mistake is `Con_Printf` inside hot loops
 (`net_showpackets` called per-packet, `r_speeds` formatted every frame). These are slow
 because:
+
 - `vsnprintf` → stack allocation → cache pollution.
 - Console write → potential lock on the console buffer.
 - Formatted string is discarded immediately if nothing reads it.
@@ -305,7 +309,7 @@ because:
 **Rule for the rewrite**: never format strings on the hot path. Counters accumulate
 raw numeric values; the serializer thread (or a query command) formats them on demand.
 
----
+______________________________________________________________________
 
 ## 6. Recommendations
 
@@ -314,11 +318,12 @@ raw numeric values; the serializer thread (or a query command) formats them on d
 Every subsystem that has a non-trivial hot path should define a `<Subsystem>Stats`
 struct following the memory subsystem model:
 
-```
+```text
 xash3dpp/include/xash3dpp/<subsystem>/stats.hpp   (or inline in context.hpp)
 ```
 
 Fields:
+
 - Always-on (no guard): counters that cost ≤ 1 atomic per event and are
   potentially useful in a profiling build (memory bytes, command counts, etc.).
 - `#if XASH_STATS`: counters requiring more bookkeeping (peak tracking, high-water
@@ -349,7 +354,7 @@ flow through one function rather than each subsystem writing directly to console
 Implement the UDP stats stream and TCP command channel described in §4 as a
 `diagnostics` subsystem:
 
-```
+```text
 xash3dpp/include/xash3dpp/diagnostics/
     channel.hpp       — StatsChannel: open/close/push
     stats_frame.hpp   — StatsSample, wire frame layout
@@ -384,7 +389,7 @@ The channel is optional at link time (feature flag in CMake). When not linked,
 - **Do not open the external channel on non-loopback addresses by default** — this is
   a security boundary; RCON-style remote access should require explicit opt-in.
 
----
+______________________________________________________________________
 
 ## 7. Open Questions
 
@@ -393,16 +398,16 @@ The channel is optional at link time (feature flag in CMake). When not linked,
    read it without coupling to the host layer? Consider a `diagnostics::current_frame()`
    free function backed by a relaxed atomic updated by the host loop.
 
-2. **Consumer authentication for the TCP channel**: RCON uses a shared password.
+1. **Consumer authentication for the TCP channel**: RCON uses a shared password.
    For a local developer tool, a single-use token generated at startup and printed to
    the console (visible only to the local operator) is simpler and more secure.
 
-3. **Metric registration vs hardcoded IDs**: the `StatsSample::metric_id` field
+1. **Metric registration vs hardcoded IDs**: the `StatsSample::metric_id` field
    requires either a central registry or per-subsystem ID namespaces. A simple approach:
    the high 16 bits = subsystem enum; the low 16 bits = per-subsystem counter ordinal.
    No central registry needed; each subsystem declares its own enum starting from 0.
 
-4. **Integration with Tracy / Optick**: if the project ever targets a profiler-friendly
+1. **Integration with Tracy / Optick**: if the project ever targets a profiler-friendly
    workflow, the ring buffer + serializer thread design is compatible with Tracy's
    `TracyPlot` macro (push a named value per frame). This is worth noting as a future
    upgrade path rather than a current requirement.

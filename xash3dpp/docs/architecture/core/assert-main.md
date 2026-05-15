@@ -1,7 +1,7 @@
 # assert_main_thread — Legacy Main-Thread Helper
 
-> **Defined in**: `include/xash3dpp/private/core/assert_main.hpp`  
-> **Namespace**: `xash::core::detail`  
+> **Defined in**: `include/xash3dpp/private/core/assert_main.hpp`\
+> **Namespace**: `xash::core::detail`\
 > **Visibility**: private — not part of the public `xash3dpp_core` API
 
 ## Overview

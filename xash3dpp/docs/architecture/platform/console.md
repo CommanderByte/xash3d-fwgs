@@ -1,7 +1,7 @@
 # Console I/O
 
-> **Defined in**: `include/xash3dpp/platform/console.hpp`  
-> **Source**: `src/platform/win32/console.cpp`, `src/platform/posix/console.cpp`, `src/platform/android/console.cpp`  
+> **Defined in**: `include/xash3dpp/platform/console.hpp`\
+> **Source**: `src/platform/win32/console.cpp`, `src/platform/posix/console.cpp`, `src/platform/android/console.cpp`\
 > **Namespace**: `xash::platform::console`
 
 ## Overview
@@ -41,6 +41,7 @@ Android implementation calls `__android_log_write(ANDROID_LOG_INFO, tag, …)`.
 Non-blocking poll for one complete line of user input.
 
 Returns:
+
 - A view of the line (without the trailing newline) when a complete line is ready.
 - An empty `string_view` (`{}`) when no input is available.
 

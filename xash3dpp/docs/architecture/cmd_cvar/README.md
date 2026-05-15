@@ -38,7 +38,7 @@ The fixed 32 KB ring buffer for the command text is replaced by `std::deque<std:
 
 ## Architecture at a glance
 
-```
+```text
           [host layer / game loop]
                     |
                     | init(CmdCvarInitParams)

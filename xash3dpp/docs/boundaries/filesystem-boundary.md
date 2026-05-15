@@ -23,8 +23,7 @@ symbol is `GetFSAPI` (signature `FSAPI`, see `filesystem.h`). The engine calls
 this at startup to receive the `fs_api_t` function-pointer table and the
 `fs_globals_t *` pointer. Everything flows through those two handles.
 
-The `IFileSystem` / `VFileSystem009` C++ vtable (`FILESYSTEM_INTERFACE_VERSION
-"VFileSystem009"`) is a compatibility shim for mods that call through the
+The `IFileSystem` / `VFileSystem009` C++ vtable (`FILESYSTEM_INTERFACE_VERSION "VFileSystem009"`) is a compatibility shim for mods that call through the
 GoldSrc interface. It is **not** a fixed ABI constraint for the rewrite — no
 game DLL is allowed to link against it directly; they receive it through the
 engine at runtime.
@@ -32,8 +31,7 @@ engine at runtime.
 ## Interface (what the rest of the engine calls)
 
 All calls go through the `fs_api_t` function-pointer table returned by
-`GetFSAPI`. The engine also reads `fs_globals_t::GameInfo` (a `const
-gameinfo_t *`) directly.
+`GetFSAPI`. The engine also reads `fs_globals_t::GameInfo` (a `const gameinfo_t *`) directly.
 
 ### Lifecycle
 
@@ -261,15 +259,15 @@ are provided through the injected `fs_interface_t` callbacks.
    No C-ABI plugin boundary in the rewrite. If a standalone tool needs
    filesystem access, add a thin adapter interface at that point.
 
-2. **`VFileSystem009` retention** — **Keep it for now.** Exact placement
+1. **`VFileSystem009` retention** — **Keep it for now.** Exact placement
    (separate compilation unit, opt-in shim header, etc.) is deferred until
    the engine's own public-API structure is established.
 
-3. **Async I/O** — **Desired, but deferred.** The engine threading model
+1. **Async I/O** — **Desired, but deferred.** The engine threading model
    must be established first. The synchronous API should be the initial
    target; async can be layered once the job/scheduler design is known.
 
-4. **Memory ownership model** — The legacy split (`LoadFile` → pool memory,
+1. **Memory ownership model** — The legacy split (`LoadFile` → pool memory,
    `LoadFileMalloc` → stdlib memory) exists because the pool allocator
    (`zone.c`, DarkPlaces-derived) uses a 32-bit handle rather than a pointer
    (changed to avoid breaking the reuse of a 32-bit model field on 64-bit
@@ -281,13 +279,13 @@ are provided through the injected `fs_interface_t` callbacks.
    injected allocator pattern (`_Mem_AllocPool` etc.) is unnecessary in a
    statically-linked build.
 
-5. **Thread safety** — **Required.** Internal mutable state (search-path
+1. **Thread safety** — **Required.** Internal mutable state (search-path
    list, write-path pointer, game-info pointer) must be protected. At minimum:
    a shared/exclusive (reader-writer) lock for path queries and file opens,
    with exclusive acquisition for mount/unmount operations. Per-file `Read`/
    `Write`/`Seek` operations should not block global path lookups.
 
-6. **`gameinfo_t` location** — Currently embedded in `filesystem.h` alongside
+1. **`gameinfo_t` location** — Currently embedded in `filesystem.h` alongside
    the I/O API, coupling game-config concerns into the I/O layer. Two options:
 
    - **Shared header**: promote to `xash3dpp/include/gameinfo.h`. The FS
@@ -303,7 +301,7 @@ are provided through the injected `fs_interface_t` callbacks.
    public interface focused on I/O operations and makes the gameinfo dependency
    opt-in. **Decision needed before defining the FS public header.**
 
-7. **Case-insensitive filename lookup** — The legacy trie (`dir.c`) is
+1. **Case-insensitive filename lookup** — The legacy trie (`dir.c`) is
    per-searchpath, lazily built per-directory, and O(log n) via binary search
    over sorted names. Three options for the rewrite:
 

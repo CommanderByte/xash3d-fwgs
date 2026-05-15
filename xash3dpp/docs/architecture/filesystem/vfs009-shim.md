@@ -1,8 +1,8 @@
 # VFS009 Compatibility Shim
 
 > **Defined in**: `xash3dpp/include/xash3dpp/private/filesystem/vfs009/vfs009.hpp`,
-> `xash3dpp/src/filesystem/vfs009/vfs009.cpp`  
-> **Namespace**: `xash::filesystem::vfs009`  
+> `xash3dpp/src/filesystem/vfs009/vfs009.cpp`\
+> **Namespace**: `xash::filesystem::vfs009`\
 > **CMake option**: `XASH_VFS009_SHIM` (default `ON`)
 
 ## Overview

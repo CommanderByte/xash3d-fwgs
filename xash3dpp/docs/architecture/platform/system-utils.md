@@ -1,7 +1,7 @@
 # System utilities
 
-> **Defined in**: `include/xash3dpp/platform/platform.hpp`  
-> **Source**: `src/platform/win32/sys.cpp`, `src/platform/posix/sys.cpp`  
+> **Defined in**: `include/xash3dpp/platform/platform.hpp`\
+> **Source**: `src/platform/win32/sys.cpp`, `src/platform/posix/sys.cpp`\
 > **Namespace**: `xash::platform`
 
 ## Overview

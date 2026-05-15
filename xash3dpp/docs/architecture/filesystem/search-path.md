@@ -2,7 +2,7 @@
 
 > **Defined in**: `xash3dpp/include/xash3dpp/filesystem/search_path_flags.hpp`,
 > `xash3dpp/include/xash3dpp/private/filesystem/search_path.hpp`,
-> `xash3dpp/src/filesystem/filesystem.cpp`  
+> `xash3dpp/src/filesystem/filesystem.cpp`\
 > **Namespace**: `xash::filesystem`
 
 ## Overview
@@ -54,7 +54,7 @@ was prepended on each `add_game_directory` call.
 
 Typical mount order after `init()` + `activate_game()`:
 
-```
+```text
 front (lowest priority)
   [0] basedir plain-dir    (Static)
   [1] basedir pak0.pak     (Static)
@@ -70,15 +70,15 @@ non-null/non-empty wins.
 ## `add_game_directory(dir, flags)`
 
 1. Acquires `unique_lock(paths_mutex)`.
-2. Calls `collect_paths_for_dir(pool, dir, flags, search_paths)`:
+1. Calls `collect_paths_for_dir(pool, dir, flags, search_paths)`:
    a. Lists the directory with `platform::list_directory`.
    b. Sorts entries alphabetically (so `pak0.pak` before `pak1.pak`).
    c. For each archive type in `k_archive_types` order (PAK → PK3 → PK3DIR →
-      WAD): for each matching entry, calls the type's `BackendFactory` and
-      pushes the result onto `out`.
+   WAD): for each matching entry, calls the type's `BackendFactory` and
+   pushes the result onto `out`.
    d. Pushes a `DirBackend` for `dir` itself (always last → highest priority
-      within this call).
-3. Appends all newly created `SearchPath` entries to `search_paths`.
+   within this call).
+1. Appends all newly created `SearchPath` entries to `search_paths`.
 
 **Mount order within a directory** (lowest to highest priority within that call):
 `pak0.pak` → `pak1.pak` → … → `maps/foo.pk3` → … → `dir_itself`

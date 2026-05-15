@@ -1,8 +1,8 @@
 # String utilities
 
-> **Headers**: `xash3dpp/include/xash3dpp/utilities/string.hpp`  
-> **Source**: `xash3dpp/src/utilities/string.cpp`  
-> **Namespace**: `xash::utilities`  
+> **Headers**: `xash3dpp/include/xash3dpp/utilities/string.hpp`\
+> **Source**: `xash3dpp/src/utilities/string.cpp`\
+> **Namespace**: `xash::utilities`\
 > **Legacy reference**: `public/crtlib.h`, `public/crtlib.c`
 
 ## Purpose
@@ -75,6 +75,7 @@ void  atov( std::span<float> out, std::string_view s ) noexcept;
 ```
 
 `atoi` recognises:
+
 - Decimal integers (`"-42"`)
 - Hexadecimal with `0x` prefix (`"0xFF"`)
 - Single-character ASCII literals (`"'A'"` → 65)

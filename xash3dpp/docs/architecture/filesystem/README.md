@@ -1,7 +1,7 @@
 # filesystem — Architecture Overview
 
-> **Source**: `xash3dpp/src/filesystem/`  
-> **Public API**: `xash3dpp/include/xash3dpp/filesystem/`  
+> **Source**: `xash3dpp/src/filesystem/`\
+> **Public API**: `xash3dpp/include/xash3dpp/filesystem/`\
 > **Legacy reference**: `filesystem/filesystem.c`, `filesystem/filesystem.h`, `filesystem/pak.c`, `filesystem/zip.c`, `filesystem/wad.c`, `filesystem/dir.c`, `filesystem/VFileSystem009.cpp`
 
 ## Purpose
@@ -84,7 +84,7 @@ C++ class (`Filesystem`). Key changes:
 
 ## Architecture at a glance
 
-```
+```text
  ┌──────────────────────────────────────────────────────────────┐
  │  Caller (engine / editor / tests)                            │
  │  Filesystem (public pimpl facade)                            │

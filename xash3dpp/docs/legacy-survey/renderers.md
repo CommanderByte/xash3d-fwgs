@@ -49,10 +49,10 @@ Pluggable renderer implementations for Xash3D. Each renderer (GL, software, null
 ## Coupling and Risks
 
 1. **Large global state** — `tr`, `glState`, `RI` tightly coupled; hard to thread or parallelize frame prep
-2. **BSP/studio code duplication** — each renderer reimplements model state setup, surface sorting, animation frame selection
-3. **Fixed-function vs. ES2 compatibility layer** — `gl2_shim`/`vgl_shim` add complexity; GoldSrc rendering quirks need adapters
-4. **GoldSrc rendering contracts** — hardcoded HL1 conventions (lightmap lightness, water transparency, skybox orientation, decal lifetime) and mod-specific hacks (`HACKS_RELATED_HLMODS`)
-5. **Tight engine coupling** — assume synchronous frame callbacks; no async compute or deferred resource loading
+1. **BSP/studio code duplication** — each renderer reimplements model state setup, surface sorting, animation frame selection
+1. **Fixed-function vs. ES2 compatibility layer** — `gl2_shim`/`vgl_shim` add complexity; GoldSrc rendering quirks need adapters
+1. **GoldSrc rendering contracts** — hardcoded HL1 conventions (lightmap lightness, water transparency, skybox orientation, decal lifetime) and mod-specific hacks (`HACKS_RELATED_HLMODS`)
+1. **Tight engine coupling** — assume synchronous frame callbacks; no async compute or deferred resource loading
 
 ## Modernization Opportunities
 

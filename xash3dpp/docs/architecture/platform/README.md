@@ -1,7 +1,7 @@
 # platform — Architecture Overview
 
-> **Source**: `xash3dpp/src/platform/`  
-> **Public API**: `xash3dpp/include/xash3dpp/platform/`  
+> **Source**: `xash3dpp/src/platform/`\
+> **Public API**: `xash3dpp/include/xash3dpp/platform/`\
 > **Legacy reference**: `engine/platform/win32/`, `engine/platform/posix/`, `engine/common/system.h`
 
 ## Purpose
@@ -73,7 +73,7 @@ differences:
 
 ## Architecture at a glance
 
-```
+```text
  ┌───────────────────────────────────────────────────────────────┐
  │  Callers (filesystem, memory, utilities, engine subsystems)   │
  │                                                               │

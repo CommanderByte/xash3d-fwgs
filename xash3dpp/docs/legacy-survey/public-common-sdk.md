@@ -46,10 +46,10 @@ Headers define the immutable ABI surface for game and client DLLs:
 ## Coupling and Risks
 
 1. **ABI rigidity** — struct layouts in `common/` and `pm_shared/` are immutable; alignment/field-order/size changes break DLL compatibility
-2. **Dispersed `public/` consumption** — crtlib, matrixlib, crclib used globally; changes affect the entire codebase
-3. **Player state desync** — `pm_shared/` client prediction must match server simulation exactly; FP precision differences cause hitbox divergence
-4. **Custom CRT limitations** — crtlib does not implement full libc; mismatch on platforms with stricter SDK policies (iOS, Xbox)
-5. **Type definition stability** — `xash3d_types.h` defines `vec_t` as `float`; shader and physics code assumes this precision
+1. **Dispersed `public/` consumption** — crtlib, matrixlib, crclib used globally; changes affect the entire codebase
+1. **Player state desync** — `pm_shared/` client prediction must match server simulation exactly; FP precision differences cause hitbox divergence
+1. **Custom CRT limitations** — crtlib does not implement full libc; mismatch on platforms with stricter SDK policies (iOS, Xbox)
+1. **Type definition stability** — `xash3d_types.h` defines `vec_t` as `float`; shader and physics code assumes this precision
 
 ## Modernization Opportunities
 

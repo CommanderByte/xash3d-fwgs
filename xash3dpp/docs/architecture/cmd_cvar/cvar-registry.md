@@ -123,8 +123,8 @@ On every `cvar_set`, the old `abi.string` is freed via `mem_free` and a new pool
 Game DLLs sometimes free their cvar structs without notifying the engine (e.g. at process exit). The two-phase unlink protocol prevents use-after-free:
 
 1. **`cvar_prepare_to_unlink(mask)`** — called while the DLL is still loaded. Walks all cvars with `owner_flags & mask` and saves `{name (pool copy), owner_flags}` to `Impl::pending_unlink`.
-2. DLL is unloaded — structs may now be invalid.
-3. **`unlink_pending_cvars()`** — walks `pending_unlink`, looks up each name in the hash map, removes the node. Uses only the saved name copy, never the original `Cvar *`.
+1. DLL is unloaded — structs may now be invalid.
+1. **`unlink_pending_cvars()`** — walks `pending_unlink`, looks up each name in the hash map, removes the node. Uses only the saved name copy, never the original `Cvar *`.
 
 `pending_unlink` is a `std::vector<PendingUnlinkEntry>` on the system heap (not the pool) so it survives across pool lifecycles.
 

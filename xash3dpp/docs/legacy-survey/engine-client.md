@@ -54,10 +54,10 @@ The client subsystem manages all client-side game state and rendering lifecycle,
 ## Coupling and Risks
 
 1. **Monolithic frame loop** — `CL_Frame()` sequences command → send → parse → predict → render with no clear phase boundaries
-2. **Deep prediction coupling** — `cl_pmove.c` replicates server movement code and calls back into DLL for hull queries; any physics change breaks prediction
-3. **Temporary entity system** — `cl_tent.c` owns a separate dynamic array parallel to `cl_entity_t`; diffuse spawning from parse/efx/events
-4. **Demo file format lock** — encodes raw network deltas; changing entity state layout breaks all old demos
-5. **Client DLL callback spaghetti** — function pointers everywhere; hard to mock/test without loading actual DLL
+1. **Deep prediction coupling** — `cl_pmove.c` replicates server movement code and calls back into DLL for hull queries; any physics change breaks prediction
+1. **Temporary entity system** — `cl_tent.c` owns a separate dynamic array parallel to `cl_entity_t`; diffuse spawning from parse/efx/events
+1. **Demo file format lock** — encodes raw network deltas; changing entity state layout breaks all old demos
+1. **Client DLL callback spaghetti** — function pointers everywhere; hard to mock/test without loading actual DLL
 
 ## Modernization Opportunities
 

@@ -1,6 +1,6 @@
 # Diagnostic Logging
 
-> **Defined in**: `include/xash3dpp/core/log.hpp` / `src/core/log.cpp`  
+> **Defined in**: `include/xash3dpp/core/log.hpp` / `src/core/log.cpp`\
 > **Namespace**: `xash::core`
 
 ## Overview
@@ -117,13 +117,13 @@ default sink — it cannot suppress console output.
 
 For a call `core::log(LogLevel::Warning, "filesystem", "path too long")`:
 
-```
+```text
 [filesystem][WARN]: path too long\n
 ```
 
 Internally the line is built in a single `char[2048]` stack buffer:
 
-```
+```text
 ┌──prefix──────────────────────┬──body────────────┬─\n─┐
 │ [filesystem][WARN]:          │ path too long    │    │
 └──────────────────────────────┴──────────────────┴────┘

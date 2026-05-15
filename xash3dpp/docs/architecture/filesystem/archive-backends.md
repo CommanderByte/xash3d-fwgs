@@ -1,7 +1,7 @@
 # Archive Backends
 
 > **Defined in**: `xash3dpp/include/xash3dpp/private/filesystem/backends/`,
-> `xash3dpp/src/filesystem/backends/`  
+> `xash3dpp/src/filesystem/backends/`\
 > **Namespace**: `xash::filesystem::backends`
 
 ## Overview
@@ -11,14 +11,14 @@ type. All six follow the same pattern:
 
 1. A static `Create(pool, path, flags)` factory allocates the backend via
    `pool_new<T>(pool, pool, path, flags)`.
-2. The constructor reads any archive header and populates immutable state
+1. The constructor reads any archive header and populates immutable state
    (entry table, file mtime, validity flag).
-3. After construction the object is never mutated; all operations are
+1. After construction the object is never mutated; all operations are
    read-only on the entry table.
-4. `open_file` calls `make_os_file(pool_, fd, length, offset, deflated)` for
+1. `open_file` calls `make_os_file(pool_, fd, length, offset, deflated)` for
    streaming access, or constructs a `MemFile` for fully-buffered access.
 
----
+______________________________________________________________________
 
 ## `DirBackend` — plain OS directory
 
@@ -56,7 +56,7 @@ missing intermediate directories via `platform::make_directory`, and returns an
 populated on first `Resolve` / `Glob` call and protected by `CIDirectory`'s own
 `std::mutex`.
 
----
+______________________________________________________________________
 
 ## `PakBackend` — Quake PAK archive
 
@@ -93,7 +93,7 @@ After the constructor, `entries_` and all other fields are never written.
 Concurrent `open_file` / `find_file` / `search` calls on the same `PakBackend`
 instance are safe without any locking.
 
----
+______________________________________________________________________
 
 ## `WadBackend` — GoldSrc WAD2 / WAD3
 
@@ -119,7 +119,7 @@ instance are safe without any locking.
 | `file_time_` | `file_time_type` | WAD mtime |
 | `valid_` | `bool` | False if header malformed |
 
----
+______________________________________________________________________
 
 ## `ZipBackend` — ZIP / PK3
 
@@ -144,7 +144,7 @@ instance are safe without any locking.
 | `file_time_` | `file_time_type` | ZIP mtime |
 | `valid_` | `bool` | |
 
----
+______________________________________________________________________
 
 ## `Pk3DirBackend` — loose PK3 directory
 
@@ -160,11 +160,11 @@ plain `add_game_directory` call.
 `Pk3DirBackend` owns a `std::unique_ptr<ISearchBackend>` pointing to a
 `DirBackend`. Both are allocated from `pool_`.
 
----
+______________________________________________________________________
 
 ## `AndroidBackend` — Android AAsset
 
-**Files**: `android_backend.hpp`, `android_backend.cpp`  
+**Files**: `android_backend.hpp`, `android_backend.cpp`\
 **Compiled when**: `ANDROID` CMake platform variable is set
 (`XASH_ANDROID` preprocessor define).
 
@@ -193,7 +193,7 @@ an **unmitigated data race** if `android_init_jni()` can be called concurrently
 with `get_asset_manager()`. In practice JNI init runs on the main thread before
 any query threads start, but there is no lock or documented contract.
 
----
+______________________________________________________________________
 
 ## Shared patterns
 

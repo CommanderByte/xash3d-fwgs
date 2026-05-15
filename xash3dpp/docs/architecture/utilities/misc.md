@@ -3,14 +3,14 @@
 > **Headers**: `xash3dpp/include/xash3dpp/utilities/atlas.hpp`,
 > `xash3dpp/include/xash3dpp/utilities/build.hpp`,
 > `xash3dpp/include/xash3dpp/utilities/dynlib.hpp`,
-> `xash3dpp/include/xash3dpp/utilities/gameinfo_parser.hpp`  
-> **Sources**: `atlas.cpp`, `build.cpp`, `dynlib.cpp`, `gameinfo_parser.cpp`  
+> `xash3dpp/include/xash3dpp/utilities/gameinfo_parser.hpp`\
+> **Sources**: `atlas.cpp`, `build.cpp`, `dynlib.cpp`, `gameinfo_parser.cpp`\
 > **Namespaces**: `xash::utilities` (atlas, dynlib), `xash::utilities::build`,
-> `xash` (gameinfo_parser)  
+> `xash` (gameinfo_parser)\
 > **Legacy reference**: `public/atlas.c`, `public/build.c`, `public/dllhelpers.c`,
 > `filesystem/filesystem.c` (gameinfo parsing section)
 
----
+______________________________________________________________________
 
 ## Atlas packer (atlas.hpp / atlas.cpp)
 
@@ -74,7 +74,7 @@ utilisation without re-scanning the full column array.
 not a pointer. The object can live on the stack or as a member of another
 struct.
 
----
+______________________________________________________________________
 
 ## Build metadata (build.hpp / build.cpp)
 
@@ -121,7 +121,7 @@ plain source tree without a VCS checkout). The weak-symbol fallback values are
 When `build_vcs.cpp` is present and linked, it provides the actual commit hash,
 branch name, and commit date from the VCS system at configure time.
 
----
+______________________________________________________________________
 
 ## DLL export helpers (dynlib.hpp / dynlib.cpp)
 
@@ -173,7 +173,7 @@ if ( !validate_exports( renderer_exports ) )
 Legacy: `COM_CheckParm`-style manual checks scattered throughout `ref/` and
 `engine/`.
 
----
+______________________________________________________________________
 
 ## GameInfo parser (gameinfo_parser.hpp / gameinfo_parser.cpp)
 
@@ -229,8 +229,9 @@ These limits mirror the clamping logic in the legacy `filesystem.c`
 
 `gameinfo_parser.hpp` lives in namespace `xash`, not `xash::utilities`, for
 two reasons:
+
 1. It depends on `xash::GameInfo` (from `xash3dpp/gameinfo.hpp`), which is a
    package-root type, not a utilities-scoped type.
-2. `GameInfo` is used across multiple subsystems (filesystem, host, client);
+1. `GameInfo` is used across multiple subsystems (filesystem, host, client);
    tying the parser to the `utilities` sub-namespace would create an awkward
    reference (`xash::utilities::parse_gameinfo_txt` → `xash::GameInfo`).

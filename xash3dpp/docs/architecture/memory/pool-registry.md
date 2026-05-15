@@ -1,7 +1,7 @@
 # Pool Registry
 
 > **Defined in**: `xash3dpp/include/xash3dpp/private/memory/pool_registry.hpp`,
-> `xash3dpp/src/memory/memory.cpp`  
+> `xash3dpp/src/memory/memory.cpp`\
 > **Namespace**: `xash::memory` / `xash::memory::internal`
 
 ## Overview
@@ -12,22 +12,23 @@ controlled by `limits::memory_pool_max` (default 128) from
 `<xash3dpp/limits.hpp>`; `kMaxPools` is an alias that reads from it.
 
 `PoolBucket` serves three roles:
+
 1. **Slot metadata** — name string, atomic lifecycle state.
-2. **Accounting buckets** — atomic counters for in-flight bytes and call counts.
-3. **Allocator dispatch** — function pointers for the backing strategy
+1. **Accounting buckets** — atomic counters for in-flight bytes and call counts.
+1. **Allocator dispatch** — function pointers for the backing strategy
    (`do_alloc`, `do_free`, `do_realloc`).
 
 `AllocHeader` is the 8-byte struct prepended to every allocation; it carries the
 pool index and payload size so `mem_free` can locate the owning bucket without
 any additional bookkeeping.
 
----
+______________________________________________________________________
 
 ## `AllocHeader`
 
 **Header**: `private/memory/pool_registry.hpp`
 
-```
+```text
 Memory layout of every allocation:
   [ AllocHeader (8 bytes) | payload (size bytes) ]
 ```
@@ -42,7 +43,7 @@ Memory layout of every allocation:
 after the 8-byte header the payload pointer is at least 8-byte aligned on all
 supported targets.
 
----
+______________________________________________________________________
 
 ## `SlotState`
 
@@ -61,13 +62,14 @@ Each `PoolBucket` holds `std::atomic<SlotState> state`. Transitions:
 | `Active` | `Free` | `destroy_pool` | `release` |
 
 The `Busy` intermediate state ensures:
+
 - Only one thread claims a slot (CAS failure causes retry on the next slot).
 - All field writes during `Busy` (name, counters, function pointers) happen
   *before* the `release` store of `Active`.
 - Any thread that subsequently `acquire`-loads `Active` is guaranteed to see
   those field writes.
 
----
+______________________________________________________________________
 
 ## `PoolBucket`
 
@@ -89,7 +91,7 @@ All three stat counters and `state` are `std::atomic`. The function pointers and
 `ctx` are plain pointers protected by the `Busy`→`Active` acquire/release
 ordering.
 
----
+______________________________________________________________________
 
 ## `create_pool`
 
@@ -102,18 +104,18 @@ PoolHandle create_pool(const char* name, PoolConfig cfg = {}) noexcept;
 ### Algorithm
 
 1. Scan `g_pools[0..limits::memory_pool_max-1]` for a slot whose `state` is `Free`.
-2. For each candidate, perform a CAS:
+1. For each candidate, perform a CAS:
    - `expected = Free` → `Busy`, `memory_order_acquire` on success,
      `memory_order_relaxed` on failure.
    - On failure, another thread claimed this slot first; continue to the next.
-3. After a successful CAS, the current thread owns the slot exclusively.
-4. Reset all counter atomics to 0 (`memory_order_relaxed`).
-5. Copy `name` into `bucket.name` with `strncpy` (truncates at 63 chars + NUL).
-6. Wire up `do_alloc`, `do_free`, `do_realloc` based on `cfg.strategy`.
+1. After a successful CAS, the current thread owns the slot exclusively.
+1. Reset all counter atomics to 0 (`memory_order_relaxed`).
+1. Copy `name` into `bucket.name` with `strncpy` (truncates at 63 chars + NUL).
+1. Wire up `do_alloc`, `do_free`, `do_realloc` based on `cfg.strategy`.
    Today only `System` is implemented; `Arena` and `Slab` fall through to
    `System` with no error.
-7. Release-store `Active` — makes all prior writes visible to other threads.
-8. Return `PoolHandle { i + 1 }` (1-based).
+1. Release-store `Active` — makes all prior writes visible to other threads.
+1. Return `PoolHandle { i + 1 }` (1-based).
 
 If no free slot is found, returns `k_null_pool`. Subsequent allocations through
 `k_null_pool` still succeed (untracked `malloc`) — the sentinel is not an error.
@@ -123,12 +125,11 @@ If no free slot is found, returns `k_null_pool`. Subsequent allocations through
 - The CAS loop makes concurrent `create_pool` calls race-free: no two threads can
   claim the same slot index.
 - However, `create_pool` itself is **not safe to call** while another thread may
-  be executing `destroy_pool` for the same pool (the transitions `Active →
-  Free` and `Free → Busy` have no additional serialisation beyond the atomic).
+  be executing `destroy_pool` for the same pool (the transitions `Active → Free` and `Free → Busy` have no additional serialisation beyond the atomic).
   The contract is that lifecycle calls for a given slot are serialised by the
   caller.
 
----
+______________________________________________________________________
 
 ## `destroy_pool`
 
@@ -139,18 +140,18 @@ void destroy_pool(PoolHandle handle) noexcept;
 ```
 
 1. Resolves `bucket_of(handle)`.
-2. `acquire`-loads `state`; returns if not `Active`.
-3. `assert(live_bytes == 0)` — fires in debug builds if leaks remain.
-4. Clears `name[0]`, nulls all function pointers and `ctx`.
-5. Resets counter atomics to 0 (`relaxed`).
-6. Release-stores `Free` — slot is now available for the next `create_pool`.
+1. `acquire`-loads `state`; returns if not `Active`.
+1. `assert(live_bytes == 0)` — fires in debug builds if leaks remain.
+1. Clears `name[0]`, nulls all function pointers and `ctx`.
+1. Resets counter atomics to 0 (`relaxed`).
+1. Release-stores `Free` — slot is now available for the next `create_pool`.
 
 **Slot reuse**: the freed slot index is recycled immediately. The next
 `create_pool` call may return the same `PoolHandle::index`. Stale handles to
 destroyed pools will silently alias a new pool's counters; the caller is
 responsible for not using stale handles.
 
----
+______________________________________________________________________
 
 ## `AllocStrategy` and `PoolConfig`
 
@@ -163,7 +164,7 @@ responsible for not using stale handles.
 `PoolConfig::reserve` is stored but currently ignored; it is a pre-allocation
 hint for future `Arena` implementations.
 
----
+______________________________________________________________________
 
 ## Threading model
 

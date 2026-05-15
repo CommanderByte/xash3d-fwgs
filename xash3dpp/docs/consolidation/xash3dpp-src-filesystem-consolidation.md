@@ -2,14 +2,14 @@
 
 ## Summary
 
-8 clusters found across 8 source files.  
-Estimated lines removed from call sites: **~145** (clusters 1–6 ~120 lines, cluster 7 ~6, cluster 8 ~19).  
+8 clusters found across 8 source files.\
+Estimated lines removed from call sites: **~145** (clusters 1–6 ~120 lines, cluster 7 ~6, cluster 8 ~19).\
 Overall: two clusters (`ci_binary_find` + `archive_search_walk`) are the highest
 priority — they are byte-for-byte identical across PAK and ZIP backends today and
 will grow again when any new archive format (e.g. GRP, SIN) is added.
 Clusters 7 (`to_lower`) and 8 (`path_join`) are low-effort sweeps whose utilities now exist.
 
----
+______________________________________________________________________
 
 ## Clusters
 
@@ -62,7 +62,7 @@ const T* ci_find_by_name( const std::vector<T>& entries,
   exactly — it forces `strnicmp` to compare past the shorter string's terminator
   so length mismatches are caught without a separate size check.
 
----
+______________________________________________________________________
 
 ### cluster-2: `archive_search_walk`
 
@@ -121,7 +121,7 @@ std::vector<std::string> archive_search_by_name(
   function preserves this for now; pass the parameter through once the callers
   start using it.
 
----
+______________________________________________________________________
 
 ### cluster-3: `ci_name_sort_comparator`
 
@@ -150,7 +150,7 @@ inline bool ci_equal( std::string_view a, std::string_view b ) noexcept;
 ```
 
 - Rationale: `strnicmp` is already in `string.hpp`; `ci_less` / `ci_equal` are
-  its natural boolean wrappers.  Moving them here removes the three private
+  its natural boolean wrappers. Moving them here removes the three private
   static duplicates and makes them available to the whole engine.
 - Caveats / risks: The archive sort comparators currently use the
   `strnicmp(a, b, max(len)+1)` sentinel form; `ci_less` must preserve this to
@@ -158,7 +158,7 @@ inline bool ci_equal( std::string_view a, std::string_view b ) noexcept;
   Implementing as `strnicmp(a.data(), b.data(), max(a.size(), b.size()) + 1) < 0`
   is correct.
 
----
+______________________________________________________________________
 
 ### cluster-4: `is_write_mode`
 
@@ -191,7 +191,7 @@ inline bool is_write_mode( std::string_view mode ) noexcept {
   option.
 - Caveats / risks: None. The change is purely mechanical.
 
----
+______________________________________________________________________
 
 ### cluster-5: `ci_equal_sv`
 
@@ -213,7 +213,7 @@ Status: **functionally equivalent** — both check `a.size() == b.size() && strn
   `const std::string& a` — callers pass it a `std::string`. The `string_view`
   overload in utilities accepts this implicitly.
 
----
+______________________________________________________________________
 
 ### cluster-6: `MemFile`
 
@@ -224,6 +224,7 @@ Status: **functionally equivalent** — both check `a.size() == b.size() && strn
 | `backends/wad_backend.cpp` | ~120–170 | Complete `File` subclass for `vector<byte>` data |
 
 Status: **single occurrence today**, but:
+
 - `backends/android_backend.cpp` loads entire assets into memory and currently
   returns an `OsFd`-backed file via a memfd; a `MemFile` would be simpler and
   avoid the syscall.
@@ -275,7 +276,7 @@ private:
   version should match `OsFile::Gets()` semantics (skip `\r`, stop at `\n`
   or EOF).
 
----
+______________________________________________________________________
 
 ### cluster-7: `to_lower` (manual ASCII tolower loop)
 
@@ -307,7 +308,7 @@ Status: **identical** — all three are the same `for (char& c : s) c = std::tol
   locale-dependent `std::tolower` behaviour is not introduced.
 - Estimated lines removed: **6** (three 2-line loops → three 1-line calls)
 
----
+______________________________________________________________________
 
 ### cluster-8: `path_join` (manual `dir + "/" + rel` concatenation)
 
@@ -364,7 +365,7 @@ The inline sites are near-equivalent (the ternary on L121 matches `path_join`'s 
 - Estimated lines removed: **~19** (1 private helper function + ~17 inline sites become
   single-expression calls; some multi-line constructions collapse to one line)
 
----
+______________________________________________________________________
 
 ## Application order (suggested)
 

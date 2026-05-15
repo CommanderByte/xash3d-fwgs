@@ -1,7 +1,7 @@
 # memory — Architecture Overview
 
-> **Source**: `xash3dpp/src/memory/`  
-> **Public API**: `xash3dpp/include/xash3dpp/memory/`  
+> **Source**: `xash3dpp/src/memory/`\
+> **Public API**: `xash3dpp/include/xash3dpp/memory/`\
 > **Legacy reference**: `engine/common/zone.c` (DarkPlaces-derived pool allocator)
 
 ## Purpose
@@ -75,7 +75,7 @@ per-allocation source-file/line tracking. Key differences in the rewrite:
 
 ## Architecture at a glance
 
-```
+```text
  ┌─────────────────────────────────────────────────────────┐
  │  Callers (engine subsystems, filesystem, tests)         │
  │  create_pool / destroy_pool                             │

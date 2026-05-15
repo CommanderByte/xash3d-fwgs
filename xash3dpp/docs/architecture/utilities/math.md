@@ -1,9 +1,9 @@
 # Math and matrix utilities
 
 > **Headers**: `xash3dpp/include/xash3dpp/utilities/math.hpp`,
-> `xash3dpp/include/xash3dpp/utilities/matrix.hpp`  
-> **Sources**: `math.hpp` is header-only; `xash3dpp/src/utilities/matrix.cpp`  
-> **Namespace**: `xash::utilities`  
+> `xash3dpp/include/xash3dpp/utilities/matrix.hpp`\
+> **Sources**: `math.hpp` is header-only; `xash3dpp/src/utilities/matrix.cpp`\
+> **Namespace**: `xash::utilities`\
 > **Legacy reference**: `public/matrixlib.c`, `common/com_model.h` (raw array types)
 
 ## Purpose

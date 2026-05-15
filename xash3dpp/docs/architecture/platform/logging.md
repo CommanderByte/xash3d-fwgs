@@ -2,9 +2,9 @@
 
 > **Moved**: logging now lives in `xash3dpp_core`. This page is retained for cross-reference and will be relocated to `docs/architecture/core/logging.md` in a future doc reshuffle.
 
-> **Defined in**: `include/xash3dpp/core/log.hpp`  
-> **Source**: `src/core/log.cpp` (shared across all platforms)  
-> **Namespace**: `xash::core`  
+> **Defined in**: `include/xash3dpp/core/log.hpp`\
+> **Source**: `src/core/log.cpp` (shared across all platforms)\
+> **Namespace**: `xash::core`\
 > **Library**: `xash3dpp_core`
 
 ## Overview
@@ -79,7 +79,7 @@ default sink via this API.
 
 ## Output path
 
-```
+```text
 log() / logf() / log_va()
   │
   ├─ format prefix ("[tag][LEVEL]: ") prepended

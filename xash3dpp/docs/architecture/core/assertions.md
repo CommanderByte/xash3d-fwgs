@@ -1,6 +1,6 @@
 # Assertion Macros
 
-> **Defined in**: `include/xash3dpp/core/assert.hpp`  
+> **Defined in**: `include/xash3dpp/core/assert.hpp`\
 > **Namespace**: (macros — no namespace)
 
 ## Overview
@@ -40,14 +40,15 @@ XASH_FATAL( expr, "human readable message" )
 Evaluates `expr` in every build. On failure:
 
 1. Calls `core::logf(LogLevel::Fatal, "assert", "FATAL: <expr>  [file:line]  <msg>")`.
-2. Calls `XASH_DEBUG_BREAK()` (attaches a debugger if one is running).
-3. Calls `std::abort()`.
+1. Calls `XASH_DEBUG_BREAK()` (attaches a debugger if one is running).
+1. Calls `std::abort()`.
 
 The log step ensures the reason appears in the platform console output and in
 any registered `LogCallback` (e.g. a crash reporter) even in release builds.
 
 Example failure message:
-```
+
+```text
 [assert][FATAL]: FATAL: pool != nullptr  [src/memory/memory.cpp:87]  pool must be valid here
 ```
 
@@ -67,7 +68,7 @@ it is an implementation detail of `XASH_ASSERT` and `XASH_FATAL`.
 
 ## Choosing the right tier
 
-```
+```text
 Is the check cheap?
   YES → Is it only useful to developers, not operators?
     YES → XASH_ASSERT

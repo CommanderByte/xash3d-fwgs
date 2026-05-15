@@ -29,13 +29,13 @@ compatibility.
 > **Note**: `OsFd` and the OS I/O declarations live in `xash3dpp_platform`:
 > `platform/os_fd.hpp` and `platform/os_io.hpp` (namespace `xash::platform`).
 > They are consumed here as a private dependency; see [platform-layer.md](./platform-layer.md).
-| `private/filesystem/backends/dir_backend.hpp` | `DirBackend` — plain OS directory |
-| `private/filesystem/backends/pak_backend.hpp` | `PakBackend` — Quake PAK archive |
-| `private/filesystem/backends/wad_backend.hpp` | `WadBackend` — GoldSrc WAD2/WAD3 |
-| `private/filesystem/backends/zip_backend.hpp` | `ZipBackend` — ZIP / PK3 archive |
-| `private/filesystem/backends/pk3dir_backend.hpp` | `Pk3DirBackend` — loose PK3 directory |
-| `private/filesystem/backends/android_backend.hpp` | `AndroidBackend` — AAsset (XASH_ANDROID only) |
-| `private/filesystem/vfs009/vfs009.hpp` | `vfs009::create_vfs009_interface()` |
+> | `private/filesystem/backends/dir_backend.hpp` | `DirBackend` — plain OS directory |
+> | `private/filesystem/backends/pak_backend.hpp` | `PakBackend` — Quake PAK archive |
+> | `private/filesystem/backends/wad_backend.hpp` | `WadBackend` — GoldSrc WAD2/WAD3 |
+> | `private/filesystem/backends/zip_backend.hpp` | `ZipBackend` — ZIP / PK3 archive |
+> | `private/filesystem/backends/pk3dir_backend.hpp` | `Pk3DirBackend` — loose PK3 directory |
+> | `private/filesystem/backends/android_backend.hpp` | `AndroidBackend` — AAsset (XASH_ANDROID only) |
+> | `private/filesystem/vfs009/vfs009.hpp` | `vfs009::create_vfs009_interface()` |
 
 ## Source files
 

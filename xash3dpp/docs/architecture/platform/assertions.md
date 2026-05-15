@@ -2,8 +2,8 @@
 
 > **Moved**: `assert.hpp` and `assert_main.hpp` now live in `xash3dpp_core`. This page is retained for cross-reference and will be relocated to `docs/architecture/core/assertions.md` in a future doc reshuffle.
 
-> **Defined in**: `include/xash3dpp/core/assert.hpp`  
-> **Private utility**: `include/xash3dpp/private/core/assert_main.hpp`  
+> **Defined in**: `include/xash3dpp/core/assert.hpp`\
+> **Private utility**: `include/xash3dpp/private/core/assert_main.hpp`\
 > **Namespace**: macros (project-wide); `xash::core::detail` (private functions)
 
 ## Overview
@@ -54,7 +54,7 @@ use `XASH_FATAL` instead.
 Always-on invariant check that logs and aborts:
 
 1. Evaluates `expr` in all builds (including release with NDEBUG).
-2. If `!expr`:
+1. If `!expr`:
    a. Calls `core::logf(LogLevel::Fatal, "assert", "FATAL: %s [file:line] %s", #expr, msg)`.
    b. Calls `XASH_DEBUG_BREAK()`.
    c. Calls `std::abort()`.

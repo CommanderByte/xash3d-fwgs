@@ -1,9 +1,9 @@
 # Encoding utilities — UTF and byte-order swap
 
 > **Headers**: `xash3dpp/include/xash3dpp/utilities/utf.hpp`,
-> `xash3dpp/include/xash3dpp/utilities/swap.hpp`  
-> **Sources**: `xash3dpp/src/utilities/utf.cpp`; `swap.hpp` is header-only  
-> **Namespaces**: `xash::utilities::utf` (UTF functions), `xash::utilities` (swap)  
+> `xash3dpp/include/xash3dpp/utilities/swap.hpp`\
+> **Sources**: `xash3dpp/src/utilities/utf.cpp`; `swap.hpp` is header-only\
+> **Namespaces**: `xash::utilities::utf` (UTF functions), `xash::utilities` (swap)\
 > **Legacy reference**: `public/utflib.h`, `public/utflib.c`, `public/swaplib.h`
 
 ## UTF encoding (utf.hpp / utf.cpp)
@@ -112,6 +112,7 @@ public:
 ```
 
 Both wrappers encapsulate a `DecodeState` member and expose a `feed` method:
+
 - Returns `std::nullopt` while a multi-byte/surrogate sequence is incomplete.
 - Returns `std::optional{codepoint}` when a sequence completes.
 - Returns `std::optional{0}` for invalid sequences; callers may substitute
@@ -120,7 +121,7 @@ Both wrappers encapsulate a `DecodeState` member and expose a `feed` method:
 The RAII wrappers eliminate the need to thread the `DecodeState` through
 iteration code manually.
 
----
+______________________________________________________________________
 
 ## Byte-order swap (swap.hpp, header-only)
 

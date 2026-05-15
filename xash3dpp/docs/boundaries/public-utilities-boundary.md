@@ -16,7 +16,7 @@ and VCS metadata (`build`/`build_vcs`), and DLL-export validation helpers
 The module does **not** own memory pools, I/O, platform syscalls, or any engine
 state.
 
----
+______________________________________________________________________
 
 ## External ABI contracts
 
@@ -38,7 +38,7 @@ shim is sufficient if the new implementation uses a different calling style.
 
 Everything else in `public/` has **no direct game/client DLL ABI exposure**.
 
----
+______________________________________________________________________
 
 ## Interface (what the rest of the engine calls)
 
@@ -56,7 +56,7 @@ Everything else in `public/` has **no direct game/client DLL ABI exposure**.
 | `build` | `Q_buildnum`, `Q_buildnum_iso`, `Q_buildnum_compat`, `g_buildcommit`, `g_buildbranch`, `g_buildcommit_date` | `build_vcs.c` supplies VCS strings at link time; `build.c` computes day-offset from `g_buildcommit_date` |
 | `dllhelpers` | `ClearExports`, `ValidateExports`, `dllfunc_t` | Used by all plugin loaders to resolve export tables |
 
----
+______________________________________________________________________
 
 ## Dependencies (what this module calls)
 
@@ -67,7 +67,7 @@ Everything else in `public/` has **no direct game/client DLL ABI exposure**.
 - **C standard library** — `<string.h>`, `<stdarg.h>`, `<math.h>`, `<ctype.h>`, `<stdio.h>` (for `sscanf` in `build.c`).
 - **No engine subsystems** — no filesystem, no console, no memory pools.
 
----
+______________________________________________________________________
 
 ## Owned state
 
@@ -79,7 +79,7 @@ Everything else in `public/` has **no direct game/client DLL ABI exposure**.
 
 No heap allocations; no global mutable state beyond the three items above.
 
----
+______________________________________________________________________
 
 ## Quirks and invariants
 
@@ -95,13 +95,13 @@ No heap allocations; no global mutable state beyond the three items above.
 - **`Q_buildnum_compat()` always returns 4529.** This is intentional; it represents the frozen legacy build number that some mods may test against.
 - **`restrict` is erased in C++** via `#define restrict` in `crtlib.h`. This means the C++ rewrite cannot rely on restrict-based optimisations in these functions.
 
----
+______________________________________________________________________
 
 ## Open questions
 
 1. **`matrixlib` → `com_model.h` dependency.** Should the rewrite's matrix library take bone/attachment types as opaque spans, or keep the GoldSrc struct dependency? Eliminating it would make `public/` fully independent of `common/`.
-2. **CRC32 binding strategy.** The `enginefuncs_t` slots are filled by the server subsystem, not by `public/`. Decide whether to (a) expose the new CRC32 functions directly at the right signature, (b) use inline lambdas/shims at the fill site, or (c) keep a thin `crclib`-compatible façade. All are valid; pick whichever keeps the utilities module cleanest.
-3. **`utflib` scope.** The current API converts to CP1251/CP1252 for legacy console codepage support. Should the rewrite retain those conversion tables or treat all I/O as UTF-8 at the boundary and only convert at display time?
-4. **`miniz` vendor strategy.** Should `xash3dpp/3rdparty/` carry its own miniz copy, or depend on a system zlib with a miniz compatibility shim? Either way, the ZIP-read API surface used by filesystem must be decided before the filesystem module is implemented.
-5. **`getopt` necessity.** The rewrite will target C++17; `std::span` + a small argument parser might replace `getopt` entirely. Confirm whether any external tool or game DLL calls `getopt` directly (unlikely, but should be verified).
-6. **Thread safety of `Q_timestamp`.** It uses `localtime` internally via a static buffer in some implementations. If the rewrite targets a multi-threaded host, this must be replaced with `localtime_r`/`localtime_s`.
+1. **CRC32 binding strategy.** The `enginefuncs_t` slots are filled by the server subsystem, not by `public/`. Decide whether to (a) expose the new CRC32 functions directly at the right signature, (b) use inline lambdas/shims at the fill site, or (c) keep a thin `crclib`-compatible façade. All are valid; pick whichever keeps the utilities module cleanest.
+1. **`utflib` scope.** The current API converts to CP1251/CP1252 for legacy console codepage support. Should the rewrite retain those conversion tables or treat all I/O as UTF-8 at the boundary and only convert at display time?
+1. **`miniz` vendor strategy.** Should `xash3dpp/3rdparty/` carry its own miniz copy, or depend on a system zlib with a miniz compatibility shim? Either way, the ZIP-read API surface used by filesystem must be decided before the filesystem module is implemented.
+1. **`getopt` necessity.** The rewrite will target C++17; `std::span` + a small argument parser might replace `getopt` entirely. Confirm whether any external tool or game DLL calls `getopt` directly (unlikely, but should be verified).
+1. **Thread safety of `Q_timestamp`.** It uses `localtime` internally via a static buffer in some implementations. If the rewrite targets a multi-threaded host, this must be replaced with `localtime_r`/`localtime_s`.

@@ -7,7 +7,7 @@
 > consistency questions identified by surveying the first five completed subsystems.
 > **Application**: §4 records what applies now, when next touched, and new code only
 
----
+______________________________________________________________________
 
 ## 1. What This Document Is
 
@@ -17,7 +17,7 @@ document records decisions on: naming conventions, `[[nodiscard]]` completeness,
 `constexpr` policy, integer type policy, runtime assertions, the diagnostic/logging
 channel, copy/move semantics, and test framework.
 
----
+______________________________________________________________________
 
 ## 2. Observations Already Consistent — No Debate Needed
 
@@ -32,11 +32,11 @@ as confirmed conventions, not open questions.
 | `std::` qualification | Full `std::` qualification everywhere in headers. No `using namespace` or `using std::X` at header scope. |
 | Named constants | `inline constexpr` in headers — never `#define` for numeric constants |
 
----
+______________________________________________________________________
 
 ## 3. Decisions
 
----
+______________________________________________________________________
 
 ### QA: `[[nodiscard]]` completeness
 
@@ -49,6 +49,7 @@ has none. No rule existed for when to omit it.
 it requires a documented reason at the declaration site.
 
 Apply to:
+
 - All functions returning error indicators (`bool`, `optional<T>`, `expected<T,E>`)
 - All functions returning owned resources (`pool_ptr`, `unique_ptr`, handles)
 - All functions returning computed values where discarding is a likely bug
@@ -56,6 +57,7 @@ Apply to:
 
 Omit only when the result is genuinely advisory or the function is intentionally
 called for side-effects only, and document the omission:
+
 ```cpp
 // [[nodiscard]] omitted — result is advisory; caller may ignore if already logged
 void report_stats() noexcept;
@@ -64,7 +66,7 @@ void report_stats() noexcept;
 `filesystem.hpp`'s missing annotations are a gap; add them opportunistically when
 the file is next touched for another reason.
 
----
+______________________________________________________________________
 
 ### QB: `constexpr` policy
 
@@ -75,6 +77,7 @@ compile time (no dynamic allocation, no I/O, no non-`constexpr` calls) and when
 compile-time evaluation is a plausible use case. Do not force it.
 
 `constexpr` applies naturally to:
+
 - Value-type comparison and conversion operators (`PoolHandle::operator==`, `operator bool`)
 - Short arithmetic / bit-manipulation helpers over inputs with no side effects
 - `valid()` and similar predicates on handle types
@@ -82,7 +85,7 @@ compile-time evaluation is a plausible use case. Do not force it.
 Do not add `constexpr` retroactively. It should follow naturally from the
 implementation.
 
----
+______________________________________________________________________
 
 ### QE: Method naming — `PascalCase` or `snake_case`?
 
@@ -114,6 +117,7 @@ Full naming table:
 | Constants (`inline constexpr`) | `k_snake_case` | `k_null_pool`, `k_max_path` |
 
 **Exceptions:**
+
 - `IFilesystem` vtable method names match the VFileSystem009 legacy ABI (`Open`,
   `BaseDir`, etc.). These are ABI-fixed and explicitly exempt from snake_case.
 - Any `I<X>` vtable method whose name is dictated by a legacy ABI is exempt.
@@ -122,7 +126,7 @@ Full naming table:
 changed proactively. Migrate to snake_case when those methods are touched for another
 reason (opportunistic conformance, same rule as Q-3/Q-4).
 
----
+______________________________________________________________________
 
 ### QF: Enum value naming
 
@@ -151,7 +155,7 @@ enum class ThreadRole  { Main, AudioCallback, AudioDecoder, Worker, Render, NetI
 `memory.hpp`'s `k`-prefixed values migrate to `PascalCase` when memory is next
 touched for another reason.
 
----
+______________________________________________________________________
 
 ### QG: Integer type policy
 
@@ -173,13 +177,14 @@ touched for another reason.
 | Opaque memory addresses | `std::uintptr_t` | Portable unsigned address type |
 
 **Additional rules:**
+
 - Never use bare `unsigned` or `unsigned int` — always qualify with a width (`uint32_t`)
   or use the semantic type (`size_t`).
 - Never silently cast `size_t` to `int`. When a GoldSrc `int` index must be compared
   to an internal `size_t` count, validate `count ≤ INT_MAX` before casting and
   document the reason.
 
----
+______________________________________________________________________
 
 ### QH: Runtime assertion strategy
 
@@ -235,7 +240,7 @@ Do **not** use `assert()` from `<cassert>` directly. It lacks the logging call, 
 macro expansion under MSVC can surprise (`__LINE__` in `__FILE__` paths), and it
 provides no message parameter.
 
----
+______________________________________________________________________
 
 ### QI: Diagnostic / logging channel
 
@@ -246,6 +251,7 @@ logging mechanism itself was left undefined. `XASH_ASSERT`/`XASH_FATAL` (QH abov
 depend on it. Networking (Chunk 2) needs it for structured error reporting.
 
 **Design constraints:**
+
 - Callable before `EngineContext` is constructed (startup failures, early-init errors)
 - Callable from any thread including `T_AudioCallback`
 - No heap allocation in the log call itself
@@ -280,7 +286,8 @@ void log_set_callback(LogCallback cb) noexcept;
 subsystem's directory name: `"filesystem"`, `"networking"`, `"cmd_cvar"`, `"platform"`.
 
 **Default output format** (wraps `platform::console::write`):
-```
+
+```text
 [filesystem][WARN]: could not open "valve/pak0.pak"
 [networking][ERROR]: connect timeout after 10s
 ```
@@ -315,6 +322,7 @@ the `return false` / `return std::nullopt`. The return value tells the caller th
 operation failed; the log tells diagnostics *why*. Both are always required.
 
 **`Verbose` guard pattern** (zero overhead when `XASH_VERBOSE` is absent):
+
 ```cpp
 #ifdef XASH_VERBOSE
     core::logf(LogLevel::Verbose, "filesystem", "scan: %s", path.data());
@@ -332,7 +340,7 @@ diagnostics channel are deferred to the diagnostics subsystem (Chunk TBD).
 exist before networking is written, since networking errors are the first case where
 `LogLevel::Error` is needed in production code.
 
----
+______________________________________________________________________
 
 ### QJ: Copy/move semantics for subsystem types
 
@@ -355,6 +363,7 @@ structs and held by subsystems. It must occupy a stable address for its entire
 lifetime. It is constructed once in `main()` (or `Host::init`) and never moved.
 
 **Subsystem context move pattern** (same as Q-3 / pimpl move note in instructions):
+
 ```cpp
 // In the header (Impl is incomplete here):
 Filesystem(Filesystem&&) noexcept;
@@ -365,7 +374,7 @@ Filesystem::Filesystem(Filesystem&&) noexcept            = default;
 Filesystem& Filesystem::operator=(Filesystem&&) noexcept = default;
 ```
 
----
+______________________________________________________________________
 
 ### QK: Test framework
 
@@ -378,6 +387,7 @@ counters. Functional but not standardised across files.
 `xash3dpp/tests/test_helpers.hpp`.
 
 **Standard macro set:**
+
 ```cpp
 // Non-fatal: records failure, test continues
 #define CHECK(expr)
@@ -392,6 +402,7 @@ counters. Functional but not standardised across files.
 ```
 
 **Test function convention:**
+
 ```cpp
 static void test_<feature>() {
     // test body — use CHECK / REQUIRE
@@ -411,7 +422,7 @@ doctest supports `DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS`, is compati
 with `/EHs-c-`, and can be vendored as a single header. If we switch, doctest is the
 preferred library over GoogleTest (which requires exceptions).
 
----
+______________________________________________________________________
 
 ## 4. Application Schedule
 

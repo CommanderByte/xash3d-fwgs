@@ -1,6 +1,6 @@
 # Thread Role Registry
 
-> **Defined in**: `include/xash3dpp/core/thread_role.hpp` / `src/core/thread_role.cpp`  
+> **Defined in**: `include/xash3dpp/core/thread_role.hpp` / `src/core/thread_role.cpp`\
 > **Namespace**: `xash::core`
 
 ## Overview
@@ -74,7 +74,8 @@ calls `XASH_FATAL`. Fires in both debug and release builds — thread role
 mismatches are always programmer bugs.
 
 Example failure message:
-```
+
+```text
 [thread_role][FATAL]: FATAL: actual == expected  [src/core/thread_role.cpp:52]
     thread role mismatch: expected Main, got Worker
 ```

@@ -30,26 +30,26 @@ recommended order (each spec may reference those above it).
 ### Foundation (no engine deps)
 
 1. `public-utilities` — crtlib, matrixlib, crclib, miniz, utflib, atlas, getopt
-2. `filesystem` — archive backends, search paths, plugin ABI
-3. `platform` — OS abstraction: time, sleep, DLL load, dialogs, clipboard (`engine/platform/`)
+1. `filesystem` — archive backends, search paths, plugin ABI
+1. `platform` — OS abstraction: time, sleep, DLL load, dialogs, clipboard (`engine/platform/`)
 
 ### Core services
 
 1. `memory` — zone allocator, memory pools (`zone.c`)
-2. `cmd-cvar` — command buffer, console variable registry (`cmd.c`, `cvar.c`, `base_cmd.c`)
-3. `networking` — socket I/O, Netchan reliability/fragmentation, HTTP (`net_ws.c`, `net_chan.c`, `net_buffer.c`)
-4. `host` — main frame loop, game state machine, feature flags (`host.c`, `host_state.c`)
+1. `cmd-cvar` — command buffer, console variable registry (`cmd.c`, `cvar.c`, `base_cmd.c`)
+1. `networking` — socket I/O, Netchan reliability/fragmentation, HTTP (`net_ws.c`, `net_chan.c`, `net_buffer.c`)
+1. `host` — main frame loop, game state machine, feature flags (`host.c`, `host_state.c`)
 
 ### Content pipeline
 
 1. `content-loaders` — model/image/sound format parsers (`imagelib/`, `soundlib/`, `mod_studio.c`, `mod_alias.c`, `mod_bmodel.c`, `mod_sprite.c`)
-2. `world-collision` — BSP spatial queries, entity linking, trace (`sv_world.c`, `pm_trace.c`)
+1. `world-collision` — BSP spatial queries, entity linking, trace (`sv_world.c`, `pm_trace.c`)
 
 ### Simulation
 
 1. `physics-pmove` — `pm_shared/`, `sv_phys.c`, `sv_move.c`, `cl_pmove.c` — shared client/server movement
-2. `server` — `sv_*`, game DLL bridge (`eiface.h` implementation), edict management
-3. `save-restore` — `sv_save.c` binary save format
+1. `server` — `sv_*`, game DLL bridge (`eiface.h` implementation), edict management
+1. `save-restore` — `sv_save.c` binary save format
 
 ### Rendering
 
@@ -58,11 +58,11 @@ recommended order (each spec may reference those above it).
 ### Client
 
 1. `client-state` — `cl_main`, `cl_frame`, entity/delta management
-2. `client-prediction` — `CL_CreateMove`, prediction loop coupling to server physics
-3. `sound` — `engine/client/sound/` (S_Init, mixing, voice)
-4. `input` — `engine/client/input/` (keyboard, mouse, gamepad, gyro, touch)
-5. `console-ui` — console draw, VGUI bridge, MainUI DLL
-6. `demo` — `cl_demo.c` recording/playback format
+1. `client-prediction` — `CL_CreateMove`, prediction loop coupling to server physics
+1. `sound` — `engine/client/sound/` (S_Init, mixing, voice)
+1. `input` — `engine/client/input/` (keyboard, mouse, gamepad, gyro, touch)
+1. `console-ui` — console draw, VGUI bridge, MainUI DLL
+1. `demo` — `cl_demo.c` recording/playback format
 
 ### Launcher
 

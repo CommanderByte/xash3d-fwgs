@@ -1,7 +1,7 @@
 # Stats API
 
 > **Defined in**: `xash3dpp/include/xash3dpp/memory/memory.hpp` (declarations),
-> `xash3dpp/src/memory/memory.cpp` (implementations)  
+> `xash3dpp/src/memory/memory.cpp` (implementations)\
 > **Namespace**: `xash::memory`
 
 ## Overview
@@ -12,7 +12,7 @@ Reads are always non-blocking and lock-free. Under concurrent allocation the
 values may be briefly inconsistent, but they converge to exact values once all
 allocating threads quiesce.
 
----
+______________________________________________________________________
 
 ## `PoolStats`
 
@@ -33,10 +33,9 @@ the slot, so the snapshot must not be used after the owning pool is destroyed.
 atomics at snapshot time. They are **not** atomically consistent with each other:
 a reader may see `total_allocs > total_frees` even when `live_bytes == 0` during
 a realloc (which records a free then an alloc). Once all allocating threads have
-joined, the relationship `live_bytes == (total_allocs - total_frees) *
-avg_object_size` holds in aggregate, not point-by-point.
+joined, the relationship `live_bytes == (total_allocs - total_frees) * avg_object_size` holds in aggregate, not point-by-point.
 
----
+______________________________________________________________________
 
 ## `get_stats`
 
@@ -45,17 +44,17 @@ PoolStats get_stats(PoolHandle handle) noexcept;
 ```
 
 1. Resolves `bucket_of(handle)`.
-2. `acquire`-loads `state`. If not `Active`, returns a zeroed `PoolStats` with
+1. `acquire`-loads `state`. If not `Active`, returns a zeroed `PoolStats` with
    `name = nullptr`.
-3. Relaxed-loads `live_bytes`, `total_allocs`, `total_frees` from the bucket
+1. Relaxed-loads `live_bytes`, `total_allocs`, `total_frees` from the bucket
    atomics.
-4. Sets `PoolStats::name` to point directly into `bucket.name[]`.
-5. Returns the snapshot.
+1. Sets `PoolStats::name` to point directly into `bucket.name[]`.
+1. Returns the snapshot.
 
 The `acquire` load in step 2 pairs with the `release` store of `Active` in
 `create_pool`, ensuring `name[]` was written before this load returns.
 
----
+______________________________________________________________________
 
 ## `pool_count`
 
@@ -73,7 +72,7 @@ loads. After all lifecycle operations complete, the count is exact.
 Use `pool_count` for diagnostics and tests, not for control flow that must be
 linearised with specific create/destroy calls.
 
----
+______________________________________________________________________
 
 ## `for_each_pool`
 
@@ -109,7 +108,7 @@ for_each_pool([](PoolStats s, void* ud) {
 }, &total);
 ```
 
----
+______________________________________________________________________
 
 ## `set_oom_handler`
 
@@ -126,7 +125,7 @@ here because it is the only global write path in the stats/control surface.
 `set_oom_handler` from multiple threads are safe but last-write-wins with no
 stronger ordering guarantee.
 
----
+______________________________________________________________________
 
 ## Thread safety
 
@@ -138,7 +137,7 @@ stronger ordering guarantee.
 | `for_each_pool` callback calls `create_pool`/`destroy_pool` | **Unsafe** | Must not modify array during iteration |
 | `set_oom_handler` from any thread | Safe | Atomic release store |
 
----
+______________________________________________________________________
 
 ## Related links
 

@@ -3,11 +3,11 @@
 ## Responsibility
 
 This module owns the command buffer, command registry, console-variable (cvar)
-registry, and the text-scripting layer that binds them together.  It accepts
+registry, and the text-scripting layer that binds them together. It accepts
 text commands from any source (console, config files, server stuffcmds,
 command-line `+` args), tokenises them, dispatches them to registered command
 functions or cvar set-handlers, and manages the lifetime of both commands and
-cvars.  It does **not** own the console display, input bindings, networking
+cvars. It does **not** own the console display, input bindings, networking
 encode/decode, or filesystem I/O beyond reading `.cfg` files.
 
 ## External ABI contracts
@@ -41,6 +41,7 @@ encode/decode, or filesystem I/O beyond reading `.cfg` files.
 ### Shared structure layout — FROZEN
 
 `cvar_t` from `common/cvardef.h`:
+
 ```c
 typedef struct cvar_s {
     const char *name;
@@ -50,6 +51,7 @@ typedef struct cvar_s {
     struct cvar_s *next; // linked-list chain exposed to DLLs via Cvar_GetList
 } cvar_t;
 ```
+
 Game and client DLLs read `.string`, `.value`, `.flags`, and `.next` directly.
 Any change to this layout breaks the frozen ABI.
 
