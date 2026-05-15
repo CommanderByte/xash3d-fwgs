@@ -114,6 +114,33 @@ public:
     // Build a copyable descriptor snapshot for the given cvar.
     [[nodiscard]] CvarDesc cvar_describe(const Cvar *cv) const noexcept;
 
+    // Read helpers — return sensible defaults when name is not found.
+    [[nodiscard]] const char *cvar_variable_string (const char *name) const noexcept;
+    [[nodiscard]] float       cvar_variable_value   (const char *name) const noexcept;
+    [[nodiscard]] int         cvar_variable_integer (const char *name) const noexcept;
+
+    // Force-set: updates value AND flags, bypasses privilege/cheat/latch.
+    void cvar_full_set(const char *name, const char *value,
+                       std::uint32_t flags) noexcept;
+
+    // Reset all FCVAR_CHEAT cvars to their registered default values.
+    void cvar_set_cheat_state() noexcept;
+
+    // Returns the head of the ABI linked list (for legacy Cvar_GetList()).
+    [[nodiscard]] CvarAbi *cvar_get_list() const noexcept;
+
+    // Persist all FCVAR_ARCHIVE cvars (filtered by owner_flags_mask; 0 = all)
+    // to an open filesystem VFile handle (opaque void* to avoid a header dep).
+    void cvar_write_variables(void *vfile,
+                              std::uint32_t owner_flags_mask) noexcept;
+
+    // Safe DLL-unlink: call cvar_prepare_to_unlink() BEFORE the DLL is
+    // unloaded (while its cvar structs are still valid), then unload the DLL,
+    // then call unlink_pending_cvars().  Handles the case where the DLL freed
+    // its cvar structs without notifying the engine.
+    void cvar_prepare_to_unlink(std::uint32_t owner_flags_mask) noexcept;
+    void unlink_pending_cvars() noexcept;
+
     // ---- Command registry -------------------------------------------------
 
     void cmd_add(const char    *name,
@@ -128,6 +155,12 @@ public:
 
     // Build a copyable descriptor snapshot for a command by name.
     [[nodiscard]] CommandDesc cmd_describe(const char *name) const noexcept;
+
+    // Returns true if a command with this name is registered.
+    [[nodiscard]] bool cmd_exists(const char *name) const noexcept;
+
+    // Execute a single command line immediately in the privileged context.
+    void cmd_execute_string(std::string_view text) noexcept;
 
     // ---- Command buffer ---------------------------------------------------
 
@@ -144,6 +177,25 @@ public:
     // Privilege: stuffcmd queue only runs privileged if ITrustOracle says so.
     // Stops when cmd_wait > 0 (decremented once per call).
     void cbuf_execute() noexcept;
+
+    // Discard all pending commands from both queues.
+    void cbuf_clear() noexcept;
+
+    // ---- Tokenizer accessors (valid only during cbuf_execute dispatch) -----
+    // Calling these outside of a command dispatch returns 0 / "" / false.
+
+    [[nodiscard]] int         cmd_argc()                 const noexcept;
+    [[nodiscard]] const char *cmd_argv(int i)            const noexcept;
+    [[nodiscard]] const char *cmd_args()                 const noexcept;
+    [[nodiscard]] bool        cmd_current_is_privileged() const noexcept;
+
+    // ---- DLL lifecycle (called by the host layer) -------------------------
+
+    // Tell the context whether a game-server or client DLL is currently loaded.
+    // cvar_unlink / cmd_unlink refuse to run while the matching DLL is loaded
+    // (prevents double-unlink during DLL reload).
+    void set_server_dll_loaded(bool loaded) noexcept;
+    void set_client_dll_loaded(bool loaded) noexcept;
 
     // ---- Observer registration (call before init or immediately after) ----
 

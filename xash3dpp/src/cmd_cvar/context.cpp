@@ -15,6 +15,7 @@
 #include <cstring>
 #include <deque>
 #include <string>
+#include <vector>
 
 namespace xash::cmd_cvar {
 
@@ -49,6 +50,28 @@ struct CmdCvarContext::Impl {
     // Stats
     CmdCvarStats stats_block;
 
+    // Tokenizer scratch — valid only while cmd_dispatch_line() is on the call stack.
+    // Written by cbuf_execute before invoking a CommandFn; reset after.
+    // Built-in commands access these via the TLS context pointer (see below).
+    static constexpr int k_max_argc = static_cast<int>(limits::cmd_tokens_max);
+    int         tok_argc              { 0 };
+    const char *tok_argv[k_max_argc]  {};
+    char        tok_argsBuffer[limits::cmd_line_max] {};
+    bool        tok_is_privileged     { false };
+
+    // DLL lifecycle flags — set by the host layer via CmdCvarContext::set_*_dll_loaded().
+    // cvar_unlink / cmd_unlink check these to prevent double-unlink during reload.
+    bool server_dll_loaded { false };
+    bool client_dll_loaded { false };
+
+    // Pending safe-unlink list: populated by cvar_prepare_to_unlink() before DLL
+    // unload while cvar structs are still valid; consumed by unlink_pending_cvars().
+    struct PendingUnlinkEntry {
+        const char   *name;        // pool-owned copy — remains valid after DLL frees its struct
+        std::uint32_t owner_flags;
+    };
+    std::vector<PendingUnlinkEntry> pending_unlink;
+
 #if XASH_DEBUG_CVARS
     // Break-on-write cvar name.  Set via debug_break_on_cvar_write().
     const char *break_on_write_name { nullptr };
@@ -57,6 +80,30 @@ struct CmdCvarContext::Impl {
     detail::CircularBuffer<CvarChangeRecord, limits::cvar_change_log_capacity> change_log;
 #endif
 };
+
+// ---------------------------------------------------------------------------
+// Built-in command handler design
+// ---------------------------------------------------------------------------
+//
+// CommandFn = void(*)() is a plain function pointer with no context parameter
+// (frozen ABI — game DLLs register commands via pfnAddCommand with this type).
+//
+// Built-in engine commands (echo, wait, alias, exec, ...) need access to the
+// context to read Cmd_Argv() and call other methods.  The solution is a
+// thread-local pointer set by cbuf_execute() before invoking any CommandFn,
+// cleared after.  Built-in handlers are registered as non-capturing lambdas
+// (which decay to CommandFn) that read the TLS pointer:
+//
+//   cmd_add("echo", []() noexcept {
+//       const char *msg = tls_ctx->cmd_args();
+//       // ...
+//   });
+//
+// Since all dispatch is game-thread-only, no synchronisation is needed.
+
+namespace {
+thread_local CmdCvarContext *tls_ctx = nullptr;
+} // anonymous namespace
 
 // ---------------------------------------------------------------------------
 // Constructor / destructor
@@ -186,6 +233,64 @@ CvarDesc CmdCvarContext::cvar_describe(const Cvar *cv) const noexcept
     };
 }
 
+const char *CmdCvarContext::cvar_variable_string(const char *name) const noexcept
+{
+    const Cvar *cv = const_cast<CmdCvarContext *>(this)->cvar_find(name);
+    return cv ? cv->abi.string : "";
+}
+
+float CmdCvarContext::cvar_variable_value(const char *name) const noexcept
+{
+    const Cvar *cv = const_cast<CmdCvarContext *>(this)->cvar_find(name);
+    return cv ? cv->abi.value : 0.0f;
+}
+
+int CmdCvarContext::cvar_variable_integer(const char *name) const noexcept
+{
+    return static_cast<int>(cvar_variable_value(name));
+}
+
+void CmdCvarContext::cvar_full_set(const char     *name,
+                                    const char     *value,
+                                    std::uint32_t   flags) noexcept
+{
+    // TODO: find-or-create, then force-set bypassing all guards + update flags
+    (void)name; (void)value; (void)flags;
+}
+
+void CmdCvarContext::cvar_set_cheat_state() noexcept
+{
+    // TODO: walk cvar_list_head; for each FCVAR_CHEAT cvar call cvar_set_direct
+    //       with def_string and CvarWriteSource::EngineInternal
+}
+
+CvarAbi *CmdCvarContext::cvar_get_list() const noexcept
+{
+    // TODO: return impl_->cvar_list_head (populated after Impl is extended)
+    return nullptr;
+}
+
+void CmdCvarContext::cvar_write_variables(void          *vfile,
+                                           std::uint32_t  owner_flags_mask) noexcept
+{
+    // TODO: walk cvar_list_head; for each FCVAR_ARCHIVE cvar (filtered by mask)
+    //       write  name "value"\n  via filesystem VFile API
+    (void)vfile; (void)owner_flags_mask;
+}
+
+void CmdCvarContext::cvar_prepare_to_unlink(std::uint32_t owner_flags_mask) noexcept
+{
+    // TODO: walk cvar_list_head; for each matching cvar snapshot {pool-dup name,
+    //       owner_flags} into impl_->pending_unlink while the DLL struct is alive
+    (void)owner_flags_mask;
+}
+
+void CmdCvarContext::unlink_pending_cvars() noexcept
+{
+    // TODO: for each PendingUnlinkEntry in pending_unlink, look up by name
+    //       in the hash map and remove the entry; then clear pending_unlink
+}
+
 // ---------------------------------------------------------------------------
 // Command registry — stub forwards (implementations in cmd.cpp)
 // ---------------------------------------------------------------------------
@@ -216,6 +321,19 @@ CommandDesc CmdCvarContext::cmd_describe(const char *name) const noexcept
     // TODO
     (void)name;
     return {};
+}
+
+bool CmdCvarContext::cmd_exists(const char *name) const noexcept
+{
+    // TODO: hash map lookup
+    (void)name;
+    return false;
+}
+
+void CmdCvarContext::cmd_execute_string(std::string_view text) noexcept
+{
+    // TODO: tokenise and dispatch immediately as privileged
+    (void)text;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +368,55 @@ void CmdCvarContext::cbuf_execute() noexcept
 {
     // TODO: tokenise, privilege-check, dispatch
     // Honour cmd_wait: if > 0, decrement and return.
+    // Set tls_ctx = this before invoking each CommandFn; clear after.
+}
+
+void CmdCvarContext::cbuf_clear() noexcept
+{
+    impl_->cmd_text.clear();
+    impl_->filteredcmd_text.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Tokenizer accessors
+// ---------------------------------------------------------------------------
+
+int CmdCvarContext::cmd_argc() const noexcept
+{
+    return impl_->tok_argc;
+}
+
+const char *CmdCvarContext::cmd_argv(int i) const noexcept
+{
+    if (i < 0 || i >= impl_->tok_argc)
+        return "";
+    return impl_->tok_argv[i] ? impl_->tok_argv[i] : "";
+}
+
+const char *CmdCvarContext::cmd_args() const noexcept
+{
+    // Returns the argsBuffer which cmd_dispatch_line() fills with everything
+    // after token 0.  Empty string when not dispatching.
+    return impl_->tok_argsBuffer;
+}
+
+bool CmdCvarContext::cmd_current_is_privileged() const noexcept
+{
+    return impl_->tok_is_privileged;
+}
+
+// ---------------------------------------------------------------------------
+// DLL lifecycle
+// ---------------------------------------------------------------------------
+
+void CmdCvarContext::set_server_dll_loaded(bool loaded) noexcept
+{
+    impl_->server_dll_loaded = loaded;
+}
+
+void CmdCvarContext::set_client_dll_loaded(bool loaded) noexcept
+{
+    impl_->client_dll_loaded = loaded;
 }
 
 // ---------------------------------------------------------------------------
