@@ -17,6 +17,11 @@ add_library(xash3dpp_cmd_cvar STATIC
     cvar.cpp
     cmd.cpp
     context.cpp
+    context_init.cpp
+    context_misc.cpp
+    cvar_ops.cpp
+    cmd_ops.cpp
+    cmd_dispatch.cpp
     ${XASH_CMD_CVAR_COMPAT_SRC}
 )
 
