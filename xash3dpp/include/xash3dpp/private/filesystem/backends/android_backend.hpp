@@ -4,7 +4,7 @@
 // Legacy reference: filesystem/android.c
 
 #include <xash3dpp/private/filesystem/i_search_backend.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/filesystem/search_path_flags.hpp>
 
 #include <memory>
@@ -43,7 +43,7 @@ public:
 private:
     std::string                    base_path_;
     SearchPathFlags                flags_;
-    platform::AssetManagerHandle*  mgr_ = nullptr;
+    ::xash::platform::AssetManagerHandle*  mgr_ = nullptr;
 };
 
 #endif // XASH_ANDROID

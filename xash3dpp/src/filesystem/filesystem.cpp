@@ -7,7 +7,7 @@
 #include <xash3dpp/private/filesystem/search_path.hpp>
 #include <xash3dpp/private/filesystem/archive_registry.hpp>
 #include <xash3dpp/private/filesystem/ci_directory.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/backends/dir_backend.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
 #include <xash3dpp/utilities/hash.hpp>
@@ -22,6 +22,9 @@
 #include <vector>
 
 namespace xash::filesystem {
+
+namespace platform = ::xash::platform;
+using ::xash::platform::OsFd;
 
 using GameInfo = ::xash::GameInfo;
 

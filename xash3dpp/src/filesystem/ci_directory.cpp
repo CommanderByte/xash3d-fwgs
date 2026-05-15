@@ -2,7 +2,7 @@
 // Legacy reference: filesystem/dir.c  (FS_BuildTrie, FS_FixFileCase)
 
 #include <xash3dpp/private/filesystem/ci_directory.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/utilities/path.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
@@ -11,6 +11,9 @@
 #include <string>
 
 namespace xash::filesystem {
+
+namespace platform = ::xash::platform;
+using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
 // Construction

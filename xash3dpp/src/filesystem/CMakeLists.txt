@@ -1,13 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
-# Determine platform source.
-if(WIN32)
-    set(XASH_FS_PLATFORM_SRC platform/win32.cpp)
-elseif(ANDROID)
-    set(XASH_FS_PLATFORM_SRC platform/posix.cpp platform/android.cpp)
-else()
-    set(XASH_FS_PLATFORM_SRC platform/posix.cpp)
-endif()
+# All OS I/O (Win32, POSIX, Android) has moved to xash3dpp_platform.
+# No platform source files remain in this subdirectory.
 
 # Optional VFS009 compatibility shim (on by default for tools / legacy clients).
 option(XASH_VFS009_SHIM "Build IFileSystem009 compatibility shim" ON)
@@ -37,7 +31,6 @@ add_library(xash3dpp_filesystem STATIC
     backends/pk3dir_backend.cpp
     ${XASH_FS_ANDROID_SRC}
 
-    ${XASH_FS_PLATFORM_SRC}
     ${XASH_FS_VFS009_SRC}
 )
 
@@ -47,7 +40,8 @@ target_include_directories(xash3dpp_filesystem
 
 target_compile_features(xash3dpp_filesystem PUBLIC cxx_std_20)
 
-target_link_libraries(xash3dpp_filesystem PUBLIC xash3dpp_utilities xash3dpp_memory)
+target_link_libraries(xash3dpp_filesystem PUBLIC  xash3dpp_utilities xash3dpp_memory)
+target_link_libraries(xash3dpp_filesystem PRIVATE xash3dpp_platform)
 
 if(ANDROID)
     target_link_libraries(xash3dpp_filesystem PRIVATE android log)

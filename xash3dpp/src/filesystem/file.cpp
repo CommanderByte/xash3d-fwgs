@@ -4,8 +4,7 @@
 
 #include <xash3dpp/filesystem/file.hpp>
 #include <xash3dpp/memory/memory.hpp>
-#include <xash3dpp/private/filesystem/os_fd.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
 
 #include <miniz.h>
@@ -20,6 +19,9 @@
 #include <string>
 
 namespace xash::filesystem {
+
+namespace platform = ::xash::platform;
+using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
 // ZlibState — lazy-init incremental DEFLATE decompressor for archive entries

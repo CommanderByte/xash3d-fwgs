@@ -9,8 +9,7 @@
 
 #include <xash3dpp/filesystem/file.hpp>
 #include <xash3dpp/memory/memory.hpp>
-#include <xash3dpp/private/filesystem/os_fd.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 
 #include <memory>
 #include <string_view>
@@ -24,7 +23,7 @@ namespace xash::filesystem {
 // `deflated`    — true for zlib-compressed archive entries.
 // Defined in src/filesystem/file.cpp.
 std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
-                                   OsFd     fd,
+                                   ::xash::platform::OsFd fd,
                                    FsOffset length,
                                    FsOffset real_offset = 0,
                                    bool     deflated    = false);
@@ -32,8 +31,8 @@ std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
 // Map a C-style fopen mode string to a platform::OpenMode bitmask.
 // Handles: "r", "rb", "w", "wb", "a", "ab", "r+", "r+b", "w+", "w+b",
 //          "a+", "a+b"  (and "b"-prefixed variants).
-inline platform::OpenMode mode_flags(std::string_view mode) noexcept {
-    using M = platform::OpenMode;
+inline ::xash::platform::OpenMode mode_flags(std::string_view mode) noexcept {
+    using M = ::xash::platform::OpenMode;
     const bool has_w    = mode.find('w') != std::string_view::npos;
     const bool has_a    = mode.find('a') != std::string_view::npos;
     const bool has_plus = mode.find('+') != std::string_view::npos;

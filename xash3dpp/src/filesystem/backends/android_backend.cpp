@@ -5,15 +5,18 @@
 #if defined(XASH_ANDROID)
 
 #include <xash3dpp/private/filesystem/backends/android_backend.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
 #include <xash3dpp/utilities/path.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
 #include <strings.h>  // strncasecmp
-#include <unistd.h>   // SEEK_END, SEEK_SET
+#include <cstdio>      // SEEK_END, SEEK_SET
 
 namespace xash::filesystem::backends {
+
+namespace platform = ::xash::platform;
+using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
 // Internal helpers

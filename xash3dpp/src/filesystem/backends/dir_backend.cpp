@@ -8,7 +8,7 @@
 // matching the legacy FS_OpenFile_DIR behaviour.
 
 #include <xash3dpp/private/filesystem/backends/dir_backend.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
 #include <xash3dpp/utilities/path.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -17,6 +17,9 @@
 #include <string_view>
 
 namespace xash::filesystem::backends {
+
+namespace platform = ::xash::platform;
+using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
 // Construction / factory

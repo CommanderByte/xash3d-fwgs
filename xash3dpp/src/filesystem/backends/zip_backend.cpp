@@ -13,7 +13,7 @@
 
 #include <xash3dpp/private/filesystem/backends/zip_backend.hpp>
 #include <xash3dpp/private/filesystem/archive_helpers.hpp>
-#include <xash3dpp/private/filesystem/platform/os_io.hpp>
+#include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
@@ -26,6 +26,9 @@
 #include <filesystem>
 
 namespace xash::filesystem::backends {
+
+namespace platform = ::xash::platform;
+using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
 // On-disk structures — all little-endian; #pragma pack for ZIP's odd layout
