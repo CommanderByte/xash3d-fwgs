@@ -102,3 +102,17 @@ state and the subsystem's responsibility, then create a new file:
 ```
 
 Do not add any synchronisation primitives to source files. The analysis document is the deliverable.
+
+## Keeping the document current
+
+The threading analysis document is a **living document**.  When a recommendation
+is later implemented in source code, update the document in the same commit:
+
+- Change the hazard table `Class` column to **Fixed** and describe the fix in
+  the Notes column (e.g. "replaced `bool active` with `std::atomic<SlotState>`,
+  CAS in `create_pool`").
+- Strike through the corresponding recommendation with `~~text~~`.
+
+This keeps the document as the authoritative record of both resolved and
+outstanding hazards.  A stale document that still lists a hazard as unresolved
+after it has been fixed is misleading — update it immediately.

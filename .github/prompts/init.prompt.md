@@ -39,12 +39,38 @@ When reading the legacy code, ask: *what does this do and what invariants must b
 
 ## Current State
 
-The `xash3dpp/` utilities module is complete and tested:
+Four subsystems are complete and tested.  Use `analyse-subsystem` to scope the
+next one.
 
-- **Library**: `xash3dpp_utilities` static library — `xash3dpp/src/utilities/` + headers in `xash3dpp/include/xash3dpp/utilities/`
+### `xash3dpp_utilities` — complete
+- **Library**: `xash3dpp/src/utilities/`; headers in `xash3dpp/include/xash3dpp/utilities/`
 - **Modules**: `atlas`, `build`, `dynlib`, `hash`, `math`, `matrix`, `path`, `string`, `swap`, `utf`
-- **Tests**: `xash3dpp/tests/utilities/` — one `test_<module>.cpp` per module, CTest target `test_utilities`
-- **Docs**: boundary notes in `xash3dpp/docs/boundaries/`; legacy survey in `xash3dpp/docs/legacy-survey/`
-- **Build**: CMake at `xash3dpp/CMakeLists.txt`; C++20; no exceptions; no RTTI; build tree at `xash3dpp/build/`
+- **Tests**: `xash3dpp/tests/utilities/` — one `test_<module>.cpp` per module; CTest target `test_utilities`
 
-No other subsystem has been started yet. Use `analyse-subsystem` to scope and begin the next module.
+### `xash3dpp_memory` — complete
+- **Library**: `xash3dpp/src/memory/`; public headers in `xash3dpp/include/xash3dpp/memory/`;
+  private headers in `xash3dpp/include/xash3dpp/private/memory/`
+- **Design**: pool accounting facade over `malloc`/`free`; 128-slot registry;
+  `SlotState` atomic CAS for concurrent `create_pool`; `std::atomic<OomHandler>`
+  for the OOM callback
+- **Tests**: `xash3dpp/tests/memory/`
+
+### `xash3dpp_filesystem` — complete
+- **Library**: `xash3dpp/src/filesystem/`; headers in `xash3dpp/include/xash3dpp/filesystem/`
+- **Design**: `Filesystem` pimpl class; `IFilesystem` vtable interface
+  (VFileSystem009-compatible); PAK/WAD/ZIP archive backends; case-insensitive
+  directory cache; `std::shared_mutex` guards the search-path deque
+- **Tests**: `xash3dpp/tests/filesystem/`
+
+### `xash3dpp_platform` — complete
+- **Library**: `xash3dpp/src/platform/`; public headers in
+  `xash3dpp/include/xash3dpp/platform/`; private headers in
+  `xash3dpp/include/xash3dpp/private/platform/`
+- **Design**: Single Porting Layer — all OS-specific code lives here.
+  Win32 and POSIX backends for `sys` (time, sleep, env), `console` (stdin
+  reader), and `crash` (signal/exception handler); Android JNI bootstrap via
+  `std::call_once`
+- **Tests**: `xash3dpp/tests/platform/`
+
+**Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++20;
+no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.

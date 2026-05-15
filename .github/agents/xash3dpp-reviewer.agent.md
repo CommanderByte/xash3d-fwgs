@@ -31,6 +31,10 @@ they are the fixed SDK surfaces listed above.
 - No use of global mutable state without documented justification.
 - Public C-facing headers in `xash3dpp/include/` must be valid C (no C++ types
   in the interface unless wrapped with `extern "C"`).
+- **No `.hpp` files under `src/`.** Implementation-detail headers shared
+  between TUs within one subsystem belong in
+  `xash3dpp/include/xash3dpp/private/<subsystem>/`, not under `src/`.
+  A `.hpp` file found under `src/` is a **BLOCKER**.
 
 ### 4. Boundary spec coverage
 Each subsystem in `xash3dpp/src/` should have a corresponding spec in

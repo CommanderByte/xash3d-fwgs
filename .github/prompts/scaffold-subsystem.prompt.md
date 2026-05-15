@@ -161,6 +161,7 @@ target_link_libraries(xash3dpp_$ARGUMENTS
     PUBLIC  xash3dpp_utilities
     PUBLIC  xash3dpp_memory
     # PUBLIC  xash3dpp_filesystem   # uncomment if the subsystem uses the VFS
+    # PUBLIC  xash3dpp_platform     # uncomment if the subsystem uses OS primitives (time, crash, console)
 )
 
 # Platform-specific additions go here, e.g.:
@@ -318,3 +319,4 @@ Confirm:
 - [ ] Stub implementation uses `create_pool` / `destroy_pool`
 - [ ] Test harness compiles and runs cleanly
 - [ ] No `malloc`, `free`, `new`, `delete` outside of `std::make_unique<Impl>`
+- [ ] No `.hpp` files under `src/`.  Any header shared between TUs but not public lives in `include/xash3dpp/private/$ARGUMENTS/`.
