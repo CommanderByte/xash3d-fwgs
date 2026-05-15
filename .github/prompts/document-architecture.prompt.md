@@ -29,6 +29,11 @@ compare them before writing anything.
    and target shape.
 6. **Existing boundary and legacy docs** — `xash3dpp/docs/boundaries/` and
    `xash3dpp/docs/legacy-survey/` for prior analysis.
+7. **Existing architecture docs as structural reference** — the completed docs
+   for `memory/`, `filesystem/`, and `utilities/` under
+   `xash3dpp/docs/architecture/` illustrate the expected output structure,
+   level of detail, and cross-linking conventions. Read one of them before
+   writing if you are creating docs for a new subsystem.
 
 While reading, note:
 - The module's single responsibility and non-goals

@@ -119,6 +119,23 @@ gameinfo_t *`) directly.
 
 ## Dependencies (what this module calls)
 
+> **Rewrite note:** the xash3dpp rewrite (`xash3dpp_filesystem`) uses the
+> following CMake link dependencies. The legacy table below documents what the
+> original `filesystem.c` calls through injected callbacks; it remains for
+> reference during the migration audit.
+
+### xash3dpp rewrite dependencies
+
+| Dependency | Visibility | Reason |
+| --- | --- | --- |
+| `xash3dpp_utilities` | PUBLIC | String/path helpers used in the public API |
+| `xash3dpp_memory` | PUBLIC | `PoolHandle`, `pool_alloc`, etc. exposed in public headers |
+| `xash3dpp_platform` | PRIVATE | All OS file I/O routed through `xash::platform` (open, seek, stat, directory ops, case-sensitivity check) |
+| `xash3dpp_miniz` | PRIVATE | zlib inflate for ZIP/PK3 and deflated WADs |
+| `android` + `log` | PRIVATE (Android) | NDK AAsset bridge via `xash3dpp_platform` |
+
+### Legacy (pre-rewrite) injected dependencies
+
 | Dependency | How injected | Reason |
 | --- | --- | --- |
 | `_Con_Printf / _Con_DPrintf / _Con_Reportf` | `fs_interface_t` passed to `GetFSAPI` | Logging |

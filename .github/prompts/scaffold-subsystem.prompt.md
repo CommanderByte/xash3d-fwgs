@@ -1,6 +1,6 @@
 ---
 name: "Scaffold new xash3dpp subsystem"
-description: "Create the full directory skeleton for a new xash3dpp subsystem: public headers, private headers, CMakeLists, stub implementation, and a test harness. Wires in xash3dpp_memory and xash3dpp_utilities. Use when starting a brand-new subsystem from scratch."
+description: "Create the full directory skeleton for a new xash3dpp subsystem: public headers, private headers, CMakeLists, stub implementation, and a test harness. Wires in xash3dpp_memory, xash3dpp_utilities, and xash3dpp_filesystem where appropriate. Use when starting a brand-new subsystem from scratch."
 argument-hint: "subsystem name, e.g. 'sound', 'renderer', 'physics', 'networking'"
 agent: agent
 tools: [read, search, edit]
@@ -25,11 +25,19 @@ infrastructure that is already provided:
 2. **Utilities** — scan `xash3dpp/include/xash3dpp/utilities/` for helpers
    that may already exist: string operations, path joining, hashing, CRC/MD5,
    math, etc. Do not re-implement anything found here.
+   Architecture reference: [`xash3dpp/docs/architecture/utilities/`](../../xash3dpp/docs/architecture/utilities/README.md)
 
-3. **Platform layer** — check `xash3dpp/include/xash3dpp/platform/` for any
+3. **Filesystem** — check `xash3dpp/include/xash3dpp/filesystem/` for file
+   I/O, virtual path resolution, and archive access APIs. If `$ARGUMENTS`
+   reads config files, model data, or any on-disk resource, link against
+   `xash3dpp_filesystem` and use its `IFilesystem` interface rather than
+   calling OS file APIs directly.
+   Architecture reference: [`xash3dpp/docs/architecture/filesystem/`](../../xash3dpp/docs/architecture/filesystem/README.md)
+
+4. **Platform layer** — check `xash3dpp/include/xash3dpp/platform/` for any
    OS-abstraction types or functions relevant to `$ARGUMENTS`.
 
-4. **Existing subsystems as structural reference** — read
+5. **Existing subsystems as structural reference** — read
    `xash3dpp/src/filesystem/CMakeLists.txt` and
    `xash3dpp/src/memory/CMakeLists.txt` to understand the canonical CMake
    target shape. Mirror that shape exactly.
@@ -148,9 +156,11 @@ target_compile_features(xash3dpp_$ARGUMENTS PUBLIC cxx_std_20)
 
 # xash3dpp_memory is always required — every subsystem that allocates uses it.
 # xash3dpp_utilities provides string, path, hash, and math helpers.
+# xash3dpp_filesystem is required if this subsystem reads or writes any files.
 target_link_libraries(xash3dpp_$ARGUMENTS
     PUBLIC  xash3dpp_utilities
     PUBLIC  xash3dpp_memory
+    # PUBLIC  xash3dpp_filesystem   # uncomment if the subsystem uses the VFS
 )
 
 # Platform-specific additions go here, e.g.:
@@ -177,8 +187,9 @@ Create `xash3dpp/src/$ARGUMENTS/$ARGUMENTS.cpp`:
 // Legacy reference: <path, or "n/a">
 //
 // Existing subsystems used:
-//   xash3dpp_memory    — pool-backed allocations
-//   xash3dpp_utilities — <list helpers>
+//   xash3dpp_memory     — pool-backed allocations
+//   xash3dpp_utilities  — <list helpers, e.g. path::join, string::stricmp>
+//   xash3dpp_filesystem — <remove if not needed; lists file I/O ops used>
 
 #include <xash3dpp/$ARGUMENTS/$ARGUMENTS.hpp>
 #include <xash3dpp/memory/memory.hpp>
