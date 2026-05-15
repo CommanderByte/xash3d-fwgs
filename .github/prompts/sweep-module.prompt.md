@@ -16,6 +16,45 @@ committed.
 
 ---
 
+## Already-Swept Modules (skip if $ARGUMENTS matches one of these)
+
+The following modules were fully swept in commit `e14152ee` and are already
+compliant. If `$ARGUMENTS` is one of them, report "already compliant — nothing
+to do" and stop.
+
+| Module | Swept commit |
+|--------|-------------|
+| `filesystem` | e14152ee |
+| `cmd_cvar` | e14152ee |
+| `memory` | e14152ee |
+| `platform` | e14152ee |
+
+---
+
+## Guardrails — Read Before Touching Any File
+
+These constraints prevent the sweep from drifting into unrelated work.
+Violating them is worse than leaving a minor violation in place.
+
+**Only fix what the audit in Step 2 identifies. Nothing else.**
+
+- **Do not add docstrings, comments, or type annotations** to code you did
+  not change for a compliance reason.
+- **Do not refactor logic** — no restructuring of control flow, no extraction
+  of helpers, no reordering of declarations beyond what a rule requires.
+- **Do not rename a symbol** unless it violates QE or QF exactly. Do not
+  "improve" names that are already compliant.
+- **Do not change test assertions or test logic** — only the macro style
+  (QK). If a test was passing before, it must pass after with identical
+  semantics.
+- **Do not add error handling** for scenarios the existing code cannot reach.
+- **If a file has zero violations, do not touch it.** Even a trivial
+  whitespace change generates noise in the diff.
+- **Stop at the module boundary.** Do not follow a rename into a different
+  module's files unless that module is the current `$ARGUMENTS`.
+
+---
+
 ## Reference Documents (read before touching any file)
 
 1. **Conventions** (auto-applied but re-read the critical sections):
