@@ -160,7 +160,7 @@ previously passed numeric flag constants will produce the same result.
 class Tokenizer {
 public:
     struct Token { std::string_view text; bool quoted{}; };
-    static constexpr std::size_t MAX_TOKEN = 512;
+    static constexpr std::size_t MAX_TOKEN = xash::limits::tokenizer_token_max;
 
     explicit Tokenizer( const char *data,
                         TokenFlags  flags = TokenFlags::None ) noexcept;
@@ -170,7 +170,7 @@ public:
 };
 ```
 
-Maintains the cursor and a 512-byte stack buffer internally. `Token::text` is a
+Maintains the cursor and a `limits::tokenizer_token_max`-byte (512) stack buffer internally. `Token::text` is a
 `string_view` into that buffer, valid until the next call to `next()`. Callers
 that need to retain a token must copy it.
 

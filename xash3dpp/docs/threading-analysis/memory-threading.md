@@ -40,9 +40,8 @@ not fully documented in the public header.
   ordering is correct because no inter-pool happens-before relationship is needed.
 
 - **`g_pools[kMaxPools]` (the array itself)** — the array is a `static`
-  file-scope variable with trivial (zero) initialisation.  `std::atomic` members
-  have a `constexpr` default constructor; the whole array is statically
-  initialised before any dynamic initialisation runs.  No static-init race.
+  file-scope variable with trivial (zero) initialisation; capacity is
+  `limits::memory_pool_max` (default 128) from `<xash3dpp/limits.hpp>`.
 
 - **`g_oom_handler` initial value** — `nullptr`, statically initialised;
   safe before `set_oom_handler` is ever called.

@@ -44,8 +44,8 @@ except for the magic-static build number cached by `build::number()`.
 - `build::commit`, `build::branch`, and `build::commit_date` are
   `[[gnu::weak]]` `const std::string_view` symbols; they read `"(unknown)"` or
   `"1970-01-01"` unless `build_vcs.cpp` (generated at configure time) is linked.
-- `Atlas::ATLAS_MAX_SIZE` is fixed at 1024 to match the legacy struct layout.
-  Changing it breaks serialised atlas coordinates.
+- `Atlas::ATLAS_MAX_SIZE` derives from `limits::atlas_max_size` (default 1024) to match the legacy
+  struct layout. Changing it breaks serialised atlas coordinates.
 - `gameinfo_parser.cpp` functions (`parse_gameinfo_txt`, `parse_liblist_gam`,
   `serialise_gameinfo`) are **stubs** returning `std::nullopt`/empty. They are
   compile-time placeholders; the real implementation is a TODO.

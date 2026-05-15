@@ -84,7 +84,7 @@ transparent zlib inflate for compressed archive entries.
 | `real_offset_` | `FsOffset` | Byte offset of the entry within an archive (0 for plain files) |
 | `deflated_` | `bool` | True if entry is zlib-deflated |
 | `zlib_` | `optional<ZlibState>` | Incremental decompressor; present only if `deflated_` |
-| `buf_` | `array<byte, 2048>` | Read-ahead buffer |
+| `buf_` | `array<byte, limits::filesystem_file_buffer_size>` | Read-ahead buffer (2 KiB) |
 | `buf_pos_` | `size_t` | Cursor into `buf_` |
 | `buf_len_` | `size_t` | Valid bytes in `buf_` |
 | `ungetc_` | `int` | One-byte pushback buffer (`EOF` = empty) |
@@ -95,7 +95,7 @@ this value; `Eof()` tests it against `length_`.
 ### Buffered read
 
 `Read` drains `buf_` first, then calls `platform::read` (or `inflate_read`) to
-refill. The 2 KiB buffer is optimised for the common pattern of reading small
+refill. The `limits::filesystem_file_buffer_size`-byte (2 KiB) buffer is optimised for the common pattern of reading small
 records (WAD lump metadata, BSP lump headers) without system-call overhead.
 
 ### Zlib inflate

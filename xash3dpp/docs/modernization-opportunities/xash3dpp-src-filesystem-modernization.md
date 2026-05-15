@@ -341,7 +341,7 @@ explicit intent of the casts.
 |---------|----------|--------|
 | `OsFd` RAII wrapper | `os_fd.hpp` | ✅ Move-only RAII, no leaks |
 | `ZlibState` RAII | `file.cpp` | ✅ `mz_inflateEnd` in destructor |
-| `std::array<std::byte, 2048> buf_{}` | `file.cpp` | ✅ Value-initialised fixed buffer |
+| `std::array<std::byte, limits::filesystem_file_buffer_size> buf_{}` | `file.cpp` | ✅ Value-initialised fixed buffer |
 | `std::shared_mutex` for path list | `filesystem.cpp` | ✅ Reader/writer lock |
 | `ISearchBackend` virtual interface | `i_search_backend.hpp` | ✅ Replaces legacy fn-ptr vtable |
 | `SearchPathFlags` scoped enum | `search_path_flags.hpp` | ✅ Typed bitmask, no raw `int` flags |

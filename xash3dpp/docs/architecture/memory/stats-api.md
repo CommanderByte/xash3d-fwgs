@@ -63,7 +63,7 @@ The `acquire` load in step 2 pairs with the `release` store of `kActive` in
 std::size_t pool_count() noexcept;
 ```
 
-Scans `g_pools[0..kMaxPools-1]`, counting slots whose `state` relaxed-loads as
+Scans `g_pools[0..limits::memory_pool_max-1]`, counting slots whose `state` relaxed-loads as
 `kActive`. Returns the count.
 
 This is a point-in-time snapshot. Slots being concurrently created or destroyed
@@ -82,7 +82,7 @@ using PoolIterFn = void(*)(PoolStats stats, void* userdata) noexcept;
 void for_each_pool(PoolIterFn fn, void* userdata) noexcept;
 ```
 
-Iterates `g_pools[0..kMaxPools-1]`. For each slot that `acquire`-loads as
+Iterates `g_pools[0..limits::memory_pool_max-1]`. For each slot that `acquire`-loads as
 `kActive`, builds a `PoolStats` snapshot and calls `fn(stats, userdata)`.
 
 The `fn` callback **must not** call `create_pool` or `destroy_pool` — doing so

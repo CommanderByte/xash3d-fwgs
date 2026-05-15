@@ -253,7 +253,7 @@ locals, duplicate constants, and one critical missing implementation.
 
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` lines ~130–131
 - **Current**: `char buf_[MAX_TOKEN]{};`
-- **Replacement**: `std::array<char, MAX_TOKEN> buf_{};`
+- **Replacement**: `std::array<char, xash::limits::tokenizer_token_max> buf_{};`
   Access via `buf_.data()` in `Tokenizer::next()`.
 - **Boundary-safe**: Yes
 - **Rationale**: Makes `sizeof(Tokenizer::buf_)` unnecessary; `buf_.data()` is

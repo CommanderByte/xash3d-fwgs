@@ -22,7 +22,7 @@ in the first column where enough vertical space exists.
 ### Constants
 
 ```cpp
-static constexpr int ATLAS_MAX_SIZE = 1024;
+static constexpr int ATLAS_MAX_SIZE = static_cast<int>(xash::limits::atlas_max_size);
 ```
 
 The atlas is always a 1024×1024 grid. **This value is ABI-frozen** — changing

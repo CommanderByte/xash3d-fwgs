@@ -10,7 +10,7 @@
 
 | Header | Purpose |
 |--------|---------|
-| `private/memory/pool_registry.hpp` | `AllocHeader`, `SlotState`, `PoolBucket`, `kMaxPools` — internal bucket layout exposed for tests |
+| `private/memory/pool_registry.hpp` | `AllocHeader`, `SlotState`, `PoolBucket`, `kMaxPools` (= `limits::memory_pool_max`) — internal bucket layout exposed for tests |
 
 ## Source files
 
@@ -54,7 +54,7 @@
 
 | Variable | Type | Purpose |
 |----------|------|---------|
-| `g_pools[kMaxPools]` | `PoolBucket[128]` | Flat registry; statically zero-initialised |
+| `g_pools[kMaxPools]` | `PoolBucket[limits::memory_pool_max]` | Flat registry; statically zero-initialised |
 | `g_oom_handler` | `std::atomic<OomHandler>` | OOM callback; null by default |
 
 ## CMake targets

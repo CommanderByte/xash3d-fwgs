@@ -7,9 +7,9 @@
 ## Overview
 
 The pool registry is a fixed-size flat array (`g_pools[kMaxPools]`) of
-`PoolBucket` structs, each representing one named pool. There is no heap
-allocation for the registry itself — it is a file-scope `static` array with
-trivial (zero) initialisation, live for the entire process lifetime.
+`PoolBucket` structs, each representing one named pool. The capacity is
+controlled by `limits::memory_pool_max` (default 128) from
+`<xash3dpp/limits.hpp>`; `kMaxPools` is an alias that reads from it.
 
 `PoolBucket` serves three roles:
 1. **Slot metadata** — name string, atomic lifecycle state.
@@ -101,7 +101,7 @@ PoolHandle create_pool(const char* name, PoolConfig cfg = {}) noexcept;
 
 ### Algorithm
 
-1. Scan `g_pools[0..kMaxPools-1]` for a slot whose `state` is `kFree`.
+1. Scan `g_pools[0..limits::memory_pool_max-1]` for a slot whose `state` is `kFree`.
 2. For each candidate, perform a CAS:
    - `expected = kFree` → `kBusy`, `memory_order_acquire` on success,
      `memory_order_relaxed` on failure.

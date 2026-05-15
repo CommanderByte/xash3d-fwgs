@@ -50,7 +50,7 @@ Everything else in `public/` has **no direct game/client DLL ABI exposure**.
 | `xash3d_mathlib` | `DotProduct`, `CrossProduct`, `VectorNormalize`, `AngleVectors`, `VectorAngles`, `AngleQuaternion`, `QuaternionSlerp`, `R_ConcatTransforms`, plus ~60 macros | Entirely macros/inlines; no `.c` linkage |
 | `miniz` | `mz_compress`, `mz_uncompress`, `tinfl_decompress`, `tdefl_compress`, ZIP read/write | Vendored single-file library; used by filesystem and network |
 | `utflib` | `Q_DecodeUTF8`, `Q_DecodeUTF16`, `Q_EncodeUTF8`, `Q_UTF8Length`, `Q_UTF16ToUTF8`, `Q_UnicodeToCP1251`, `Q_UnicodeToCP1252` | Stateful decoder via `utfstate_t`; zero-init required |
-| `atlas` | `Atlas_Init`, `Atlas_AllocBlock` | Strip-based packer; max atlas 1024×1024 (`ATLAS_MAX_SIZE`); output `x, y` offsets |
+| `atlas` | `Atlas_Init`, `Atlas_AllocBlock` | Strip-based packer; max atlas 1024×1024 (`limits::atlas_max_size`); output `x, y` offsets |
 | `getopt` | `getopt` + `optarg/optind/opterr/optopt/optreset` | Win32-only shim (no-op guard on non-Windows) |
 | `swaplib` | `SwapStruct`, `swap_struct_def_t` | Reflection-driven big/little endian swap; tested via `test_swapstruct.c` |
 | `build` | `Q_buildnum`, `Q_buildnum_iso`, `Q_buildnum_compat`, `g_buildcommit`, `g_buildbranch`, `g_buildcommit_date` | `build_vcs.c` supplies VCS strings at link time; `build.c` computes day-offset from `g_buildcommit_date` |
@@ -90,7 +90,7 @@ No heap allocations; no global mutable state beyond the three items above.
 - **`matrixlib` depends on `com_model.h`.** `Matrix3x4_ConcatTransforms` and bone-related helpers reference `mstudiobone_t` and similar SDK structs. This is the only SDK-type dependency inside `public/`.
 - **CRC32 output must be IEEE 802.3 compatible.** `CRC32_INIT_VALUE = 0xFFFFFFFF`, XOR `0xFFFFFFFF`. The `enginefuncs_t` slots are function pointers — the rewrite binds them to whatever implementation it chooses (including hardware-accelerated CRC32); no legacy source file needs to be preserved.
 - **`utfstate_t` must be zero-initialised** before the first call to `Q_DecodeUTF8`/`Q_DecodeUTF16`. Callers that reuse the struct between codepoints without reset will silently corrupt output.
-- **`ATLAS_MAX_SIZE = 1024`.** Hardcoded in `atlas_t.allocated[1024]`. Increasing it is a struct-layout break; decreasing it silently corrupts existing allocations.
+- **`ATLAS_MAX_SIZE`** (= `limits::atlas_max_size` = 1024). ABI-frozen: matches `atlas_t.allocated[1024]`. Increasing it is a struct-layout break; decreasing it silently corrupts existing allocations.
 - **`miniz` is vendored at version 3.0.0.** The build must not pull in a system zlib or a different miniz version alongside it; symbol collisions are possible.
 - **`Q_buildnum_compat()` always returns 4529.** This is intentional; it represents the frozen legacy build number that some mods may test against.
 - **`restrict` is erased in C++** via `#define restrict` in `crtlib.h`. This means the C++ rewrite cannot rely on restrict-based optimisations in these functions.
