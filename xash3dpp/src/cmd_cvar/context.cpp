@@ -13,6 +13,7 @@
 #include <xash3dpp/private/cmd_cvar/registry_types.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/utilities/string.hpp>
 
 #include <cstring>
 #include <deque>
@@ -121,6 +122,21 @@ struct CmdCvarContext::Impl {
 
 namespace {
 thread_local CmdCvarContext *tls_ctx = nullptr;
+
+// ---------------------------------------------------------------------------
+// Storage for built-in (engine-owned) cvars.
+// Lifetime: process; re-initialized on each CmdCvarContext::init() call.
+// CvarAbi::name/string are char* for legacy ABI — we cast from literals here.
+// ---------------------------------------------------------------------------
+namespace builtin_cvars {
+constexpr char k_scripting_name[]  = "cmd_scripting";
+constexpr char k_scripting_def[]   = "0";
+constexpr char k_filter_name[]     = "cl_filterstuffcmd";
+constexpr char k_filter_def[]      = "1";
+
+Cvar g_cmd_scripting    {};
+Cvar g_cl_filterstuffcmd {};
+} // namespace builtin_cvars
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -157,20 +173,129 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
     impl_->cmd_map.set_pool(impl_->pool);
     impl_->alias_map.set_pool(impl_->pool);
 
-    // TODO: register built-in commands (exec, echo, alias, wait, if/else, ...)
-    // TODO: register built-in cvars (cmd_scripting, cl_filterstuffcmd, ...)
+    // ---------------------------------------------------------------------------
+    // Built-in cvars
+    // ---------------------------------------------------------------------------
+    // Set individual fields; never aggregate-assign a Cvar (std::atomic member
+    // deletes the copy-assignment operator).  The generation counter is reset to
+    // 0 via store() so re-init after shutdown begins with a clean epoch.
+
+    {
+        using namespace builtin_cvars;
+        Cvar &sc = g_cmd_scripting;
+        sc.abi.name   = const_cast<char *>(k_scripting_name);
+        sc.abi.string = const_cast<char *>(k_scripting_def);
+        sc.abi.flags  = FCVAR_ARCHIVE | FCVAR_PRIVILEGED;
+        sc.abi.value  = 0.0f;
+        sc.abi.next   = nullptr;
+        sc.desc       = "enable simple condition checking and variable operations";
+        sc.def_string = k_scripting_def;
+        sc.generation.store(0, std::memory_order_relaxed);
+        cvar_register_engine(sc);
+
+        Cvar &fc = g_cl_filterstuffcmd;
+        fc.abi.name   = const_cast<char *>(k_filter_name);
+        fc.abi.string = const_cast<char *>(k_filter_def);
+        fc.abi.flags  = FCVAR_ARCHIVE | FCVAR_PRIVILEGED;
+        fc.abi.value  = 1.0f;
+        fc.abi.next   = nullptr;
+        fc.desc       = "filter commands coming from server";
+        fc.def_string = k_filter_def;
+        fc.generation.store(0, std::memory_order_relaxed);
+        cvar_register_engine(fc);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Built-in commands
+    //
+    // All handlers are non-capturing lambdas — they read context state via the
+    // thread-local tls_ctx pointer set by cbuf_execute() before each dispatch.
+    // ---------------------------------------------------------------------------
+
+    // echo — print arguments to the console separated by spaces.
+    cmd_add("echo", []() noexcept {
+        // TODO: iterate tls_ctx->cmd_argc() / cmd_argv() and print to platform console
+    }, 0, "print a message to the console (useful in scripts)");
+
+    // wait — skip the rest of the command buffer for N frames.
+    cmd_add("wait", []() noexcept {
+        if (!tls_ctx) return;
+        int frames = (tls_ctx->cmd_argc() > 1) ? utilities::atoi(tls_ctx->cmd_argv(1)) : 1;
+        if (frames < 1) frames = 1;
+        tls_ctx->impl_->cmd_wait = frames;
+    }, 0, "delay command buffer execution by N frames (default: 1)");
+
+    // alias — create or list command aliases.
+    cmd_add("alias", []() noexcept {
+        // TODO: use tls_ctx to read argc/argv; create/update AliasDef in alias_map
+    }, 0, "create a command alias");
+
+    // unalias — remove an alias.
+    cmd_add("unalias", []() noexcept {
+        // TODO: use tls_ctx->cmd_argv(1) to remove from alias_map
+    }, 0, "remove a command alias");
+
+    // stuffcmds — replay +cmd arguments from the host command line.
+    cmd_add("stuffcmds", []() noexcept {
+        // TODO: host layer injects this; stub until host integration
+    }, 0, "execute command-line + arguments");
+
+    // exec — execute a .cfg file (requires filesystem subsystem).
+    cmd_add("exec", []() noexcept {
+        // TODO: depends on xash3dpp_filesystem; stub until that subsystem exists
+    }, 0, "execute a script file");
 
     return true;
 }
 
 void CmdCvarContext::shutdown() noexcept
 {
-    // TODO: unlink all cvars and commands, free pool-owned strings.
+    if (!impl_->pool)
+        return; // never successfully init()'d
 
-    if (impl_->pool) {
-        memory::destroy_pool(impl_->pool);
-        impl_->pool = {};
+    // Free pool-owned strings on cvars.
+    // cvar_register_engine() pool-copies def_string.
+    // cvar_set_direct() pool-copies the current string (sets FCVAR_ALLOCATED).
+    for (Cvar *cv = impl_->cvar_list_head; cv; cv = reinterpret_cast<Cvar *>(cv->abi.next)) {
+        if (cv->abi.flags & FCVAR_ALLOCATED) {
+            memory::mem_free(const_cast<char *>(cv->abi.string));
+            cv->abi.string  = nullptr;
+            cv->abi.flags  &= ~static_cast<std::uint32_t>(FCVAR_ALLOCATED);
+        }
+        // def_string is always pool-owned (copied by cvar_register_engine).
+        // For DLL-registered cvars (cvar_register_dll) def_string is nullptr.
+        if (cv->def_string && (cv->abi.flags & FCVAR_USER_CREATED)) {
+            // user-created cvars have pool-owned def_string too
+            memory::mem_free(const_cast<char *>(cv->def_string));
+        }
     }
+
+    // Free pool-owned strings on commands.
+    for (Command *cmd = impl_->cmd_list_head; cmd; cmd = cmd->abi_next) {
+        memory::mem_free(const_cast<char *>(cmd->name));
+        if (cmd->desc)
+            memory::mem_free(const_cast<char *>(cmd->desc));
+    }
+
+    // Free alias expansion strings (pool-owned).
+    for (AliasDef *al = impl_->alias_list_head; al; al = al->abi_next)
+        memory::mem_free(const_cast<char *>(al->value));
+
+    // Free all hash-map chain nodes (not the V* objects themselves — those
+    // are either static engine cvars, DLL-owned structs, or pool-allocated
+    // Command/AliasDef objects freed by the pool destroy below).
+    impl_->cvar_map.clear_nodes();
+    impl_->cmd_map.clear_nodes();
+    impl_->alias_map.clear_nodes();
+
+    // Null the list heads so any use-after-shutdown is easier to diagnose.
+    impl_->cvar_list_head  = nullptr;
+    impl_->cmd_list_head   = nullptr;
+    impl_->alias_list_head = nullptr;
+    impl_->pending_unlink.clear();
+
+    memory::destroy_pool(impl_->pool);
+    impl_->pool = {};
 }
 
 // ---------------------------------------------------------------------------
