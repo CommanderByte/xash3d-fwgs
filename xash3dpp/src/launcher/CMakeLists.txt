@@ -1,6 +1,10 @@
-# xash3dpp — launcher subsystem
-# Thin executable bootstrap that loads the engine library and invokes Host_Main.
-# Legacy reference: game_launch/game.cpp, android/ JNI wrapper
-#
-# TODO: add source files and add_executable target when implementation begins.
-# Likely dependencies: xash3dpp_host, xash3dpp_platform
+add_executable(xash3dpp main.cpp)
+
+target_compile_features(xash3dpp PRIVATE cxx_std_20)
+
+target_link_libraries(xash3dpp PRIVATE xash3dpp_host)
+
+if(WIN32)
+    # Use WinMain entry point on Windows.
+    set_target_properties(xash3dpp PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()

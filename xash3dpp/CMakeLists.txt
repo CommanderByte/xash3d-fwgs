@@ -16,6 +16,7 @@ else()
 endif()
 
 add_subdirectory(src/utilities)
+add_subdirectory(src/memory)
 
 # miniz: use the repo-root public/miniz.c until xash3dpp/3rdparty/ is populated.
 # The INTERFACE include makes <miniz.h> available to any target that links this.
@@ -23,10 +24,13 @@ add_library(xash3dpp_miniz STATIC ${CMAKE_CURRENT_SOURCE_DIR}/../public/miniz.c)
 target_include_directories(xash3dpp_miniz INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../public)
 
 add_subdirectory(src/filesystem)
+add_subdirectory(src/host)
+add_subdirectory(src/launcher)
 
 option(XASH3DPP_BUILD_TESTS "Build unit tests" ON)
 if(XASH3DPP_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests/utilities)
     add_subdirectory(tests/filesystem)
+    add_subdirectory(tests/memory)
 endif()
