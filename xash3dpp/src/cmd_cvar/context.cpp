@@ -826,9 +826,59 @@ bool CmdCvarContext::cmd_exists(const char *name) const noexcept
 // Command buffer
 // ---------------------------------------------------------------------------
 
+// Split text at newline/semicolon boundaries and push each non-empty command
+// to either the back or front of dest so that cbuf_execute can honour 'wait'
+// between individual commands.
+static void cbuf_split_push(std::deque<std::string> &dest, std::string_view text, bool front) noexcept
+{
+    // We collect pieces into a small local vector and prepend in reverse so
+    // cbuf_insert_text preserves ordering when pushing to the front.
+    // For back pushes, we just append in order.
+    const char *p   = text.data();
+    const char *end = p + text.size();
+
+    // Temporary storage for insert_text (front) to maintain order.
+    std::vector<std::string_view> pieces;
+
+    const char *start = p;
+    bool in_quotes = false;
+    while (p <= end) {
+        const bool at_end = (p == end);
+        const char c = at_end ? '\0' : *p;
+
+        if (c == '"') { in_quotes = !in_quotes; ++p; continue; }
+
+        if (!in_quotes && (c == ';' || c == '\n' || at_end)) {
+            std::string_view piece{ start, static_cast<std::size_t>(p - start) };
+            // Trim leading/trailing whitespace.
+            while (!piece.empty() && (piece.front() == ' ' || piece.front() == '\t'))
+                piece.remove_prefix(1);
+            while (!piece.empty() && (piece.back() == ' ' || piece.back() == '\t' || piece.back() == '\r'))
+                piece.remove_suffix(1);
+            if (!piece.empty()) {
+                if (front)
+                    pieces.push_back(piece);
+                else
+                    dest.emplace_back(piece);
+            }
+            if (at_end) break;
+            start = p + 1;
+            ++p;
+            continue;
+        }
+        ++p;
+    }
+
+    if (front) {
+        // Push in reverse so the first piece ends up at the front.
+        for (auto it = pieces.rbegin(); it != pieces.rend(); ++it)
+            dest.emplace_front(*it);
+    }
+}
+
 void CmdCvarContext::cbuf_add_text(std::string_view text) noexcept
 {
-    impl_->cmd_text.emplace_back(text);
+    cbuf_split_push(impl_->cmd_text, text, /*front=*/false);
 
 #if XASH_STATS
     const auto depth = static_cast<std::uint32_t>(impl_->cmd_text.size());
@@ -842,7 +892,7 @@ void CmdCvarContext::cbuf_add_text(std::string_view text) noexcept
 
 void CmdCvarContext::cbuf_insert_text(std::string_view text) noexcept
 {
-    impl_->cmd_text.emplace_front(text);
+    cbuf_split_push(impl_->cmd_text, text, /*front=*/true);
 }
 
 void CmdCvarContext::cbuf_stuff_text(std::string_view text) noexcept

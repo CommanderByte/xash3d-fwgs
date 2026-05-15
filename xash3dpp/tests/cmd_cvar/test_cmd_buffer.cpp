@@ -31,8 +31,7 @@ static void test_add_and_execute()
     ctx.cbuf_add_text("test_cmd_exec\n");
     ctx.cbuf_execute();
 
-    // TODO: uncomment when cbuf_execute is implemented:
-    // CHECK( called == 1 );
+    CHECK( called == 1 );
 
     ctx.shutdown();
 }
@@ -47,7 +46,17 @@ static void test_insert_ordering()
     NullPolicy      policy;
     auto ctx = make_test_context(oracle, policy);
 
-    // TODO: register two commands and verify execution order
+    static int order[2];
+    static int order_idx = 0;
+    ctx.cmd_add("cmd_a", [] { order[order_idx++] = 0; });
+    ctx.cmd_add("cmd_b", [] { order[order_idx++] = 1; });
+
+    ctx.cbuf_add_text("cmd_b\n");
+    ctx.cbuf_insert_text("cmd_a\n");  // cmd_a should execute first
+    ctx.cbuf_execute();
+
+    CHECK( order[0] == 0 );  // cmd_a ran first
+    CHECK( order[1] == 1 );  // then cmd_b
 
     ctx.shutdown();
 }
@@ -62,8 +71,15 @@ static void test_cmd_wait()
     NullPolicy      policy;
     auto ctx = make_test_context(oracle, policy);
 
-    // TODO: post "wait\n" then a command; verify command not executed until
-    //       second cbuf_execute call.
+    static int called2 = 0;
+    ctx.cmd_add("cmd_after_wait", [] { ++called2; });
+
+    ctx.cbuf_add_text("wait\ncmd_after_wait\n");
+    ctx.cbuf_execute();  // drains "wait" — wait decrements, cmd_after_wait stays queued
+    CHECK( called2 == 0 );
+
+    ctx.cbuf_execute();  // now cmd_after_wait runs
+    CHECK( called2 == 1 );
 
     ctx.shutdown();
 }
