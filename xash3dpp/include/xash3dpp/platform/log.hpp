@@ -4,7 +4,7 @@
 //                   engine/common/host.c (Host_Error, Msg)
 //
 // Design notes (QI, design-paradigms-round2.md):
-//   • Free-function API only.  No Init / Shutdown — callable before EngineContext.
+//   • Free-function API only.  No init / shutdown — callable before EngineContext.
 //   • Two functions: log() for pre-formatted messages, logf() for printf-style.
 //     Both are noexcept and do zero heap allocation in the hot path.
 //   • Output is routed: stderr (or platform console) always receives the text.

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — CRC32 and MD5 hash utilities
 // Legacy reference: public/crclib.h + public/crclib.c
 //
@@ -31,14 +31,14 @@ void crc32_update( Crc32 &state, const void *data, std::size_t len ) noexcept;
 void crc32_update( Crc32 &state, std::uint8_t byte ) noexcept;
 
 // Finalise (applies XOR).
-constexpr Crc32 crc32_final( Crc32 state ) noexcept { return state ^ 0xFFFFFFFFu; }
+[[nodiscard]] constexpr Crc32 crc32_final( Crc32 state ) noexcept { return state ^ 0xFFFFFFFFu; }
 
 // One-shot helper.
-Crc32 crc32( const void *data, std::size_t len ) noexcept;
+[[nodiscard]] Crc32 crc32( const void *data, std::size_t len ) noexcept;
 
 // Sequence-keyed CRC used for demo/resource integrity checks.
 // Legacy: CRC32_BlockSequence
-std::uint8_t crc32_block_sequence( const std::uint8_t *base, int length, int sequence ) noexcept;
+[[nodiscard]] std::uint8_t crc32_block_sequence( const std::uint8_t *base, int length, int sequence ) noexcept;
 
 // ---------------------------------------------------------------------------
 // MD5  (engine-internal; not exposed to game DLLs)
@@ -53,7 +53,7 @@ struct Md5State
 
 void md5_init( Md5State &state ) noexcept;
 void md5_update( Md5State &state, const void *data, std::size_t len ) noexcept;
-std::array<std::uint8_t, 16> md5_final( Md5State &state ) noexcept;
+[[nodiscard]] std::array<std::uint8_t, 16> md5_final( Md5State &state ) noexcept;
 
 // ---------------------------------------------------------------------------
 // RAII hasher wrappers
@@ -80,9 +80,9 @@ public:
         return *this;
     }
 
-    Crc32 finalize() noexcept { return crc32_final( state_ ); }
+    [[nodiscard]] Crc32 finalize() noexcept { return crc32_final( state_ ); }
 
-    static Crc32 hash( const void *data, std::size_t len ) noexcept
+    [[nodiscard]] static Crc32 hash( const void *data, std::size_t len ) noexcept
     {
         return crc32( data, len );
     }
@@ -107,12 +107,12 @@ public:
         return *this;
     }
 
-    std::array<std::uint8_t, 16> finalize() noexcept
+    [[nodiscard]] std::array<std::uint8_t, 16> finalize() noexcept
     {
         return md5_final( state_ );
     }
 
-    static std::array<std::uint8_t, 16> hash( const void *data, std::size_t len ) noexcept
+    [[nodiscard]] static std::array<std::uint8_t, 16> hash( const void *data, std::size_t len ) noexcept
     {
         Md5Hasher h;
         h.update( data, len );

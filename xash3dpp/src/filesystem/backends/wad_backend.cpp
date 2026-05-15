@@ -301,7 +301,7 @@ WadBackend::OpenFile(std::string_view path, std::string_view mode) {
 }
 
 std::optional<std::filesystem::file_time_type>
-WadBackend::FileTime(std::string_view path) {
+WadBackend::file_time(std::string_view path) {
     if (!lookup(path)) return std::nullopt;
     return file_time_;
 }
@@ -314,7 +314,7 @@ WadBackend::FindFile(std::string_view path) {
 }
 
 std::vector<std::string>
-WadBackend::Search(std::string_view pattern, bool /*case_insensitive*/) {
+WadBackend::search(std::string_view pattern, bool /*case_insensitive*/) {
     using namespace xash::utilities;
 
     // Split the pattern into optional WAD-qualifier and the bare filename glob.
@@ -364,7 +364,7 @@ WadBackend::Search(std::string_view pattern, bool /*case_insensitive*/) {
 }
 
 std::vector<std::byte>
-WadBackend::LoadFile(std::string_view path) {
+WadBackend::load_file(std::string_view path) {
     const Entry* e = lookup(path);
     if (!e) return {};
     return read_lump_bytes(*e);

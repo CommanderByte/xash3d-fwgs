@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — platform abstraction: time, DLL loading, system paths, dialogs
 // Legacy reference: engine/platform/win32/sys_win.c,
 //                  engine/platform/posix/sys_posix.c,
 //                  engine/common/system.h  (Sys_LoadLibrary, Sys_DoubleTime, …)
 //
 // Design notes:
-//   • Free-function API only.  No class, no Init/Shutdown.
+//   • Free-function API only.  No class, no init/shutdown.
 //   • get_time() is monotonic from first call; epoch resets across process
 //     boundaries but is stable within a process lifetime.
 //   • open_library / get_symbol / close_library mirror POSIX dlopen/dlsym/dlclose
@@ -68,11 +68,11 @@ void close_library( LibHandle &lib ) noexcept;
 // Always ends with a forward slash; never contains backslashes.
 // Example: "/home/user/xash3d-fwgs/build/"  or  "C:/xash3d/run/"
 // Legacy: no direct equivalent; partially derived from argv[0] via COM_FileBase
-std::string get_executable_dir();
+[[nodiscard]] std::string get_executable_dir();
 
 // Current working directory.
 // Always ends with a forward slash; never contains backslashes.
-std::string get_working_directory();
+[[nodiscard]] std::string get_working_directory();
 
 // ---------------------------------------------------------------------------
 // Diagnostics
@@ -81,7 +81,7 @@ std::string get_working_directory();
 // Returns true when a debugger is attached to this process.
 // Returns false on platforms where detection is not implemented.
 // Legacy: Platform_DebuggerPresent
-bool is_debugger_present() noexcept;
+[[nodiscard]] bool is_debugger_present() noexcept;
 
 // ---------------------------------------------------------------------------
 // User interaction (best-effort; degrades gracefully on headless builds)

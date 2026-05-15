@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — build number and VCS metadata
 // Legacy reference: public/build.h + public/build.c + public/build_vcs.c
 //
@@ -11,10 +11,10 @@ namespace xash::utilities::build {
 
 // Days since 2015-04-01 derived from the last commit date.
 // Returns -1 if the date string could not be parsed.
-int number() noexcept;
+[[nodiscard]] int number() noexcept;
 
 // Parse an ISO date string "YYYY-MM-DD" into a build number offset.
-int number_from_date( std::string_view iso_date ) noexcept;
+[[nodiscard]] int number_from_date( std::string_view iso_date ) noexcept;
 
 // Frozen compat number — always 4529 (Xash3D base build).
 // Some mods test against this value; do not change.

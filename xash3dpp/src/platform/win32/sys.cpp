@@ -118,9 +118,12 @@ std::string get_executable_dir()
         return {};
     buf[n] = '\0';
 
-    // extract_dir returns the directory component with trailing separator.
-    auto dir = utilities::extract_dir( std::string_view{ buf, static_cast<std::size_t>( n ) } );
-    utilities::fix_slashes( dir );   // backslashes → forward slashes
+    // extract_dir returns the directory component WITHOUT trailing separator.
+    auto dir = utilities::fix_slashes( utilities::extract_dir(
+        std::string_view{ buf, static_cast<std::size_t>( n ) } ) );
+    // Callers expect a trailing '/' so they can append a filename directly.
+    if( !dir.empty() && dir.back() != '/' )
+        dir += '/';
     return dir;
 }
 
@@ -143,8 +146,7 @@ std::string get_working_directory()
     std::string result{ buf, static_cast<std::size_t>( n ) };
     if( result.back() != '/' && result.back() != '\\' )
         result += '/';
-    utilities::fix_slashes( result );
-    return result;
+    return utilities::fix_slashes( result );
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-// xash3dpp — Filesystem implementation  (internal)
+﻿// xash3dpp — Filesystem implementation  (internal)
 // Legacy reference: filesystem/filesystem.c
 
 #include <xash3dpp/filesystem/filesystem.hpp>
@@ -99,7 +99,7 @@ static void collect_hierarchy( xash::memory::PoolHandle pool,
 // ---------------------------------------------------------------------------
 
 struct Filesystem::Impl {
-    // Written once in Init(), never mutated after — Safe-RO.
+    // Written once in init(), never mutated after — Safe-RO.
     std::string                 rootdir;
     std::string                 basedir;
     std::string                 rodir;
@@ -110,11 +110,11 @@ struct Filesystem::Impl {
     GameInfo                    active_game;
     bool                        game_loaded = false;
 
-    // Search-path list — protected by paths_mutex.
+    // search-path list — protected by paths_mutex.
     std::deque<SearchPath>      search_paths;
     mutable std::shared_mutex   paths_mutex;
 
-    // Memory pool — created in Init(), destroyed in Shutdown().
+    // Memory pool — created in init(), destroyed in shutdown().
     xash::memory::PoolHandle    pool_;
 
     // Toggle for absolute/traversal paths — atomic for lock-free access.
@@ -126,9 +126,11 @@ struct Filesystem::Impl {
 // ---------------------------------------------------------------------------
 
 Filesystem::Filesystem()  : impl_{std::make_unique<Impl>()} {}
-Filesystem::~Filesystem() = default;
+Filesystem::~Filesystem()              = default;
+Filesystem::Filesystem(Filesystem&&) noexcept            = default;
+Filesystem& Filesystem::operator=(Filesystem&&) noexcept = default;
 
-bool Filesystem::Init(std::string_view rootdir,
+bool Filesystem::init(std::string_view rootdir,
                       std::string_view basedir,
                       std::string_view gamedir,
                       std::string_view rodir)
@@ -141,7 +143,7 @@ bool Filesystem::Init(std::string_view rootdir,
     return static_cast<bool>(impl_->pool_);
 }
 
-void Filesystem::Shutdown() {
+void Filesystem::shutdown() {
     {
         std::unique_lock lock{impl_->paths_mutex};
         impl_->search_paths.clear();
@@ -157,11 +159,11 @@ void Filesystem::Shutdown() {
     }
 }
 
-bool Filesystem::ActivateGame(std::string_view gamefolder,
+bool Filesystem::activate_game(std::string_view gamefolder,
                                SearchPathFlags  mount_flags,
                                std::string_view language)
 {
-    const auto games = ScanGameDirectories(impl_->rootdir);
+    const auto games = scan_game_directories(impl_->rootdir);
     for (const auto& g : games) {
         if (g.gamefolder == gamefolder) {
             {
@@ -170,14 +172,14 @@ bool Filesystem::ActivateGame(std::string_view gamefolder,
                 impl_->gamedir     = g.gamefolder;
                 impl_->game_loaded = true;
             }
-            Rescan(mount_flags, language);
+            rescan(mount_flags, language);
             return true;
         }
     }
     return false;
 }
 
-void Filesystem::Rescan(SearchPathFlags mount_flags, std::string_view language) {
+void Filesystem::rescan(SearchPathFlags mount_flags, std::string_view language) {
     // 1. Snapshot mutable game state under shared lock.
     GameInfo g;
     {
@@ -230,14 +232,14 @@ void Filesystem::Rescan(SearchPathFlags mount_flags, std::string_view language) 
         paths.push_back(std::move(sp));
 }
 
-std::vector<GameInfo> Filesystem::ScanGameDirectories(std::string_view root) const {
+std::vector<GameInfo> Filesystem::scan_game_directories(std::string_view root) const {
     std::vector<GameInfo> result;
     const auto entries = platform::list_directory(root);
     for (const auto& entry : entries) {
         const std::string dir = xash::utilities::path_join(root, entry);
 
         // Try gameinfo.txt first.
-        const auto gi = LoadDirectFile(dir + "/gameinfo.txt");
+        const auto gi = load_direct_file(dir + "/gameinfo.txt");
         if (!gi.empty()) {
             const std::string text = bytes_as_string( gi );
             auto info = xash::parse_gameinfo_txt(text, entry);
@@ -249,7 +251,7 @@ std::vector<GameInfo> Filesystem::ScanGameDirectories(std::string_view root) con
         }
 
         // Fall back to liblist.gam.
-        const auto ll = LoadDirectFile(dir + "/liblist.gam");
+        const auto ll = load_direct_file(dir + "/liblist.gam");
         if (!ll.empty()) {
             const std::string text = bytes_as_string( ll );
             auto info = xash::parse_liblist_gam(text, entry);
@@ -262,7 +264,7 @@ std::vector<GameInfo> Filesystem::ScanGameDirectories(std::string_view root) con
     return result;
 }
 
-void Filesystem::AddGameDirectory(std::string_view dir, SearchPathFlags flags) {
+void Filesystem::add_game_directory(std::string_view dir, SearchPathFlags flags) {
     std::vector<SearchPath> new_paths;
     collect_paths_for_dir(impl_->pool_, dir, flags, new_paths);
     std::unique_lock lock{ impl_->paths_mutex };
@@ -270,7 +272,7 @@ void Filesystem::AddGameDirectory(std::string_view dir, SearchPathFlags flags) {
         impl_->search_paths.push_back(std::move(sp));
 }
 
-void Filesystem::AddGameHierarchy(std::string_view dir, SearchPathFlags flags) {
+void Filesystem::add_game_hierarchy(std::string_view dir, SearchPathFlags flags) {
     std::vector<SearchPath> new_paths;
     collect_hierarchy(impl_->pool_, dir, flags, new_paths);
     std::unique_lock lock{ impl_->paths_mutex };
@@ -278,7 +280,7 @@ void Filesystem::AddGameHierarchy(std::string_view dir, SearchPathFlags flags) {
         impl_->search_paths.push_back(std::move(sp));
 }
 
-void Filesystem::ClearPaths() {
+void Filesystem::clear_paths() {
     std::unique_lock lock{impl_->paths_mutex};
     auto& paths = impl_->search_paths;
     paths.erase(std::remove_if(paths.begin(), paths.end(), [](const SearchPath& sp) {
@@ -286,11 +288,11 @@ void Filesystem::ClearPaths() {
     }), paths.end());
 }
 
-void Filesystem::AllowDirectPaths(bool enable) {
+void Filesystem::allow_direct_paths(bool enable) {
     impl_->allow_direct_paths.store(enable, std::memory_order_relaxed);
 }
 
-bool Filesystem::MountArchive(std::string_view path, SearchPathFlags flags) {
+bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
     const auto ext_sv = xash::utilities::file_extension(path);
     if (ext_sv.size() < 2) return false;
     const std::string_view ext = ext_sv.substr(1);
@@ -306,7 +308,7 @@ bool Filesystem::MountArchive(std::string_view path, SearchPathFlags flags) {
     return false;
 }
 
-std::unique_ptr<File> Filesystem::Open(std::string_view path,
+std::unique_ptr<File> Filesystem::open(std::string_view path,
                                        std::string_view mode,
                                        bool gamedironly)
 {
@@ -321,18 +323,18 @@ std::unique_ptr<File> Filesystem::Open(std::string_view path,
     return nullptr;
 }
 
-std::vector<std::byte> Filesystem::LoadFile(std::string_view path, bool gamedironly) {
+std::vector<std::byte> Filesystem::load_file(std::string_view path, bool gamedironly) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        auto data = it->backend->LoadFile(path);
+        auto data = it->backend->load_file(path);
         if (!data.empty()) return data;
     }
     return {};
 }
 
-std::vector<std::byte> Filesystem::LoadDirectFile(std::string_view disk_path) const {
+std::vector<std::byte> Filesystem::load_direct_file(std::string_view disk_path) const {
     const auto sz = platform::file_size(disk_path);
     if (!sz || *sz == 0) return {};
 
@@ -345,7 +347,7 @@ std::vector<std::byte> Filesystem::LoadDirectFile(std::string_view disk_path) co
     return buf;
 }
 
-bool Filesystem::WriteFile(std::string_view path, std::span<const std::byte> data) {
+bool Filesystem::write_file(std::string_view path, std::span<const std::byte> data) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
@@ -358,7 +360,7 @@ bool Filesystem::WriteFile(std::string_view path, std::span<const std::byte> dat
         if (!fd.valid()) continue;
         const FsOffset n   = platform::write(fd, data.data(), data.size());
         const bool     ok  = (n == static_cast<FsOffset>(data.size()));
-        // Invalidate the backend's directory cache so a subsequent FileExists
+        // Invalidate the backend's directory cache so a subsequent file_exists
         // or FindFile call sees the new file (critical on Linux emulated-CI).
         if (ok) it->backend->InvalidateDirectory(parent_dir_of(path));
         return ok;
@@ -366,7 +368,7 @@ bool Filesystem::WriteFile(std::string_view path, std::span<const std::byte> dat
     return false;
 }
 
-bool Filesystem::FileExists(std::string_view path, bool gamedironly) const {
+bool Filesystem::file_exists(std::string_view path, bool gamedironly) const {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
@@ -376,7 +378,7 @@ bool Filesystem::FileExists(std::string_view path, bool gamedironly) const {
     return false;
 }
 
-std::optional<FsOffset> Filesystem::FileSize(std::string_view path,
+std::optional<FsOffset> Filesystem::file_size(std::string_view path,
                                               bool gamedironly) const
 {
     std::shared_lock lock{ impl_->paths_mutex };
@@ -390,18 +392,18 @@ std::optional<FsOffset> Filesystem::FileSize(std::string_view path,
 }
 
 std::optional<std::filesystem::file_time_type>
-Filesystem::FileTime(std::string_view path, bool gamedironly) const {
+Filesystem::file_time(std::string_view path, bool gamedironly) const {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        auto t = it->backend->FileTime(path);
+        auto t = it->backend->file_time(path);
         if (t) return t;
     }
     return std::nullopt;
 }
 
-std::optional<std::string> Filesystem::DiskPath(std::string_view name,
+std::optional<std::string> Filesystem::disk_path(std::string_view name,
                                                   bool gamedironly) const
 {
     std::shared_lock lock{ impl_->paths_mutex };
@@ -417,7 +419,7 @@ std::optional<std::string> Filesystem::DiskPath(std::string_view name,
     return std::nullopt;
 }
 
-SearchResult Filesystem::Search(std::string_view pattern,
+SearchResult Filesystem::search(std::string_view pattern,
                                  bool case_insensitive,
                                  bool gamedironly) const
 {
@@ -428,7 +430,7 @@ SearchResult Filesystem::Search(std::string_view pattern,
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        for (auto& m : it->backend->Search(pattern, case_insensitive)) {
+        for (auto& m : it->backend->search(pattern, case_insensitive)) {
             if (seen.insert(m).second)
                 result.files.push_back(std::move(m));
         }
@@ -436,7 +438,7 @@ SearchResult Filesystem::Search(std::string_view pattern,
     return result;
 }
 
-bool Filesystem::Rename(std::string_view from, std::string_view to) {
+bool Filesystem::rename(std::string_view from, std::string_view to) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
@@ -460,7 +462,7 @@ bool Filesystem::Rename(std::string_view from, std::string_view to) {
     return false;
 }
 
-bool Filesystem::Delete(std::string_view path) {
+bool Filesystem::remove(std::string_view path) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
@@ -474,14 +476,14 @@ bool Filesystem::Delete(std::string_view path) {
     return false;
 }
 
-std::optional<std::uint32_t> Filesystem::CRC32File(std::string_view path) {
-    const auto data = LoadFile(path);
+std::optional<std::uint32_t> Filesystem::crc32_file(std::string_view path) {
+    const auto data = load_file(path);
     if (data.empty()) return std::nullopt;
     return xash::utilities::crc32(data.data(), data.size());
 }
 
-std::optional<std::array<std::byte, 16>> Filesystem::MD5File(std::string_view path) {
-    const auto data = LoadFile(path);
+std::optional<std::array<std::byte, 16>> Filesystem::md5_file(std::string_view path) {
+    const auto data = load_file(path);
     if (data.empty()) return std::nullopt;
     const auto digest = xash::utilities::Md5Hasher::hash(data.data(), data.size());
     std::array<std::byte, 16> out{};
@@ -490,7 +492,7 @@ std::optional<std::array<std::byte, 16>> Filesystem::MD5File(std::string_view pa
     return out;
 }
 
-std::optional<std::string> Filesystem::FindLibrary(std::string_view name) {
+std::optional<std::string> Filesystem::find_library(std::string_view name) {
     // Snapshot game state under shared lock.
     GameInfo g;
     {
@@ -529,17 +531,17 @@ std::optional<std::string> Filesystem::FindLibrary(std::string_view name) {
     return std::nullopt;
 }
 
-std::string Filesystem::Gamedir() const {
+std::string Filesystem::gamedir() const {
     std::shared_lock lock{impl_->game_mutex};
     return impl_->gamedir;
 }
 
-GameInfo Filesystem::GetGameInfo() const {
+GameInfo Filesystem::get_game_info() const {
     std::shared_lock lock{impl_->game_mutex};
     return impl_->active_game;
 }
 
-std::string_view Filesystem::GetRootDirectory() const {
+std::string_view Filesystem::get_root_directory() const {
     return impl_->rootdir;
 }
 

@@ -156,7 +156,7 @@ PakBackend::OpenFile(std::string_view path, std::string_view mode) {
 }
 
 std::optional<std::filesystem::file_time_type>
-PakBackend::FileTime(std::string_view path) {
+PakBackend::file_time(std::string_view path) {
     // PAK returns archive-level mtime for any existing entry.
     if (!find_entry(path)) return std::nullopt;
     return file_time_;
@@ -170,7 +170,7 @@ PakBackend::FindFile(std::string_view path) {
 }
 
 std::vector<std::string>
-PakBackend::Search(std::string_view pattern, bool /*case_insensitive*/) {
+PakBackend::search(std::string_view pattern, bool /*case_insensitive*/) {
     // Legacy FS_Search_PAK matched each entry (and every directory-prefix
     // thereof) against the pattern.  We replicate that: iterate entries, try
     // the full name and then progressively strip trailing path components.
@@ -178,7 +178,7 @@ PakBackend::Search(std::string_view pattern, bool /*case_insensitive*/) {
 }
 
 std::vector<std::byte>
-PakBackend::LoadFile(std::string_view path) {
+PakBackend::load_file(std::string_view path) {
     const Entry* e = find_entry(path);
     if (!e || e->size == 0) return {};
 

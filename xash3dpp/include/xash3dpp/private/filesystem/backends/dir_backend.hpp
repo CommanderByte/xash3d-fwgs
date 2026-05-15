@@ -27,14 +27,14 @@ public:
                                    std::string_view mode) override;
 
     std::optional<std::filesystem::file_time_type>
-        FileTime(std::string_view path) override;
+        file_time(std::string_view path) override;
 
     std::optional<std::string> FindFile(std::string_view path) override;
 
-    std::vector<std::string> Search(std::string_view pattern,
+    std::vector<std::string> search(std::string_view pattern,
                                     bool case_insensitive) override;
 
-    std::vector<std::byte> LoadFile(std::string_view path) override;
+    std::vector<std::byte> load_file(std::string_view path) override;
 
     void InvalidateDirectory(std::string_view subdir) noexcept override;
 

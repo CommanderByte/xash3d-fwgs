@@ -17,7 +17,7 @@
 //   thread can have called get_time().  Subsequent reads in assert_main_thread()
 //   are therefore safe (happens-before via the magic-static guarantee).
 
-#include <cassert>
+#include <xash3dpp/platform/assert.hpp>
 #include <thread>
 
 namespace xash::platform::detail {
@@ -44,9 +44,8 @@ inline void assert_main_thread( [[maybe_unused]] const char *location ) noexcept
     // Skip the check if the main thread has not been captured yet — this can
     // happen if a platform function is called before get_time() (unusual but
     // allowed at startup before threads are spawned).
-    assert( ( id == std::thread::id{} ||
-              id == std::this_thread::get_id() ) &&
-            "platform main-thread-only function called from a worker thread" );
+    XASH_FATAL( id == std::thread::id{} || id == std::this_thread::get_id(),
+                "platform main-thread-only function called from a worker thread" );
 }
 
 } // namespace xash::platform::detail

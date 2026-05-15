@@ -24,7 +24,7 @@ using ::xash::platform::OsFd;
 
 namespace {
 
-// Open the asset at full_path into an anonymous fd and return the fd plus its
+// open the asset at full_path into an anonymous fd and return the fd plus its
 // length (obtained by seeking to end).  Both are 0/invalid on failure.
 struct AssetFd { OsFd fd; FsOffset length; };
 
@@ -89,11 +89,11 @@ std::unique_ptr<File> AndroidBackend::OpenFile(std::string_view path,
 }
 
 // ---------------------------------------------------------------------------
-// FileTime — Android assets carry no mtime.
+// file_time — Android assets carry no mtime.
 // ---------------------------------------------------------------------------
 
 std::optional<std::filesystem::file_time_type>
-AndroidBackend::FileTime(std::string_view /*path*/) {
+AndroidBackend::file_time(std::string_view /*path*/) {
     return std::nullopt;
 }
 
@@ -127,10 +127,10 @@ std::optional<std::string> AndroidBackend::FindFile(std::string_view path) {
 }
 
 // ---------------------------------------------------------------------------
-// Search — glob matching over the directory listing.
+// search — glob matching over the directory listing.
 // ---------------------------------------------------------------------------
 
-std::vector<std::string> AndroidBackend::Search(std::string_view pattern,
+std::vector<std::string> AndroidBackend::search(std::string_view pattern,
                                                   bool             case_insensitive)
 {
     if (!mgr_) return {};
@@ -157,10 +157,10 @@ std::vector<std::string> AndroidBackend::Search(std::string_view pattern,
 }
 
 // ---------------------------------------------------------------------------
-// LoadFile
+// load_file
 // ---------------------------------------------------------------------------
 
-std::vector<std::byte> AndroidBackend::LoadFile(std::string_view path) {
+std::vector<std::byte> AndroidBackend::load_file(std::string_view path) {
     if (!mgr_) return {};
 
     const std::string full = xash::utilities::path_join(base_path_, path);

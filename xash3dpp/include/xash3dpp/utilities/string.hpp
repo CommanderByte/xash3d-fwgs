@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — string utilities
 // Legacy reference: public/crtlib.h + public/crtlib.c
 //
@@ -24,7 +24,7 @@ char *strncpy( char *dst, const char *src, std::size_t size ) noexcept;
 
 // Null-safe strlen — returns 0 for nullptr.
 // Legacy: Q_strlen
-inline std::size_t strlen( const char *s ) noexcept
+[[nodiscard]] inline std::size_t strlen( const char *s ) noexcept
 {
     if( !s ) return 0u;
     std::size_t n = 0;
@@ -34,18 +34,18 @@ inline std::size_t strlen( const char *s ) noexcept
 
 // Case-insensitive comparison.
 // Legacy: Q_stricmp / Q_strnicmp
-int stricmp( const char *a, const char *b ) noexcept;
-int strnicmp( const char *a, const char *b, std::size_t n ) noexcept;
+[[nodiscard]] int stricmp( const char *a, const char *b ) noexcept;
+[[nodiscard]] int strnicmp( const char *a, const char *b, std::size_t n ) noexcept;
 
 // Case-insensitive predicates for string_view pairs.
 // Suitable as std::sort / std::lower_bound comparators.
 // Subsumes private ci_less / ci_equal / iequal_sv helpers in the backends.
-inline bool ci_less( std::string_view a, std::string_view b ) noexcept
+[[nodiscard]] inline bool ci_less( std::string_view a, std::string_view b ) noexcept
 {
     const std::size_t n = ( a.size() > b.size() ? a.size() : b.size() ) + 1;
     return strnicmp( a.data(), b.data(), n ) < 0;
 }
-inline bool ci_equal( std::string_view a, std::string_view b ) noexcept
+[[nodiscard]] inline bool ci_equal( std::string_view a, std::string_view b ) noexcept
 {
     if ( a.size() != b.size() ) return false;
     return strnicmp( a.data(), b.data(), a.size() ) == 0;
@@ -57,7 +57,7 @@ inline void to_lower( std::string& s ) noexcept
     for( char& c : s )
         c = static_cast<char>( c >= 'A' && c <= 'Z' ? c + ( 'a' - 'A' ) : c );
 }
-inline std::string to_lower( std::string_view s )
+[[nodiscard]] inline std::string to_lower( std::string_view s )
 {
     std::string result( s );
     to_lower( result );
@@ -66,7 +66,7 @@ inline std::string to_lower( std::string_view s )
 
 // Strip leading and trailing characters found in 'chars' from sv.
 // Default strip set is ASCII space and tab.
-inline std::string_view trim_sv( std::string_view sv,
+[[nodiscard]] inline std::string_view trim_sv( std::string_view sv,
                                   std::string_view chars = " \t" ) noexcept
 {
     while ( !sv.empty() && chars.find( sv.front() ) != std::string_view::npos )
@@ -83,25 +83,25 @@ int vsnprintf( char *buf, std::size_t size, const char *fmt, std::va_list args )
 
 // Convert string to int / float / float[n].
 // Legacy: Q_atoi, Q_atof, Q_atov
-int   atoi( std::string_view s ) noexcept;
-float atof( std::string_view s ) noexcept;
+[[nodiscard]] int   atoi( std::string_view s ) noexcept;
+[[nodiscard]] float atof( std::string_view s ) noexcept;
 // Null-safe legacy overloads — preserve Q_atoi(NULL)==0 contract.
-inline int   atoi( const char *s ) noexcept { return atoi( s ? std::string_view{ s } : std::string_view{} ); }
-inline float atof( const char *s ) noexcept { return atof( s ? std::string_view{ s } : std::string_view{} ); }
+[[nodiscard]] inline int   atoi( const char *s ) noexcept { return atoi( s ? std::string_view{ s } : std::string_view{} ); }
+[[nodiscard]] inline float atof( const char *s ) noexcept { return atof( s ? std::string_view{ s } : std::string_view{} ); }
 void  atov( std::span<float> out, std::string_view s ) noexcept;
 
 // Strip console color codes (^N sequences).
 // Legacy: COM_StripColors
 void        strip_colors( const char *in, char *out ) noexcept;
-std::string strip_colors( std::string_view in ) noexcept;
+[[nodiscard]] std::string strip_colors( std::string_view in ) noexcept;
 
 // Pretty-print a byte count ("1.5 MB").
 // Legacy: Q_pretifymem
-std::string pretify_mem( float bytes, int decimals ) noexcept;
+[[nodiscard]] std::string pretify_mem( float bytes, int decimals ) noexcept;
 
 // Glob / wildcard pattern matching.
 // Legacy: matchpattern_with_separator
-bool match_pattern( std::string_view text,
+[[nodiscard]] bool match_pattern( std::string_view text,
                     std::string_view pattern,
                     bool            case_insensitive,
                     std::string_view separators = {},
@@ -138,7 +138,7 @@ constexpr TokenFlags &operator&=( TokenFlags &a, TokenFlags b ) noexcept { retur
 
 // Single-token parser step.  Returns updated data pointer or nullptr at end.
 // Legacy: COM_ParseFileSafe
-const char *parse_token( const char  *data,
+[[nodiscard]] const char *parse_token( const char  *data,
                          char        *token,
                          std::size_t  token_size,
                          TokenFlags   flags     = TokenFlags::None,
@@ -167,9 +167,9 @@ public:
                         TokenFlags  flags = TokenFlags::None ) noexcept;
 
     // Advance to the next token.  Returns nullopt at end of input.
-    std::optional<Token> next() noexcept;
+    [[nodiscard]] std::optional<Token> next() noexcept;
 
-    bool        at_end() const noexcept { return cursor_ == nullptr; }
+    [[nodiscard]] bool        at_end() const noexcept { return cursor_ == nullptr; }
     void        reset( const char *data ) noexcept;
 
 private:

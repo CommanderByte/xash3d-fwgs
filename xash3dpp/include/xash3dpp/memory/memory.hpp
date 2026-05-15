@@ -24,7 +24,7 @@
 
 namespace xash::memory {
 
-// PoolHandle — a 1-based index into the pool registry.  0 (kNullPool) is
+// PoolHandle — a 1-based index into the pool registry.  0 (k_null_pool) is
 // the invalid/untagged sentinel.
 struct PoolHandle
 {
@@ -36,7 +36,7 @@ struct PoolHandle
     constexpr bool operator!=(PoolHandle o) const noexcept { return index != o.index; }
 };
 
-inline constexpr PoolHandle kNullPool {};
+inline constexpr PoolHandle k_null_pool {};
 
 // Snapshot of pool accounting at a point in time.
 struct PoolStats
@@ -52,25 +52,25 @@ struct PoolStats
 // ---------------------------------------------------------------------------
 
 // Allocator strategy chosen at create_pool time.
-// kSystem is the only implemented strategy; the others are placeholders so
+// System is the only implemented strategy; the others are placeholders so
 // that callers can tag intent today and the backing implementation can be
 // filled in later without touching call sites.
 enum class AllocStrategy : std::uint8_t
 {
-    kSystem,  // malloc / free  (default)
-    kArena,   // bump allocator, bulk-free on destroy_pool  (future)
-    kSlab,    // fixed-size object pool                     (future)
+    System,  // malloc / free  (default)
+    Arena,   // bump allocator, bulk-free on destroy_pool  (future)
+    Slab,    // fixed-size object pool                     (future)
 };
 
 // Optional configuration passed to create_pool.  All fields have sensible
 // defaults so existing create_pool("name") calls compile unchanged.
 struct PoolConfig
 {
-    AllocStrategy strategy { AllocStrategy::kSystem };
+    AllocStrategy strategy { AllocStrategy::System };
     std::size_t   reserve  { 0 };  // pre-allocation hint; currently ignored
 };
 
-// Create a named pool.  Returns kNullPool if the registry is full (> 128 pools).
+// Create a named pool.  Returns k_null_pool if the registry is full (> 128 pools).
 [[nodiscard]] PoolHandle create_pool(const char* name, PoolConfig cfg = {}) noexcept;
 
 // Destroy a pool slot.  In debug builds, asserts that live_bytes == 0.

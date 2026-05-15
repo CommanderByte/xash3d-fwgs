@@ -95,13 +95,13 @@ PoolHandle create_pool(const char* name, PoolConfig cfg) noexcept
             b.name[0] = '\0';
         }
 
-        // Wire up the backing allocator.  Only kSystem is implemented today;
+        // Wire up the backing allocator.  Only System is implemented today;
         // future strategies will add their setup here without touching callers.
         switch (cfg.strategy)
         {
-            case AllocStrategy::kArena:  // fall through — not yet implemented
-            case AllocStrategy::kSlab:   // fall through — not yet implemented
-            case AllocStrategy::kSystem:
+            case AllocStrategy::Arena:  // fall through — not yet implemented
+            case AllocStrategy::Slab:   // fall through — not yet implemented
+            case AllocStrategy::System:
             default:
                 b.do_alloc   = sys_alloc;
                 b.do_free    = sys_free;
@@ -116,9 +116,9 @@ PoolHandle create_pool(const char* name, PoolConfig cfg) noexcept
         return PoolHandle { i + 1 };
     }
 
-    // Registry full — caller gets kNullPool; subsequent allocs through it are
+    // Registry full — caller gets k_null_pool; subsequent allocs through it are
     // untracked (they still succeed, pool_index == 0 in the header).
-    return kNullPool;
+    return k_null_pool;
 }
 
 void destroy_pool(PoolHandle handle) noexcept
@@ -227,7 +227,7 @@ void* mem_realloc(PoolHandle pool, void* ptr, std::size_t new_size) noexcept
     const std::size_t raw_size = sizeof(AllocHeader) + new_size;
     void* raw = nullptr;
 
-    // Fast path: same pool with a native realloc (avoids copy for kSystem).
+    // Fast path: same pool with a native realloc (avoids copy for System).
     if (old_pool == pool && new_b && new_b->do_realloc)
     {
         raw = new_b->do_realloc(old_hdr, raw_size, new_b->ctx);

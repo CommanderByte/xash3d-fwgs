@@ -17,13 +17,11 @@
 #include <cstring>   // strlen, strcmp, strncmp
 #include <filesystem>
 
+#include "../test_helpers.hpp"
+
 namespace fs = std::filesystem;
 
 static int g_pass = 0, g_fail = 0;
-
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::printf("FAIL [line %d]: %s\n", __LINE__, #expr); } } while(0)
 
 // ---------------------------------------------------------------------------
 // Test-directory helpers

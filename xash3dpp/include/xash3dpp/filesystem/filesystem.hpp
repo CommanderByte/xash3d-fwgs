@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — virtual filesystem public API
 // Legacy reference: filesystem/filesystem.h  (fs_api_t), filesystem/fscallback.h
 //
@@ -38,109 +38,111 @@ public:
 
     Filesystem(const Filesystem&)            = delete;
     Filesystem& operator=(const Filesystem&) = delete;
+    Filesystem(Filesystem&&) noexcept;
+    Filesystem& operator=(Filesystem&&) noexcept;
 
     // ---- Lifecycle --------------------------------------------------------
 
     // Scan rootdir / rodir for all game directories and add static paths.
-    bool Init(std::string_view rootdir,
+    [[nodiscard]] bool init(std::string_view rootdir,
               std::string_view basedir,
               std::string_view gamedir,
               std::string_view rodir = {});
 
-    void Shutdown();
+    void shutdown();
 
     // Select a game directory by folder name and rebuild search paths.
     // The engine calls scan_game_directories() (gameinfo_parser.hpp) first,
     // presents the list to the user or reads it from config, then calls this.
-    bool ActivateGame(std::string_view      gamefolder,
+    [[nodiscard]] bool activate_game(std::string_view      gamefolder,
                       SearchPathFlags        mount_flags,
                       std::string_view       language = {});
 
     // Rebuild search paths for the current GameInfo without changing game selection.
-    void Rescan(SearchPathFlags mount_flags, std::string_view language = {});
+    void rescan(SearchPathFlags mount_flags, std::string_view language = {});
 
-    // ---- Search-path management ------------------------------------------
+    // ---- search-path management ------------------------------------------
 
-    void AddGameDirectory(std::string_view dir, SearchPathFlags flags);
+    void add_game_directory(std::string_view dir, SearchPathFlags flags);
 
     // Mount the full game hierarchy (basedir → falldir → gamedir, plus
     // HD/LV/addon/l10n variants according to flags).
-    void AddGameHierarchy(std::string_view dir, SearchPathFlags flags);
+    void add_game_hierarchy(std::string_view dir, SearchPathFlags flags);
 
     // Remove all non-Static entries.
-    void ClearPaths();
+    void clear_paths();
 
     // Toggle permission for absolute paths and "../" traversal.
     // Must always be restored to false by the caller after use.
-    void AllowDirectPaths(bool enable);
+    void allow_direct_paths(bool enable);
 
     // Mount a single archive by absolute disk path.
-    bool MountArchive(std::string_view path, SearchPathFlags flags);
+    [[nodiscard]] bool mount_archive(std::string_view path, SearchPathFlags flags);
 
     // ---- File I/O --------------------------------------------------------
 
-    // Open a file for streaming.  Returns nullptr on failure.
+    // open a file for streaming.  Returns nullptr on failure.
     // mode follows fopen conventions ("r", "rb", "w", "wb", …).
-    std::unique_ptr<File> Open(std::string_view path,
+    [[nodiscard]] std::unique_ptr<File> open(std::string_view path,
                                std::string_view mode,
                                bool gamedironly = false);
 
     // Whole-file load.  Returns an empty vector on failure.
     // The vector's size() reflects the exact on-disk byte count.
-    std::vector<std::byte> LoadFile(std::string_view path, bool gamedironly = false);
+    [[nodiscard]] std::vector<std::byte> load_file(std::string_view path, bool gamedironly = false);
 
     // Bypass VFS — read directly from a disk path.
-    std::vector<std::byte> LoadDirectFile(std::string_view disk_path) const;
+    [[nodiscard]] std::vector<std::byte> load_direct_file(std::string_view disk_path) const;
 
-    bool WriteFile(std::string_view path, std::span<const std::byte> data);
+    [[nodiscard]] bool write_file(std::string_view path, std::span<const std::byte> data);
 
     // ---- Queries ---------------------------------------------------------
 
-    bool FileExists(std::string_view path, bool gamedironly = false) const;
+    [[nodiscard]] bool file_exists(std::string_view path, bool gamedironly = false) const;
 
-    std::optional<FsOffset> FileSize(std::string_view path,
+    [[nodiscard]] std::optional<FsOffset> file_size(std::string_view path,
                                       bool gamedironly = false) const;
 
-    std::optional<std::filesystem::file_time_type>
-        FileTime(std::string_view path, bool gamedironly = false) const;
+    [[nodiscard]] std::optional<std::filesystem::file_time_type>
+        file_time(std::string_view path, bool gamedironly = false) const;
 
     // Returns the on-disk path if the file lives in a plain directory,
     // or nullopt if it is inside a packed archive.
-    std::optional<std::string> DiskPath(std::string_view name,
+    [[nodiscard]] std::optional<std::string> disk_path(std::string_view name,
                                          bool gamedironly = false) const;
 
-    SearchResult Search(std::string_view pattern,
+    [[nodiscard]] SearchResult search(std::string_view pattern,
                         bool case_insensitive = true,
                         bool gamedironly      = false) const;
 
-    bool Rename(std::string_view from, std::string_view to);
-    bool Delete(std::string_view path);
+    [[nodiscard]] bool rename(std::string_view from, std::string_view to);
+    [[nodiscard]] bool remove(std::string_view path);
 
     // ---- Hashing ---------------------------------------------------------
 
-    std::optional<std::uint32_t>             CRC32File(std::string_view path);
-    std::optional<std::array<std::byte, 16>> MD5File(std::string_view path);
+    [[nodiscard]] std::optional<std::uint32_t>             crc32_file(std::string_view path);
+    [[nodiscard]] std::optional<std::array<std::byte, 16>> md5_file(std::string_view path);
 
     // ---- Library resolution ---------------------------------------------
 
     // Resolve a game library name to an absolute disk path.
     // TODO: move to a platform::dynlib layer once that subsystem exists.
     //       Currently here because it needs VFS path search.
-    std::optional<std::string> FindLibrary(std::string_view name);
+    [[nodiscard]] std::optional<std::string> find_library(std::string_view name);
 
     // ---- Game info -------------------------------------------------------
 
     // Discover all candidate game directories under `root`.
-    // Call this before ActivateGame(); present the result to the user or
-    // read the selection from config, then call ActivateGame().
-    std::vector<GameInfo> ScanGameDirectories(std::string_view root) const;
+    // Call this before activate_game(); present the result to the user or
+    // read the selection from config, then call activate_game().
+    [[nodiscard]] std::vector<GameInfo> scan_game_directories(std::string_view root) const;
 
-    std::string      Gamedir()     const;
-    GameInfo          GetGameInfo() const;  // valid only after ActivateGame()
+    [[nodiscard]] std::string      gamedir()     const;
+    [[nodiscard]] GameInfo  get_game_info() const;  // valid only after activate_game()
 
     // ---- Root directory --------------------------------------------------
 
-    std::string_view GetRootDirectory() const;
+    [[nodiscard]] std::string_view get_root_directory() const;
 
 private:
     struct Impl;

@@ -9,7 +9,7 @@
 //   • All methods are noexcept — no exceptions, no RTTI (engine policy).
 //   • Implementations must not call back into CmdCvarContext during a callback
 //     (no re-entrant cvar_set from inside on_cvar_changed).
-//   • Observer list is populated at Init time and never mutated during runtime.
+//   • Observer list is populated at init time and never mutated during runtime.
 
 #include <xash3dpp/cmd_cvar/cvar.hpp>
 
@@ -52,7 +52,7 @@ protected:
 // inside Cbuf_Execute / Cbuf_ExecStuffCmds.
 //
 // The server subsystem constructs a concrete implementation and injects it
-// into CmdCvarContext at Init time.  cmd_cvar never imports server headers.
+// into CmdCvarContext at init time.  cmd_cvar never imports server headers.
 // ---------------------------------------------------------------------------
 
 struct ITrustOracle {

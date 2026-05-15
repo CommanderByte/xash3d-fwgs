@@ -286,7 +286,7 @@ ZipBackend::OpenFile(std::string_view path, std::string_view mode) {
 }
 
 std::optional<std::filesystem::file_time_type>
-ZipBackend::FileTime(std::string_view path) {
+ZipBackend::file_time(std::string_view path) {
     // Return archive-level mtime for any found entry (mirrors FS_FileTime_ZIP).
     if (!find_entry(path)) return std::nullopt;
     return file_time_;
@@ -300,14 +300,14 @@ ZipBackend::FindFile(std::string_view path) {
 }
 
 std::vector<std::string>
-ZipBackend::Search(std::string_view pattern, bool /*case_insensitive*/) {
+ZipBackend::search(std::string_view pattern, bool /*case_insensitive*/) {
     // Same as FS_Search_ZIP: iterate all entries, try the full path then
     // progressively strip trailing path components so directory names match too.
     return archive_search_by_name(entries_, pattern);
 }
 
 std::vector<std::byte>
-ZipBackend::LoadFile(std::string_view path) {
+ZipBackend::load_file(std::string_view path) {
     const Entry* e = find_entry(path);
     if (!e || e->uncomp_size == 0) return {};
 

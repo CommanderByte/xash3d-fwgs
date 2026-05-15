@@ -29,7 +29,7 @@ template <typename V, std::size_t kBuckets = limits::cvar_hash_buckets>
 class CmdHashMap {
 public:
     // Construct with a null pool; call set_pool() before first insert().
-    CmdHashMap() noexcept : pool_(memory::kNullPool) {}
+    CmdHashMap() noexcept : pool_(memory::k_null_pool) {}
 
     // Construct with a live pool ready for immediate use.
     explicit CmdHashMap(memory::PoolHandle pool) noexcept : pool_(pool) {}
@@ -44,7 +44,7 @@ public:
             buckets_[i]   = o.buckets_[i];
             o.buckets_[i] = nullptr;
         }
-        o.pool_ = memory::kNullPool;
+        o.pool_ = memory::k_null_pool;
     }
 
     // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-// xash3dpp — CIDirectory (case-insensitive directory resolver) tests
+﻿// xash3dpp — CIDirectory (case-insensitive directory resolver) tests
 // Covers: CIDirectory::Glob, CIDirectory::Resolve, CIDirectory::Invalidate
 //
 // Legacy reference: filesystem/dir.c  (FS_FixFileCase, FS_BuildTrie,
@@ -25,9 +25,7 @@
 
 static int g_pass = 0, g_fail = 0;
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ")"); } } while(0)
+#include "../test_helpers.hpp"
 
 // ===========================================================================
 // Fixture

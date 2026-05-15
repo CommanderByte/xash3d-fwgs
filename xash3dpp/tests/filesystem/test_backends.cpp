@@ -1,4 +1,4 @@
-// xash3dpp — ISearchBackend unit tests
+﻿// xash3dpp — ISearchBackend unit tests
 // Covers: DirBackend, PakBackend, ZipBackend, WadBackend
 // Legacy reference: filesystem/pak.c, filesystem/zip.c, filesystem/wad.c,
 //                   filesystem/filesystem.c  (dir_backend_t)
@@ -35,9 +35,7 @@ using namespace xash::filesystem::backends;
 static int g_pass = 0, g_fail = 0;
 static xash::memory::PoolHandle g_pool;
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ")"); } } while (0)
+#include "../test_helpers.hpp"
 
 // ===========================================================================
 // Fixture globals
@@ -108,12 +106,10 @@ static void write_pak( const std::filesystem::path& path )
 }
 
 // ---------------------------------------------------------------------------
-// write_zip — ZIP archive with stored (uncompressed) entries:
-//   "scripts/test.txt"  → "hello world"
-//   "textures/logo.bin" → 0x01 0x02 0x03 0x04
-// MZ_NO_COMPRESSION guarantees method=0 (stored), so OpenFile+Read does not
-// require inflate; the stored path is exercised.
+// write_zip — requires full miniz archive APIs (disabled by legacy miniz.h).
+// Guarded by MINIZ_NO_ARCHIVE_APIS; see xash3dpp CMakeLists.txt comment.
 // ---------------------------------------------------------------------------
+#ifndef MINIZ_NO_ARCHIVE_APIS
 static void write_zip( const std::filesystem::path& path )
 {
     mz_zip_archive za{};
@@ -128,6 +124,7 @@ static void write_zip( const std::filesystem::path& path )
     mz_zip_writer_finalize_archive( &za );
     mz_zip_writer_end( &za );
 }
+#endif // !MINIZ_NO_ARCHIVE_APIS
 
 // ---------------------------------------------------------------------------
 // write_wad — minimal WAD3 with one lump:
@@ -202,11 +199,13 @@ static void setup_testdir()
     }
 
     // ZipBackend fixture
+#ifndef MINIZ_NO_ARCHIVE_APIS
     {
         const auto z = g_testdir / "test.zip";
         write_zip( z );
         g_zip_path = z.string();
     }
+#endif // !MINIZ_NO_ARCHIVE_APIS
 
     // WadBackend fixture
     {
@@ -254,7 +253,7 @@ static void test_dir_backend_load_file()
 {
     auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto data = b->LoadFile( "hello.txt" );
+    const auto data = b->load_file( "hello.txt" );
     CHECK( data.size() == 11u );
     CHECK( std::memcmp( data.data(), "hello world", 11 ) == 0 );
 }
@@ -263,7 +262,7 @@ static void test_dir_backend_load_file_missing()
 {
     auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK( b->LoadFile( "ghost.txt" ).empty() );
+    CHECK( b->load_file( "ghost.txt" ).empty() );
 }
 
 static void test_dir_backend_open_file_read()
@@ -303,15 +302,15 @@ static void test_dir_backend_file_time()
 {
     auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK(  b->FileTime( "hello.txt" ).has_value() );
-    CHECK( !b->FileTime( "ghost.txt" ).has_value() );
+    CHECK(  b->file_time( "hello.txt" ).has_value() );
+    CHECK( !b->file_time( "ghost.txt" ).has_value() );
 }
 
 static void test_dir_backend_search()
 {
     auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto results = b->Search( "*.txt", true );
+    const auto results = b->search( "*.txt", true );
     // "hello.txt" must appear; "data.bin" must not.
     const bool has_hello = std::find( results.begin(), results.end(),
                                       "hello.txt" ) != results.end();
@@ -379,7 +378,7 @@ static void test_pak_backend_load_file()
 {
     auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto data = b->LoadFile( "scripts/test.txt" );
+    const auto data = b->load_file( "scripts/test.txt" );
     CHECK( data.size() == 11u );
     CHECK( std::memcmp( data.data(), "hello world", 11 ) == 0 );
 }
@@ -388,7 +387,7 @@ static void test_pak_backend_load_file_missing()
 {
     auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK( b->LoadFile( "scripts/missing.txt" ).empty() );
+    CHECK( b->load_file( "scripts/missing.txt" ).empty() );
 }
 
 static void test_pak_backend_open_file()
@@ -422,15 +421,15 @@ static void test_pak_backend_file_time()
     auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     // PAK returns the archive-level mtime for any found entry.
-    CHECK(  b->FileTime( "scripts/test.txt" ).has_value() );
-    CHECK( !b->FileTime( "scripts/missing.txt" ).has_value() );
+    CHECK(  b->file_time( "scripts/test.txt" ).has_value() );
+    CHECK( !b->file_time( "scripts/missing.txt" ).has_value() );
 }
 
 static void test_pak_backend_search()
 {
     auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto results = b->Search( "*.txt", true );
+    const auto results = b->search( "*.txt", true );
     // archive_search_by_name: "scripts/test.txt" matches "*.txt" (wildcard
     // spans '/') and then "scripts" is tried but does not match "*.txt".
     const bool found = std::find( results.begin(), results.end(),
@@ -445,6 +444,7 @@ static void test_pak_backend_search()
 // ===========================================================================
 // ZipBackend tests
 // ===========================================================================
+#ifndef MINIZ_NO_ARCHIVE_APIS
 
 static void test_zip_backend_create_invalid()
 {
@@ -489,7 +489,7 @@ static void test_zip_backend_load_file()
 {
     auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto data = b->LoadFile( "scripts/test.txt" );
+    const auto data = b->load_file( "scripts/test.txt" );
     CHECK( data.size() == 11u );
     CHECK( std::memcmp( data.data(), "hello world", 11 ) == 0 );
 }
@@ -498,7 +498,7 @@ static void test_zip_backend_load_file_missing()
 {
     auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK( b->LoadFile( "scripts/missing.txt" ).empty() );
+    CHECK( b->load_file( "scripts/missing.txt" ).empty() );
 }
 
 static void test_zip_backend_open_file()
@@ -532,15 +532,15 @@ static void test_zip_backend_file_time()
 {
     auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK(  b->FileTime( "scripts/test.txt" ).has_value() );
-    CHECK( !b->FileTime( "scripts/missing.txt" ).has_value() );
+    CHECK(  b->file_time( "scripts/test.txt" ).has_value() );
+    CHECK( !b->file_time( "scripts/missing.txt" ).has_value() );
 }
 
 static void test_zip_backend_search()
 {
     auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto results = b->Search( "*.txt", true );
+    const auto results = b->search( "*.txt", true );
     const bool found = std::find( results.begin(), results.end(),
                                   "scripts/test.txt" ) != results.end();
     CHECK( found );
@@ -548,6 +548,7 @@ static void test_zip_backend_search()
                                     "textures/logo.bin" ) != results.end();
     CHECK( !has_bin );
 }
+#endif // !MINIZ_NO_ARCHIVE_APIS
 
 // ===========================================================================
 // WadBackend tests
@@ -596,7 +597,7 @@ static void test_wad_backend_load_file()
 {
     auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    const auto data = b->LoadFile( "test.txt" );
+    const auto data = b->load_file( "test.txt" );
     CHECK( data.size() == 7u );
     CHECK( std::memcmp( data.data(), "wadlump", 7 ) == 0 );
 }
@@ -605,7 +606,7 @@ static void test_wad_backend_load_file_missing()
 {
     auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK( b->LoadFile( "missing.txt" ).empty() );
+    CHECK( b->load_file( "missing.txt" ).empty() );
 }
 
 static void test_wad_backend_open_file()
@@ -638,8 +639,8 @@ static void test_wad_backend_file_time()
 {
     auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
-    CHECK(  b->FileTime( "test.txt" ).has_value() );
-    CHECK( !b->FileTime( "missing.txt" ).has_value() );
+    CHECK(  b->file_time( "test.txt" ).has_value() );
+    CHECK( !b->file_time( "missing.txt" ).has_value() );
 }
 
 static void test_wad_backend_search()
@@ -647,12 +648,12 @@ static void test_wad_backend_search()
     auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     // "*.txt" → TYP_SCRIPT=68; entry "test" matches → result is "test.txt"
-    const auto results = b->Search( "*.txt", true );
+    const auto results = b->search( "*.txt", true );
     const bool found = std::find( results.begin(), results.end(),
                                   "test.txt" ) != results.end();
     CHECK( found );
     // "*.mip" → TYP_MIPTEX=67; our entry has type 68 → no results.
-    CHECK( b->Search( "*.mip", true ).empty() );
+    CHECK( b->search( "*.mip", true ).empty() );
 }
 
 static void test_wad_backend_qualifier_match()
@@ -715,6 +716,7 @@ int main()
     test_pak_backend_search();
 
     // --- ZipBackend ---------------------------------------------------------
+#ifndef MINIZ_NO_ARCHIVE_APIS
     test_zip_backend_create_invalid();
     test_zip_backend_create_missing();
     test_zip_backend_create_valid();
@@ -728,6 +730,9 @@ int main()
     test_zip_backend_write_rejected();
     test_zip_backend_file_time();
     test_zip_backend_search();
+#else
+    std::printf( "  ZipBackend tests skipped: legacy miniz has MINIZ_NO_ARCHIVE_APIS\n" );
+#endif // !MINIZ_NO_ARCHIVE_APIS
 
     // --- WadBackend ---------------------------------------------------------
     test_wad_backend_create_invalid();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — 2D texture atlas packer (strip-based)
 // Legacy reference: public/atlas.h + public/atlas.c
 //
@@ -28,10 +28,10 @@ public:
     struct Block { int x, y; };
 
     // Allocate a w×h rectangle.  Returns coordinates on success, nullopt if full.
-    std::optional<Block> alloc( int w, int h ) noexcept;
+    [[nodiscard]] std::optional<Block> alloc( int w, int h ) noexcept;
 
-    int size() const noexcept { return m_size; }
-    int max_height() const noexcept { return m_max_height; }
+    [[nodiscard]] int size() const noexcept { return m_size; }
+    [[nodiscard]] int max_height() const noexcept { return m_max_height; }
 
 private:
     std::array<int, ATLAS_MAX_SIZE> m_allocated{};

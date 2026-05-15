@@ -138,7 +138,11 @@ std::int64_t tell( OsFd &fd ) noexcept
 
 void flush( OsFd &fd ) noexcept
 {
-    ::_commit( fd.get() );
+    // _commit() asserts on read-only fds in debug CRT; FlushFileBuffers returns
+    // FALSE silently for read-only handles — which is the correct no-op behaviour.
+    const HANDLE h = reinterpret_cast<HANDLE>( ::_get_osfhandle( fd.get() ) );
+    if ( h && h != INVALID_HANDLE_VALUE )
+        ::FlushFileBuffers( h );
 }
 
 void close_fd( int raw_fd ) noexcept

@@ -5,9 +5,9 @@
 //                                          host_parm_t / host_status_t)
 //
 // Responsibilities:
-//   • Parse HostArgs into each subsystem's Init() parameters.
+//   • Parse HostArgs into each subsystem's init() parameters.
 //   • Create and own the "host" memory pool.
-//   • Sequence subsystem Init / Shutdown in the correct dependency order.
+//   • Sequence subsystem init / shutdown in the correct dependency order.
 //   • Drive the main frame loop.
 //
 // What it does NOT do:
@@ -64,7 +64,7 @@ enum class HostStatus
 // For embedding (Android JNI, test harness):
 //
 //   xash::Host host;
-//   host.Init(args);
+//   host.init(args);
 //   while (host.status() == xash::HostStatus::kRunning)
 //       host.RunFrame();
 // ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@ public:
     [[nodiscard]] int Main(const HostArgs& args);
 
     // Granular control for embedding scenarios.
-    [[nodiscard]] bool Init(const HostArgs& args);
+    [[nodiscard]] bool init(const HostArgs& args);
     void               RunFrame();
     void               RequestShutdown(const char* reason = nullptr) noexcept;
 

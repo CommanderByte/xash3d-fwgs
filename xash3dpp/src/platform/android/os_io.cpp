@@ -58,7 +58,7 @@ JniState g_jni;
 // Cached handles: [0] = engine APK, [1] = app APK.
 AssetManagerHandle g_handles[2];
 
-// Init flags — ensure g_jni and each handle are populated exactly once.
+// init flags — ensure g_jni and each handle are populated exactly once.
 std::once_flag g_jni_flag;
 std::once_flag g_init_flags[2];
 

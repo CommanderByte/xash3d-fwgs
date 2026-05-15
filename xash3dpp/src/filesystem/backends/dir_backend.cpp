@@ -109,7 +109,7 @@ DirBackend::OpenFile(std::string_view path, std::string_view mode) {
 }
 
 std::optional<std::filesystem::file_time_type>
-DirBackend::FileTime(std::string_view path) {
+DirBackend::file_time(std::string_view path) {
     const std::string resolved = resolve_path(path);
     if (resolved.empty() && !path.empty()) return std::nullopt;
     return platform::file_time(xash::utilities::path_join(root_, resolved));
@@ -129,7 +129,7 @@ DirBackend::FindFile(std::string_view path) {
 }
 
 std::vector<std::string>
-DirBackend::Search(std::string_view pattern, bool case_insensitive) {
+DirBackend::search(std::string_view pattern, bool case_insensitive) {
     // Split "dir/prefix/*.ext" into the directory part and the filename glob.
     auto slash = pattern.rfind('/');
     if (slash == std::string_view::npos) slash = pattern.rfind('\\');
@@ -166,7 +166,7 @@ DirBackend::Search(std::string_view pattern, bool case_insensitive) {
 }
 
 std::vector<std::byte>
-DirBackend::LoadFile(std::string_view path) {
+DirBackend::load_file(std::string_view path) {
     const std::string resolved = resolve_path(path);
     if (resolved.empty() && !path.empty()) return {};
 

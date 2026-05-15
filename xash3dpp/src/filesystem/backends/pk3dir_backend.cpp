@@ -33,21 +33,21 @@ std::unique_ptr<File> Pk3DirBackend::OpenFile(std::string_view path,
 }
 
 std::optional<std::filesystem::file_time_type>
-Pk3DirBackend::FileTime(std::string_view path) {
-    return inner_.FileTime(path);
+Pk3DirBackend::file_time(std::string_view path) {
+    return inner_.file_time(path);
 }
 
 std::optional<std::string> Pk3DirBackend::FindFile(std::string_view path) {
     return inner_.FindFile(path);
 }
 
-std::vector<std::string> Pk3DirBackend::Search(std::string_view pattern,
+std::vector<std::string> Pk3DirBackend::search(std::string_view pattern,
                                                 bool case_insensitive) {
-    return inner_.Search(pattern, case_insensitive);
+    return inner_.search(pattern, case_insensitive);
 }
 
-std::vector<std::byte> Pk3DirBackend::LoadFile(std::string_view path) {
-    return inner_.LoadFile(path);
+std::vector<std::byte> Pk3DirBackend::load_file(std::string_view path) {
+    return inner_.load_file(path);
 }
 
 void Pk3DirBackend::InvalidateDirectory(std::string_view subdir) noexcept {

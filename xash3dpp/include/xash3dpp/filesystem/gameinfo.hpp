@@ -22,7 +22,7 @@ struct GameInfo {
     std::string falldir;       // optional fallback dir; empty if none
 
     // --- Native library paths ----------------------------------------------
-    // Platform-specific suffix resolution happens at FindLibrary() time.
+    // Platform-specific suffix resolution happens at find_library() time.
     std::string game_dll;        // server game library (Windows)
     std::string game_dll_linux;
     std::string game_dll_osx;

@@ -8,7 +8,7 @@ namespace xash::filesystem {
 
 enum class SearchPathFlags : std::uint32_t {
     None       = 0,
-    Static     = 1 << 0,  // survives ClearPaths()
+    Static     = 1 << 0,  // survives clear_paths()
     NoWrite    = 1 << 1,  // never selected as the write target
     GameDir    = 1 << 2,  // part of the active game hierarchy
     Exec       = 1 << 3,  // may serve native library files (.so / .dll)

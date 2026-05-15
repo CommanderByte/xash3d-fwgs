@@ -1,4 +1,4 @@
-// xash3dpp — cmd_cvar: cvar registry tests
+﻿// xash3dpp — cmd_cvar: cvar registry tests
 // Covers: registration, find, set, unlink, auto-create, DLL registration
 
 #include "test_stubs.hpp"
@@ -7,9 +7,7 @@
 
 static int g_pass = 0, g_fail = 0;
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::printf("FAIL [line %d]: %s\n", __LINE__, #expr); } } while(0)
+#include "../test_helpers.hpp"
 
 using namespace xash::cmd_cvar;
 using namespace xash::cmd_cvar::test;

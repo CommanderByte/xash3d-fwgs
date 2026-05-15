@@ -18,7 +18,7 @@ thread_local CmdCvarContext *tls_ctx = nullptr;
 // ---------------------------------------------------------------------------
 
 CmdCvarContext::CmdCvarContext() noexcept
-    : impl_{ memory::pool_new<Impl>(memory::kNullPool) }
+    : impl_{ memory::pool_new<Impl>(memory::k_null_pool) }
 {
 }
 

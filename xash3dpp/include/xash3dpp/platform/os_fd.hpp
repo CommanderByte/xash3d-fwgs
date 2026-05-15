@@ -38,7 +38,7 @@ public:
 
     // Relinquish ownership without closing.  Caller becomes responsible for
     // the descriptor's lifetime.
-    int release() noexcept { int f = fd_; fd_ = -1; return f; }
+    [[nodiscard]] int release() noexcept { int f = fd_; fd_ = -1; return f; }
 
     // Close the descriptor.  Defined in the platform os_io translation unit.
     void close() noexcept;

@@ -42,21 +42,21 @@ public:
 
     // Returns nullopt if the file does not exist.
     virtual std::optional<std::filesystem::file_time_type>
-        FileTime(std::string_view path) = 0;
+        file_time(std::string_view path) = 0;
 
     // Case-insensitive name resolution.
     // Returns the canonical (exact on-disk) name, or nullopt if not found.
     virtual std::optional<std::string> FindFile(std::string_view path) = 0;
 
     // Glob search within this backend; returns all matching entry names.
-    virtual std::vector<std::string> Search(std::string_view pattern,
+    virtual std::vector<std::string> search(std::string_view pattern,
                                             bool case_insensitive) = 0;
 
     // Whole-file load.  Returns an empty vector if not found.
-    virtual std::vector<std::byte> LoadFile(std::string_view path) = 0;
+    virtual std::vector<std::byte> load_file(std::string_view path) = 0;
 
     // Invalidate the per-subdirectory name cache for `subdir` (relative to
-    // this backend's root).  Called after WriteFile / Rename so that
+    // this backend's root).  Called after write_file / rename so that
     // subsequent FindFile calls see newly created entries.
     // Default is a no-op — archive backends have immutable contents.
     virtual void InvalidateDirectory(std::string_view /*subdir*/) noexcept {}

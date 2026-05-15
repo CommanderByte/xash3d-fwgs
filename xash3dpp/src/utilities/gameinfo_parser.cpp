@@ -1,8 +1,8 @@
 // xash3dpp — gameinfo.txt / liblist.gam parser implementation
 // Legacy reference: filesystem/filesystem.c  (FS_ParseGameInfo, FS_WriteGameInfo)
 //
-// scan_game_directories() lives in filesystem.cpp (Filesystem::ScanGameDirectories).
-// write_gameinfo_file() is a host concern: call serialise_gameinfo() + WriteFile().
+// scan_game_directories() lives in filesystem.cpp (Filesystem::scan_game_directories).
+// write_gameinfo_file() is a host concern: call serialise_gameinfo() + write_file().
 
 #include <xash3dpp/utilities/gameinfo_parser.hpp>
 

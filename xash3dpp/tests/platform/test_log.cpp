@@ -14,15 +14,12 @@
 
 #include <xash3dpp/platform/log.hpp>
 
-#include <cstdio>
 #include <cstring>    // std::strcmp, std::strlen
 #include <string>
 
-static int g_pass = 0, g_fail = 0;
+#include "../test_helpers.hpp"
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::printf("FAIL [line %d]: %s\n", __LINE__, #expr); } } while(0)
+static int g_pass = 0, g_fail = 0;
 
 // ---------------------------------------------------------------------------
 // Callback capture helper

@@ -83,7 +83,7 @@ public:
     // Look up or create a cvar.  If the name does not exist, a new cvar is
     // created with FCVAR_USER_CREATED.  Never returns nullptr after a
     // successful init().
-    Cvar *cvar_get_or_create(std::string_view name,
+    [[nodiscard]] Cvar *cvar_get_or_create(std::string_view name,
                              const char *default_value,
                              std::uint32_t flags) noexcept;
 
@@ -94,7 +94,7 @@ public:
     // Register a cvar whose cvar_t-compatible struct is owned by a legacy DLL.
     // The pointer is treated as a CvarAbi* (first-five-field layout only).
     // Returns the same pointer cast to Cvar* (no new allocation).
-    Cvar *cvar_register_dll(CvarAbi *cv) noexcept;
+    [[nodiscard]] Cvar *cvar_register_dll(CvarAbi *cv) noexcept;
 
     // Set a cvar's string value.
     void cvar_set(std::string_view name,
@@ -220,9 +220,9 @@ public:
 
 private:
     struct Impl;
-    // Allocated via memory::pool_new(kNullPool) in the constructor so that OOM
+    // Allocated via memory::pool_new(k_null_pool) in the constructor so that OOM
     // is handled through the memory subsystem rather than throwing bad_alloc.
-    // kNullPool: the cmd_cvar pool does not yet exist when the Impl is created
+    // k_null_pool: the cmd_cvar pool does not yet exist when the Impl is created
     // (it is created inside init()); the Impl is the struct that holds the pool
     // handle, so it cannot itself be pool-allocated from that pool.
     Impl *impl_ = nullptr;

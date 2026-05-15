@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — UTF-8/16 conversion
 // Legacy reference: public/utflib.h + public/utflib.c
 //
@@ -27,28 +27,28 @@ struct DecodeState
 };
 
 // Feed one UTF-8 byte.  Returns decoded codepoint when complete, 0 otherwise.
-uint32_t decode_utf8( DecodeState &s, uint32_t byte ) noexcept;
+[[nodiscard]] uint32_t decode_utf8( DecodeState &s, uint32_t byte ) noexcept;
 
 // Feed one UTF-16 code unit.  Returns decoded codepoint when complete, 0 otherwise.
-uint32_t decode_utf16( DecodeState &s, uint32_t unit ) noexcept;
+[[nodiscard]] uint32_t decode_utf16( DecodeState &s, uint32_t unit ) noexcept;
 
 // ---------------------------------------------------------------------------
 // Encoding
 // ---------------------------------------------------------------------------
 
 // Encode 'cp' as UTF-8.  Returns the encoded bytes and the byte count (1–4).
-std::pair<std::array<char, 4>, std::size_t> encode_utf8( uint32_t codepoint ) noexcept;
+[[nodiscard]] std::pair<std::array<char, 4>, std::size_t> encode_utf8( uint32_t codepoint ) noexcept;
 
 // ---------------------------------------------------------------------------
 // Bulk conversion
 // ---------------------------------------------------------------------------
 
 // Number of Unicode codepoints in a UTF-8 string.
-std::size_t length( std::string_view s ) noexcept;
+[[nodiscard]] std::size_t length( std::string_view s ) noexcept;
 
 // Convert UTF-16 to UTF-8.  Writes null-terminated result into dst.
 // Returns the number of UTF-8 bytes written (not counting the null terminator).
-std::size_t utf16_to_utf8( std::span<char>                dst,
+[[nodiscard]] std::size_t utf16_to_utf8( std::span<char>                dst,
                             std::span<const std::uint16_t> src ) noexcept;
 
 // ---------------------------------------------------------------------------
@@ -56,10 +56,10 @@ std::size_t utf16_to_utf8( std::span<char>                dst,
 // ---------------------------------------------------------------------------
 
 // Map a Unicode codepoint to the nearest Windows-1251 byte (Cyrillic).
-uint32_t to_cp1251( uint32_t codepoint ) noexcept;
+[[nodiscard]] uint32_t to_cp1251( uint32_t codepoint ) noexcept;
 
 // Map a Unicode codepoint to the nearest Windows-1252 byte (Latin-1 extended).
-uint32_t to_cp1252( uint32_t codepoint ) noexcept;
+[[nodiscard]] uint32_t to_cp1252( uint32_t codepoint ) noexcept;
 
 // ---------------------------------------------------------------------------
 // RAII decoder wrappers
@@ -72,7 +72,7 @@ uint32_t to_cp1252( uint32_t codepoint ) noexcept;
 class Utf8Decoder
 {
 public:
-    std::optional<uint32_t> feed( uint8_t byte ) noexcept;
+    [[nodiscard]] std::optional<uint32_t> feed( uint8_t byte ) noexcept;
     void reset() noexcept { state_ = {}; }
 
 private:
@@ -82,7 +82,7 @@ private:
 class Utf16Decoder
 {
 public:
-    std::optional<uint32_t> feed( uint16_t unit ) noexcept;
+    [[nodiscard]] std::optional<uint32_t> feed( uint16_t unit ) noexcept;
     void reset() noexcept { state_ = {}; }
 
 private:

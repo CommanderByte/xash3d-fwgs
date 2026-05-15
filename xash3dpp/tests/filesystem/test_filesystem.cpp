@@ -1,11 +1,11 @@
-// xash3dpp — filesystem integration tests
+﻿// xash3dpp — filesystem integration tests
 // Covers: SearchPathFlags (|, &, ~, |=, &=, any), SeekOrigin,
-//         Filesystem::Init, Shutdown, GetRootDirectory, Gamedir, GetGameInfo,
-//         Filesystem::AddGameDirectory, FileExists, Open, LoadFile,
-//         Filesystem::WriteFile, FileSize, Delete, Rename,
-//         Filesystem::Search, ClearPaths, AllowDirectPaths,
-//         Filesystem::LoadDirectFile, CRC32File, MD5File,
-//         Filesystem::FindLibrary, MountArchive, ActivateGame,
+//         Filesystem::init, shutdown, get_root_directory, gamedir, get_game_info,
+//         Filesystem::add_game_directory, file_exists, open, load_file,
+//         Filesystem::write_file, file_size, remove, rename,
+//         Filesystem::search, clear_paths, allow_direct_paths,
+//         Filesystem::load_direct_file, crc32_file, md5_file,
+//         Filesystem::find_library, mount_archive, activate_game,
 //         File::Read, Seek, Tell, Eof, Length, Gets, Getc, UnGetc
 
 #include <xash3dpp/filesystem/filesystem.hpp>
@@ -23,9 +23,7 @@
 
 static int g_pass = 0, g_fail = 0;
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ")"); } } while(0)
+#include "../test_helpers.hpp"
 
 // ===========================================================================
 // Temp-directory fixture
@@ -115,95 +113,95 @@ static void test_seek_origin_values()
 }
 
 // ===========================================================================
-// 3. Init / GetRootDirectory / Gamedir / GetGameInfo
+// 3. init / GetRootDirectory / gamedir / get_game_info
 // ===========================================================================
 
 static void test_init_gamedir()
 {
     xash::filesystem::Filesystem fs;
-    CHECK( fs.Init( rootdir(), "valve", "game" ) );
-    CHECK( fs.GetRootDirectory() == rootdir() );
-    // gamedir is stored verbatim from Init().
-    CHECK( fs.Gamedir() == "game" );
-    // GetGameInfo before ActivateGame → default-constructed (empty gamefolder).
-    CHECK( fs.GetGameInfo().gamefolder.empty() );
-    fs.Shutdown();
+    CHECK( fs.init( rootdir(), "valve", "game" ) );
+    CHECK( fs.get_root_directory() == rootdir() );
+    // gamedir is stored verbatim from init().
+    CHECK( fs.gamedir() == "game" );
+    // get_game_info before activate_game → default-constructed (empty gamefolder).
+    CHECK( fs.get_game_info().gamefolder.empty() );
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 4. ActivateGame when no gameinfo.txt is present
+// 4. activate_game when no gameinfo.txt is present
 // ===========================================================================
 
 static void test_activate_game_not_found()
 {
-    // parse_gameinfo_txt / parse_liblist_gam are stubs → ScanGameDirectories
-    // always returns an empty list → ActivateGame always returns false.
+    // parse_gameinfo_txt / parse_liblist_gam are stubs → scan_game_directories
+    // always returns an empty list → activate_game always returns false.
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    CHECK( !fs.ActivateGame( "game", xash::filesystem::SearchPathFlags::None ) );
-    CHECK( !fs.GetGameInfo().gamefolder.empty() == false );  // still empty
-    fs.Shutdown();
+    fs.init( rootdir(), "valve", "game" );
+    CHECK( !fs.activate_game( "game", xash::filesystem::SearchPathFlags::None ) );
+    CHECK( !fs.get_game_info().gamefolder.empty() == false );  // still empty
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 5. AllowDirectPaths — smoke: toggle does not crash
+// 5. allow_direct_paths — smoke: toggle does not crash
 // ===========================================================================
 
 static void test_allow_direct_paths()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AllowDirectPaths( true );
-    fs.AllowDirectPaths( false );
+    fs.init( rootdir(), "valve", "game" );
+    fs.allow_direct_paths( true );
+    fs.allow_direct_paths( false );
     CHECK( true );  // reached here without crash or assert
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 6. FindLibrary without an active game
+// 6. find_library without an active game
 // ===========================================================================
 
 static void test_find_library_no_game()
 {
     // game_loaded == false → returns nullopt immediately.
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    CHECK( !fs.FindLibrary( "hl.dll" ).has_value() );
-    fs.Shutdown();
+    fs.init( rootdir(), "valve", "game" );
+    CHECK( !fs.find_library( "hl.dll" ).has_value() );
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 7. MountArchive with unknown extension
+// 7. mount_archive with unknown extension
 // ===========================================================================
 
 static void test_mount_archive_bad_ext()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
+    fs.init( rootdir(), "valve", "game" );
     // ".xyz" is not in k_archive_types.
-    CHECK( !fs.MountArchive( "any/path/file.xyz",
+    CHECK( !fs.mount_archive( "any/path/file.xyz",
                              xash::filesystem::SearchPathFlags::None ) );
     // ".pak" extension matches but the file doesn't exist → factory fails.
-    CHECK( !fs.MountArchive( ( g_testdir / "nosuch.pak" ).string(),
+    CHECK( !fs.mount_archive( ( g_testdir / "nosuch.pak" ).string(),
                              xash::filesystem::SearchPathFlags::None ) );
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 8. AddGameDirectory / FileExists / Open / LoadFile
+// 8. add_game_directory / file_exists / open / load_file
 // ===========================================================================
 
 static void test_add_game_directory()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
-    CHECK(  fs.FileExists( "hello.txt" ) );
-    CHECK( !fs.FileExists( "nonexistent.xyz" ) );
+    CHECK(  fs.file_exists( "hello.txt" ) );
+    CHECK( !fs.file_exists( "nonexistent.xyz" ) );
 
-    // Open and read content (binary: "hello\n" = 6 bytes).
-    auto f = fs.Open( "hello.txt", "rb" );
+    // open and read content (binary: "hello\n" = 6 bytes).
+    auto f = fs.open( "hello.txt", "rb" );
     CHECK( f != nullptr );
     if ( f ) {
         std::byte buf[16]{};
@@ -212,102 +210,103 @@ static void test_add_game_directory()
         CHECK( std::memcmp( buf, "hello\n", 6 ) == 0 );
     }
 
-    // LoadFile returns the exact file bytes; size() == on-disk byte count.
-    const auto data = fs.LoadFile( "hello.txt" );
+    // load_file returns the exact file bytes; size() == on-disk byte count.
+    const auto data = fs.load_file( "hello.txt" );
     CHECK( !data.empty() );
     CHECK( std::memcmp( data.data(), "hello\n", 6 ) == 0 );
 
     // gamedironly=true with no GameDir-flagged path → file not found.
-    CHECK( !fs.FileExists( "hello.txt", /*gamedironly=*/true ) );
+    CHECK( !fs.file_exists( "hello.txt", /*gamedironly=*/true ) );
 
-    fs.Shutdown();
+    f.reset();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 9. WriteFile / FileExists / FileSize
+// 9. write_file /file_existss file_sizeze
 // ===========================================================================
 
 static void test_write_file()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     const std::string content = "written content";
     const auto span = std::as_bytes( std::span{ content.data(), content.size() } );
 
-    CHECK( fs.WriteFile( "written.txt", span ) );
-    CHECK( fs.FileExists( "written.txt" ) );
+    CHECK( fs.write_file( "written.txt", span ) );
+    CHECK( fs.file_exists( "written.txt" ) );
 
-    const auto sz = fs.FileSize( "written.txt" );
+    const auto sz = fs.file_size( "written.txt" );
     CHECK( sz.has_value() );
     if ( sz )
         CHECK( *sz == static_cast<xash::filesystem::FsOffset>( content.size() ) );
 
     // Clean up the test artefact.
-    fs.Delete( "written.txt" );
-    fs.Shutdown();
+    fs.remove( "written.txt" );
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 10. Delete
+// 10. remove
 // ===========================================================================
 
 static void test_delete()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     const std::string_view payload = "to be deleted";
-    fs.WriteFile( "tmp_delete.txt",
+    fs.write_file( "tmp_delete.txt",
                   std::as_bytes( std::span{ payload.data(), payload.size() } ) );
 
-    CHECK(  fs.FileExists( "tmp_delete.txt" ) );
-    CHECK(  fs.Delete( "tmp_delete.txt" ) );
-    CHECK( !fs.FileExists( "tmp_delete.txt" ) );
+    CHECK(  fs.file_exists( "tmp_delete.txt" ) );
+    CHECK(  fs.remove( "tmp_delete.txt" ) );
+    CHECK( !fs.file_exists( "tmp_delete.txt" ) );
 
     // Deleting a nonexistent file returns false.
-    CHECK( !fs.Delete( "nonexistent.xyz" ) );
+    CHECK( !fs.remove( "nonexistent.xyz" ) );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 11. Rename
+// 11. rename
 // ===========================================================================
 
 static void test_rename()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     const std::string_view payload = "rename me";
-    fs.WriteFile( "before.txt",
+    fs.write_file( "before.txt",
                   std::as_bytes( std::span{ payload.data(), payload.size() } ) );
 
-    CHECK(  fs.FileExists( "before.txt" ) );
-    CHECK(  fs.Rename( "before.txt", "after.txt" ) );
-    CHECK( !fs.FileExists( "before.txt" ) );
-    CHECK(  fs.FileExists( "after.txt" ) );
+    CHECK(  fs.file_exists( "before.txt" ) );
+    CHECK(  fs.rename( "before.txt", "after.txt" ) );
+    CHECK( !fs.file_exists( "before.txt" ) );
+    CHECK(  fs.file_exists( "after.txt" ) );
 
     // Clean up.
-    fs.Delete( "after.txt" );
-    fs.Shutdown();
+    fs.remove( "after.txt" );
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 12. Search
+// 12. search
 // ===========================================================================
 
 static void test_search()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
-    const auto result = fs.Search( "*.txt", /*case_insensitive=*/true );
+    const auto result = fs.search( "*.txt", /*case_insensitive=*/true );
     bool found_hello = false;
     for ( const auto& entry : result.files )
         if ( entry.find( "hello.txt" ) != std::string::npos )
@@ -315,78 +314,78 @@ static void test_search()
     CHECK( found_hello );
 
     // Pattern that matches nothing.
-    const auto empty = fs.Search( "*.zzz", true );
+    const auto empty = fs.search( "*.zzz", true );
     CHECK( empty.files.empty() );
 
     // Results are de-duplicated (same file appears only once).
     // Add the same directory a second time.
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
-    const auto dedup = fs.Search( "*.txt", true );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    const auto dedup = fs.search( "*.txt", true );
     int count_hello = 0;
     for ( const auto& entry : dedup.files )
         if ( entry.find( "hello.txt" ) != std::string::npos )
             ++count_hello;
     CHECK( count_hello == 1 );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 13. ClearPaths — non-static removed, Static survives
+// 13. clear_paths — non-static removed, Static survives
 // ===========================================================================
 
 static void test_clear_paths()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
+    fs.init( rootdir(), "valve", "game" );
 
-    // Non-static path — visible before ClearPaths, gone after.
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
-    CHECK(  fs.FileExists( "hello.txt" ) );
-    fs.ClearPaths();
-    CHECK( !fs.FileExists( "hello.txt" ) );
+    // Non-static path — visible before clear_paths, gone after.
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    CHECK(  fs.file_exists( "hello.txt" ) );
+    fs.clear_paths();
+    CHECK( !fs.file_exists( "hello.txt" ) );
 
-    // Static path — survives ClearPaths.
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::Static );
-    CHECK(  fs.FileExists( "hello.txt" ) );
-    fs.ClearPaths();
-    CHECK(  fs.FileExists( "hello.txt" ) );  // still there
+    // Static path — survives clear_paths.
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::Static );
+    CHECK(  fs.file_exists( "hello.txt" ) );
+    fs.clear_paths();
+    CHECK(  fs.file_exists( "hello.txt" ) );  // still there
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 14. LoadDirectFile — bypass VFS
+// 14. load_direct_file — bypass VFS
 // ===========================================================================
 
 static void test_load_direct_file()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
+    fs.init( rootdir(), "valve", "game" );
 
     const std::string path = ( g_testdir / "direct.txt" ).string();
-    const auto data = fs.LoadDirectFile( path );
+    const auto data = fs.load_direct_file( path );
     CHECK( !data.empty() );
     CHECK( std::memcmp( data.data(), "direct content", 14 ) == 0 );
 
     // Non-existent path → empty vector.
-    const auto none = fs.LoadDirectFile( path + ".nonexistent" );
+    const auto none = fs.load_direct_file( path + ".nonexistent" );
     CHECK( none.empty() );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 15. CRC32File — self-consistent with xash::utilities::crc32
+// 15. crc32_file — self-consistent with xash::utilities::crc32
 // ===========================================================================
 
 static void test_crc32_file()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
-    const auto crc = fs.CRC32File( "hello.txt" );
+    const auto crc = fs.crc32_file( "hello.txt" );
     CHECK( crc.has_value() );
     if ( crc ) {
         // Must match the one-shot utility function on the same bytes.
@@ -396,56 +395,55 @@ static void test_crc32_file()
     }
 
     // Non-existent file → nullopt.
-    CHECK( !fs.CRC32File( "nonexistent.xyz" ).has_value() );
+    CHECK( !fs.crc32_file( "nonexistent.xyz" ).has_value() );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 16. MD5File — idempotent on identical content
+// 16. md5_file — idempotent on identical content
 // ===========================================================================
 
 static void test_md5_file()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
-    const auto d1 = fs.MD5File( "hello.txt" );
+    const auto d1 = fs.md5_file( "hello.txt" );
     CHECK( d1.has_value() );
-
     // Second call on same content must produce the same digest.
-    const auto d2 = fs.MD5File( "hello.txt" );
+    const auto d2 = fs.md5_file( "hello.txt" );
     CHECK( d2.has_value() );
     if ( d1 && d2 )
         CHECK( *d1 == *d2 );
 
     // Different content → different digest (with overwhelming probability).
-    const auto d3 = fs.MD5File( "data.bin" );
+    const auto d3 = fs.md5_file( "data.bin" );
     CHECK( d3.has_value() );
     if ( d1 && d3 )
         CHECK( *d1 != *d3 );
 
     // Non-existent file → nullopt.
-    CHECK( !fs.MD5File( "nonexistent.xyz" ).has_value() );
+    CHECK( !fs.md5_file( "nonexistent.xyz" ).has_value() );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 17. Shutdown resets search paths
+// 17. shutdown resets search paths
 // ===========================================================================
 
 static void test_shutdown_resets_state()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
-    CHECK( fs.FileExists( "hello.txt" ) );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    CHECK( fs.file_exists( "hello.txt" ) );
 
-    fs.Shutdown();
+    fs.shutdown();
     // All paths (including non-static ones) are cleared.
-    CHECK( !fs.FileExists( "hello.txt" ) );
+    CHECK( !fs.file_exists( "hello.txt" ) );
 }
 
 // ===========================================================================
@@ -455,12 +453,12 @@ static void test_shutdown_resets_state()
 static void test_file_seek_tell_eof()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
-    auto f = fs.Open( "hello.txt", "rb" );
+    auto f = fs.open( "hello.txt", "rb" );
     CHECK( f != nullptr );
-    if ( !f ) { fs.Shutdown(); return; }
+    if ( !f ) { fs.shutdown(); return; }
 
     // Length is the uncompressed file size.
     CHECK( f->Length() == 6 );  // "hello\n"
@@ -483,7 +481,8 @@ static void test_file_seek_tell_eof()
     f->Seek( 2, xash::filesystem::SeekOrigin::Current );
     CHECK( f->Tell() == 2 );
 
-    fs.Shutdown();
+    f.reset();
+    fs.shutdown();
 }
 
 // ===========================================================================
@@ -493,12 +492,12 @@ static void test_file_seek_tell_eof()
 static void test_file_gets_getc()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     // Gets reads one text line, strips the terminating '\n'.
     {
-        auto f = fs.Open( "hello.txt", "rb" );
+        auto f = fs.open( "hello.txt", "rb" );
         CHECK( f != nullptr );
         if ( f ) {
             const auto line = f->Gets();
@@ -510,7 +509,7 @@ static void test_file_gets_getc()
 
     // Getc + UnGetc round-trip.
     {
-        auto f = fs.Open( "data.bin", "rb" );
+        auto f = fs.open( "data.bin", "rb" );
         CHECK( f != nullptr );
         if ( f ) {
             const int c = f->Getc();
@@ -520,76 +519,76 @@ static void test_file_gets_getc()
         }
     }
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
 // main
 // ===========================================================================
-// 19. FileTime — existing file has a valid time point
+// 19. file_time — existing file has a valid time point
 // ===========================================================================
 
 static void test_file_time()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     // Existing file → has a time point.
-    const auto t = fs.FileTime( "hello.txt" );
+    const auto t = fs.file_time( "hello.txt" );
     CHECK( t.has_value() );
 
     // Non-existent file → nullopt.
-    CHECK( !fs.FileTime( "nonexistent.xyz" ).has_value() );
+    CHECK( !fs.file_time( "nonexistent.xyz" ).has_value() );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 20. DiskPath — plain-directory file returns on-disk path; missing → nullopt
+// 20. disk_path — plain-directory file returns on-disk path; missing → nullopt
 // ===========================================================================
 
 static void test_disk_path()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     // File that lives in a plain directory → path ending with the filename.
-    const auto p = fs.DiskPath( "hello.txt" );
+    const auto p = fs.disk_path( "hello.txt" );
     CHECK( p.has_value() );
     if ( p )
         CHECK( p->find( "hello.txt" ) != std::string::npos );
 
     // Non-existent file → nullopt.
-    CHECK( !fs.DiskPath( "nonexistent.xyz" ).has_value() );
+    CHECK( !fs.disk_path( "nonexistent.xyz" ).has_value() );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 21. AddGameHierarchy — behaves like AddGameDirectory when no _hd/_lv dirs exist
+// 21. add_game_hierarchy — behaves like add_game_directory when no _hd/_lv dirs exist
 // ===========================================================================
 
 static void test_add_game_hierarchy()
 {
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
+    fs.init( rootdir(), "valve", "game" );
 
     // No MountHD / MountLV flags → only the plain gamedir is mounted.
     // The _hd / _lv variants do not exist in the fixture, so any attempt to
     // scan them is silently skipped (collect_paths_for_dir on a missing dir
     // returns nothing).
-    fs.AddGameHierarchy( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.add_game_hierarchy( gamedir(), xash::filesystem::SearchPathFlags::None );
 
-    CHECK(  fs.FileExists( "hello.txt" ) );
-    CHECK( !fs.FileExists( "nonexistent.xyz" ) );
+    CHECK(  fs.file_exists( "hello.txt" ) );
+    CHECK( !fs.file_exists( "nonexistent.xyz" ) );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 22. Concurrent reads — FileExists / Open / LoadFile from multiple threads
+// 22. Concurrent reads — file_exists / open / load_file from multiple threads
 // ===========================================================================
 
 static void test_concurrent_reads()
@@ -601,8 +600,8 @@ static void test_concurrent_reads()
     constexpr int N = 8;
 
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     std::atomic<int> found_count { 0 };
     std::atomic<int> load_ok     { 0 };
@@ -612,10 +611,10 @@ static void test_concurrent_reads()
     for ( int i = 0; i < N; ++i )
     {
         threads.emplace_back( [&fs, &found_count, &load_ok] {
-            if ( fs.FileExists( "hello.txt" ) )
+            if ( fs.file_exists( "hello.txt" ) )
                 found_count.fetch_add( 1, std::memory_order_relaxed );
 
-            auto f = fs.Open( "hello.txt", "rb" );
+            auto f = fs.open( "hello.txt", "rb" );
             if ( f )
             {
                 std::byte buf[6]{};
@@ -630,26 +629,26 @@ static void test_concurrent_reads()
     CHECK( found_count.load() == N );
     CHECK( load_ok.load()     == N );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 23. Reads concurrent with AddGameDirectory (shared vs. exclusive lock)
+// 23. Reads concurrent with add_game_directory (shared vs. exclusive lock)
 // ===========================================================================
 
 static void test_concurrent_read_write_paths()
 {
     // A writer thread repeatedly adds and clears search paths (exclusive lock)
-    // while reader threads call FileExists and LoadFile (shared lock).
+    // while reader threads call file_exists and load_file (shared lock).
     // The test verifies no crash occurs; correctness of individual results is
     // non-deterministic because of the intentional interleaving.
     constexpr int N_READERS = 4;
     constexpr int N_CYCLES  = 32;
 
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
+    fs.init( rootdir(), "valve", "game" );
     // Pre-load the directory so readers can find the file at least sometimes.
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::Static );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::Static );
 
     std::atomic<bool> done { false };
 
@@ -657,9 +656,9 @@ static void test_concurrent_read_write_paths()
     std::thread writer( [&fs, &done] {
         for ( int i = 0; i < N_CYCLES; ++i )
         {
-            fs.AddGameDirectory( gamedir(),
+            fs.add_game_directory( gamedir(),
                                  xash::filesystem::SearchPathFlags::None );
-            fs.ClearPaths();
+            fs.clear_paths();
         }
         done.store( true, std::memory_order_relaxed );
     } );
@@ -672,8 +671,8 @@ static void test_concurrent_read_write_paths()
         readers.emplace_back( [&fs, &done] {
             while ( !done.load( std::memory_order_relaxed ) )
             {
-                (void)fs.FileExists( "hello.txt" );
-                (void)fs.LoadFile( "hello.txt" );
+                (void)fs.file_exists( "hello.txt" );
+                (void)fs.load_file( "hello.txt" );
             }
         } );
     }
@@ -683,11 +682,11 @@ static void test_concurrent_read_write_paths()
 
     CHECK( true );  // reaching here without crash or deadlock is the assertion
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================
-// 24. Concurrent Open + Read — each thread owns its File allocation
+// 24. Concurrent open + Read — each thread owns its File allocation
 // ===========================================================================
 
 static void test_concurrent_open_read()
@@ -701,8 +700,8 @@ static void test_concurrent_open_read()
     constexpr std::size_t FILE_SIZE = 6;  // "hello\n"
 
     xash::filesystem::Filesystem fs;
-    fs.Init( rootdir(), "valve", "game" );
-    fs.AddGameDirectory( gamedir(), xash::filesystem::SearchPathFlags::None );
+    fs.init( rootdir(), "valve", "game" );
+    fs.add_game_directory( gamedir(), xash::filesystem::SearchPathFlags::None );
 
     std::atomic<int> correct { 0 };
 
@@ -713,7 +712,7 @@ static void test_concurrent_open_read()
         threads.emplace_back( [&fs, &correct] {
             for ( int iter = 0; iter < N_ITER; ++iter )
             {
-                auto f = fs.Open( "hello.txt", "rb" );
+                auto f = fs.open( "hello.txt", "rb" );
                 if ( !f ) continue;
 
                 std::byte buf[FILE_SIZE]{};
@@ -729,7 +728,7 @@ static void test_concurrent_open_read()
 
     CHECK( correct.load() == N_THREADS * N_ITER );
 
-    fs.Shutdown();
+    fs.shutdown();
 }
 
 // ===========================================================================

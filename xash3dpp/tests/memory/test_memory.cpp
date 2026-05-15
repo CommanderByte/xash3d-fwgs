@@ -6,25 +6,16 @@
 #include <xash3dpp/private/memory/pool_registry.hpp>
 
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <thread>
 #include <vector>
+
+#include "../test_helpers.hpp"
 
 using namespace xash::memory;
 using namespace xash::memory::internal;
 
 static int g_pass = 0, g_fail = 0;
-
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ":" + std::to_string(__LINE__) + ")"); } } while(0)
-
-// Simpler fallback without std::to_string (no exceptions, keep it C-style):
-#undef CHECK
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::printf("FAIL [line %d]: %s\n", __LINE__, #expr); } } while(0)
 
 // ---------------------------------------------------------------------------
 // Helpers — tear down any pools created during a test so the registry is
@@ -37,7 +28,7 @@ static void cleanup_pool(PoolHandle& h)
     {
         // drain live allocations if any were left (test sloppiness)
         destroy_pool(h);
-        h = kNullPool;
+        h = k_null_pool;
     }
 }
 
@@ -66,15 +57,15 @@ static void test_create_destroy()
 
 static void test_null_pool_handle()
 {
-    CHECK(!kNullPool.valid());
-    CHECK(kNullPool.index == 0);
+    CHECK(!k_null_pool.valid());
+    CHECK(k_null_pool.index == 0);
 
-    PoolStats s = get_stats(kNullPool);
+    PoolStats s = get_stats(k_null_pool);
     CHECK(s.name       == nullptr);
     CHECK(s.live_bytes == 0);
 
     // Destroying the null pool is a no-op (must not crash).
-    destroy_pool(kNullPool);
+    destroy_pool(k_null_pool);
 }
 
 static void test_pool_count()
@@ -179,13 +170,13 @@ static void test_alloc_zero_size()
 }
 
 // ---------------------------------------------------------------------------
-// Untagged allocations (kNullPool)
+// Untagged allocations (k_null_pool)
 // ---------------------------------------------------------------------------
 
 static void test_alloc_null_pool()
 {
-    // Allocating through kNullPool is allowed — it just isn't tracked.
-    void* p = mem_alloc(kNullPool, 32);
+    // Allocating through k_null_pool is allowed — it just isn't tracked.
+    void* p = mem_alloc(k_null_pool, 32);
     CHECK(p != nullptr);
     mem_free(p);  // must not crash
 }
@@ -402,7 +393,7 @@ static void test_scoped_pool_handle_usable()
 
 static void test_registry_full()
 {
-    // Exhaust the registry then verify create_pool returns kNullPool.
+    // Exhaust the registry then verify create_pool returns k_null_pool.
     PoolHandle handles[kMaxPools];
     std::size_t created = 0;
 
@@ -433,10 +424,10 @@ static void test_registry_full()
 // PoolConfig / AllocStrategy
 // ---------------------------------------------------------------------------
 
-static void test_pool_config_kSystem_explicit()
+static void test_pool_config_system_explicit()
 {
-    // Explicit kSystem must behave identically to the default.
-    PoolHandle h = create_pool("explicit_system", PoolConfig{ AllocStrategy::kSystem });
+    // Explicit System must behave identically to the default.
+    PoolHandle h = create_pool("explicit_system", PoolConfig{ AllocStrategy::System });
     CHECK(h.valid());
 
     void* p = mem_alloc(h, 64);
@@ -449,10 +440,10 @@ static void test_pool_config_kSystem_explicit()
 
 static void test_pool_config_future_strategies()
 {
-    // kArena and kSlab are not yet implemented; they silently fall back to
-    // kSystem.  Allocations must still succeed and stats must still be tracked.
-    PoolHandle arena = create_pool("future_arena", PoolConfig{ AllocStrategy::kArena });
-    PoolHandle slab  = create_pool("future_slab",  PoolConfig{ AllocStrategy::kSlab  });
+    // Arena and Slab are not yet implemented; they silently fall back to
+    // System.  Allocations must still succeed and stats must still be tracked.
+    PoolHandle arena = create_pool("future_arena", PoolConfig{ AllocStrategy::Arena });
+    PoolHandle slab  = create_pool("future_slab",  PoolConfig{ AllocStrategy::Slab  });
     CHECK(arena.valid());
     CHECK(slab.valid());
 
@@ -474,7 +465,7 @@ static void test_pool_config_future_strategies()
 // ---------------------------------------------------------------------------
 
 static std::size_t g_oom_size = 0;
-static PoolHandle  g_oom_pool = kNullPool;
+static PoolHandle  g_oom_pool = k_null_pool;
 
 static void oom_callback(std::size_t requested, PoolHandle pool) noexcept
 {
@@ -495,7 +486,7 @@ static void test_oom_handler()
     // and won't overflow when sizeof(AllocHeader) is added to it.
     const std::size_t huge = (static_cast<std::size_t>(-1) >> 1) + 1;
     g_oom_size = 0;
-    g_oom_pool = kNullPool;
+    g_oom_pool = k_null_pool;
 
     void* p = mem_alloc(h, huge);
     CHECK(p == nullptr);
@@ -808,7 +799,7 @@ int main()
 
     test_registry_full();
 
-    test_pool_config_kSystem_explicit();
+    test_pool_config_system_explicit();
     test_pool_config_future_strategies();
 
     test_oom_handler();

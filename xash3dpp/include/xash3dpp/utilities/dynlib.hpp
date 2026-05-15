@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — dynamic library export table helpers
 // Legacy reference: public/crtlib.h (dllfunc_t) + public/dllhelpers.c
 //
@@ -21,6 +21,6 @@ struct ExportEntry
 void clear_exports( std::span<const ExportEntry> table ) noexcept;
 
 // Return true only if every slot in the table is non-null.
-bool validate_exports( std::span<const ExportEntry> table ) noexcept;
+[[nodiscard]] bool validate_exports( std::span<const ExportEntry> table ) noexcept;
 
 } // namespace xash::utilities

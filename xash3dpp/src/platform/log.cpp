@@ -9,7 +9,7 @@
 //   • Formatting uses a fixed-size stack buffer to avoid heap allocation.
 //     Messages that exceed the buffer are truncated and end with " [...]".
 //   • The default output sink is platform::console::write, which handles
-//     per-platform differences (Win32 WriteFile vs POSIX write vs logcat).
+//     per-platform differences (Win32 write_file vs POSIX write vs logcat).
 //   • The tag is printed as "[tag][LEVEL]: " — matching the legacy Con_Printf
 //     prefix that the GoldSrc game DLLs and users recognise.
 

@@ -1,4 +1,4 @@
-// xash3dpp — cmd_cvar: memory pool accounting tests
+﻿// xash3dpp — cmd_cvar: memory pool accounting tests
 //
 // Verifies that the "cmd_cvar" pool is created by init(), receives allocation
 // traffic during normal use, and is cleanly destroyed by shutdown().
@@ -16,9 +16,7 @@
 
 static int g_pass = 0, g_fail = 0;
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::printf("FAIL [line %d]: %s\n", __LINE__, #expr); } } while(0)
+#include "../test_helpers.hpp"
 
 using namespace xash::cmd_cvar;
 using namespace xash::cmd_cvar::test;

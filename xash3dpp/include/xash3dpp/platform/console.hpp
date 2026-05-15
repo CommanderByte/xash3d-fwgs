@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // xash3dpp — platform console I/O contract
 // Legacy reference: engine/platform/win32/con_win.c  (Wcon_Input, Wcon_WinPrint)
 //                   engine/platform/posix/con_posix.c (Posix_Input)
@@ -40,6 +40,6 @@ void write( std::string_view text ) noexcept;
 // the calling frame ends.  Callers must copy if persistence is needed.
 //
 // Must not block.  Fire-and-forget platforms return {} unconditionally.
-std::string_view read_line() noexcept;
+[[nodiscard]] std::string_view read_line() noexcept;
 
 } // namespace xash::platform::console
