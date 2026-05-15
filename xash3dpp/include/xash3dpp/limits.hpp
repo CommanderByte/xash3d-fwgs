@@ -106,4 +106,10 @@ inline constexpr std::size_t platform_console_buffer_size = 1024; // console rea
 inline constexpr std::size_t platform_console_buffer_size = XASH_LIMIT_PLATFORM_CONSOLE_BUFFER_SIZE;
 #endif
 
+#ifndef XASH_LIMIT_PLATFORM_LOG_BUFFER_SIZE
+inline constexpr std::size_t platform_log_buffer_size = 2048; // stack buffer for platform::logf()
+#else
+inline constexpr std::size_t platform_log_buffer_size = XASH_LIMIT_PLATFORM_LOG_BUFFER_SIZE;
+#endif
+
 } // namespace xash::limits

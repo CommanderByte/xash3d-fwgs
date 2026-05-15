@@ -2,6 +2,10 @@ add_executable(test_platform test_platform.cpp)
 target_link_libraries(test_platform PRIVATE xash3dpp_platform)
 add_test(NAME test_platform COMMAND test_platform)
 
+add_executable(test_log test_log.cpp)
+target_link_libraries(test_log PRIVATE xash3dpp_platform)
+add_test(NAME test_log COMMAND test_log)
+
 # ---------------------------------------------------------------------------
 # Per-platform tests — each file contains platform-specific invariants.
 # All three compile and run on the current host platform only; they are

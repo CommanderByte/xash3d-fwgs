@@ -34,6 +34,7 @@ endif()
 
 # Mandatory files present on every platform.
 set(XASH_PLATFORM_SRC
+    log.cpp                         # shared across all platforms
     ${XASH_PLATFORM_SUBDIR}/sys.cpp
     ${XASH_PLATFORM_SUBDIR}/os_io.cpp
     ${XASH_PLATFORM_IO_EXTRA}
