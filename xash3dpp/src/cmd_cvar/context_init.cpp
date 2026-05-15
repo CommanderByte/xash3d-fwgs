@@ -3,6 +3,7 @@
 
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 #include <xash3dpp/platform/console.hpp>
+#include <xash3dpp/platform/log.hpp>
 
 namespace xash::cmd_cvar {
 
@@ -18,9 +19,6 @@ constexpr char k_scripting_name[]  = "cmd_scripting";
 constexpr char k_scripting_def[]   = "0";
 constexpr char k_filter_name[]     = "cl_filterstuffcmd";
 constexpr char k_filter_def[]      = "1";
-
-Cvar g_cmd_scripting    {};
-Cvar g_cl_filterstuffcmd {};
 } // namespace builtin_cvars
 } // anonymous namespace
 
@@ -31,8 +29,10 @@ Cvar g_cl_filterstuffcmd {};
 bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 {
     impl_->pool = memory::create_pool("cmd_cvar");
-    if (!impl_->pool)
+    if (!impl_->pool) {
+        platform::log(platform::LogLevel::Error, "cmd_cvar", "failed to create memory pool");
         return false;
+    }
 
     impl_->trust_oracle  = params.trust_oracle;
     impl_->compat_policy = params.compat_policy;
@@ -51,7 +51,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 
     {
         using namespace builtin_cvars;
-        Cvar &sc = g_cmd_scripting;
+        Cvar &sc = impl_->builtin_cmd_scripting;
         sc.abi.name   = const_cast<char *>(k_scripting_name);
         sc.abi.string = const_cast<char *>(k_scripting_def);
         sc.abi.flags  = FCVAR_ARCHIVE | FCVAR_PRIVILEGED;
@@ -62,7 +62,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         sc.generation.store(0, std::memory_order_relaxed);
         cvar_register_engine(sc);
 
-        Cvar &fc = g_cl_filterstuffcmd;
+        Cvar &fc = impl_->builtin_cl_filterstuffcmd;
         fc.abi.name   = const_cast<char *>(k_filter_name);
         fc.abi.string = const_cast<char *>(k_filter_def);
         fc.abi.flags  = FCVAR_ARCHIVE | FCVAR_PRIVILEGED;
@@ -146,7 +146,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
             return;
         }
 
-        // Create new alias.
+        // create new alias.
         al = static_cast<AliasDef *>(memory::mem_calloc(impl.pool, sizeof(AliasDef)));
         if (!al) return;
         utilities::strncpy(al->name, al_name, sizeof(al->name));

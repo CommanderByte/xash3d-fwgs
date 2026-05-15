@@ -78,14 +78,14 @@ public:
     // ---- Cvar registry ----------------------------------------------------
 
     // Look up a cvar by name (case-insensitive). Returns nullptr if not found.
-    [[nodiscard]] Cvar *cvar_find(std::string_view name) noexcept;
+    [[nodiscard]] Cvar *cvar_find(std::string_view name) noexcept; // @lifetime: engine
 
     // Look up or create a cvar.  If the name does not exist, a new cvar is
     // created with FCVAR_USER_CREATED.  Never returns nullptr after a
     // successful init().
     [[nodiscard]] Cvar *cvar_get_or_create(std::string_view name,
                              const char *default_value,
-                             std::uint32_t flags) noexcept;
+                             std::uint32_t flags) noexcept; // @lifetime: engine
 
     // Register an engine-owned cvar (defined in a Cvar static declared in the
     // engine source).  Idempotent: no-op if the name is already registered.
@@ -94,7 +94,7 @@ public:
     // Register a cvar whose cvar_t-compatible struct is owned by a legacy DLL.
     // The pointer is treated as a CvarAbi* (first-five-field layout only).
     // Returns the same pointer cast to Cvar* (no new allocation).
-    [[nodiscard]] Cvar *cvar_register_dll(CvarAbi *cv) noexcept;
+    [[nodiscard]] Cvar *cvar_register_dll(CvarAbi *cv) noexcept; // @lifetime: engine
 
     // Set a cvar's string value.
     void cvar_set(std::string_view name,
@@ -126,7 +126,7 @@ public:
     void cvar_set_cheat_state() noexcept;
 
     // Returns the head of the ABI linked list (for legacy Cvar_GetList()).
-    [[nodiscard]] CvarAbi *cvar_get_list() const noexcept;
+    [[nodiscard]] CvarAbi *cvar_get_list() const noexcept; // @lifetime: engine
 
     // Persist all FCVAR_ARCHIVE cvars (filtered by owner_flags_mask; 0 = all)
     // to an open filesystem VFile handle (opaque void* to avoid a header dep).

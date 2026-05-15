@@ -71,6 +71,10 @@ struct CmdCvarContext::Impl {
     CmdHashMap<Cvar>   cvar_map;                  // case-insensitive lookup
     Cvar              *cvar_list_head { nullptr }; // ABI linked list (CvarAbi.next chain)
 
+    // Built-in engine cvars (engine-static; registered by init()).
+    Cvar builtin_cmd_scripting {};
+    Cvar builtin_cl_filterstuffcmd {};
+
     // Command registry
     CmdHashMap<Command>   cmd_map;
     Command              *cmd_list_head { nullptr };
@@ -124,11 +128,11 @@ extern thread_local CmdCvarContext *tls_ctx;
 // the ABI-frozen CvarAbi::next (typed CvarAbi*) and the engine-internal
 // Cvar list.  abi must be first in Cvar (asserted in cvar.hpp).
 // ---------------------------------------------------------------------------
-inline Cvar *cvar_list_next(Cvar *cv) noexcept
+[[nodiscard]] inline Cvar *cvar_list_next(Cvar *cv) noexcept
 {
     return reinterpret_cast<Cvar *>(cv->abi.next);
 }
-inline const Cvar *cvar_list_next(const Cvar *cv) noexcept
+[[nodiscard]] inline const Cvar *cvar_list_next(const Cvar *cv) noexcept
 {
     return reinterpret_cast<const Cvar *>(cv->abi.next);
 }
@@ -141,7 +145,7 @@ inline void cvar_list_set_next(Cvar *cv, Cvar *next) noexcept
 // pool_dup — pool-duplicate a NUL-terminated string.
 // Inline so it is available in every implementation TU without an extra TU.
 // ---------------------------------------------------------------------------
-inline char *pool_dup(memory::PoolHandle pool, const char *src) noexcept
+[[nodiscard]] inline char *pool_dup(memory::PoolHandle pool, const char *src) noexcept
 {
     if (!src) return nullptr;
     const std::size_t n = std::strlen(src) + 1;

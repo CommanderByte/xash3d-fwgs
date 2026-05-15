@@ -68,7 +68,7 @@ enum class CvarType : std::uint8_t {
 // ---------------------------------------------------------------------------
 
 enum class CvarWriteSource : std::uint8_t {
-    init,           // initial value set at registration
+    Init,           // initial value set at registration
     Console,        // typed at the local console
     ExecConfig,     // sourced from an exec'd .cfg file
     StuffCmd,       // arrived via server stuffcmd
@@ -137,7 +137,7 @@ struct Cvar {
     // Game frame number of the most recent write (game-thread-only write).
     std::uint32_t last_write_frame { 0 };
     // Who triggered the most recent write.
-    CvarWriteSource last_write_source { CvarWriteSource::init };
+    CvarWriteSource last_write_source { CvarWriteSource::Init };
 #endif
 
 #if XASH_DEBUG_CVARS

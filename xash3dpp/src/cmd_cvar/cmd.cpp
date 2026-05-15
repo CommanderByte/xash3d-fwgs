@@ -12,11 +12,6 @@
 #include <xash3dpp/utilities/string.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
-#include <cstdio>
-#include <cstring>
-#include <deque>
-#include <string>
-
 namespace xash::cmd_cvar {
 
 // TODO: implement command-buffer and command-registry operations:

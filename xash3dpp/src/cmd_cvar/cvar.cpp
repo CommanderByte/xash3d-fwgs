@@ -12,10 +12,6 @@
 #include <xash3dpp/utilities/string.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
-#include <cmath>
-#include <cstdio>
-#include <cstring>
-
 namespace xash::cmd_cvar {
 
 // TODO: implement cvar registry operations consumed by CmdCvarContext::Impl:

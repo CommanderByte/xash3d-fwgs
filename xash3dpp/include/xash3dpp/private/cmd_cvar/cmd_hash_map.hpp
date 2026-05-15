@@ -77,7 +77,7 @@ public:
     // key must remain valid for the lifetime of the entry (typically borrowed
     // from the V struct, e.g. cv->abi.name or cmd->name).
     // Returns false only on OOM.
-    bool insert(const char *key, V *value) noexcept {
+    [[nodiscard]] bool insert(const char *key, V *value) noexcept {
         Node *n = static_cast<Node *>(memory::mem_alloc(pool_, sizeof(Node)));
         if (!n) return false;
         n->key   = key;
@@ -89,7 +89,7 @@ public:
     }
 
     // remove() — unlinks and frees the node; returns the stored V*, or nullptr.
-    V *remove(const char *name) noexcept {
+    [[nodiscard]] V *remove(const char *name) noexcept {
         if (!name) return nullptr;
         const std::size_t b  = hash(name);
         Node            **pp = &buckets_[b];

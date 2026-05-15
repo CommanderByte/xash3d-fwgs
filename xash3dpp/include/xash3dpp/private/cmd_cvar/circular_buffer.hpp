@@ -56,9 +56,9 @@ public:
         const CircularBuffer *buf;
         std::size_t           idx;
 
-        const T &operator*()  const noexcept { return (*buf)[idx]; }
+        [[nodiscard]] const T &operator*()  const noexcept { return (*buf)[idx]; }
         Iterator &operator++()      noexcept { ++idx; return *this; }
-        bool operator!=(const Iterator &o) const noexcept { return idx != o.idx; }
+        [[nodiscard]] bool operator!=(const Iterator &o) const noexcept { return idx != o.idx; }
     };
 
     [[nodiscard]] Iterator begin() const noexcept { return { this, 0 }; }
