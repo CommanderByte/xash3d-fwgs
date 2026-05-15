@@ -1,9 +1,8 @@
 # Design Paradigms — Round 1: Survey and Open Questions
 
-> **Status**: survey only — no decisions made  
-> **Scope**: all five completed subsystems; patterns identified, inconsistencies
-> flagged, open questions raised for discussion  
-> **Next step**: discuss each open question and record decisions in follow-up docs
+> **Status**: all questions decided — see individual Q sections below  
+> **Scope**: all five completed subsystems  
+> **Application**: §4 records what applies now, when next touched, and new code only
 
 ---
 
@@ -177,87 +176,107 @@ Each question links to the section that prompted it.
 
 ### Q-1: When should a subsystem be a class vs free functions?
 
-**Context**: §2.1. Memory and platform are free functions over global/static
-state. Filesystem and cmd_cvar are classes. Both work today because there is
-only one of each. If we ever need multiple filesystem instances (e.g. a sandboxed
-loader for a mod), the free-function model has nowhere to put the second instance.
+> **Status**: ✅ DECIDED
 
-**Options to consider**:
-- A: Default to pimpl class for everything stateful; free functions only for
-  genuinely stateless code (utilities, platform pure functions).
-- B: Keep global-state subsystems as free functions but document the "this is a
-  deliberate singleton" decision explicitly.
-- C: Both A and B: stateful = class, stateless = free functions, singletons are
-  explicitly documented and live in a global `EngineContext` struct.
+**Decision**: The deciding criterion is whether the subsystem has state that must
+be initialised and shut down in a specific order.
+
+- **Stateful subsystem** → pimpl class, owned by `EngineContext`.
+- **Stateless / pure OS wrappers** → free functions in namespace; no lifecycle.
+- **`memory`** → documented deliberate exception: global pool registry that must
+  outlive `EngineContext`; stays as free functions over global state. This choice
+  is intentional and must be noted at every `EngineContext` definition site.
+- **`platform`** → ambient free functions; no `EngineContext` membership needed.
+
+Applied to existing subsystems: `utilities` and `platform` are correctly free
+functions and stay that way. `filesystem` and `cmd_cvar` are correctly pimpl
+classes. `memory` is the documented singleton exception.
 
 ---
 
 ### Q-2: Should there be a root `EngineContext` that owns all subsystem instances?
 
-**Context**: §2.1. Today there is no central owner. The host layer (not yet
-written) will need to own and order the init/shutdown of every subsystem.
+> **Status**: ✅ DECIDED
 
-**Implications**:
-- If subsystems are all classes, an `EngineContext` struct holding them by value
-  (or as `std::unique_ptr<Subsystem>`) provides a natural, destructor-ordered
-  shutdown sequence.
-- If some subsystems are global state (memory), the ordering is implicit and
-  fragile.
-- An `EngineContext` also enables dependency injection in tests without mocking
-  globals.
+**Decision**: Yes. `EngineContext` is a flat struct that owns all stateful
+subsystem instances as direct members in declaration (init) order. C++ guarantees
+member construction in declaration order and destruction in reverse — this
+provides deterministic, destructor-ordered shutdown with no explicit shutdown
+calls needed.
 
-**Questions**:
-- Does `xash3dpp_memory`'s global pool registry need to become a class to fit
-  in this model?
-- Does `platform` (pure OS wrappers) belong in `EngineContext` or stay ambient?
+```cpp
+struct EngineContext {
+    Filesystem      filesystem;
+    CmdCvarContext  cmd_cvar;
+    // Chunk 2: NetworkContext  networking;
+    // Chunk 3: HostContext     host;
+};
+```
+
+**Dependencies are injected at construction via `<Subsystem>InitParams` structs**;
+no global `g_engine` accessor. GoldSrc compat function-pointer structs
+(`enginefuncs_t`, etc.) are populated by the host layer via adapter lambdas that
+capture subsystem references — no global access needed.
+
+`memory` and `platform` are explicitly exempt: memory must outlive `EngineContext`;
+platform has no meaningful state to own.
 
 ---
 
 ### Q-3: Standardize the pimpl variant — `unique_ptr<Impl>` or raw `Impl*`?
 
-**Context**: §2.2. Both variants are in use. The instructions file documents the
-`unique_ptr` approach. The raw-pointer approach is equally valid.
+> **Status**: ✅ DECIDED
 
-**Preference to establish**: should new subsystems default to `unique_ptr<Impl>`
-(and follow the declare-in-header / define-in-.cpp pattern documented in the
-instructions) or raw `Impl*` (simpler in the header but slightly more manual
-ownership)?
+**Decision**: New subsystems use `unique_ptr<Impl>` with the
+declare-in-header / define-in-`.cpp` pattern documented in
+`xash3dpp.instructions.md`.
+
+`cmd_cvar`'s raw `Impl*` variant is grandfathered in; not changed proactively.
+Bring into conformance the next time `cmd_cvar` is modified for another reason.
 
 ---
 
 ### Q-4: Init params — positional args or params struct?
 
-**Context**: §2.3.
+> **Status**: ✅ DECIDED
 
-- **Positional args** (`Filesystem::Init`): more concise for small param sets;
-  extends poorly when new optional params are added (breaking change or default-
-  argument creep).
-- **Params struct** (`CmdCvarInitParams`): forward-compatible; new fields can be
-  added with defaults; named fields avoid parameter-order confusion.
+**Decision**: Every subsystem with init parameters uses a named
+`<Subsystem>InitParams` struct — no threshold. The params struct carries both
+configuration values and injected dependencies, making all dependencies explicit
+at the call site.
 
-**Question**: should new subsystems with non-trivial init always use a named
-`<Subsystem>InitParams` struct?
+Subsystems with no init at all (`utilities`, `platform`, `memory`) are exempt.
+
+`Filesystem::Init` with positional args is grandfathered in; it naturally migrates
+to the params struct form when `EngineContext` is written and the init call moves
+there.
 
 ---
 
 ### Q-5: Standardize error return patterns
 
-**Context**: §2.4. The current mix (`bool` / `nullptr` / `optional<T>` / silent
-`void`) is not wrong but is undocumented.
+> **Status**: ✅ DECIDED
 
-**Possible rules to establish**:
-- `bool` for operations that are void-or-fail where the caller rarely needs to
-  distinguish failure modes.
-- `optional<T>` for operations that return a value which may not exist (not an
-  error, just "not found" or "not available").
-- `nullptr` only on pointer-returning functions where null is the natural "not
-  found" sentinel.
-- `std::expected<T, ErrorCode>` (once a compiler baseline is confirmed) for
-  operations that can fail with diagnosable reasons.
+**Rules for existing patterns** (apply to all new code now):
 
-**Question**: is `std::expected` available on the minimum compiler baseline?
-(MSVC 19.34 / Clang 16 / GCC 12 — all available on modern toolchains.) If so,
-should it become the standard for failable operations?
+| Pattern | Use for |
+|---------|---------|
+| `[[nodiscard]] bool` | Void-or-fail where failure reason does not matter to callers |
+| `[[nodiscard]] std::optional<T>` | Value may legitimately be absent — not an error, just "not found" |
+| `[[nodiscard]] T*` (nullable) | Pointer return where null is the natural absent sentinel |
+| `void` | Infallible operations, or failure handled internally with a fallback |
+
+**Internal logging rule**: functions returning a failure indicator must emit a
+diagnostic before returning, unless the absent case is a normal "not found" query
+(in which case `optional<T>` returning `nullopt` is silent by contract).
+
+**`std::expected<T, ErrorCode>`**: deferred. Introduced at Chunk 2 (networking)
+as the standard for subsystems where failure reason matters to callers. A central
+`ErrorCode` enum is defined at Chunk 2 and extended per subsystem. When the
+diagnostics channel is ready, error events flow as typed
+`{ subsystem_id, error_code, timestamp }` structs rather than strings.
+
+All error return values carry `[[nodiscard]]`.
 
 ---
 
@@ -287,89 +306,146 @@ should it become the standard for failable operations?
 
 ### Q-7: Every `ISubsystem` vtable interface or only for legacy ABI?
 
-**Context**: §2.7. `IFilesystem` exists specifically to support the VFileSystem009
-legacy ABI. No other subsystem has a vtable interface.
+> **Status**: ✅ DECIDED
 
-**Question**: going forward, should each subsystem that may be exposed to a plugin
-DLL have a corresponding `I<Subsystem>` vtable, or is the assumption that all
-subsystems are statically linked into the engine and plugins call into them via
-function-pointer tables that are set up at DLL load time (the GoldSrc model)?
+**Decision**: Use the right mechanism for the right context.
 
-The answer determines whether the engine's plugin contract is C++ vtables
-(fragile across compiler versions) or C function-pointer structs (ABI-stable,
-compatible with any compiler).
+- **Internal seam (same binary, same compiler)** → C++ abstract class with vtable
+  (`I<Subsystem>`). Supports dependency injection and test mocking. `IFilesystem`
+  is the canonical reference.
+- **DLL boundary (game DLL, client DLL, renderer DLL, menu DLL)** → C
+  function-pointer struct. C++ vtable layout is not guaranteed across compilers.
+  The legacy ABIs (`enginefuncs_t`, `DLL_FUNCTIONS`, `ref_api_t`) use C structs
+  for this reason and are preserved exactly.
+
+An `I<Subsystem>` vtable may be defined for internal dependency injection even
+for subsystems that also have a DLL-boundary C struct. They are separate layers:
+the engine uses the C++ interface internally; a DLL shim translates at the edge.
+
+Any method on an `I<X>` interface exposed via a DLL shim must be implementable
+with `const char*` on the outer face (no `std::string_view` crossing the DLL edge).
 
 ---
 
 ### Q-8: How should `std::string_view` cross DLL/ABI boundaries?
 
-**Context**: §2.7, §2.6. `std::string_view` is used for public API params
-(e.g. `cvar_find(std::string_view name)`). It is not a stable ABI type — its
-layout is implementation-defined across compilers.
+> **Status**: ✅ DECIDED
 
-**Options**:
-- Keep `string_view` in all intra-engine calls (same binary/same compiler).
-- At every DLL boundary, use `const char*` + `size_t` (or just `const char*`)
-  and wrap in `string_view` on entry.
-- Define a custom `StringRef { const char* data; size_t len; }` that is
-  ABI-stable and implicitly converts to `string_view` inside the engine.
+**Rule**: `std::string_view` is used freely within the same binary (intra-engine,
+same compiler). At any `extern "C"` or DLL boundary, use `const char*` (with
+optional `size_t` length if the callee needs it). The receiving side wraps in
+`std::string_view` immediately on entry.
+
+No custom `StringRef` type is needed — the rule is simple enough to follow
+without a new type.
 
 ---
 
 ### Q-9: Ownership vocabulary across subsystem boundaries
 
-**Context**: `pool_ptr<T>` exists as a `unique_ptr<T, PoolDeleter>` alias. The
-`Filesystem::Open` returns `unique_ptr<File>`. These are consistent.
+> **Status**: ✅ DECIDED
 
-**Question**: should there be a documented ownership vocabulary:
-- `pool_ptr<T>` — pool-backed, deleter returns to pool
-- `unique_ptr<T>` — heap-backed (pimpl only)
-- raw `T*` — borrowed reference, no ownership
-- `span<T>` — borrowed, non-owning view
+**Vocabulary table** (all new APIs must conform):
 
-…and should raw `T*` ever appear in a public API (it does today: `cvar_find`
-returns `Cvar*`, `cvar_get_list` returns `CvarAbi*`)? If raw `T*` means
-"borrowed reference with engine lifetime", should that be documented as a type
-alias (`using BorrowedRef<T> = T*`) for intent clarity?
+| Type | Semantics |
+|------|-----------|
+| `pool_ptr<T>` | Owned; deleter returns memory to the pool the object came from |
+| `std::unique_ptr<T>` | Owned; heap-backed. Used only for pimpl before a subsystem pool exists |
+| `T*` (raw) | Borrowed reference — caller must not delete; document with `// @lifetime: engine` |
+| `std::span<const T>` | Default non-owning view of a contiguous range |
+| `std::span<T>` | Non-owning mutable view — only when intentionally writing through |
+| `std::string_view` | Non-owning string |
+
+**Pool selection reflects lifetime, not type**: objects living for the process go
+in the long-lived pool; per-session objects in the session pool; per-frame scratch
+in the frame pool. `pool_ptr<T>` communicates ownership; which pool communicates
+lifetime.
+
+Raw `T*` in public APIs (e.g. `cvar_find` returning `Cvar*`) is an
+engine-lifetime borrowed reference. Document intent with `// @lifetime: engine`
+on the function declaration. No `BorrowedRef<T>` type alias — documentation over
+type aliasing.
+
+`std::span<const T>` is the default for non-owning views; `std::span<T>` requires
+explicit justification at the call site.
 
 ---
 
 ### Q-10: Modular plugin / DLL bootstrap convention
 
-**Context**: §2.7. The legacy engine bootstraps renderer/game/menu DLLs via
-`extern "C" CreateAPI()`-style entry points. The rewrite has not yet defined
-how this will work.
+> **Status**: ✅ DECIDED
 
-**Questions**:
-- Should each plugin DLL export a single `extern "C" void* CreatePlugin(int version)`?
-- Should the engine use C function-pointer structs (like `ref_api_t`, `DLL_FUNCTIONS`
-  from the legacy ABI) or C++ vtable interfaces?
-- Can the rewrite adopt a cleaner model (e.g. a versioned plugin descriptor struct)
-  without breaking existing game DLLs?
+**Legacy ABIs** (`eiface.h`, `cdll_int.h`, `ref_api.h`) are preserved exactly.
+
+**New plugin types** (Vulkan renderer is the first candidate, Chunk 10) use a
+versioned C descriptor struct:
+
+```c
+typedef struct plugin_descriptor_s {
+    uint32_t    plugin_api_version;      /* API version the plugin was built for */
+    uint32_t    min_engine_api_version;  /* minimum engine version required */
+    uint32_t    struct_size;             /* sizeof(this) — forward-compatible extension */
+    const char *name;
+    void       *(*create)(const engine_api_t *engine);
+    void        (*destroy)(void *plugin);
+} plugin_descriptor_t;
+
+/* DLL exports one symbol: */
+PLUGIN_EXPORT const plugin_descriptor_t *GetPluginDescriptor(void);
+```
+
+**Version check is two-way**: engine checks `min_engine_api_version ≤ engine_version`;
+plugin's `create()` checks the engine's `api_version`. `XASH3DPP_PLUGIN_API_VERSION`
+is defined in the public SDK header for compile-time checks.
+
+`struct_size` enables forward compatibility: a plugin compiled against a newer
+descriptor loads on an older engine — the engine reads only up to its own
+`sizeof(plugin_descriptor_t)`, ignoring unknown trailing fields.
+
+Deferred to Chunk 10. No new plugin types before then.
 
 ---
 
-## 4. Proposed Discussion Order
+## 4. Application Schedule
 
-Some questions are prerequisites for others:
+All ten open questions are decided. This section records when each rule applies.
 
-```
-Q-6 (threading model)
-  └─► Q-2 (EngineContext — needs threading model to define ownership)
-        └─► Q-1 (class vs free functions — needs EngineContext decision)
-              └─► Q-3 (pimpl variant — follows from Q-1)
-                    └─► Q-4 (init params — follows from Q-3)
+### 4.1 Must happen before Chunk 3
 
-Q-7 (ISubsystem vtable)
-  └─► Q-8 (string_view at ABI boundaries)
-        └─► Q-10 (plugin bootstrap convention)
-              └─► Q-9 (ownership vocabulary)
+Later chunks depend on these; they are scheduled work, not opportunistic.
 
-Q-5 (error returns) — standalone, can be resolved independently
-```
+- **`EngineContext` design** (Q-2): the host subsystem (Chunk 3) needs a central
+  owner for all subsystem instances and a dependency-injection story before it
+  can be written.
+- **Filesystem threading hazards** (Q-6 / `threading-model.md` §10): must be
+  fixed before the worker pool starts. Two specific sites identified there.
+- **`assert_thread_role` replacing `assert_main_thread`** (Q-6): low effort;
+  required before any background threading work begins.
 
-**Q-6 is complete.** Next: Q-2 → Q-1, as those two determine the shape of every
-future subsystem. Q-7 and Q-5 can run in parallel since they are narrower.
+### 4.2 Bring into conformance when next touched
+
+Do not rewrite for consistency alone. When a subsystem is modified for another
+reason, bring it into conformance with these rules at the same time:
+
+- **Q-3**: `cmd_cvar` raw `Impl*` → `unique_ptr<Impl>`
+- **Q-4**: `Filesystem::Init` positional args → `FilesystemInitParams` struct
+  (naturally happens when `EngineContext` is written)
+- **Q-5**: add `// @lifetime: engine` annotations to raw-pointer-returning
+  functions in existing subsystems
+
+### 4.3 New code only
+
+These rules apply from the first line of any new subsystem:
+
+- `EngineContext` membership; dependency injection via params struct (Q-1, Q-2)
+- `unique_ptr<Impl>` pimpl pattern (Q-3)
+- `<Subsystem>InitParams` struct for any init parameters (Q-4)
+- Error return rules: `bool` / `optional<T>` / nullable `T*` / `void` (Q-5)
+- Internal `I<Subsystem>` vtables for injectable seams; C structs at DLL
+  boundaries (Q-7, Q-8)
+- Ownership vocabulary table (Q-9)
+- `std::expected<T, ErrorCode>` for rich failure modes, from Chunk 2 (Q-5)
+- Versioned C plugin descriptor for new plugin types, from Chunk 10 (Q-10)
 
 ---
 
@@ -388,3 +464,9 @@ Not everything needs changing. These patterns are solid and should be preserved:
 - **`pool_ptr<T>` + `PoolDeleter`** — ownership is explicit and correct.
 - **Framework-primitive-first rule** (utilities/memory/filesystem/platform over
   stdlib/OS) — now codified in instructions.
+- **`EngineContext` + dependency injection** — all stateful subsystems owned in
+  init order; deps via params struct; no global accessor (Q-2 decided).
+- **`<Subsystem>InitParams` struct** — carries both config and injected deps;
+  all new subsystems with init parameters must use one (Q-4 decided).
+- **Ownership vocabulary** — `pool_ptr` / `unique_ptr` (pimpl only) / raw `T*`
+  (borrowed, `@lifetime`) / `span<const T>` / `string_view` (Q-9 decided).

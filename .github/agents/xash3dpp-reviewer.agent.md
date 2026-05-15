@@ -102,6 +102,47 @@ in `xash3dpp.instructions.md`:
 - A compute loop that interleaves reads and writes to entity state without a
   clear commit phase is a **NOTE** (reduces future parallelism potential).
 
+### 8. EngineContext and dependency injection
+
+Check against `xash3dpp/docs/design/design-paradigms-round1.md` Q-1, Q-2, Q-4:
+
+- A new stateful subsystem (one with a non-trivial lifecycle) that is **not**
+  a member of `EngineContext` is a **WARNING**.
+- A subsystem constructor or init function that receives dependencies via a
+  process-global accessor (e.g. a `g_<x>` variable or a singleton getter) instead
+  of a `<Subsystem>InitParams` struct is a **WARNING**.
+- A new subsystem with 1 or more init parameters that uses positional args
+  instead of a named `<Subsystem>InitParams` struct is a **WARNING**.
+- `memory` and `platform` are documented exceptions to EngineContext ownership;
+  do not flag them.
+
+### 9. Error return patterns
+
+Check against `xash3dpp/docs/design/design-paradigms-round1.md` Q-5:
+
+- A function returning an error indicator (`bool`, `optional`, nullable pointer)
+  that does **not** emit a diagnostic before the failure return is a **WARNING**
+  (exception: `optional<T>` returning `nullopt` for a "not found" query).
+- An error return value that lacks `[[nodiscard]]` is a **WARNING**.
+- Use of `std::expected<T, E>` before Chunk 2 (before `ErrorCode` is defined)
+  is a **WARNING**.
+- `.value()` called on a `std::expected` or `std::optional` (unwrap without
+  check) is a **BLOCKER** (throws under `/EHs-c-`; UB without exceptions).
+
+### 10. Ownership vocabulary
+
+Check against `xash3dpp/docs/design/design-paradigms-round1.md` Q-9:
+
+- `std::unique_ptr<T>` used for **non-pimpl** owned objects (i.e. not pimpl
+  construction before a subsystem pool exists) is a **WARNING** — use
+  `pool_ptr<T>` from the appropriate pool.
+- A raw `T*` returned from a public API function that is not annotated with
+  `// @lifetime: <scope>` is a **WARNING**.
+- `std::span<T>` (mutable span) used for a read-only view is a **WARNING** —
+  use `std::span<const T>`.
+- `std::string_view` crossing an `extern "C"` or DLL boundary is a **BLOCKER**
+  — use `const char*` at the boundary and wrap on entry.
+
 ## Output Format
 
 For each issue found, report:

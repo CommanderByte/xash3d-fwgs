@@ -137,3 +137,84 @@ Full specification: `xash3dpp/docs/design/threading-model.md`.
 - No mutex inside the audio callback (`T_AudioCallback`).
 - No memory allocation inside the audio callback.
 - No blocking I/O or lock acquisition inside the audio callback.
+
+### EngineContext and Dependency Injection — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-1, Q-2, Q-4.
+
+- **Stateful subsystems** (those with a non-trivial lifecycle) are pimpl classes
+  owned as direct members of `EngineContext` in init order. Destructor order
+  provides automatic, deterministic shutdown — no explicit shutdown calls needed.
+- **Stateless / pure OS wrappers** (`utilities`, `platform`) remain free functions
+  in a namespace. They do not belong in `EngineContext`.
+- **`memory`** is the documented singleton exception: global pool registry that
+  must outlive `EngineContext`. It stays as free functions over global state.
+- **No global `g_engine` accessor.** Dependencies flow in through
+  `<Subsystem>InitParams` structs passed at construction, not pulled from
+  a process-global.
+
+**Every subsystem with init parameters must define a named params struct:**
+```cpp
+struct FilesystemInitParams {
+    StringView base_dir;
+    StringView game_dir;
+};
+// wrong: bool Init(StringView base_dir, StringView game_dir)
+// right: bool Init(const FilesystemInitParams& p)
+```
+
+### Error Return Patterns — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-5.
+
+| Pattern | Use for |
+|---------|---------|
+| `[[nodiscard]] bool` | Void-or-fail where the reason does not matter to callers |
+| `[[nodiscard]] std::optional<T>` | Value may be absent — not an error, just "not found" |
+| `[[nodiscard]] T*` (nullable) | Pointer return where null is the natural absent sentinel |
+| `void` | Infallible operations or failure handled internally with a fallback |
+
+- Every function returning a failure indicator **must emit a diagnostic** before
+  returning (via `platform::console::write` or the logging subsystem).
+  Exception: `optional<T>` returning `nullopt` for a "not found" query is silent
+  by contract.
+- `std::expected<T, ErrorCode>` is deferred to Chunk 2. Do **not** use it before
+  the `ErrorCode` enum is defined. Do **not** call `.value()` — only
+  `.has_value()` and `operator*`.
+- All error return values carry `[[nodiscard]]`.
+
+### Interface and ABI Rules — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-7, Q-8.
+
+- **Intra-engine seam** (same binary, same compiler): use a C++ abstract class
+  (`I<Subsystem>` vtable). Supports dependency injection and test mocking.
+  `IFilesystem` is the canonical reference.
+- **DLL boundary** (game DLL, client DLL, renderer DLL, menu DLL): use a C
+  function-pointer struct. The legacy ABIs (`enginefuncs_t`, `DLL_FUNCTIONS`,
+  `ref_api_t`) are preserved exactly and are **never changed**.
+- **New plugin types** (first: Vulkan renderer at Chunk 10): versioned C
+  descriptor struct with `struct_size` field and two-way version check.
+  See Q-10 in the design document.
+- **`std::string_view` at boundaries**: use freely within the engine binary.
+  At any `extern "C"` or DLL edge, use `const char*`; wrap in `string_view`
+  immediately on entry. No custom `StringRef` type.
+
+### Ownership Vocabulary — Mandatory
+
+Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-9.
+
+| Type | Semantics |
+|------|-----------|
+| `pool_ptr<T>` | Owned; deleter returns memory to the source pool |
+| `std::unique_ptr<T>` | Owned; heap-backed. **Only** for pimpl before a subsystem pool exists |
+| `T*` (raw) | Borrowed reference — caller must not delete; document with `// @lifetime: engine` |
+| `std::span<const T>` | Default non-owning view of a contiguous range |
+| `std::span<T>` | Non-owning mutable view — only when intentionally writing through |
+| `std::string_view` | Non-owning string |
+
+**Pool selection reflects lifetime**: long-lived pool for process lifetime,
+session pool for `changelevel`-scoped objects, frame pool for per-frame scratch.
+
+Raw `T*` in public APIs means "borrowed reference with engine lifetime". Document
+with `// @lifetime: engine` on the declaration. No `BorrowedRef<T>` type alias.

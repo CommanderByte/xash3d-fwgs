@@ -150,3 +150,29 @@ thread start + `assert_thread_role()` in debug builds enforce the contracts.
 - No `recvfrom`/`sendto` calls outside the networking subsystem — packet I/O goes through `NET_GetPacket`/`NET_SendPacket` only.
 - `assert_thread_role(ThreadRole::Main)` at the top of every main-thread-only public function.
 - Two filesystem threading hazards must be fixed before end of Chunk 3 (see document §10).
+
+### Design Paradigms (Q-1 through Q-10)
+
+Full decisions: [`xash3dpp/docs/design/design-paradigms-round1.md`](../../xash3dpp/docs/design/design-paradigms-round1.md)
+
+**Object model and ownership:**
+- Stateful subsystems → pimpl class owned by `EngineContext` in init order.
+- `memory` and `platform` are explicit exceptions (global/ambient; no EngineContext slot).
+- New subsystems use `unique_ptr<Impl>`; `cmd_cvar`'s raw `Impl*` is grandfathered.
+- Every subsystem with init parameters uses `<Subsystem>InitParams` struct — no positional arg threshold.
+- Dependencies injected via params struct; no global `g_engine` accessor.
+
+**Error returns:**
+- `[[nodiscard]] bool` for void-or-fail; `optional<T>` for absent-not-error; nullable `T*` for pointer returns; `void` for infallible.
+- Functions returning a failure indicator must emit a diagnostic internally before returning.
+- `std::expected<T, ErrorCode>` deferred to Chunk 2; never call `.value()`.
+
+**Interface and ABI:**
+- Internal seams: C++ `I<Subsystem>` vtable. DLL boundaries: C function-pointer struct.
+- Legacy ABIs (`enginefuncs_t`, `DLL_FUNCTIONS`, `ref_api_t`) are preserved exactly.
+- New plugin types (first: Vulkan renderer, Chunk 10): versioned C descriptor struct with `struct_size` and two-way version check.
+- `std::string_view` freely intra-engine; `const char*` at `extern "C"` / DLL boundaries — wrap on entry.
+
+**Ownership vocabulary:**
+- `pool_ptr<T>` (pool-backed owned) · `unique_ptr<T>` (pimpl only) · raw `T*` (borrowed, `// @lifetime: engine`) · `span<const T>` (default view) · `string_view` (string view).
+- Pool selection reflects lifetime: process pool / session pool / frame pool.
