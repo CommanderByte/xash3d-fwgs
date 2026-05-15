@@ -78,85 +78,232 @@ List every file in the module:
 
 ## Step 2 — Compliance Audit
 
-Read each file and record every violation in each category below.
+Read each file in the module and record every violation under the rules below.
+Work through all categories before making any changes.
 
-### QA — `[[nodiscard]]` completeness
+---
 
-Rule: `[[nodiscard]]` is the **default** for every non-`void` return. Omit only
-with a documented reason.
+### Round 1 — Structural Rules
 
-Check every function declaration in public and private headers. Flag any non-void
-return that is missing `[[nodiscard]]`. Exceptions that do NOT need it:
-- `void` returns
-- Setter-style functions where the return value is universally ignored (e.g. chained
-  builder methods — uncommon in this codebase)
-- `operator<<` overloads
+#### R1-Pimpl — Pimpl move pattern (Q-3)
 
-### QE — Naming: `snake_case` member functions
+Applies only to classes that own `std::unique_ptr<Impl>` or a raw `Impl*`.
+
+Rule: in the **header**, declare (do not default) the destructor and move
+operations. In the **.cpp** (where `Impl` is complete), define them with
+`= default`. Writing `= default` in the header triggers premature
+`unique_ptr<Impl>` destructor instantiation.
+
+```cpp
+// Header — incomplete Impl:
+~MyClass();
+MyClass(MyClass&&) noexcept;
+MyClass& operator=(MyClass&&) noexcept;
+
+// .cpp — Impl complete:
+MyClass::~MyClass()                          = default;
+MyClass::MyClass(MyClass&&) noexcept         = default;
+MyClass& MyClass::operator=(MyClass&&) noexcept = default;
+```
+
+Flag: `= default` on destructor or move operations *in the header* when `Impl`
+is forward-declared.
+
+#### R1-ErrorReturn — Error return diagnostics (Q-5)
+
+Rule: every function that returns a failure indicator (`bool`, `optional<T>`,
+`T*` nullable) must emit a `platform::log` diagnostic **before** returning
+failure. Silent failures are forbidden.
+
+Exception: `optional<T>` returning `nullopt` for a "not found" query (not an
+error) is explicitly silent by contract — do not add a log there.
+
+Flag: any `return false;`, `return nullptr;`, `return std::nullopt;` in `src/`
+that is not preceded by a `platform::log` call, where the return represents an
+error (not a normal "not found").
+
+#### R1-Ownership — Ownership markers in public APIs (Q-9)
+
+Rule: raw `T*` in a public API means "borrowed reference with engine lifetime".
+It must be documented with `// @lifetime: engine` on the declaration.
+`std::make_unique<Impl>()` is the **only** allowed `new` expression.
+
+Flag:
+- Raw `T*` return in a public header without `// @lifetime: engine`
+- Any `new T(` expression that is not `std::make_unique<Impl>()`
+- Any `delete` expression
+
+#### R1-NoGlobals — No new mutable global state (Q-4)
+
+Rule: no new mutable `static` or `extern` variables at file scope in `src/`.
+State must live in context-object members or pool-allocated structs.
+
+Exception: `memory` subsystem's global pool registry is the documented
+singleton — do not flag it.
+
+Flag: any new `static <type> g_` or file-scope mutable variable in `src/`
+that was not present in the already-swept subsystems.
+
+#### R1-InitParams — Named params struct for non-trivial init (Q-4)
+
+Rule: any `init()` / constructor that takes two or more arguments from the
+caller must accept a `<Subsystem>InitParams` struct, not positional args.
+
+Flag: any public `init(sv, sv, ...)` with more than one `string_view`/`int`
+positional parameter where no params struct exists.
+
+---
+
+### Round 2 — Code Style Rules
+
+#### QA — `[[nodiscard]]` completeness
+
+Rule: `[[nodiscard]]` is the **default** for every non-`void` return.
+
+Flag any non-void function declaration in public and private headers missing
+`[[nodiscard]]`. Does **not** apply to: `void` returns; `operator<<`; setters
+that are universally called for side-effects only.
+
+#### QE — Naming: `snake_case` member functions
 
 Rule: all member function names are `snake_case`.
 Exception: `I<X>` vtable methods that match a legacy ABI (e.g. `IFilesystem::Open`)
-are exempt.
+are exempt and must **not** be renamed.
 
-Flag any member function with a capital letter in its name that is not ABI-fixed.
+Flag any member function with a capital letter that is not ABI-fixed.
 
-### QF — `enum class` value names: `PascalCase`, no `k` prefix
+#### QF — `enum class` values: `PascalCase`, no `k` prefix
 
-Rule: `enum class` values use `PascalCase` with no `k` prefix.
-Example: `AllocStrategy::System` not `AllocStrategy::kSystem`.
+Rule: `enum class` values use `PascalCase` — no `k` prefix.
 
-Flag any `enum class` value starting with a lowercase `k`.
+Flag any `enum class` value starting with lowercase `k`.
 
-### QH — No `assert()` from `<cassert>`
+#### QH — No `assert()` from `<cassert>`
 
 Rule: use `XASH_ASSERT` / `XASH_FATAL` from `<xash3dpp/platform/assert.hpp>`.
+
 Flag any `#include <cassert>` or bare `assert(` call.
 
-### QI — No `printf`/`fprintf`/`console::write` for diagnostics
+#### QI — No `printf`/`fprintf`/`console::write` for diagnostics
 
-Rule: use `platform::log( LogLevel::..., "subsystem", ... )`.
-Flag any `printf`, `fprintf`, `console::write`, or `std::cout` used for error/info
-output in `src/` files.
+Rule: use `platform::log( LogLevel::..., "subsystem", ... )` in `src/`.
 
-### QK — Tests use `test_helpers.hpp`
+Flag any `printf`, `fprintf`, `console::write`, or `std::cout` used for
+error/info output in `src/` files.
 
-Rule: every test file must `#include "test_helpers.hpp"` (or the path-adjusted
-relative include) and use `CHECK` / `CHECK_EQ` / `REQUIRE` from it. No ad-hoc
-macro redefinitions.
+#### QK — Tests must use `test_helpers.hpp`
 
-Flag any test file that defines its own `CHECK` macro or does not include
+Rule: every test file must `#include "test_helpers.hpp"` and use `CHECK` /
+`CHECK_EQ` / `REQUIRE` from it. No local `#define CHECK`.
+
+Flag any test file that defines its own `CHECK`/`REQUIRE` or does not include
 `test_helpers.hpp`.
 
-### Forbidden patterns (flag any occurrence in `src/`)
+#### Forbidden patterns (flag any occurrence in `src/`)
 
-- `malloc`, `calloc`, `realloc`, `free` — use `mem_alloc` / `mem_free`
-- bare `new` / `delete` — use `pool_new<T>` / `mem_free`; `std::make_unique<Impl>()` is the only exception
-- `fopen`, `fclose`, `FILE *`, `CreateFile`, `open()` — use `IFilesystem`
-- `strlen`, `strcpy`, `strcmp`, `sprintf` — use `utilities::` equivalents
-- `#include <cstring>`, `#include <cstdio>` in `src/` — flag for review
+| Forbidden | Use instead |
+|-----------|-------------|
+| `malloc`, `calloc`, `realloc`, `free` | `mem_alloc` / `mem_free` |
+| bare `new` / `delete` | `pool_new<T>` / `mem_free`; `std::make_unique<Impl>()` only exception |
+| `fopen`, `fclose`, `FILE *`, `CreateFile`, `open()` | `IFilesystem` interface |
+| `strlen`, `strcpy`, `strcmp`, `sprintf` | `utilities::` equivalents |
+| `#include <cstring>`, `#include <cstdio>` | flag for review |
+
+---
+
+### Threading — Model Rules
+
+These checks apply **only to stateful subsystems** (pimpl classes with an
+`init()`/`shutdown()` lifecycle). Skip for pure-function namespaces
+(`utilities`, `platform` free functions) — they are inherently thread-safe by
+being stateless.
+
+#### TH-Role — Thread role assertions on main-thread-only public functions
+
+Rule: every public method of a stateful subsystem that must only be called from
+the main thread must call `assert_thread_role(ThreadRole::Main)` as its first
+statement. The call is a no-op in release builds.
+
+```cpp
+#include <xash3dpp/platform/thread_role.hpp>
+
+void MySubsystem::mutate() noexcept
+{
+    platform::assert_thread_role( platform::ThreadRole::Main );
+    // ...
+}
+```
+
+Flag: any public `init()`, `shutdown()`, or state-mutating method on a stateful
+class that lacks `assert_thread_role(ThreadRole::Main)`.
+
+Do **not** add thread assertions to: query/read-only functions that take
+`const` context, stateless free functions, or background-thread callbacks.
+
+#### TH-Const — Query functions take `const` context (thread-safety by signature)
+
+Rule: functions that only read subsystem state must take `const MySubsystem&`
+(or `const Impl&` internally) — never access mutable state from a function
+that may be called from a worker thread.
+
+Flag: any non-`const` member function that only reads state and could safely
+be `const`.
+
+#### TH-NoGlobalRead — No mutable global reads in potentially-parallel paths
+
+Rule: a function callable from a worker thread must not read unguarded
+mutable global state. All shared state must be accessed under a lock or be
+`std::atomic`.
+
+Flag: file-scope mutable variables read in functions that are not
+main-thread-only.
 
 ---
 
 ## Step 3 — Fix All Violations
 
-Apply every fix found in Step 2. For each fix:
+Apply every fix found in Step 2. All independent fixes may be batched with
+`multi_replace_string_in_file`. Never make speculative changes beyond what
+the audit identified.
 
+**Round 1 fixes:**
+- **R1-Pimpl**: Move `= default` from the header to the `.cpp` for destructor and move
+  ops of pimpl classes. Declare (no `= default`) in the header.
+- **R1-ErrorReturn**: Add `platform::log( LogLevel::Error, "<subsystem>", "..." )` before
+  each silent `return false` / `return nullptr` that represents a real error.
+  Add `#include <xash3dpp/platform/log.hpp>` if not already present.
+- **R1-Ownership**: Add `// @lifetime: engine` comment to raw `T*` returns in public
+  headers. Replace any `new T(` (non-pimpl) with `pool_new<T>( pool, ... )`.
+  Replace any `delete ptr` with `mem_free( ptr )`.
+- **R1-NoGlobals**: Move file-scope mutable state into the pimpl struct. If the state
+  is truly process-singleton (like the memory pool registry), document it with a
+  comment; do not remove it.
+- **R1-InitParams**: Define a `<Subsystem>InitParams` struct and change the function
+  signature to accept it. Update all call sites in the module.
+
+**Round 2 fixes:**
 - **QA**: Add `[[nodiscard]]` before the return type on the declaration.
-- **QE**: Rename via the language server rename tool (`vscode_renameSymbol`) to
-  update all call sites atomically. Then verify the build still references the
-  new name everywhere.
-- **QF**: Rename enum values using `vscode_renameSymbol`; update all call sites.
-- **QH**: Replace `#include <cassert>` with `#include <xash3dpp/platform/assert.hpp>`
-  and replace `assert(cond)` with `XASH_ASSERT(cond, "message")` or `XASH_FATAL(cond, "message")`.
+- **QE**: Rename via `vscode_renameSymbol` to update all call sites atomically.
+  Verify the build after any rename.
+- **QF**: Rename enum values via `vscode_renameSymbol`; update all call sites.
+- **QH**: Replace `#include <cassert>` with `#include <xash3dpp/platform/assert.hpp>`.
+  Replace `assert(cond)` with `XASH_ASSERT(cond, "message")` or
+  `XASH_FATAL(cond, "message")`.
 - **QI**: Replace diagnostic output with `platform::log`. Add
   `#include <xash3dpp/platform/log.hpp>` if not already present.
-- **QK**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"` (adjust
-  relative path). Remove the old `#define CHECK` / `#define REQUIRE` lines.
-- **Forbidden patterns**: Replace with the approved equivalent. Document with an inline
-  comment if the substitution is non-obvious.
+- **QK**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"`
+  (adjust relative path depth). Remove old `#define CHECK` / `#define REQUIRE` lines.
+- **Forbidden patterns**: Replace with the approved equivalent. Add an inline comment
+  if the substitution is non-obvious.
 
-Make all independent fixes in parallel using `multi_replace_string_in_file` where
-possible. Never make speculative changes beyond what the audit found.
+**Threading fixes:**
+- **TH-Role**: Add `platform::assert_thread_role( platform::ThreadRole::Main );` as
+  the first statement of each flagged public method. Add
+  `#include <xash3dpp/platform/thread_role.hpp>` at the top of the `.cpp` file.
+- **TH-Const**: Add `const` qualifier to the flagged method signature and propagate
+  through the Impl accessor chain.
+- **TH-NoGlobalRead**: Guard the unprotected read under the subsystem's existing lock,
+  or move the variable into a pool-allocated struct.
 
 ---
 
@@ -194,11 +341,13 @@ If that second command produces any output, unstage those files with
 Commit message format:
 
 ```
-refactor($ARGUMENTS): apply Round 2 design compliance
+refactor($ARGUMENTS): apply Round 1+2 and threading compliance
 
-- <list each rule fixed: QA, QE, QF, QH, QI, QK>
+- <list each rule fixed: R1-Pimpl, R1-ErrorReturn, R1-Ownership, QA, QE, QF, QH, QI, QK, TH-Role, TH-Const>
 - <one line per concrete change>
 ```
+
+Only list rules that actually had violations. Omit rules where no changes were needed.
 
 ---
 
