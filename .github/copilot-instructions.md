@@ -1,9 +1,9 @@
 # xash3dpp Rewrite — Standing Agent Instructions
 
 This repository contains a legacy C engine codebase and a new modular C++ rewrite.
-
-**Run `/init` at the start of every session** to get the full context on the
-repository layout, the legacy/rewrite boundary, and the working approach.
+Conventions and mandatory patterns for `xash3dpp/` work are in
+`.github/instructions/xash3dpp.instructions.md` (auto-injected when editing those files).
+Session workflow, prompt ordering, and commit discipline are in `.github/WORKFLOW.md`.
 
 ## Short Version
 

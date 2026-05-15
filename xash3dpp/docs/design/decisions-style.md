@@ -1,8 +1,8 @@
-# Design Paradigms — Round 2: Code Style and Cross-Cutting Conventions
+# Design Decisions — Code Style and Conventions
 
 > **Status**: all questions decided — see individual Q sections below
 > **Scope**: naming, instrumentation, assertions, logging, and test conventions
-> **Relationship to Round 1**: Round 1 covered structural paradigms (object model,
+> **Relationship to decisions-architecture.md**: that document covers structural paradigms (object model,
 > threading, error returns, ownership, plugin ABI). This document covers the remaining
 > consistency questions identified by surveying the first five completed subsystems.
 > **Application**: §4 records what applies now, when next touched, and new code only
@@ -12,7 +12,7 @@ ______________________________________________________________________
 ## 1. What This Document Is
 
 The five subsystems completed so far were also surveyed for coding-style consistency
-beyond the structural decisions recorded in `design-paradigms-round1.md`. This
+beyond the structural decisions recorded in `decisions-architecture.md`. This
 document records decisions on: naming conventions, `[[nodiscard]]` completeness,
 `constexpr` policy, integer type policy, runtime assertions, the diagnostic/logging
 channel, copy/move semantics, and test framework.
@@ -38,7 +38,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### QA: `[[nodiscard]]` completeness
+### NODISCARD (QA): `[[nodiscard]]` completeness
 
 > **Status**: ✅ DECIDED
 
@@ -68,7 +68,7 @@ the file is next touched for another reason.
 
 ______________________________________________________________________
 
-### QB: `constexpr` policy
+### CONSTEXPR_POLICY (QB): `constexpr` policy
 
 > **Status**: ✅ DECIDED
 
@@ -87,7 +87,7 @@ implementation.
 
 ______________________________________________________________________
 
-### QE: Method naming — `PascalCase` or `snake_case`?
+### NAMING_FN (QE): Method naming — `PascalCase` or `snake_case`?
 
 > **Status**: ✅ DECIDED
 
@@ -128,7 +128,7 @@ reason (opportunistic conformance, same rule as Q-3/Q-4).
 
 ______________________________________________________________________
 
-### QF: Enum value naming
+### NAMING_ENUM (QF): Enum value naming
 
 > **Status**: ✅ DECIDED
 
@@ -157,7 +157,7 @@ touched for another reason.
 
 ______________________________________________________________________
 
-### QG: Integer type policy
+### INT_TYPES (QG): Integer type policy
 
 > **Status**: ✅ DECIDED
 
@@ -186,7 +186,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### QH: Runtime assertion strategy
+### ASSERTIONS (QH): Runtime assertion strategy
 
 > **Status**: ✅ DECIDED
 
@@ -242,7 +242,7 @@ provides no message parameter.
 
 ______________________________________________________________________
 
-### QI: Diagnostic / logging channel
+### LOGGING (QI): Diagnostic / logging channel
 
 > **Status**: ✅ DECIDED
 
@@ -316,10 +316,12 @@ subsystem's directory name: `"filesystem"`, `"networking"`, `"cmd_cvar"`, `"plat
 | `Error` | Operation failed; caller was **also** notified via return value | Yes |
 | `Fatal` | Assertion failures (`XASH_FATAL`, `XASH_ASSERT`) | Yes — then `crash::abort()` |
 
-**Rule for Q-5 compliance**: "emit a diagnostic" means call
+**Rule for ERROR_RETURN (Q-5) compliance**: "emit a diagnostic" means call
 `core::log(LogLevel::Error, tag, msg)` or `core::logf(...)` *before*
-the `return false` / `return std::nullopt`. The return value tells the caller the
-operation failed; the log tells diagnostics *why*. Both are always required.
+the `return false` / `return std::nullopt` at the **public API boundary**.
+The return value tells the caller the operation failed; the log tells diagnostics
+*why*. Private helper functions propagate failure silently — logging at every level
+produces duplicate messages for a single error.
 
 **`Verbose` guard pattern** (zero overhead when `XASH_VERBOSE` is absent):
 
@@ -342,7 +344,7 @@ exist before networking is written, since networking errors are the first case w
 
 ______________________________________________________________________
 
-### QJ: Copy/move semantics for subsystem types
+### COPY_MOVE (QJ): Copy/move semantics for subsystem types
 
 > **Status**: ✅ DECIDED
 
@@ -376,7 +378,7 @@ Filesystem& Filesystem::operator=(Filesystem&&) noexcept = default;
 
 ______________________________________________________________________
 
-### QK: Test framework
+### TEST_MACROS (QK): Test framework
 
 > **Status**: ✅ DECIDED
 

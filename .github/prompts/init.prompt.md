@@ -37,30 +37,12 @@ When reading the legacy code, ask: *what does this do and what invariants must b
 3. **Implement in `xash3dpp/src/`.** Keep new code self-contained; do not reference legacy paths from build files.
 4. **Verify against legacy behaviour.** Use the legacy code as the ground truth for any behavioural question.
 
-## Mandatory: Use Framework Primitives
-
-Before reaching for a stdlib or OS API, check whether the framework already
-provides it. Using the framework is **required**, not optional.
-
-| Need | Framework primitive |
-|------|---------------------|
-| Strings / parsing | `utilities::strncpy`, `stricmp`, `snprintf`, `parse_token`, `Tokenizer` (`utilities/string.hpp`) |
-| Path manipulation | `utilities::path_join`, `file_base`, `fix_slashes`, `replace_extension` (`utilities/path.hpp`) |
-| Hashing (CRC-32, MD5) | `utilities::Crc32Hasher`, `Md5Hasher`, `crc32()` (`utilities/hash.hpp`) |
-| Math / matrices | `utilities::Vec3`, `Matrix3x4`, `dot`, `normalize` (`utilities/math.hpp`, `matrix.hpp`) |
-| Dynamic allocation | `memory::mem_alloc`, `mem_calloc`, `mem_free`, `pool_new<T>` (`memory/memory.hpp`) |
-| File I/O | `IFilesystem` injected interface (`filesystem/filesystem.hpp`) |
-| Time | `platform::get_time()` (`platform/sys.hpp`) |
-| Console output | `platform::console::write(std::string_view)` (`platform/console.hpp`) |
-
-**Never use** `malloc/free`, `new/delete` (except `std::make_unique<Impl>` for pimpl),
-`fopen/fclose/FILE*`, raw `strlen/strcpy/sprintf`, custom CRC/hash implementations,
-or direct OS timer / I/O calls outside the `platform/` or `filesystem/` subsystems.
+Conventions, mandatory patterns, naming rules, and framework primitives are in
+`.github/instructions/xash3dpp.instructions.md` — read that for the full coding standards.
 
 ## Current State
 
-Five subsystems are complete and tested.  Use `analyse-subsystem` to scope the
-next one.
+Six subsystems are complete and tested.
 
 ### `xash3dpp_utilities` — complete
 - **Library**: `xash3dpp/src/utilities/`; headers in `xash3dpp/include/xash3dpp/utilities/`
@@ -115,95 +97,3 @@ next one.
 
 **Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++20;
 no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.
-
-## Cross-Cutting Design Decisions
-
-### Debug and Stats Instrumentation
-
-A three-tier model governs all measurement and tracing across subsystems.
-Full analysis: [`xash3dpp/docs/design/debug-stats-design.md`](../../xash3dpp/docs/design/debug-stats-design.md)
-
-| Tier | Guard | When compiled in |
-|------|-------|-----------------|
-| Always-on | none | All builds — ≤ 1 relaxed atomic per event |
-| `XASH_STATS` | `#if XASH_STATS` | Profiling and debug builds |
-| `XASH_DEBUG_<SUBSYSTEM>` | `#if XASH_DEBUG_<SUBSYSTEM>` | Dev builds only |
-
-**Key rules**: never gate counter *increments* on a runtime bool (always
-measure; gate *output*); never format strings on hot paths; every non-trivial
-subsystem exposes `const Stats& stats() const noexcept`.
-
-Long-term plan: a dedicated `diagnostics` subsystem will provide a UDP stats
-stream and TCP command channel for external tooling — deferred until at least
-three subsystems have stats structs.
-
-### Threading Model
-
-Full specification: [`xash3dpp/docs/design/threading-model.md`](../../xash3dpp/docs/design/threading-model.md)
-
-Six thread roles are defined in `core/thread_role.hpp`. Registration at
-thread start + `core::assert_thread_role()` in debug builds enforce the
-contracts.
-
-| Thread | Starts | Drives |
-|--------|--------|--------|
-| `T_Main` | process start | game loop, server tick, client tick, input, cmd/cvar, physics, all DLL calls |
-| `T_AudioCallback` | `Sound::init()` | OS audio output — must never allocate or block |
-| `T_AudioDecoder` | `Sound::init()` | OGG/Opus decode → PCM SPSC ring → `T_AudioCallback` |
-| `T_Worker[0..N]` | `Host::init()` | async asset load, PVS per client, delta encode, HTTP I/O |
-| `T_Render` | `Renderer::init()` | GPU submission — **deferred Chunk 10**, optional (Vulkan only) |
-| `T_NetIO` | deferred | socket I/O — **deferred**, triggered by HTTP/DNS need or high player count |
-
-**Key rules for new subsystems:**
-- Query functions take `const T&` (immutable context) — never read a mutable global.
-- Mutation is explicit at the call site; compute and commit are separate phases.
-- `WorldData` is immutable after activation — all BSP/trace/PVS queries are concurrent-read-safe.
-- Async jobs use `JobToken<T>` (atomic `JobStatus` + `unique_ptr<T>` move on completion).
-- No `recvfrom`/`sendto` calls outside the networking subsystem — packet I/O goes through `NET_GetPacket`/`NET_SendPacket` only.
-- `assert_thread_role(ThreadRole::Main)` at the top of every main-thread-only public function.
-- Two filesystem threading hazards must be fixed before end of Chunk 3 (see document §10).
-
-### Design Paradigms (Q-1 through Q-10)
-
-Full decisions: [`xash3dpp/docs/design/design-paradigms-round1.md`](../../xash3dpp/docs/design/design-paradigms-round1.md)
-
-**Object model and ownership:**
-- Stateful subsystems → pimpl class owned by `EngineContext` in init order.
-- `memory` and `platform` are explicit exceptions (global/ambient; no EngineContext slot).
-- New subsystems use `unique_ptr<Impl>`; `cmd_cvar`'s raw `Impl*` is grandfathered.
-- Every subsystem with init parameters uses `<Subsystem>InitParams` struct — no positional arg threshold.
-- Dependencies injected via params struct; no global `g_engine` accessor.
-
-**Error returns:**
-- `[[nodiscard]] bool` for void-or-fail; `optional<T>` for absent-not-error; nullable `T*` for pointer returns; `void` for infallible.
-- Functions returning a failure indicator must emit a diagnostic internally before returning.
-- `std::expected<T, ErrorCode>` deferred to Chunk 2; never call `.value()`.
-
-**Interface and ABI:**
-- Internal seams: C++ `I<Subsystem>` vtable. DLL boundaries: C function-pointer struct.
-- Legacy ABIs (`enginefuncs_t`, `DLL_FUNCTIONS`, `ref_api_t`) are preserved exactly.
-- New plugin types (first: Vulkan renderer, Chunk 10): versioned C descriptor struct with `struct_size` and two-way version check.
-- `std::string_view` freely intra-engine; `const char*` at `extern "C"` / DLL boundaries — wrap on entry.
-
-**Ownership vocabulary:**
-- `pool_ptr<T>` (pool-backed owned) · `unique_ptr<T>` (pimpl only) · raw `T*` (borrowed, `// @lifetime: engine`) · `span<const T>` (default view) · `string_view` (string view).
-- Pool selection reflects lifetime: process pool / session pool / frame pool.
-
-### Code Style and Conventions (Round 2)
-
-Full decisions: [`xash3dpp/docs/design/design-paradigms-round2.md`](../../xash3dpp/docs/design/design-paradigms-round2.md)
-
-**Naming:**
-- Types: `PascalCase` · Member functions: `snake_case` · Free functions: `snake_case` · Namespaces: `lowercase` · Macros: `UPPER_SNAKE_CASE` · Files: `snake_case.{hpp,cpp}` · Private members: `trailing_` · `enum class` values: `PascalCase` (no `k` prefix) · `constexpr` constants: `k_snake_case`
-
-**Instrumentation:**
-- `[[nodiscard]]` is the default on all non-`void` returns; omission requires justification.
-- `XASH_ASSERT(expr)` — debug-only invariant check (`core/assert.hpp`). `XASH_FATAL(expr, msg)` — always-on unrecoverable invariant. Never use `assert()` from `<cassert>`.
-- `core::log(LogLevel, tag, msg)` / `core::logf(LogLevel, tag, fmt, ...)` for all diagnostic output — not `printf`, not `console::write` directly.
-- `core::register_thread_role(ThreadRole)` at thread start; `core::assert_thread_role(ThreadRole)` inside main-thread-only functions.
-
-**Integer types:** `size_t` for sizes · `int` for GoldSrc ABI · `uint32_t` for internal tokens · `int64_t` for file offsets · `bool` for booleans · no bare `unsigned`.
-
-**Copy/move:** Subsystem context = move-only. `EngineContext` = non-moveable. Value aggregates = copyable. Handles = copyable unless exclusive-ownership.
-
-**Tests:** Hand-rolled `CHECK`/`REQUIRE` macros from `test_helpers.hpp`. Revisit with doctest at ~15 test files.

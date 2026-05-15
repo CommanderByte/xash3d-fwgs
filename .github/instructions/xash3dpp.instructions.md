@@ -26,7 +26,7 @@ These are unanimous across all subsystems — no debate:
 
 ## Naming Conventions — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QE, QF.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §NAMING_FN (QE), §NAMING_ENUM (QF).
 
 | Category | Convention | Examples |
 |----------|-----------|---------|
@@ -134,8 +134,10 @@ All subsystems with non-trivial hot paths follow a three-tier model
   at the reporting layer.
 - Never format strings in a hot path. Accumulate raw numeric values; the query
   command or future serializer thread formats them on demand.
-- Every non-trivial subsystem exposes `const <Subsystem>Stats& stats() const noexcept`
+- Every subsystem with mutable runtime state exposes `const <Subsystem>Stats& stats() const noexcept`
   on its context class. See `CmdCvarContext::stats()` as the canonical reference.
+  Exempt: pure function namespaces (no mutable state) and init-once-at-startup utilities.
+  Call frequency alone is not grounds for exemption.
 
 ### Threading Model — Mandatory
 
@@ -176,7 +178,7 @@ Full specification: `xash3dpp/docs/design/threading-model.md`.
 
 ### EngineContext and Dependency Injection — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-1, Q-2, Q-4.
+Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §SUBSYSTEM_MODEL (Q-1), §ENGINE_CONTEXT (Q-2), §DI_PARAMS (Q-4).
 
 - **Stateful subsystems** (those with a non-trivial lifecycle) are pimpl classes
   owned as direct members of `EngineContext` in init order. Destructor order
@@ -201,7 +203,7 @@ struct FilesystemInitParams {
 
 ### Error Return Patterns — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-5.
+Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §ERROR_RETURN (Q-5).
 
 | Pattern | Use for |
 |---------|---------|
@@ -210,8 +212,9 @@ Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-5.
 | `[[nodiscard]] T*` (nullable) | Pointer return where null is the natural absent sentinel |
 | `void` | Infallible operations or failure handled internally with a fallback |
 
-- Every function returning a failure indicator **must emit a diagnostic** before
-  returning (via `platform::console::write` or the logging subsystem).
+- The **public API function** — the first entry point reachable from outside the
+  subsystem — must emit a diagnostic via the logging subsystem before returning
+  failure. Private and internal helpers may propagate failure silently upward.
   Exception: `optional<T>` returning `nullopt` for a "not found" query is silent
   by contract.
 - `std::expected<T, ErrorCode>` is deferred to Chunk 2. Do **not** use it before
@@ -221,7 +224,7 @@ Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-5.
 
 ### Interface and ABI Rules — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-7, Q-8.
+Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §INTERFACE_ABI (Q-7), §STRING_VIEW_BOUNDARY (Q-8).
 
 - **Intra-engine seam** (same binary, same compiler): use a C++ abstract class
   (`I<Subsystem>` vtable). Supports dependency injection and test mocking.
@@ -231,14 +234,14 @@ Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-7, Q-8.
   `ref_api_t`) are preserved exactly and are **never changed**.
 - **New plugin types** (first: Vulkan renderer at Chunk 10): versioned C
   descriptor struct with `struct_size` field and two-way version check.
-  See Q-10 in the design document.
+  See §PLUGIN_VERSION (Q-10) in `decisions-architecture.md`.
 - **`std::string_view` at boundaries**: use freely within the engine binary.
   At any `extern "C"` or DLL edge, use `const char*`; wrap in `string_view`
   immediately on entry. No custom `StringRef` type.
 
 ### Ownership Vocabulary — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round1.md` Q-9.
+Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §OWNERSHIP (Q-9).
 
 | Type | Semantics |
 |------|-----------|
@@ -257,7 +260,7 @@ with `// @lifetime: engine` on the declaration. No `BorrowedRef<T>` type alias.
 
 ### `[[nodiscard]]` Completeness — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QA.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §NODISCARD (QA).
 
 `[[nodiscard]]` is the **default** for every non-`void` return. Omitting it requires
 a documented reason at the declaration site. Apply to:
@@ -267,7 +270,7 @@ a documented reason at the declaration site. Apply to:
 
 ### Integer Type Policy — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QG.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §INT_TYPES (QG).
 
 | Context | Type |
 |---------|------|
@@ -284,7 +287,7 @@ Never silently cast `size_t` to `int`; validate `count ≤ INT_MAX` first.
 
 ### Assertions — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QH.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §ASSERTIONS (QH).
 Defined in `platform/assert.hpp`.
 
 - **`XASH_ASSERT(expr)`** — debug-only (no-op in `NDEBUG`). For invariants that
@@ -293,11 +296,11 @@ Defined in `platform/assert.hpp`.
   Calls `platform::log(LogLevel::Fatal, ...)` then `platform::crash::abort()`.
 - Do **not** use `assert()` from `<cassert>` directly.
 - Assertions are for invariant violations. Expected failures (file not found,
-  network error) use Q-5 error returns.
+  network error) use ERROR_RETURN (Q-5) patterns.
 
 ### Logging — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QI.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §LOGGING (QI).
 Defined in `platform/log.hpp`.
 
 Use `platform::log(LogLevel, tag, msg)` or `platform::logf(LogLevel, tag, fmt, ...)`
@@ -311,12 +314,12 @@ for all diagnostic output — not `platform::console::write` directly, not `prin
 | `LogLevel::Error` | Operation failed; caller also notified via return value |
 | `LogLevel::Fatal` | Assertion violations — called by `XASH_ASSERT`/`XASH_FATAL` |
 
-**Q-5 compliance**: call `platform::log(LogLevel::Error, tag, msg)` *before*
-every `return false` / `return std::nullopt` failure path.
+**ERROR_RETURN (Q-5) compliance**: call `platform::log(LogLevel::Error, tag, msg)`
+*before the public API function returns failure*. Private helpers propagate silently.
 
 ### Copy/Move Semantics — Mandatory
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QJ.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §COPY_MOVE (QJ).
 
 | Category | Copy | Move |
 |----------|------|------|
@@ -328,7 +331,7 @@ Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QJ.
 
 ### Test Conventions
 
-Full decisions: `xash3dpp/docs/design/design-paradigms-round2.md` QK.
+Full decisions: `xash3dpp/docs/design/decisions-style.md` §TEST_MACROS (QK).
 
 Use the standard macro set from `xash3dpp/tests/test_helpers.hpp`:
 `CHECK`, `CHECK_EQ`, `CHECK_NE`, `CHECK_STREQ`, `CHECK_LT`, `CHECK_LE`, `REQUIRE`.

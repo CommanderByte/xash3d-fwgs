@@ -1,5 +1,5 @@
 #pragma once
-// xash3dpp — assertion macros (QH, design-paradigms-round2.md)
+// xash3dpp — assertion macros (ASSERTIONS / QH, decisions-style.md)
 //
 // Library: xash3dpp_core (cross-cutting invariant checks usable from any
 //          subsystem).  XASH_FATAL expands to a call into xash::core::logf —

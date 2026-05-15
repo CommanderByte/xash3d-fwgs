@@ -139,8 +139,8 @@ namespace xash::$ARGUMENTS {
 //     <Subsystem>(const <Subsystem>&)            = delete;
 //     <Subsystem>& operator=(const <Subsystem>&) = delete;
 //
-//     bool Init(/* parameters */);
-//     void Shutdown();
+//     bool init(/* parameters */);
+//     void shutdown();
 //
 // private:
 //     struct Impl;
@@ -246,13 +246,13 @@ struct <Subsystem>::Impl {
 <Subsystem>::<Subsystem>()  : impl_{std::make_unique<Impl>()} {}
 <Subsystem>::~<Subsystem>() = default;
 
-bool <Subsystem>::Init(/* params */)
+bool <Subsystem>::init(/* params */)
 {
     impl_->pool_ = xash::memory::create_pool("$ARGUMENTS");
     return static_cast<bool>(impl_->pool_);
 }
 
-void <Subsystem>::Shutdown()
+void <Subsystem>::shutdown()
 {
     // Release all pool-owned resources before destroying the pool.
     if (impl_->pool_) {
@@ -325,18 +325,14 @@ Create `xash3dpp/tests/$ARGUMENTS/test_$ARGUMENTS.cpp`:
 
 ```cpp
 // xash3dpp — $ARGUMENTS subsystem tests
-// Covers: Init/Shutdown lifecycle, <add function names as the API grows>
+// Covers: init/shutdown lifecycle, <add function names as the API grows>
 
 #include <xash3dpp/$ARGUMENTS/$ARGUMENTS.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
-#include <cstdio>
+#include "../test_helpers.hpp"
 
 static int g_pass = 0, g_fail = 0;
-
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::printf("FAIL [line %d]: %s\n", __LINE__, #expr); } } while(0)
 
 // ---------------------------------------------------------------------------
 // Lifecycle smoke test
@@ -345,11 +341,11 @@ static int g_pass = 0, g_fail = 0;
 static void test_init_shutdown()
 {
     xash::$ARGUMENTS::<Subsystem> s;
-    CHECK( s.Init() );
-    s.Shutdown();
+    CHECK( s.init() );
+    s.shutdown();
     // Re-init must work (idempotent lifecycle).
-    CHECK( s.Init() );
-    s.Shutdown();
+    CHECK( s.init() );
+    s.shutdown();
 }
 
 // TODO: add functional tests as the API grows.

@@ -1,4 +1,4 @@
-# Design Paradigms — Round 1: Survey and Open Questions
+# Design Decisions — Architecture and Ownership
 
 > **Status**: all questions decided — see individual Q sections below\
 > **Scope**: all five completed subsystems\
@@ -185,7 +185,7 @@ Each question links to the section that prompted it.
 
 ______________________________________________________________________
 
-### Q-1: When should a subsystem be a class vs free functions?
+### SUBSYSTEM_CLASS (Q-1): When should a subsystem be a class vs free functions?
 
 > **Status**: ✅ DECIDED
 
@@ -205,7 +205,7 @@ classes. `memory` is the documented singleton exception.
 
 ______________________________________________________________________
 
-### Q-2: Should there be a root `EngineContext` that owns all subsystem instances?
+### ENGINE_CONTEXT (Q-2): Should there be a root `EngineContext` that owns all subsystem instances?
 
 > **Status**: ✅ DECIDED
 
@@ -234,7 +234,7 @@ platform has no meaningful state to own.
 
 ______________________________________________________________________
 
-### Q-3: Standardize the pimpl variant — `unique_ptr<Impl>` or raw `Impl*`?
+### PIMPL_MOVE (Q-3): Standardize the pimpl variant — `unique_ptr<Impl>` or raw `Impl*`?
 
 > **Status**: ✅ DECIDED
 
@@ -247,7 +247,7 @@ Bring into conformance the next time `cmd_cvar` is modified for another reason.
 
 ______________________________________________________________________
 
-### Q-4: Init params — positional args or params struct?
+### DI_PARAMS (Q-4): Init params — positional args or params struct?
 
 > **Status**: ✅ DECIDED
 
@@ -264,7 +264,7 @@ there.
 
 ______________________________________________________________________
 
-### Q-5: Standardize error return patterns
+### ERROR_RETURN (Q-5): Standardize error return patterns
 
 > **Status**: ✅ DECIDED
 
@@ -277,9 +277,12 @@ ______________________________________________________________________
 | `[[nodiscard]] T*` (nullable) | Pointer return where null is the natural absent sentinel |
 | `void` | Infallible operations, or failure handled internally with a fallback |
 
-**Internal logging rule**: functions returning a failure indicator must emit a
-diagnostic before returning, unless the absent case is a normal "not found" query
-(in which case `optional<T>` returning `nullopt` is silent by contract).
+**Internal logging rule**: the **public API function** — the first entry point
+reachable from outside the subsystem — must emit a diagnostic before returning
+failure. Private and internal helper functions may propagate failure silently
+upward; requiring them to log at every level produces cascading duplicate messages
+for a single user-visible error. Exception: `optional<T>` returning `nullopt` for
+a "not found" query is always silent by contract.
 
 **`std::expected<T, ErrorCode>`**: deferred. Introduced at Chunk 2 (networking)
 as the standard for subsystems where failure reason matters to callers. A central
@@ -291,7 +294,7 @@ All error return values carry `[[nodiscard]]`.
 
 ______________________________________________________________________
 
-### Q-6: Threading model — what threads will the engine have?
+### THREADING (Q-6): Threading model — what threads will the engine have?
 
 > **Status**: ✅ DECIDED — see `threading-model.md` for the full specification.
 
@@ -316,7 +319,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### Q-7: Every `ISubsystem` vtable interface or only for legacy ABI?
+### INTERFACE_ABI (Q-7): Every `ISubsystem` vtable interface or only for legacy ABI?
 
 > **Status**: ✅ DECIDED
 
@@ -339,7 +342,7 @@ with `const char*` on the outer face (no `std::string_view` crossing the DLL edg
 
 ______________________________________________________________________
 
-### Q-8: How should `std::string_view` cross DLL/ABI boundaries?
+### STRING_VIEW_BOUNDARY (Q-8): How should `std::string_view` cross DLL/ABI boundaries?
 
 > **Status**: ✅ DECIDED
 
@@ -353,7 +356,7 @@ without a new type.
 
 ______________________________________________________________________
 
-### Q-9: Ownership vocabulary across subsystem boundaries
+### OWNERSHIP (Q-9): Ownership vocabulary across subsystem boundaries
 
 > **Status**: ✅ DECIDED
 
@@ -383,7 +386,7 @@ explicit justification at the call site.
 
 ______________________________________________________________________
 
-### Q-10: Modular plugin / DLL bootstrap convention
+### PLUGIN_VERSION (Q-10): Modular plugin / DLL bootstrap convention
 
 > **Status**: ✅ DECIDED
 

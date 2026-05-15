@@ -3,8 +3,8 @@
 > **Date**: 2026-05\
 > **Scope**: all xash3dpp subsystems — present and future\
 > **Status**: decisions made; binding on all new subsystem work\
-> **Related**: `design-paradigms-round1.md` (Q-6), `debug-stats-design.md`
-
+> **Related**: `decisions-architecture.md` §THREADING (Q-6), `debug-stats-design.md`
+>
 > **Status snapshot (what is built vs planned):**
 >
 > - **IMPLEMENTED today:** filesystem locking under `shared_mutex` (both hazards in §10 are RESOLVED — see [filesystem.cpp L162-183](../../src/filesystem/filesystem.cpp) and [filesystem.cpp L497-520](../../src/filesystem/filesystem.cpp)); `assert_main_thread()` debug helper at [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp) (internal-only, 4 call sites).
@@ -439,7 +439,7 @@ the time comes. The chunk design should not introduce new global physics state.
 
 **Today:** the entire cmd/cvar subsystem is **main-thread-only**. There is no
 `shared_mutex` in `CmdCvarContext` in the current source — see
-`design-paradigms-round1.md` §2.5 for the established model. All command
+`decisions-architecture.md` §2.5 for the established model. All command
 dispatch, all cvar reads, and all cvar writes happen on `T_Main`.
 
 **Future (when Chunk 2 networking or Chunk 4 workers first need cvar reads
@@ -552,7 +552,7 @@ ______________________________________________________________________
 | Subsystem | Thread | Current status | Constraint source |
 | --------- | ------ | -------------- | ----------------- |
 | cmd/cvar — write | `T_Main` | **Today** | Command buffer is single-consumer (§8.3) |
-| cmd/cvar — cvar read | `T_Main` today; Any (planned) | **Today: main-only.** `shared_mutex` added later when a non-main caller appears | §8.3 + `design-paradigms-round1.md` §2.5 |
+| cmd/cvar — cvar read | `T_Main` today; Any (planned) | **Today: main-only.** `shared_mutex` added later when a non-main caller appears | §8.3 + `decisions-architecture.md` §2.5 |
 | filesystem | `T_Main` for writes; any for reads after lock | **Today** — see §10 RESOLVED | [filesystem.cpp L106-115](../../src/filesystem/filesystem.cpp) |
 | memory — allocate | Any (pool spinlock) | **Today** | Documented in memory subsystem |
 | platform | Any | **Today** | Pure functions or internally synchronised |

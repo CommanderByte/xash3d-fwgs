@@ -7,7 +7,7 @@
 //          subsystem may call from frame zero).  The default sink is
 //          platform::console::write — see <xash3dpp/platform/console.hpp>.
 //
-// Design notes (QI, design-paradigms-round2.md):
+// Design notes (LOGGING / QI, decisions-style.md):
 //   • Free-function API only.  No init / shutdown — callable before EngineContext.
 //   • Two functions: log() for pre-formatted messages, logf() for printf-style.
 //     Both are noexcept and do zero heap allocation in the hot path.

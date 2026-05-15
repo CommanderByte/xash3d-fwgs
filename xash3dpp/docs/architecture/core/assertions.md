@@ -113,4 +113,4 @@ recovery path — they always abort on failure.
 - [logging.md](./logging.md) — `LogLevel::Fatal` and `core::logf`
 - [assert-main.md](./assert-main.md) — uses `XASH_FATAL` for main-thread checks
 - [thread-role.md](./thread-role.md) — `assert_thread_role` uses `XASH_FATAL`
-- `xash3dpp/docs/design/design-paradigms-round2.md` §QH — assertion policy rationale
+- `xash3dpp/docs/design/decisions-style.md` §ASSERTIONS (QH) — assertion policy rationale

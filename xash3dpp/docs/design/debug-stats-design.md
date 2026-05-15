@@ -335,6 +335,20 @@ what `CmdCvarContext::stats()` already provides.
 
 The memory subsystem (`for_each_pool` + `get_stats`) is the template to follow.
 
+**Exemptions (STATS_TIERS):** A subsystem is exempt from the stats struct requirement
+if it meets one of these two conditions:
+
+1. **Pure function namespace** — no internal mutable state at all (e.g. `utilities::`,
+   `platform::get_time()`). There is nothing to track because no state changes.
+2. **Init-once-at-startup** — the subsystem is initialised once and never mutates again
+   (e.g. a config loader, a crash handler). The only interesting outcome is success or
+   failure, which is covered by the error return.
+
+Call frequency alone is **not** the criterion. A subsystem called once per frame can
+still need stats (e.g. networking: packet counts, byte rates, queue depth), and one
+called thousands of times per frame may not (e.g. a pure OS wrapper). When in doubt,
+add `// no hot path — stats exempt` rather than adding boilerplate stats infrastructure.
+
 ### 6.2 Near-term: runtime emission gate (single struct, no network yet)
 
 Before the external channel exists, add a single place where all stats are aggregated

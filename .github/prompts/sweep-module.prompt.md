@@ -1,6 +1,6 @@
 ---
 name: "Sweep module for design compliance"
-description: "Audit and fix an existing xash3dpp module for full compliance with the Round 2 design paradigms: [[nodiscard]], naming conventions, forbidden patterns, test_helpers.hpp migration, and thread assertions. Rebuilds and re-runs all tests. Commits when clean."
+description: "Audit and fix an existing xash3dpp module for full compliance with architecture and style decisions: [[nodiscard]], naming conventions, forbidden patterns, test_helpers.hpp migration, stats instrumentation, and thread assertions. Rebuilds and re-runs all tests. Commits when clean."
 argument-hint: "module name, e.g. 'utilities', 'memory', 'platform', 'cmd_cvar', 'filesystem'"
 agent: agent
 tools: [read, search, edit, run, terminal]
@@ -60,8 +60,10 @@ Violating them is worse than leaving a minor violation in place.
 
 1. **Conventions** (auto-applied but re-read the critical sections):
    [`xash3dpp/.github/instructions/xash3dpp.instructions.md`](../instructions/xash3dpp.instructions.md)
-2. **Design Paradigms Round 2** (QA–QK):
-   [`xash3dpp/docs/design/design-paradigms-round2.md`](../../xash3dpp/docs/design/design-paradigms-round2.md)
+2. **Architecture decisions** (PIMPL_MOVE, ERROR_RETURN, OWNERSHIP, DI_PARAMS, STATS_TIERS):
+   [`xash3dpp/docs/design/decisions-architecture.md`](../../xash3dpp/docs/design/decisions-architecture.md)
+3. **Style decisions** (NODISCARD, NAMING_FN, NAMING_ENUM, ASSERTIONS, LOGGING, COPY_MOVE, TEST_MACROS):
+   [`xash3dpp/docs/design/decisions-style.md`](../../xash3dpp/docs/design/decisions-style.md)
 
 ---
 
@@ -84,7 +86,7 @@ Work through all categories before making any changes.
 
 ### Round 1 — Structural Rules
 
-#### R1-Pimpl — Pimpl move pattern (Q-3)
+#### PIMPL_MOVE — Pimpl move pattern (Q-3)
 
 Applies only to classes that own `std::unique_ptr<Impl>` or a raw `Impl*`.
 
@@ -108,20 +110,21 @@ MyClass& MyClass::operator=(MyClass&&) noexcept = default;
 Flag: `= default` on destructor or move operations *in the header* when `Impl`
 is forward-declared.
 
-#### R1-ErrorReturn — Error return diagnostics (Q-5)
+#### ERROR_RETURN — Error return diagnostics (Q-5)
 
-Rule: every function that returns a failure indicator (`bool`, `optional<T>`,
-`T*` nullable) must emit a `platform::log` diagnostic **before** returning
-failure. Silent failures are forbidden.
+Rule: the **public API function** — the first entry point reachable from outside
+the subsystem — must emit a `platform::log` diagnostic **before** returning
+failure. Private and internal helper functions may propagate failure silently
+upward; requiring every helper to log produces cascading duplicate messages.
 
 Exception: `optional<T>` returning `nullopt` for a "not found" query (not an
 error) is explicitly silent by contract — do not add a log there.
 
-Flag: any `return false;`, `return nullptr;`, `return std::nullopt;` in `src/`
-that is not preceded by a `platform::log` call, where the return represents an
-error (not a normal "not found").
+Flag: any *public* function returning `false` / `nullptr` on an error path
+that is not preceded by a `platform::log` call. Do **not** flag private or
+`static` helpers that return failure silently.
 
-#### R1-Ownership — Ownership markers in public APIs (Q-9)
+#### OWNERSHIP — Ownership markers in public APIs (Q-9)
 
 Rule: raw `T*` in a public API means "borrowed reference with engine lifetime".
 It must be documented with `// @lifetime: engine` on the declaration.
@@ -132,7 +135,7 @@ Flag:
 - Any `new T(` expression that is not `std::make_unique<Impl>()`
 - Any `delete` expression
 
-#### R1-NoGlobals — No new mutable global state (Q-4)
+#### DI_PARAMS (no-globals) — No new mutable global state (Q-4)
 
 Rule: no new mutable `static` or `extern` variables at file scope in `src/`.
 State must live in context-object members or pool-allocated structs.
@@ -143,7 +146,7 @@ singleton — do not flag it.
 Flag: any new `static <type> g_` or file-scope mutable variable in `src/`
 that was not present in the already-swept subsystems.
 
-#### R1-InitParams — Named params struct for non-trivial init (Q-4)
+#### DI_PARAMS (init-params) — Named params struct for non-trivial init (Q-4)
 
 Rule: any `init()` / constructor that takes two or more arguments from the
 caller must accept a `<Subsystem>InitParams` struct, not positional args.
@@ -151,11 +154,35 @@ caller must accept a `<Subsystem>InitParams` struct, not positional args.
 Flag: any public `init(sv, sv, ...)` with more than one `string_view`/`int`
 positional parameter where no params struct exists.
 
+#### STATS_TIERS — Stats struct and accessor (debug-stats-design.md)
+
+Rule: every stateful subsystem with a non-trivial hot path must define a
+`<Subsystem>Stats` struct and expose `const <Subsystem>Stats& stats() const noexcept`
+on its context class. Counter increments must not be gated on a runtime boolean
+(measure always; gate *output* at the reporting layer). No string formatting in
+hot paths — accumulate raw values only.
+
+Exempt (two conditions only — call frequency is not a criterion):
+
+1. **Pure function namespace** — no internal mutable state (e.g. `utilities::`,
+   `platform::get_time()`). Nothing to track; state never changes.
+2. **Init-once-at-startup** — subsystem initialises once and never mutates again
+   (e.g. config loader, crash handler). Success/failure is captured by the error return.
+
+Note: a subsystem called once per frame can still need stats (e.g. networking);
+one called thousands of times per frame may not (e.g. a pure OS wrapper).
+When in doubt, add `// no hot path — stats exempt` rather than boilerplate.
+
+Flag:
+- Stateful subsystem with no `Stats` struct and no `stats()` accessor → **WARNING**
+- Counter increment gated on a runtime boolean → **WARNING**
+- String formatting inside a hot path or per-event loop → **WARNING**
+
 ---
 
 ### Round 2 — Code Style Rules
 
-#### QA — `[[nodiscard]]` completeness
+#### NODISCARD (QA) — `[[nodiscard]]` completeness
 
 Rule: `[[nodiscard]]` is the **default** for every non-`void` return.
 
@@ -163,7 +190,7 @@ Flag any non-void function declaration in public and private headers missing
 `[[nodiscard]]`. Does **not** apply to: `void` returns; `operator<<`; setters
 that are universally called for side-effects only.
 
-#### QE — Naming: `snake_case` member functions
+#### NAMING_FN (QE) — Naming: `snake_case` member functions
 
 Rule: all member function names are `snake_case`.
 Exception: `I<X>` vtable methods that match a legacy ABI (e.g. `IFilesystem::Open`)
@@ -171,19 +198,19 @@ are exempt and must **not** be renamed.
 
 Flag any member function with a capital letter that is not ABI-fixed.
 
-#### QF — `enum class` values: `PascalCase`, no `k` prefix
+#### NAMING_ENUM (QF) — `enum class` values: `PascalCase`, no `k` prefix
 
 Rule: `enum class` values use `PascalCase` — no `k` prefix.
 
 Flag any `enum class` value starting with lowercase `k`.
 
-#### QH — No `assert()` from `<cassert>`
+#### ASSERTIONS (QH) — No `assert()` from `<cassert>`
 
 Rule: use `XASH_ASSERT` / `XASH_FATAL` from `<xash3dpp/platform/assert.hpp>`.
 
 Flag any `#include <cassert>` or bare `assert(` call.
 
-#### QI — No `printf`/`fprintf` for diagnostics; no raw `console::write` for C++ subsystem errors
+#### LOGGING (QI) — No `printf`/`fprintf` for diagnostics; no raw `console::write` for C++ subsystem errors
 
 Rule:
 - `printf`, `fprintf`, `std::cout` — **always** flag; replace with `platform::log`.
@@ -202,7 +229,7 @@ Flag: `printf`, `fprintf`, `std::cout` anywhere in `src/`. Also flag
 `console::write` used to report a C++ error/warning condition rather than
 to produce user-visible console output.
 
-#### QK — Tests must use `test_helpers.hpp`
+#### TEST_MACROS (QK) — Tests must use `test_helpers.hpp`
 
 Rule: every test file must `#include "test_helpers.hpp"` and use `CHECK` /
 `CHECK_EQ` / `REQUIRE` from it. No local `#define CHECK`.
@@ -257,10 +284,15 @@ Rule: functions that only read subsystem state must take `const MySubsystem&`
 (or `const Impl&` internally) — never access mutable state from a function
 that may be called from a worker thread.
 
-Flag: any non-`const` member function that only reads state and could safely
-be `const`.
+**Caveat before applying:** verify the function has no mutable paths through
+stats counters, lazy-init flags, or internal caches. These look read-only but
+use mutable state. When in doubt, do **not** add `const` — flag it as a NOTE
+instead of applying the change automatically.
 
-#### TH-NoGlobalRead — No mutable global reads in potentially-parallel paths
+Flag: any non-`const` member function that only reads state (with no mutable
+side-paths) and could safely be `const`.
+
+#### TH-GLOBALS — No mutable global reads in potentially-parallel paths
 
 Rule: a function callable from a worker thread must not read unguarded
 mutable global state. All shared state must be accessed under a lock or be
@@ -278,42 +310,44 @@ Apply every fix found in Step 2. All independent fixes may be batched with
 the audit identified.
 
 **Round 1 fixes:**
-- **R1-Pimpl**: Move `= default` from the header to the `.cpp` for destructor and move
+- **PIMPL_MOVE**: Move `= default` from the header to the `.cpp` for destructor and move
   ops of pimpl classes. Declare (no `= default`) in the header.
-- **R1-ErrorReturn**: Add `platform::log( LogLevel::Error, "<subsystem>", "..." )` before
-  each silent `return false` / `return nullptr` that represents a real error.
+- **ERROR_RETURN**: Add `platform::log( LogLevel::Error, "<subsystem>", "..." )` before
+  each silent public-API `return false` / `return nullptr` that represents a real error.
+  Private helpers propagate silently — do not add logs there.
   Add `#include <xash3dpp/platform/log.hpp>` if not already present.
-- **R1-Ownership**: Add `// @lifetime: engine` comment to raw `T*` returns in public
+- **OWNERSHIP**: Add `// @lifetime: engine` comment to raw `T*` returns in public
   headers. Replace any `new T(` (non-pimpl) with `pool_new<T>( pool, ... )`.
   Replace any `delete ptr` with `mem_free( ptr )`.
-- **R1-NoGlobals**: Move file-scope mutable state into the pimpl struct. If the state
-  is truly process-singleton (like the memory pool registry), document it with a
-  comment; do not remove it.
-- **R1-InitParams**: Define a `<Subsystem>InitParams` struct and change the function
-  signature to accept it. Update all call sites in the module.
+- **DI_PARAMS (no-globals)**: Move file-scope mutable state into the pimpl struct. If
+  the state is truly process-singleton (like the memory pool registry), document it
+  with a comment; do not remove it.
+- **DI_PARAMS (init-params)**: Define a `<Subsystem>InitParams` struct and change the
+  function signature to accept it. Update all call sites in the module.
 
 **Round 2 fixes:**
-- **QA**: Add `[[nodiscard]]` before the return type on the declaration.
-- **QE**: Rename using `replace_string_in_file` / `multi_replace_string_in_file`
+- **NODISCARD**: Add `[[nodiscard]]` before the return type on the declaration.
+- **NAMING_FN**: Rename using `replace_string_in_file` / `multi_replace_string_in_file`
   directly — do **not** use `vscode_renameSymbol` for names that are common
   English words or are shared by multiple symbols (e.g. `init`, `open`, `read`,
   `write`, `close`). `vscode_renameSymbol` confuses semantically unrelated symbols
   that happen to share a name, producing a cascade of wrong renames. Search for
   all usages with `grep_search` first, then replace each site explicitly.
   Verify the build after any rename.
-- **QF**: Rename enum values the same way as QE (direct `replace_string_in_file`,
-  not `vscode_renameSymbol`). Grep for every usage of `EnumType::old_name` first.
-- **QH**: Replace `#include <cassert>` with `#include <xash3dpp/platform/assert.hpp>`.
+- **NAMING_ENUM**: Rename enum values the same way as NAMING_FN (direct
+  `replace_string_in_file`, not `vscode_renameSymbol`). Grep for every usage of
+  `EnumType::old_name` first.
+- **ASSERTIONS**: Replace `#include <cassert>` with `#include <xash3dpp/platform/assert.hpp>`.
   Replace `assert(cond)` with `XASH_ASSERT(cond)` (one argument — no message)
   or `XASH_FATAL(cond, "message")` (two arguments, always-on) for invariants
   that must abort in release builds.
-- **QI**: Replace `printf`/`fprintf`/`std::cout` with `platform::log`. For
+- **LOGGING**: Replace `printf`/`fprintf`/`std::cout` with `platform::log`. For
   `platform::console::write`: keep it when it is intentional game-console
   output (echo, cmdlist, cvarlist, player-visible messages); replace it with
   `platform::log( LogLevel::Error/Warning, "<subsystem>", "..." )` only when
   it is reporting a C++ subsystem error or internal diagnostic condition.
   Add `#include <xash3dpp/platform/log.hpp>` if not already present.
-- **QK**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"`
+- **TEST_MACROS**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"`
   (adjust relative path depth). Remove old `#define CHECK` / `#define REQUIRE` lines.
 - **Forbidden patterns**: Replace with the approved equivalent. Add an inline comment
   if the substitution is non-obvious.
@@ -323,8 +357,9 @@ the audit identified.
   the first statement of each flagged public method. Add
   `#include <xash3dpp/platform/thread_role.hpp>` at the top of the `.cpp` file.
 - **TH-Const**: Add `const` qualifier to the flagged method signature and propagate
-  through the Impl accessor chain.
-- **TH-NoGlobalRead**: Guard the unprotected read under the subsystem's existing lock,
+  through the Impl accessor chain. Do not apply if the function has mutable paths
+  through stats counters, lazy-init flags, or caches — flag as NOTE instead.
+- **TH-GLOBALS**: Guard the unprotected read under the subsystem's existing lock,
   or move the variable into a pool-allocated struct.
 
 ---
@@ -386,9 +421,9 @@ If that second command produces any output, unstage those files with
 Commit message format:
 
 ```
-refactor($ARGUMENTS): apply Round 1+2 and threading compliance
+refactor($ARGUMENTS): apply architecture, style, and threading compliance
 
-- <list each rule fixed: R1-Pimpl, R1-ErrorReturn, R1-Ownership, QA, QE, QF, QH, QI, QK, TH-Role, TH-Const>
+- <list each rule fixed: PIMPL_MOVE, ERROR_RETURN, OWNERSHIP, DI_PARAMS, STATS_TIERS, NODISCARD, NAMING_FN, NAMING_ENUM, ASSERTIONS, LOGGING, TEST_MACROS, TH-Role, TH-Const, TH-GLOBALS>
 - <one line per concrete change>
 ```
 

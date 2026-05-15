@@ -1,5 +1,5 @@
 #pragma once
-// xash3dpp — standard test helper macros (QK, design-paradigms-round2.md)
+// xash3dpp — standard test helper macros (TEST_MACROS / QK, decisions-style.md)
 //
 // Usage:
 //   #include "../../test_helpers.hpp"   // (adjust depth as needed)
