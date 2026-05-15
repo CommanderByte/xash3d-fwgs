@@ -6,6 +6,7 @@
 #endif
 
 #include <xash3dpp/platform/console.hpp>
+#include <xash3dpp/limits.hpp>
 
 #include <xash3dpp/private/platform/assert_main.hpp>
 
@@ -42,9 +43,9 @@ void write( std::string_view text ) noexcept
 std::string_view read_line() noexcept
 {
     detail::assert_main_thread( "console::read_line" );
-    static char       accum[1024];
+    static char       accum[xash::limits::platform_console_buffer_size];
     static std::size_t accum_len = 0;
-    static char       result[1024];
+    static char       result[xash::limits::platform_console_buffer_size];
 
     // Poll stdin with zero timeout — do not block.
     {

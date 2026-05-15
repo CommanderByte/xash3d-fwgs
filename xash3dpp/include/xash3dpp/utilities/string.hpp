@@ -5,6 +5,8 @@
 // Replaces Q_strncpy, Q_strlen, Q_strcmp/stricmp, Q_snprintf, Q_atoi/atof,
 // COM_ParseFileSafe, COM_StripColors, matchpattern_with_separator, etc.
 
+#include <xash3dpp/limits.hpp>
+
 #include <array>
 #include <cstddef>
 #include <cstdarg>
@@ -147,7 +149,7 @@ public:
         bool             quoted{};
     };
 
-    static constexpr std::size_t MAX_TOKEN = 512;
+    static constexpr std::size_t MAX_TOKEN = xash::limits::tokenizer_token_max;
 
     explicit Tokenizer( const char *data,
                         TokenFlags  flags = TokenFlags::None ) noexcept;

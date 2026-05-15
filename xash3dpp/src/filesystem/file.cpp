@@ -3,6 +3,7 @@
 //                   filesystem/filesystem.c (FS_Read, FS_Write, FS_Seek, …)
 
 #include <xash3dpp/filesystem/file.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
@@ -76,7 +77,7 @@ private:
 
     std::optional<ZlibState> zlib_;
 
-    static constexpr std::size_t k_buf_size = 2048;
+    static constexpr std::size_t k_buf_size = xash::limits::filesystem_file_buffer_size;
     std::array<std::byte, k_buf_size> buf_{};
     std::size_t buf_pos_ = 0;
     std::size_t buf_len_ = 0;

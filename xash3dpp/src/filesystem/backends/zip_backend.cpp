@@ -12,6 +12,7 @@
 // legacy's directory/zero-file skip).
 
 #include <xash3dpp/private/filesystem/backends/zip_backend.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/private/filesystem/archive_helpers.hpp>
 #include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
@@ -146,7 +147,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
     if (platform::seek(fd, static_cast<std::int64_t>(eocd.cd_offset), SEEK_SET) < 0)
         return;
 
-    static constexpr std::size_t k_MAX_FNAME = 4096;
+    static constexpr std::size_t k_MAX_FNAME = xash::limits::zip_filename_max;
 
     // Temporary entries before LFH resolution.
     struct PhaseEntry {

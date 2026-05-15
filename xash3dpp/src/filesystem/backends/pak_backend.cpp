@@ -7,6 +7,7 @@
 // so callers get seek/read semantics without loading the whole entry.
 
 #include <xash3dpp/private/filesystem/backends/pak_backend.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/private/filesystem/archive_helpers.hpp>
 #include <xash3dpp/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
@@ -34,7 +35,7 @@ static_assert(std::endian::native == std::endian::little,
 static constexpr std::uint32_t k_IDPACK =
     std::bit_cast<std::uint32_t>(std::array<char,4>{'P','A','C','K'});
 
-static constexpr int k_MAX_FILES = 65536;
+static constexpr int k_MAX_FILES = static_cast<int>(xash::limits::pak_max_files);
 
 struct DiskHeader {
     std::uint32_t ident;

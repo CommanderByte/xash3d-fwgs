@@ -4,6 +4,8 @@
 // tests can inspect pool bucket state directly without going through the
 // public API, and so that future .cpp splits share the same struct layout.
 
+#include <xash3dpp/limits.hpp>
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -53,6 +55,6 @@ struct PoolBucket
     void*                                                            ctx      = nullptr;
 };
 
-inline constexpr std::uint32_t kMaxPools = 128;
+inline constexpr std::uint32_t kMaxPools = static_cast<std::uint32_t>(xash::limits::memory_pool_max);
 
 } // namespace xash::memory::internal

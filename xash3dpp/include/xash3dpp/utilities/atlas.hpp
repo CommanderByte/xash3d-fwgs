@@ -2,8 +2,10 @@
 // xash3dpp — 2D texture atlas packer (strip-based)
 // Legacy reference: public/atlas.h + public/atlas.c
 //
-// ATLAS_MAX_SIZE is kept at 1024 to match the legacy struct layout.
-// Changing it is a breaking change for anything serialising atlas coordinates.
+// ATLAS_MAX_SIZE mirrors limits::atlas_max_size (ABI-constrained: matches the legacy
+// struct layout; changing it is a breaking serialisation change).
+
+#include <xash3dpp/limits.hpp>
 
 #include <array>
 #include <cstdint>
@@ -11,7 +13,7 @@
 
 namespace xash::utilities {
 
-static constexpr int ATLAS_MAX_SIZE = 1024;
+static constexpr int ATLAS_MAX_SIZE = static_cast<int>(xash::limits::atlas_max_size);
 
 // Not thread-safe: one owner thread only.  If an Atlas instance is shared
 // across threads, the caller must provide external synchronisation.

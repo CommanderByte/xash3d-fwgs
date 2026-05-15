@@ -8,6 +8,7 @@
 // W_FindLump / W_AddFileToWad logic.
 
 #include <xash3dpp/private/filesystem/backends/wad_backend.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/private/filesystem/mem_file.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/platform/os_io.hpp>
@@ -41,7 +42,7 @@ static constexpr std::uint32_t k_WAD2 =
 static constexpr std::uint32_t k_WAD3 =
     std::bit_cast<std::uint32_t>(std::array<char,4>{'W','A','D','3'});
 
-static constexpr int k_MAX_LUMPS = 65535;
+static constexpr int k_MAX_LUMPS = static_cast<int>(xash::limits::wad_max_lumps);
 
 struct DiskHeader {
     std::uint32_t ident;
