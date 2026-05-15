@@ -5,6 +5,12 @@
 > **Status**: decisions made; binding on all new subsystem work  
 > **Related**: `design-paradigms-round1.md` (Q-6), `debug-stats-design.md`
 
+> **Status snapshot (what is built vs planned):**
+> - **IMPLEMENTED today:** filesystem locking under `shared_mutex` (both hazards in §10 are RESOLVED — see [filesystem.cpp L162-183](../../src/filesystem/filesystem.cpp) and [filesystem.cpp L497-520](../../src/filesystem/filesystem.cpp)); `assert_main_thread()` debug helper at [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp) (internal-only, 4 call sites).
+> - **BEING INTRODUCED with this doc:** public `ThreadRole` API at `xash3dpp/include/xash3dpp/core/thread_role.hpp` — `register_thread_role`, `current_thread_role`, `assert_thread_role`. `assert_main_thread()` becomes a thin wrapper over `assert_thread_role(ThreadRole::Main)`; new code uses `assert_thread_role` directly.
+> - **PLANNED:** `JobToken` worker-pool API (Chunk 4), `dev_worker_threads` cvar (Chunk 4), render thread + `RenderFrame` (Chunk 10), `T_NetIO` thread (deferred), audio threads (Chunk 6), `// @thread-safety:` annotation rollout (Appendix A).
+> - **Chunk ordering:** Chunk 1 = cmd_cvar (**DONE**); Chunk 2 = networking; Chunk 3 = host. JobToken/worker jobs land in Chunk 4 (world/content).
+
 ---
 
 ## 1. Purpose and Scope
@@ -34,15 +40,17 @@ never perform work reserved for a different role.
 | `Main` | `ThreadRole::Main` | OS | Process start | The game loop thread. Only thread that calls into game DLLs. |
 | `AudioCallback` | `ThreadRole::AudioCallback` | OS audio driver | `Sound::init()` | OS-managed; real-time or high priority. Must never allocate or block. |
 | `AudioDecoder` | `ThreadRole::AudioDecoder` | Sound subsystem | `Sound::init()` | Decodes OGG/Opus into PCM ring; feeds `AudioCallback`. |
-| `Worker` | `ThreadRole::Worker` | Platform subsystem | `Host::init()` | General job pool — asset loading, PVS, packet delta encoding, HTTP I/O. |
-| `Render` | `ThreadRole::Render` | Engine (optional) | `Renderer::init()` | **Deferred to Chunk 10.** See §6. |
-| `NetIO` | `ThreadRole::NetIO` | Engine (optional) | `NET::init_thread()` | **Deferred.** See §7. |
+| `Worker` | `ThreadRole::Worker` | Platform subsystem | `Host::init()` | General job pool — asset loading, PVS, packet delta encoding, HTTP I/O. *(pool itself is PLANNED — Chunk 4.)* |
+| `Render` | `ThreadRole::Render` | Engine (optional) | `Renderer::init()` | **PLANNED — Chunk 10.** See §6. |
+| `NetIO` | `ThreadRole::NetIO` | Engine (optional) | `NET::init_thread()` | **PLANNED — Deferred.** See §7. |
 
-The `ThreadRole` enum and its supporting API live in
-`xash3dpp/src/platform/thread_role.hpp`:
+The `ThreadRole` enum and its supporting API live in the public header
+`xash3dpp/include/xash3dpp/core/thread_role.hpp` (location follows the same
+convention as [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp)
+and `console.hpp`):
 
 ```cpp
-namespace xash::platform {
+namespace xash::core {
 
 enum class ThreadRole : uint32_t {
     Unknown = 0,   // before explicit registration
@@ -63,12 +71,15 @@ ThreadRole current_thread_role() noexcept;
 // Debug-only assertion — no-op in release builds.
 void assert_thread_role(ThreadRole expected) noexcept;
 
-} // namespace xash::platform
+} // namespace xash::core
 ```
 
 Internally, `current_thread_role()` reads a `thread_local ThreadRole`. The
-existing `assert_main_thread()` helper throughout the codebase is replaced by
-`assert_thread_role(ThreadRole::Main)`.
+existing `assert_main_thread()` helper at
+[assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp)
+(4 active call sites today) is **kept** and rewritten as a thin wrapper that
+delegates to `assert_thread_role(ThreadRole::Main)`. New code uses
+`assert_thread_role` directly; existing call sites are not churned.
 
 ---
 
@@ -77,24 +88,28 @@ existing `assert_main_thread()` helper throughout the codebase is replaced by
 The model is introduced incrementally. Each chunk may add threads; it must not
 break the invariants of the threads already running.
 
-### 3.1 Chunks 1–3 (cmd_cvar, networking, host) — Model A
+### 3.1 Chunks 1–3 (cmd_cvar [DONE], networking, host) — Model A
 
-Single-threaded game loop. The worker pool threads exist (started at
-`Host::init()`) but no jobs are submitted to them yet. Audio threads do not
-exist (Sound subsystem not yet implemented).
+Single-threaded game loop. The worker pool is **not yet present** — it lands in
+Chunk 4 alongside the `JobToken` API. Audio threads do not exist (Sound
+subsystem not yet implemented).
+
+Chunk numbering for the remainder of this doc:
+- Chunk 1 = cmd_cvar (**complete**)
+- Chunk 2 = networking
+- Chunk 3 = host
+- Chunk 4 = world/content (introduces worker pool + `JobToken`)
 
 ```text
 T_MAIN ─────────────────────────────────────────── (all work)
-T_WORKER[0..N] ─── (pool idle, no jobs)
+(worker pool not yet started)
 ```
 
-**Filesystem threading hazards must be fixed before the end of Chunk 3.**
-The hazards (`active_game`, `game_loaded`, `gamedir` written in `ActivateGame()`
-without a lock; `FindLibrary()` reads game state before acquiring `shared_lock`)
-are dormant while only the main thread uses the filesystem. They become live the
-moment a worker thread submits an asset load job that calls `FS_Read`. Both sites
-must be guarded under the filesystem's existing `shared_mutex` before
-`Host::init()` starts the worker pool.
+**Filesystem threading hazards (RESOLVED — see §10).** The two race conditions
+on `active_game` / `game_loaded` / `gamedir` in `activate_game()` and
+`find_library()` are already fixed in [filesystem.cpp](../../src/filesystem/filesystem.cpp).
+The filesystem is safe for the moment a worker thread first calls into it in
+Chunk 4.
 
 ### 3.2 Chunk 4 (world / content) — Model B-partial
 
@@ -151,7 +166,9 @@ No new threads. All subsystems run on `T_MAIN`.
 
 ---
 
-## 4. Async Work: JobToken Pattern
+## 4. Async Work: JobToken Pattern (PLANNED — Chunk 4)
+
+> Not present in source today. Lands with the worker pool in Chunk 4.
 
 ### 4.1 The problem
 
@@ -260,7 +277,7 @@ ring is empty (decoder fell behind), the callback outputs silence and increments
 an underrun counter. This counter is always-on (no `XASH_STATS` guard) because
 audio underruns are always a bug.
 
-### 5.3 Job queue (MAIN → WORKER pool)
+### 5.3 Job queue (MAIN → WORKER pool) (PLANNED — Chunk 4)
 
 The job queue is a `std::deque<std::function<void()>>` protected by a single
 `std::mutex` and a `std::condition_variable`. Worker threads sleep on the
@@ -269,11 +286,12 @@ not on a hot path (jobs are submitted at frame start, not per-entity) and the
 simplicity is preferable.
 
 The pool size is `min(4, std::thread::hardware_concurrency() - 2)`, clamped to
-at least 1. A `dev_worker_threads` cvar overrides this at startup for profiling.
+at least 1. A `dev_worker_threads` cvar (**PLANNED — registered when the pool
+lands in Chunk 4**) overrides this at startup for profiling.
 
 ---
 
-## 6. Render Thread (T_Render) — Deferred to Chunk 10
+## 6. Render Thread (T_Render) — PLANNED — Chunk 10
 
 ### 6.1 Motivation
 
@@ -341,7 +359,7 @@ threading is mechanical once the boundary is clean.
 
 ---
 
-## 7. Network I/O Thread (T_NetIO) — Deferred
+## 7. Network I/O Thread (T_NetIO) — PLANNED — Deferred
 
 ### 7.1 Current model and why it is adequate
 
@@ -417,9 +435,16 @@ the time comes. The chunk design should not introduce new global physics state.
 
 ### 8.3 Cmd/cvar
 
-The command buffer and cvar write operations are main-thread-only. Cvar reads
-from worker threads are safe (the `shared_mutex` in `CmdCvarContext` permits
-concurrent readers). No change required.
+**Today:** the entire cmd/cvar subsystem is **main-thread-only**. There is no
+`shared_mutex` in `CmdCvarContext` in the current source — see
+`design-paradigms-round1.md` §2.5 for the established model. All command
+dispatch, all cvar reads, and all cvar writes happen on `T_Main`.
+
+**Future (when Chunk 2 networking or Chunk 4 workers first need cvar reads
+from another thread):** a `shared_mutex` will be added to permit concurrent
+readers. Writes will remain main-thread-only. Until that need is concrete, the
+lock is not added — adding it speculatively would impose cost without value.
+This is the highest-priority retrofit candidate; see Appendix A.
 
 ### 8.4 Client DLL (cdll_int.h)
 
@@ -491,57 +516,88 @@ Every public function in a new subsystem header must be annotated with one of:
 This is enforced by the reviewer checklist, not the compiler. The annotation
 prevents the slow drift where "probably safe" assumptions accumulate unexamined.
 
+> **Rollout status:** zero adoption in headers as of this doc. New code from
+> this doc forward MUST include the annotation; existing swept subsystems get
+> them opportunistically. See Appendix A.
+
 ---
 
-## 10. Filesystem Threading Hazards — Required Fix Before Chunk 3
+## 10. Filesystem Threading Hazards — RESOLVED
 
-Two hazards in `xash3dpp/src/filesystem/filesystem.cpp` (the `Impl` class) must
-be resolved before `Host::init()` starts the worker pool.
+Both hazards previously called out in this section are fixed in
+[xash3dpp/src/filesystem/filesystem.cpp](../../src/filesystem/filesystem.cpp).
+The `Impl` class exposes two `shared_mutex` members: `game_mutex` (guarding
+`gamedir` / `active_game` / `game_loaded`) and `paths_mutex` (guarding
+`search_paths`) — see [filesystem.cpp L106-115](../../src/filesystem/filesystem.cpp).
 
-**Hazard 1**: `Impl::active_game`, `Impl::game_loaded`, and `Impl::gamedir` are
-written in `ActivateGame()` without holding any lock. They are read in `Rescan()`
-and `FindLibrary()`. A worker thread calling `FS_Open()` during a game activation
-(e.g. async content pre-load triggered by a changelevel command) creates a data
-race.
+**Hazard 1 — RESOLVED.** `activate_game()` now acquires a `std::unique_lock`
+on `game_mutex` for the full duration of the game-state field writes — see
+[filesystem.cpp L162-183](../../src/filesystem/filesystem.cpp).
 
-**Fix**: acquire the exclusive lock (`unique_lock` on the filesystem `shared_mutex`)
-at the start of `ActivateGame()` for the full duration of the game-state field
-writes.
+**Hazard 2 — RESOLVED.** `find_library()` now snapshots `active_game` /
+`game_loaded` under a `std::shared_lock` on `game_mutex` at the top of the
+function, and walks the search-path list under a `std::shared_lock` on
+`paths_mutex` — see [filesystem.cpp L497-520](../../src/filesystem/filesystem.cpp).
+`rescan()`, `gamedir()`, and `get_game_info()` follow the same pattern.
 
-**Hazard 2**: `FindLibrary()` reads `active_game` and `gamedir` before acquiring
-the `shared_lock` on the search path list. The load-bearing read is not protected.
-
-**Fix**: move the `shared_lock` acquisition to the top of `FindLibrary()`, before
-any field reads.
-
-Both hazards are marked with `// THREADING HAZARD` comments in the source today.
-They become active bugs — not latent ones — when the first worker thread calls
-into the filesystem.
+No `// THREADING HAZARD` comments remain in the source. The filesystem is safe
+for a worker thread to call into the moment the worker pool lands in Chunk 4.
 
 ---
 
 ## 11. Per-Subsystem Thread Assignment Reference
 
-| Subsystem | Thread | Constraint source |
-| --------- | ------ | ----------------- |
-| cmd/cvar — write | `T_Main` | Command buffer is single-consumer |
-| cmd/cvar — cvar read | Any | `shared_mutex` in `CmdCvarContext` |
-| filesystem | `T_Main` for writes; any for reads after lock | See §10 |
-| memory — allocate | Any (pool spinlock) | Documented in memory subsystem |
-| platform | Any | Pure functions or internally synchronised |
-| host loop | `T_Main` | Drives the frame |
-| server tick, entity thinks | `T_Main` | GoldSrc game DLL ABI (§8.1) |
-| client tick | `T_Main` | Client DLL ABI (§8.4) |
-| physics (pm_shared) | `T_Main` | Global pmove state (§8.2) |
-| input (SDL event pump) | `T_Main` | SDL2 event API is not thread-safe |
-| world queries (after load) | Any | `const WorldData&` — immutable after activate |
-| asset loading | `T_Worker` | Worker job via `JobToken` |
-| PVS per client (optional) | `T_Worker` | Entity state snapshot taken on main first |
-| packet delta encoding | `T_Worker` | Per-client, independent |
-| HTTP I/O | `T_Worker` → `T_NetIO` | Worker now; migrate to NetIO thread later |
-| sound command queue write | `T_Main` | MPSC enqueue |
-| sound decoding | `T_AudioDecoder` | |
-| sound playback | `T_AudioCallback` | OS real-time callback |
-| GPU submission | `T_Render` (if enabled) | Renderer plugin called from render thread |
-| GPU upload | `T_Render` | Via `RenderFrame` texture upload commands |
-| save / demo / UI | `T_Main` | No parallelism benefit; state is sequential |
+| Subsystem | Thread | Current status | Constraint source |
+| --------- | ------ | -------------- | ----------------- |
+| cmd/cvar — write | `T_Main` | **Today** | Command buffer is single-consumer (§8.3) |
+| cmd/cvar — cvar read | `T_Main` today; Any (planned) | **Today: main-only.** `shared_mutex` added later when a non-main caller appears | §8.3 + `design-paradigms-round1.md` §2.5 |
+| filesystem | `T_Main` for writes; any for reads after lock | **Today** — see §10 RESOLVED | [filesystem.cpp L106-115](../../src/filesystem/filesystem.cpp) |
+| memory — allocate | Any (pool spinlock) | **Today** | Documented in memory subsystem |
+| platform | Any | **Today** | Pure functions or internally synchronised |
+| host loop | `T_Main` | **Planned — Chunk 3** | Drives the frame |
+| server tick, entity thinks | `T_Main` | Planned (post-Chunk 5) | GoldSrc game DLL ABI (§8.1) |
+| client tick | `T_Main` | Planned (Chunk 9) | Client DLL ABI (§8.4) |
+| physics (pm_shared) | `T_Main` | Planned (Chunk 8) | Global pmove state (§8.2) |
+| input (SDL event pump) | `T_Main` | Planned (Chunk 7) | SDL2 event API is not thread-safe |
+| world queries (after load) | Any | Planned (Chunk 4) | `const WorldData&` — immutable after activate |
+| asset loading | `T_Worker` | **Planned — Chunk 4** | Worker job via `JobToken` |
+| PVS per client (optional) | `T_Worker` | Planned (Chunk 5+) | Entity state snapshot taken on main first |
+| packet delta encoding | `T_Worker` | Planned (Chunk 5+) | Per-client, independent |
+| HTTP I/O | `T_Worker` → `T_NetIO` | Planned | Worker now; migrate to NetIO thread later |
+| sound command queue write | `T_Main` | Planned (Chunk 6) | MPSC enqueue |
+| sound decoding | `T_AudioDecoder` | Planned (Chunk 6) | |
+| sound playback | `T_AudioCallback` | Planned (Chunk 6) | OS real-time callback |
+| GPU submission | `T_Render` (if enabled) | Planned (Chunk 10) | Renderer plugin called from render thread |
+| GPU upload | `T_Render` | Planned (Chunk 10) | Via `RenderFrame` texture upload commands |
+| save / demo / UI | `T_Main` | Planned | No parallelism benefit; state is sequential |
+
+---
+
+## Appendix A — Thread-safety annotation rollout plan
+
+The `// @thread-safety:` annotation from §9 Rule 5 has **zero adoption** in
+headers today. Rollout strategy:
+
+1. **New code (from this doc forward) MUST annotate every public function** in
+   new subsystem headers with one of the four annotations enumerated in Rule 5.
+   This is non-negotiable for new subsystems — Chunk 2 networking is the first
+   subsystem under this rule.
+2. **Existing swept subsystems get annotations opportunistically** when next
+   touched for unrelated work. No dedicated annotation-only pass is scheduled.
+3. **cmd_cvar is the highest-priority retrofit** because Chunk 2 networking
+   will be the first cross-thread caller into cmd/cvar. The retrofit happens
+   at the same time as the `shared_mutex` work described in §8.3.
+
+Per-subsystem next-touch checklist (apply annotations when the file is opened
+for any reason):
+
+| Subsystem | Header(s) to annotate | Notes |
+| --------- | --------------------- | ----- |
+| cmd_cvar | public `cmd_cvar` headers | Annotate as `main-thread-only` today; revisit when `shared_mutex` lands |
+| filesystem | `xash3dpp/include/xash3dpp/filesystem/*.hpp` | Most reads = `any thread (internally synchronised)`; writes = `main-thread-only` |
+| memory | public memory headers | `any thread (internally synchronised)` for pool ops |
+| platform | public platform headers including the new `thread_role.hpp` | `any thread` for role-query helpers; main-only for registration of `Main` |
+| console | public console headers | `main-thread-only` today |
+
+New subsystems (networking from Chunk 2 onward) skip the retrofit step — they
+are annotated from first commit.

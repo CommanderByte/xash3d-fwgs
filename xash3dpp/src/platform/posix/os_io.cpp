@@ -56,7 +56,7 @@ OsFd open_file( std::string_view path, OpenMode mode ) noexcept
     else if( any( mode & M::WriteOnly ) ) flags |= O_WRONLY;
     else                                  flags |= O_RDONLY;
 
-    if( any( mode & M::Create ) )   flags |= O_CREAT;
+    if( any( mode & M::create ) )   flags |= O_CREAT;
     if( any( mode & M::Truncate ) ) flags |= O_TRUNC;
     if( any( mode & M::Append ) )   flags |= O_APPEND;
 

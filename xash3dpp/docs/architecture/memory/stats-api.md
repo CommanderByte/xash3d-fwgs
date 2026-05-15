@@ -45,14 +45,14 @@ PoolStats get_stats(PoolHandle handle) noexcept;
 ```
 
 1. Resolves `bucket_of(handle)`.
-2. `acquire`-loads `state`. If not `kActive`, returns a zeroed `PoolStats` with
+2. `acquire`-loads `state`. If not `Active`, returns a zeroed `PoolStats` with
    `name = nullptr`.
 3. Relaxed-loads `live_bytes`, `total_allocs`, `total_frees` from the bucket
    atomics.
 4. Sets `PoolStats::name` to point directly into `bucket.name[]`.
 5. Returns the snapshot.
 
-The `acquire` load in step 2 pairs with the `release` store of `kActive` in
+The `acquire` load in step 2 pairs with the `release` store of `Active` in
 `create_pool`, ensuring `name[]` was written before this load returns.
 
 ---
@@ -64,7 +64,7 @@ std::size_t pool_count() noexcept;
 ```
 
 Scans `g_pools[0..limits::memory_pool_max-1]`, counting slots whose `state` relaxed-loads as
-`kActive`. Returns the count.
+`Active`. Returns the count.
 
 This is a point-in-time snapshot. Slots being concurrently created or destroyed
 may be counted or not, depending on the exact order of `memory_order_relaxed`
@@ -83,7 +83,7 @@ void for_each_pool(PoolIterFn fn, void* userdata) noexcept;
 ```
 
 Iterates `g_pools[0..limits::memory_pool_max-1]`. For each slot that `acquire`-loads as
-`kActive`, builds a `PoolStats` snapshot and calls `fn(stats, userdata)`.
+`Active`, builds a `PoolStats` snapshot and calls `fn(stats, userdata)`.
 
 The `fn` callback **must not** call `create_pool` or `destroy_pool` — doing so
 modifies the array being iterated and may cause slots to be visited twice or not

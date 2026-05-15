@@ -9,6 +9,7 @@
 #include <xash3dpp/cmd_cvar/cvar.hpp>
 #include <xash3dpp/cmd_cvar/command.hpp>
 #include <xash3dpp/cmd_cvar/observers.hpp>
+#include <xash3dpp/cmd_cvar/stats.hpp>
 #include <xash3dpp/limits.hpp>
 
 #include <atomic>
@@ -35,22 +36,6 @@ struct CmdCvarInitParams {
     // instance when XASH_GOLDSRC_COMPAT is not enabled.
     // The context takes a non-owning pointer; lifetime must exceed the context.
     ICompatPolicy *compat_policy = nullptr;
-};
-
-// ---------------------------------------------------------------------------
-// CmdCvarStats — lifetime counters exposed for profiling / debug tooling.
-// The reference returned by CmdCvarContext::stats() is valid for the
-// lifetime of the context.
-// ---------------------------------------------------------------------------
-
-struct CmdCvarStats {
-#if XASH_STATS
-    std::atomic<std::uint64_t> commands_executed { 0 };     // total dispatched commands
-    std::atomic<std::uint64_t> commands_dropped  { 0 };     // filtered by privilege check
-    std::atomic<std::uint32_t> buffer_high_water { 0 };     // peak command-queue depth (entries)
-    std::uint32_t              peak_cvar_count   { 0 };     // max cvars registered at once
-    std::uint32_t              peak_command_count{ 0 };     // max commands registered at once
-#endif
 };
 
 // ---------------------------------------------------------------------------

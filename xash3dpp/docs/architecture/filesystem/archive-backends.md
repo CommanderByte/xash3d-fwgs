@@ -15,7 +15,7 @@ type. All six follow the same pattern:
    (entry table, file mtime, validity flag).
 3. After construction the object is never mutated; all operations are
    read-only on the entry table.
-4. `OpenFile` calls `make_os_file(pool_, fd, length, offset, deflated)` for
+4. `open_file` calls `make_os_file(pool_, fd, length, offset, deflated)` for
    streaming access, or constructs a `MemFile` for fully-buffered access.
 
 ---
@@ -29,23 +29,23 @@ type. All six follow the same pattern:
 | Name | Type | Role |
 |------|------|------|
 | `root_` | `std::string` | Absolute path to the mounted directory |
-| `flags_` | `SearchPathFlags` | Flags from the `AddGameDirectory` call |
+| `flags_` | `SearchPathFlags` | Flags from the `add_game_directory` call |
 | `ci_` | `CIDirectory` | Case-insensitive resolver; may be native or emulated |
 
 ### Key operations
 
-- **`OpenFile`**: calls `resolve_path(path)` through `ci_` to get the
+- **`open_file`**: calls `resolve_path(path)` through `ci_` to get the
   canonical on-disk path, then calls `platform::open_file` and
   `make_os_file(pool_, fd, size)`. Returns `nullptr` on write-mode requests
   targeting a `NoWrite` path, or if the file does not exist.
-- **`FindFile`**: calls `ci_.Resolve(subdir, filename)`.
-- **`Search`**: calls `ci_.Glob(subdir, pattern, case_insensitive)`.
-- **`LoadFile`**: opens + reads into a `std::vector<std::byte>`.
-- **`InvalidateDirectory`**: calls `ci_.Invalidate(subdir)` — purges the name
-  cache after a write so subsequent `FindFile` sees new entries.
+- **`find_file`**: calls `ci_.Resolve(subdir, filename)`.
+- **`search`**: calls `ci_.Glob(subdir, pattern, case_insensitive)`.
+- **`load_file`**: opens + reads into a `std::vector<std::byte>`.
+- **`invalidate_directory`**: calls `ci_.Invalidate(subdir)` — purges the name
+  cache after a write so subsequent `find_file` sees new entries.
 
 **Write support**: `DirBackend` is the only backend that can service write and
-append requests. `OpenFile` with a write mode calls `platform::open_file` with
+append requests. `open_file` with a write mode calls `platform::open_file` with
 `platform::OpenMode::WriteOnly | Create | Truncate` (or `Append`), creates
 missing intermediate directories via `platform::make_directory`, and returns an
 `OsFile` for the output fd.
@@ -80,17 +80,17 @@ directory). Entries are sorted by `CiNameLess` after parsing.
 - **Constructor**: opens the PAK, reads the 12-byte header (`PACK` magic,
   offset, size), seeks to the directory, reads all `PakEntry` records, populates
   and sorts `entries_`, caches `file_time_`, closes the fd.
-- **`OpenFile`**: calls `find_entry(path)` (binary search via
+- **`open_file`**: calls `find_entry(path)` (binary search via
   `ci_find_by_name`); on hit, opens the PAK file, seeks to `entry.offset`,
   returns `make_os_file(pool_, fd, entry.size, entry.offset)`.
-- **`LoadFile`**: same as `OpenFile` but reads the full entry into a vector.
-- **`FileTime`**: returns `file_time_` (the PAK's own mtime) regardless of
+- **`load_file`**: same as `open_file` but reads the full entry into a vector.
+- **`file_time`**: returns `file_time_` (the PAK's own mtime) regardless of
   which entry is queried.
 
 ### Immutability
 
 After the constructor, `entries_` and all other fields are never written.
-Concurrent `OpenFile` / `FindFile` / `Search` calls on the same `PakBackend`
+Concurrent `open_file` / `find_file` / `search` calls on the same `PakBackend`
 instance are safe without any locking.
 
 ---
@@ -104,7 +104,7 @@ instance are safe without any locking.
 - WAD2/WAD3 entries (lumps) may be compressed with a GoldSrc-specific
   scheme (type codes `0x43`, `0x40`). The constructor decompresses all entries
   eagerly into `std::vector<std::byte>` payloads stored in `entries_`.
-- `OpenFile` returns a `MemFile` wrapping a copy of the decompressed payload —
+- `open_file` returns a `MemFile` wrapping a copy of the decompressed payload —
   no fd is opened per query.
 - WAD archives are read-only and have no `Exec` flag by default (they never
   serve native libraries).
@@ -129,7 +129,7 @@ instance are safe without any locking.
 
 - Uses miniz (`xash3dpp_miniz`) to parse the ZIP central directory.
 - Entries may be stored (no compression) or deflated.
-- For deflated entries, `OpenFile` opens the ZIP file, seeks to the local file
+- For deflated entries, `open_file` opens the ZIP file, seeks to the local file
   header, and returns `make_os_file(pool_, fd, uncompressed_size, data_offset, /*deflated=*/true)`.
   `OsFile` performs incremental zlib inflation on `Read`.
 - For stored entries, `real_offset` is the data start and `deflated = false`.
@@ -153,7 +153,7 @@ instance are safe without any locking.
 A thin wrapper that delegates entirely to an internal `DirBackend`. Exists so
 that `.pk3dir` entries are recognised as a separate archive type in
 `k_archive_types` and can have distinct flags or mount-order priority from a
-plain `AddGameDirectory` call.
+plain `add_game_directory` call.
 
 ### Lifecycle / ownership
 
@@ -176,10 +176,10 @@ calls the JNI-backed `android.content.res.AssetManager.list()`.
 
 ### Key differences
 
-- `OpenFile`: calls `platform::android::open_asset_fd(path)` to obtain a file
+- `open_file`: calls `platform::android::open_asset_fd(path)` to obtain a file
   descriptor (Android can return a native fd for APK-internal assets). Passes
   the fd to `make_os_file(pool_, fd, len)`.
-- `FindFile`: uses a sorted entry table populated at construction, searched via
+- `find_file`: uses a sorted entry table populated at construction, searched via
   `ci_find_by_name`.
 - `Create` sets `engine_package = false` for regular game assets; engine-internal
   assets use `engine_package = true` to select the correct `AAssetManager`.
@@ -226,18 +226,18 @@ Backend constructors use `pool_new<T>(pool, ...)` to allocate. See
 All archive backends (`PakBackend`, `WadBackend`, `ZipBackend`, `Pk3DirBackend`)
 are **immutable after construction** — their entry tables and metadata are
 populated entirely in the constructor and never written afterwards. Concurrent
-`OpenFile`, `FindFile`, `LoadFile`, and `Search` calls are safe without any
+`open_file`, `find_file`, `load_file`, and `search` calls are safe without any
 per-backend locking.
 
 `DirBackend` is also safe for concurrent reads; its `CIDirectory` member handles
 its own internal cache locking via `std::mutex`.
 
 The caller (`Filesystem::Impl`) holds `shared_lock(paths_mutex)` during all
-read operations, which prevents concurrent `ClearPaths` from destroying a backend
+read operations, which prevents concurrent `clear_paths` from destroying a backend
 while a query is in flight.
 
 ## See also
 
 - [backend-interface.md](./backend-interface.md) — `ISearchBackend` interface these classes implement
-- [file-io.md](./file-io.md) — `File` handles returned by `OpenFile`
+- [file-io.md](./file-io.md) — `File` handles returned by `open_file`
 - [platform-layer.md](./platform-layer.md) — `CIDirectory`, `platform::os_io` used by `DirBackend`

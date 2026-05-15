@@ -30,6 +30,18 @@ it breaks serialised atlas coordinates stored in BSP lightmaps and sprite
 sheets. Do not change `ATLAS_MAX_SIZE` without a coordinated update to all
 consumers.
 
+### Construction and reset
+
+```cpp
+explicit Atlas( int size ) noexcept;  // size ≤ ATLAS_MAX_SIZE
+void clear() noexcept;               // reset all allocations
+```
+
+The `size` parameter specifies the usable edge length for this instance (up to
+`ATLAS_MAX_SIZE`). Passing a value larger than `ATLAS_MAX_SIZE` clamps the
+packing area. `clear()` resets every column height to zero, making the full
+area available again.
+
 ### Block allocation
 
 ```cpp
@@ -44,13 +56,13 @@ when the atlas is full or the rectangle is too large to fit. The returned
 
 Internally, `m_allocated[ATLAS_MAX_SIZE]` stores the current height (the
 occupied Y extent) for each column. `alloc` scans for a run of `w` consecutive
-columns that all have at most `ATLAS_MAX_SIZE - h` pixels used.
+columns that all have at most `size - h` pixels used.
 
 ### Accessors
 
 ```cpp
-int  max_height() const noexcept;   // current high-water mark across all columns
-void reset() noexcept;               // clear all allocations
+int size()       const noexcept;   // usable edge length passed to the constructor
+int max_height() const noexcept;   // current high-water mark across all columns
 ```
 
 `max_height` is used by diagnostic code and renderer tests to monitor atlas
@@ -60,7 +72,7 @@ utilisation without re-scanning the full column array.
 
 `Atlas` stores `m_allocated` as a `std::array<int, ATLAS_MAX_SIZE>` member,
 not a pointer. The object can live on the stack or as a member of another
-struct. There is no constructor allocation.
+struct.
 
 ---
 
@@ -118,15 +130,15 @@ approach to resolve exported symbols from shared libraries.
 
 ```cpp
 struct ExportEntry {
-    const char  *name;   // exported symbol name (must not be null)
-    void       **slot;   // pointer to the function-pointer slot to fill
+    std::string_view name;   // exported symbol name
+    void           **slot;  // pointer to the function-pointer slot to fill
 };
 ```
 
 ### `clear_exports`
 
 ```cpp
-void clear_exports( std::span<ExportEntry> entries ) noexcept;
+void clear_exports( std::span<const ExportEntry> entries ) noexcept;
 ```
 
 Sets every `*slot` to `nullptr`. Called before library unload so that no
@@ -181,11 +193,13 @@ working logic.
 ```cpp
 // Parse a gameinfo.txt file (GoldSrc format).
 // Returns nullopt if the text is empty or malformed.
-std::optional<GameInfo> parse_gameinfo_txt( std::string_view text ) noexcept;
+std::optional<GameInfo> parse_gameinfo_txt( std::string_view content,
+                                             std::string_view gamefolder ) noexcept;
 
 // Parse a liblist.gam file (Half-Life 1 / legacy format).
 // Returns nullopt if the text is empty or malformed.
-std::optional<GameInfo> parse_liblist_gam( std::string_view text ) noexcept;
+std::optional<GameInfo> parse_liblist_gam( std::string_view content,
+                                            std::string_view gamefolder ) noexcept;
 
 // Serialise a GameInfo to a gameinfo.txt string.
 // Returns an empty string (stub).

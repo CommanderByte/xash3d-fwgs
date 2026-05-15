@@ -18,6 +18,7 @@ endif()
 add_subdirectory(src/utilities)
 add_subdirectory(src/memory)
 add_subdirectory(src/platform)
+add_subdirectory(src/core)
 
 # miniz: use the repo-root public/miniz.c until xash3dpp/3rdparty/ is populated.
 # The INTERFACE include makes <miniz.h> available to any target that links this.
@@ -36,5 +37,6 @@ if(XASH3DPP_BUILD_TESTS)
     add_subdirectory(tests/filesystem)
     add_subdirectory(tests/memory)
     add_subdirectory(tests/platform)
+    add_subdirectory(tests/core)
     add_subdirectory(tests/cmd_cvar)
 endif()

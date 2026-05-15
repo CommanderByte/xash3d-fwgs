@@ -84,7 +84,7 @@ bool Host::init(const HostArgs& args)
     s.status = HostStatus::kInit;
 
     // --- Memory ----------------------------------------------------------
-    // Create the host pool first.  All subsequent long-lived allocations
+    // create the host pool first.  All subsequent long-lived allocations
     // that have been migrated to the memory subsystem are tracked here.
     s.pool = create_pool("host");
     if (!s.pool)

@@ -50,7 +50,7 @@ struct LibHandle
 //         belongs to xash3dpp_utilities dynlib helpers).
 LibHandle open_library( std::string_view path ) noexcept;
 
-// Resolve a symbol by name from a loaded library.  Returns nullptr on failure.
+// resolve a symbol by name from a loaded library.  Returns nullptr on failure.
 // Behaviour for a null LibHandle is defined: returns nullptr immediately.
 // Legacy: GetProcAddress / dlsym
 void *get_symbol( LibHandle lib, const char *name ) noexcept;

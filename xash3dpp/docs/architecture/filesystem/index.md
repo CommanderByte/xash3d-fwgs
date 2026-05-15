@@ -22,11 +22,13 @@ compatibility.
 | `private/filesystem/search_path.hpp` | `SearchPath` aggregate (`backend`, `source_path`, `flags`) |
 | `private/filesystem/archive_registry.hpp` | `ArchiveType`, `BackendFactory`, `k_archive_types` constexpr table |
 | `private/filesystem/archive_helpers.hpp` | `ci_find_by_name`, `archive_search_by_name` templates; `CiNameLess` |
-| `private/filesystem/os_fd.hpp` | `OsFd` RAII native-fd wrapper |
 | `private/filesystem/os_file_factory.hpp` | `make_os_file()`, `mode_flags()` |
 | `private/filesystem/mem_file.hpp` | `MemFile` fully-in-memory `File` implementation |
 | `private/filesystem/ci_directory.hpp` | `CIDirectory` — case-insensitive directory resolver |
-| `private/filesystem/platform/os_io.hpp` | `platform::OpenMode`, `open_file`, `read`, `write`, `seek`, `list_directory`, … |
+
+> **Note**: `OsFd` and the OS I/O declarations live in `xash3dpp_platform`:
+> `platform/os_fd.hpp` and `platform/os_io.hpp` (namespace `xash::platform`).
+> They are consumed here as a private dependency; see [platform-layer.md](./platform-layer.md).
 | `private/filesystem/backends/dir_backend.hpp` | `DirBackend` — plain OS directory |
 | `private/filesystem/backends/pak_backend.hpp` | `PakBackend` — Quake PAK archive |
 | `private/filesystem/backends/wad_backend.hpp` | `WadBackend` — GoldSrc WAD2/WAD3 |
@@ -48,10 +50,10 @@ compatibility.
 | `src/filesystem/backends/zip_backend.cpp` | `ZipBackend` (miniz central directory, optional deflate via `OsFile`) |
 | `src/filesystem/backends/pk3dir_backend.cpp` | `Pk3DirBackend` (delegates to `DirBackend`) |
 | `src/filesystem/backends/android_backend.cpp` | `AndroidBackend` (AAsset fd extraction) |
-| `src/filesystem/platform/posix.cpp` | POSIX (Linux / macOS) OS I/O |
-| `src/filesystem/platform/win32.cpp` | Win32 OS I/O |
-| `src/filesystem/platform/android.cpp` | Android AAsset / JNI extensions |
 | `src/filesystem/vfs009/vfs009.cpp` | `IFileSystem009` shim (compiled when `XASH_VFS009_SHIM=ON`) |
+
+> OS I/O platform TUs (`posix/os_io.cpp`, `win32/os_io.cpp`, `android/os_io.cpp`) now live
+> in `src/platform/` under `xash3dpp_platform`, not in this module.
 
 ## Key types
 
@@ -62,7 +64,7 @@ compatibility.
 | `File` | abstract class | `filesystem/file.hpp` | Streaming file handle; returned as `unique_ptr<File>` |
 | `OsFile` | class (final) | `file.cpp` (anonymous) | Native fd + optional zlib inflate; pool-allocated |
 | `MemFile` | class (final) | `private/filesystem/mem_file.hpp` | Vector-backed in-memory file; used by `WadBackend` |
-| `OsFd` | class | `private/filesystem/os_fd.hpp` | RAII wrapper for raw int fd |
+| `OsFd` | class | `platform/os_fd.hpp` (`xash::platform`) | RAII wrapper for raw int fd; owned by `xash3dpp_platform` |
 | `ISearchBackend` | abstract class | `private/filesystem/i_search_backend.hpp` | Polymorphic backend interface; pool-allocated |
 | `SearchPath` | struct | `private/filesystem/search_path.hpp` | One mounted path entry (`backend` + `source_path` + `flags`) |
 | `SearchPathFlags` | enum class | `filesystem/search_path_flags.hpp` | Bitmask for path metadata and mount options |
@@ -77,13 +79,19 @@ compatibility.
 | `SearchResult` | struct | `filesystem/filesystem.hpp` | Result of `Filesystem::Search()` |
 | `FsOffset` | typedef | `filesystem/file.hpp` | `std::int64_t` — file offset / size |
 | `SeekOrigin` | enum class | `filesystem/file.hpp` | Typed `SEEK_SET`/`SEEK_CUR`/`SEEK_END` |
-| `platform::OpenMode` | enum class | `private/filesystem/platform/os_io.hpp` | OS open-flags bitmask |
+| `platform::OpenMode` | enum class | `platform/os_io.hpp` (`xash::platform`) | OS open-flags bitmask; owned by `xash3dpp_platform` |
 | `BackendFactory` | function-ptr typedef | `private/filesystem/archive_registry.hpp` | `unique_ptr<ISearchBackend>(*)(pool, path, flags)` |
 
 ## Free functions
 
 | Function | Defined in | Purpose |
 |----------|-----------|---------|
+| `load_direct_file(disk_path)` | `filesystem.cpp` | Bypass VFS — read a file directly by its absolute disk path |
+| `rename(from, to)` | `filesystem.cpp` | Rename a file via the highest-priority writable `DirBackend` |
+| `remove(path)` | `filesystem.cpp` | Delete a file |
+| `crc32_file(path)` | `filesystem.cpp` | CRC-32 checksum of a file; returns `nullopt` on failure |
+| `md5_file(path)` | `filesystem.cpp` | MD5 digest of a file; returns 16-byte array or `nullopt` |
+| `find_library(name)` | `filesystem.cpp` | Resolve a game library name to an absolute disk path |
 | `make_os_file()` | `file.cpp` | Allocate and return a pool-backed `OsFile` |
 | `mode_flags()` | `os_file_factory.hpp` | Map fopen mode string → `platform::OpenMode` |
 | `is_write_mode()` | `i_search_backend.hpp` | Return true if mode string implies write/append |
@@ -98,7 +106,7 @@ compatibility.
 
 | Target | Type | Public deps | Private deps |
 |--------|------|-------------|--------------|
-| `xash3dpp_filesystem` | STATIC | `xash3dpp_utilities`, `xash3dpp_memory` | `xash3dpp_miniz`; `android`, `log` (Android only) |
+| `xash3dpp_filesystem` | STATIC | `xash3dpp_utilities`, `xash3dpp_memory` | `xash3dpp_platform`, `xash3dpp_miniz`; `android`, `log` (Android only) |
 
 ### CMake options
 

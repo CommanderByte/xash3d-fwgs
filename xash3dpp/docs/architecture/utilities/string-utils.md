@@ -85,6 +85,20 @@ floating-point notation. Hex float literals (`0x1.8p+1`) are not supported.
 `atov` parses at most `out.size()` floats from a space-separated string;
 remaining elements are left unchanged. Used for parsing vectors from config.
 
+## View helpers
+
+```cpp
+// Strip leading and trailing characters in `chars` from sv.
+// Default strip set: space (0x20) and horizontal tab (0x09).
+// Returns a view into the input — no allocation.
+std::string_view trim_sv( std::string_view sv,
+                          std::string_view chars = " \t" ) noexcept;  // inline
+```
+
+`trim_sv` is the `string_view`-native alternative to `Q_strtrim`-style helpers.
+It does not modify any buffer. Contrast with `trim_space` in `path.hpp`, which
+writes into a caller-provided char buffer.
+
 ## Color-code stripping
 
 ```cpp

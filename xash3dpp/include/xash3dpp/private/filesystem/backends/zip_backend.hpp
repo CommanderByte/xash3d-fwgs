@@ -18,24 +18,24 @@ public:
     ZipBackend(xash::memory::PoolHandle pool,
                std::string_view zip_path, SearchPathFlags flags);
 
-    static std::unique_ptr<ISearchBackend>
-        Create(xash::memory::PoolHandle pool,
+    [[nodiscard]] static std::unique_ptr<ISearchBackend>
+        create(xash::memory::PoolHandle pool,
                std::string_view path, SearchPathFlags flags);
 
-    std::string Info() const override;
+    [[nodiscard]] std::string info() const override;
 
-    std::unique_ptr<File> OpenFile(std::string_view path,
+    [[nodiscard]] std::unique_ptr<File> open_file(std::string_view path,
                                    std::string_view mode) override;
 
-    std::optional<std::filesystem::file_time_type>
+    [[nodiscard]] std::optional<std::filesystem::file_time_type>
         file_time(std::string_view path) override;
 
-    std::optional<std::string> FindFile(std::string_view path) override;
+    [[nodiscard]] std::optional<std::string> find_file(std::string_view path) override;
 
-    std::vector<std::string> search(std::string_view pattern,
+    [[nodiscard]] std::vector<std::string> search(std::string_view pattern,
                                     bool case_insensitive) override;
 
-    std::vector<std::byte> load_file(std::string_view path) override;
+    [[nodiscard]] std::vector<std::byte> load_file(std::string_view path) override;
 
 private:
     // Central-directory record — modernization finding M-8: std::vector replaces
@@ -55,7 +55,7 @@ private:
     bool valid_ = false;
 
     // Binary search (case-insensitive); returns nullptr if not found.
-    const Entry* find_entry(std::string_view name) const noexcept;
+    [[nodiscard]] const Entry* find_entry(std::string_view name) const noexcept;
 };
 
 } // namespace xash::filesystem::backends

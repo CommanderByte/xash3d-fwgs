@@ -34,6 +34,7 @@ target_compile_features(xash3dpp_cmd_cvar PUBLIC cxx_std_20)
 target_link_libraries(xash3dpp_cmd_cvar
     PUBLIC  xash3dpp_utilities
     PUBLIC  xash3dpp_memory
+    PRIVATE xash3dpp_core
     PRIVATE xash3dpp_platform
 )
 

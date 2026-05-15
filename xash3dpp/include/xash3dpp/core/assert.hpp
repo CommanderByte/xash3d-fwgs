@@ -1,20 +1,24 @@
 #pragma once
 // xash3dpp — assertion macros (QH, design-paradigms-round2.md)
 //
+// Library: xash3dpp_core (cross-cutting invariant checks usable from any
+//          subsystem).  XASH_FATAL expands to a call into xash::core::logf —
+//          translation units that use XASH_FATAL must link xash3dpp_core.
+//
 // Two-tier assertion policy:
 //
 //   XASH_ASSERT(expr)
 //     Debug-only invariant check.  No-op in NDEBUG / release builds.
 //     Use for cheap invariants that are true by construction in correct code
 //     (e.g. pointer not null, array index in range, subsystem initialised).
-//     Does NOT call platform::log — it fires immediately via the platform
+//     Does NOT call core::log — it fires immediately via the platform
 //     debugger break / abort path.
 //
 //   XASH_FATAL(expr, msg)
 //     Always-on invariant check.  Fires in both debug and release builds.
 //     Use for invariants whose violation indicates data corruption or a porting
 //     bug that would cause silent, hard-to-diagnose misbehaviour downstream.
-//     Logs via platform::log(LogLevel::Fatal, ...) before aborting — producing
+//     Logs via core::logf(LogLevel::Fatal, ...) before aborting — producing
 //     a human-readable message in the crash log / stderr.
 //
 // Neither macro throws.  Both abort the process when the condition is false.
@@ -26,7 +30,7 @@
 //   • assert() provides no diagnostic log call.
 //   • XASH_ASSERT replaces it completely.
 
-#include <xash3dpp/platform/log.hpp>    // platform::log, LogLevel
+#include <xash3dpp/core/log.hpp>    // core::log, LogLevel
 
 // ---------------------------------------------------------------------------
 // Portability helpers (debugger break)
@@ -71,8 +75,8 @@
 #define XASH_FATAL( expr, msg ) \
     do { \
         if( !( expr ) ) [[unlikely]] { \
-            ::xash::platform::logf( \
-                ::xash::platform::LogLevel::Fatal, \
+            ::xash::core::logf( \
+                ::xash::core::LogLevel::Fatal, \
                 "assert", \
                 "FATAL: %s  [" __FILE__ ":%d]  %s", \
                 #expr, __LINE__, ( msg ) ); \

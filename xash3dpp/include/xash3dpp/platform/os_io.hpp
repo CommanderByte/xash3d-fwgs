@@ -40,7 +40,7 @@ enum class OpenMode : unsigned {
     WriteOnly = 1,
     ReadWrite = 2,
     Append    = 4,
-    Create    = 8,
+    create    = 8,
     Truncate  = 16,
     // In-memory backing: memfd_create on Linux; temp-file fallback elsewhere.
     Memory    = 32,
@@ -63,7 +63,7 @@ constexpr bool any( OpenMode m ) noexcept { return static_cast<unsigned>( m ) !=
 // Win32: converts the path to UTF-16 internally.
 [[nodiscard]] OsFd open_file( std::string_view path, OpenMode mode ) noexcept;
 
-// Create an anonymous in-memory file backed by the OS.
+// create an anonymous in-memory file backed by the OS.
 // Linux: memfd_create.  Win32 / others: self-deleting temporary file.
 // Returns an invalid OsFd on failure.
 [[nodiscard]] OsFd open_memfd( std::string_view name ) noexcept;
@@ -118,7 +118,7 @@ void close_fd( int raw_fd ) noexcept;
 // Filesystem mutations
 // ---------------------------------------------------------------------------
 
-// Create the directory at |path|.  Returns true if it was created or already
+// create the directory at |path|.  Returns true if it was created or already
 // exists.  Does not create intermediate directories.
 [[nodiscard]] bool make_directory( std::string_view path ) noexcept;
 

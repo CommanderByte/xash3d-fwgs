@@ -3,7 +3,7 @@
 //
 // WAD entries are small discrete lumps (textures, fonts, palettes); there is
 // no streaming API in the legacy engine (FS_OpenFile_WAD returned NULL).
-// OpenFile() therefore loads the full lump into a MemFile.  All searches use
+// open_file() therefore loads the full lump into a MemFile.  All searches use
 // a binary-searched, sorted-by-(name,type) entry table, mirroring the legacy
 // W_FindLump / W_AddFileToWad logic.
 
@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <array>
 #include <bit>
-#include <cassert>
 #include <cctype>
 #include <cstdio>    // SEEK_SET, SEEK_CUR, SEEK_END
 #include <cstring>   // memcpy
@@ -190,7 +189,7 @@ WadBackend::WadBackend(xash::memory::PoolHandle pool,
 // ---------------------------------------------------------------------------
 
 std::unique_ptr<ISearchBackend>
-WadBackend::Create(xash::memory::PoolHandle pool,
+WadBackend::create(xash::memory::PoolHandle pool,
                    std::string_view path, SearchPathFlags flags) {
     auto* raw = xash::memory::pool_new<WadBackend>( pool, pool, path, flags );
     if (!raw) return nullptr;
@@ -201,7 +200,7 @@ WadBackend::Create(xash::memory::PoolHandle pool,
 std::unique_ptr<ISearchBackend>
 create_wad(xash::memory::PoolHandle pool,
            std::string_view path, SearchPathFlags flags) {
-    return WadBackend::Create(pool, path, flags);
+    return WadBackend::create(pool, path, flags);
 }
 
 // ---------------------------------------------------------------------------
@@ -280,12 +279,12 @@ WadBackend::read_lump_bytes(const Entry& e) const {
 // ISearchBackend interface
 // ---------------------------------------------------------------------------
 
-std::string WadBackend::Info() const {
+std::string WadBackend::info() const {
     return path_ + " (" + std::to_string(entries_.size()) + " files)";
 }
 
 std::unique_ptr<File>
-WadBackend::OpenFile(std::string_view path, std::string_view mode) {
+WadBackend::open_file(std::string_view path, std::string_view mode) {
     // WAD is read-only
     if (is_write_mode(mode))
         return nullptr;
@@ -307,7 +306,7 @@ WadBackend::file_time(std::string_view path) {
 }
 
 std::optional<std::string>
-WadBackend::FindFile(std::string_view path) {
+WadBackend::find_file(std::string_view path) {
     const Entry* e = lookup(path);
     if (!e) return std::nullopt;
     return e->name;

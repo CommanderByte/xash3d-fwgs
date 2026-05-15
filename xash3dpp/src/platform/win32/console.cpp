@@ -8,7 +8,7 @@
 #include <xash3dpp/platform/console.hpp>
 #include <xash3dpp/limits.hpp>
 
-#include <xash3dpp/private/platform/assert_main.hpp>
+#include <xash3dpp/private/core/assert_main.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN
@@ -41,7 +41,7 @@ void write( std::string_view text ) noexcept
 
 std::string_view read_line() noexcept
 {
-    detail::assert_main_thread( "console::read_line" );
+    core::detail::assert_main_thread( "console::read_line" );
     static char   accum[xash::limits::platform_console_buffer_size];
     static DWORD  accum_len = 0;
     static char   result[xash::limits::platform_console_buffer_size];

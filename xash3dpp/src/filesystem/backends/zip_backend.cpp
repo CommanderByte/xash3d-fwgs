@@ -21,7 +21,6 @@
 #include <miniz.h>
 
 #include <algorithm>
-#include <cassert>
 #include <cstdio>    // SEEK_SET, SEEK_CUR
 #include <cstring>   // memcpy
 #include <filesystem>
@@ -234,7 +233,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
 // ---------------------------------------------------------------------------
 
 std::unique_ptr<ISearchBackend>
-ZipBackend::Create(xash::memory::PoolHandle pool,
+ZipBackend::create(xash::memory::PoolHandle pool,
                    std::string_view path, SearchPathFlags flags) {
     auto* raw = xash::memory::pool_new<ZipBackend>( pool, pool, path, flags );
     if (!raw) return nullptr;
@@ -245,7 +244,7 @@ ZipBackend::Create(xash::memory::PoolHandle pool,
 std::unique_ptr<ISearchBackend>
 create_zip(xash::memory::PoolHandle pool,
            std::string_view path, SearchPathFlags flags) {
-    return ZipBackend::Create(pool, path, flags);
+    return ZipBackend::create(pool, path, flags);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,12 +260,12 @@ ZipBackend::find_entry(std::string_view name) const noexcept {
 // ISearchBackend interface
 // ---------------------------------------------------------------------------
 
-std::string ZipBackend::Info() const {
+std::string ZipBackend::info() const {
     return path_ + " (" + std::to_string(entries_.size()) + " files)";
 }
 
 std::unique_ptr<File>
-ZipBackend::OpenFile(std::string_view path, std::string_view mode) {
+ZipBackend::open_file(std::string_view path, std::string_view mode) {
     // ZIP archives are read-only.
     if (is_write_mode(mode))
         return nullptr;
@@ -293,7 +292,7 @@ ZipBackend::file_time(std::string_view path) {
 }
 
 std::optional<std::string>
-ZipBackend::FindFile(std::string_view path) {
+ZipBackend::find_file(std::string_view path) {
     const Entry* e = find_entry(path);
     if (!e) return std::nullopt;
     return e->name;   // canonical (on-disk) name

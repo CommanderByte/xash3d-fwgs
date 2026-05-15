@@ -33,8 +33,9 @@ else()
 endif()
 
 # Mandatory files present on every platform.
+# Note: logging lives in xash3dpp_core (see src/core/) — platform/ holds only
+# OS abstraction.
 set(XASH_PLATFORM_SRC
-    log.cpp                         # shared across all platforms
     ${XASH_PLATFORM_SUBDIR}/sys.cpp
     ${XASH_PLATFORM_SUBDIR}/os_io.cpp
     ${XASH_PLATFORM_IO_EXTRA}
@@ -54,7 +55,11 @@ target_compile_features(xash3dpp_platform PUBLIC cxx_std_20)
 
 # xash3dpp_utilities is used internally for path normalisation (PRIVATE — not
 # leaked into xash3dpp_platform's public API).
-target_link_libraries(xash3dpp_platform PRIVATE xash3dpp_utilities)
+# xash3dpp_core supplies XASH_FATAL / core::logf used by the inline
+# assert_main_thread() helper in <xash3dpp/private/core/assert_main.hpp>.
+# (core has a reciprocal PRIVATE link on platform for log.cpp → console::write;
+# the two static archives resolve each other at final link time.)
+target_link_libraries(xash3dpp_platform PRIVATE xash3dpp_utilities xash3dpp_core)
 
 # POSIX: dlopen/dlsym/dlclose live in libdl on Linux; on macOS they are in libc.
 if(UNIX AND NOT APPLE)

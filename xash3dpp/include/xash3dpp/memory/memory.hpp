@@ -18,6 +18,8 @@
 // so that renderer and physics plugin ABIs can still receive function pointers
 // that satisfy the pool-flavoured signatures from ref_api_t / physint_t.
 
+#include <xash3dpp/memory/stats.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -37,15 +39,6 @@ struct PoolHandle
 };
 
 inline constexpr PoolHandle k_null_pool {};
-
-// Snapshot of pool accounting at a point in time.
-struct PoolStats
-{
-    const char*  name         { nullptr };
-    std::size_t  live_bytes   { 0 };   // bytes currently in flight
-    std::size_t  total_allocs { 0 };   // cumulative allocation count
-    std::size_t  total_frees  { 0 };   // cumulative free count
-};
 
 // ---------------------------------------------------------------------------
 // Pool lifecycle
@@ -70,7 +63,7 @@ struct PoolConfig
     std::size_t   reserve  { 0 };  // pre-allocation hint; currently ignored
 };
 
-// Create a named pool.  Returns k_null_pool if the registry is full (> 128 pools).
+// create a named pool.  Returns k_null_pool if the registry is full (> 128 pools).
 [[nodiscard]] PoolHandle create_pool(const char* name, PoolConfig cfg = {}) noexcept;
 
 // Destroy a pool slot.  In debug builds, asserts that live_bytes == 0.

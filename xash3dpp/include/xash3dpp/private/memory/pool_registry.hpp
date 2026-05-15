@@ -26,15 +26,15 @@ static_assert(alignof(AllocHeader) == 4);
 // Lifecycle state for a pool slot.
 //
 // Transition protocol (enforced by create_pool / destroy_pool):
-//   kFree   --CAS(acquire) --> kBusy    create_pool atomically claims the slot
-//   kBusy   --store(release)--> kActive create_pool publishes all field writes
-//   kActive --store(release)--> kFree   destroy_pool releases the slot
+//   Free   --CAS(acquire) --> Busy    create_pool atomically claims the slot
+//   Busy   --store(release)--> Active create_pool publishes all field writes
+//   Active --store(release)--> Free   destroy_pool releases the slot
 //
 // Readers (mem_alloc, mem_free, get_stats, for_each_pool) acquire-load the
-// state field.  An acquire load of kActive pairs with create_pool's release
+// state field.  An acquire load of Active pairs with create_pool's release
 // store, guaranteeing visibility of name, do_alloc, do_free, do_realloc, and
-// ctx written during the kBusy phase.
-enum class SlotState : std::uint8_t { kFree = 0, kBusy = 1, kActive = 2 };
+// ctx written during the Busy phase.
+enum class SlotState : std::uint8_t { Free = 0, Busy = 1, Active = 2 };
 
 // One accounting bucket per named pool.
 struct PoolBucket
@@ -43,7 +43,7 @@ struct PoolBucket
     std::atomic<std::size_t> live_bytes     { 0 };
     std::atomic<std::size_t> total_allocs   { 0 };
     std::atomic<std::size_t> total_frees    { 0 };
-    std::atomic<SlotState>   state          { SlotState::kFree };
+    std::atomic<SlotState>   state          { SlotState::Free };
 
     // Backing allocator strategy — set by create_pool, cleared by destroy_pool.
     // Null pointers fall back to the system allocator (malloc/free).

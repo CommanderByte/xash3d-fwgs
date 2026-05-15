@@ -28,10 +28,10 @@ CIDirectory::CIDirectory(std::string_view root_path)
 }
 
 // ---------------------------------------------------------------------------
-// Resolve — return canonical on-disk entry name for `name` inside `subdir`
+// resolve — return canonical on-disk entry name for `name` inside `subdir`
 // ---------------------------------------------------------------------------
 
-std::optional<std::string> CIDirectory::Resolve(std::string_view subdir,
+std::optional<std::string> CIDirectory::resolve(std::string_view subdir,
                                                  std::string_view name)
 {
     if (mode_ == Mode::Native) {
@@ -52,10 +52,10 @@ std::optional<std::string> CIDirectory::Resolve(std::string_view subdir,
 }
 
 // ---------------------------------------------------------------------------
-// Glob — list all entries in `subdir` matching `pattern`
+// glob — list all entries in `subdir` matching `pattern`
 // ---------------------------------------------------------------------------
 
-std::vector<std::string> CIDirectory::Glob(std::string_view subdir,
+std::vector<std::string> CIDirectory::glob(std::string_view subdir,
                                             std::string_view pattern,
                                             bool case_insensitive)
 {
@@ -72,10 +72,10 @@ std::vector<std::string> CIDirectory::Glob(std::string_view subdir,
 }
 
 // ---------------------------------------------------------------------------
-// Invalidate
+// invalidate
 // ---------------------------------------------------------------------------
 
-void CIDirectory::Invalidate(std::string_view subdir) {
+void CIDirectory::invalidate(std::string_view subdir) {
     std::lock_guard lock{cache_mutex_};
     cache_.erase(std::string{subdir});
 }
@@ -93,7 +93,7 @@ CIDirectory::get_or_populate(const std::string& dir) const
     const std::string full = xash::utilities::path_join(root_, dir);
     auto entries = platform::list_directory(full);
 
-    // Sort case-insensitively so Resolve's binary search is correct.
+    // Sort case-insensitively so resolve's binary search is correct.
     std::sort(entries.begin(), entries.end(),
         [](const std::string& a, const std::string& b) {
             return xash::utilities::ci_less(a, b);

@@ -26,30 +26,37 @@ GoldSrc network protocol.
 ```cpp
 using Crc32 = std::uint32_t;
 
-// Step-by-step API (no allocation)
-Crc32 crc32_init  () noexcept;
+static constexpr Crc32 CRC32_INIT = 0xFFFFFFFFu;  // initial state value
+
+// Initialise state (constexpr: may be used in constant expressions).
+constexpr void crc32_init  ( Crc32 &state ) noexcept;
+
+// Feed a buffer or a single byte.
 void  crc32_update( Crc32 &state, const void *data, std::size_t len ) noexcept;
-Crc32 crc32_final ( Crc32 state ) noexcept;
+void  crc32_update( Crc32 &state, std::uint8_t byte ) noexcept;
+
+// Finalise (applies XOR; constexpr).
+constexpr Crc32 crc32_final ( Crc32 state ) noexcept;
 
 // One-shot convenience
 Crc32 crc32( const void *data, std::size_t len ) noexcept;
 ```
 
-The state is a plain `uint32_t`. `crc32_init` sets it to the correct IEEE 802.3
-initial value (0xFFFFFFFF before first update; `crc32_final` completes the
-`^ 0xFFFFFFFF` finalisation step).
+The state is a plain `uint32_t`. `crc32_init` sets it to `CRC32_INIT`
+(0xFFFFFFFF); `crc32_final` completes the `^ 0xFFFFFFFF` finalisation step.
+Both are `constexpr` so they can participate in constant expressions.
 
 ### `crc32_block_sequence`
 
 ```cpp
-Crc32 crc32_block_sequence(
-    std::span<const std::pair<const void *, std::size_t>> blocks ) noexcept;
+std::uint8_t crc32_block_sequence(
+    const std::uint8_t *base, int length, int sequence ) noexcept;
 ```
 
-Computes a single CRC32 over a sequence of non-contiguous memory blocks,
-accumulated in order. Used by the demo and resource-check subsystems that hash
-multiple structs or file regions in one pass without copying them to a
-contiguous buffer.
+Computes a sequence-keyed CRC over a byte range and returns the low 8 bits of
+the result. Used by the demo and resource-check subsystems to detect consistency
+changes across network packets. The `sequence` value is mixed into the hash to
+make sequential blocks distinguishable.
 
 ## MD5
 

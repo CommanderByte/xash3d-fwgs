@@ -6,7 +6,7 @@
 //
 // Responsibilities:
 //   • Parse HostArgs into each subsystem's init() parameters.
-//   • Create and own the "host" memory pool.
+//   • create and own the "host" memory pool.
 //   • Sequence subsystem init / shutdown in the correct dependency order.
 //   • Drive the main frame loop.
 //

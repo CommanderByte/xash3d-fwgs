@@ -22,7 +22,7 @@ namespace xash::filesystem {
 // `real_offset` — byte offset of the entry within an archive (0 for plain files).
 // `deflated`    — true for zlib-compressed archive entries.
 // Defined in src/filesystem/file.cpp.
-std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
+[[nodiscard]] std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
                                    ::xash::platform::OsFd fd,
                                    FsOffset length,
                                    FsOffset real_offset = 0,
@@ -31,7 +31,7 @@ std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
 // Map a C-style fopen mode string to a platform::OpenMode bitmask.
 // Handles: "r", "rb", "w", "wb", "a", "ab", "r+", "r+b", "w+", "w+b",
 //          "a+", "a+b"  (and "b"-prefixed variants).
-inline ::xash::platform::OpenMode mode_flags(std::string_view mode) noexcept {
+[[nodiscard]] inline ::xash::platform::OpenMode mode_flags(std::string_view mode) noexcept {
     using M = ::xash::platform::OpenMode;
     const bool has_w    = mode.find('w') != std::string_view::npos;
     const bool has_a    = mode.find('a') != std::string_view::npos;
@@ -39,11 +39,11 @@ inline ::xash::platform::OpenMode mode_flags(std::string_view mode) noexcept {
 
     if (has_w) {
         const M base = has_plus ? M::ReadWrite : M::WriteOnly;
-        return base | M::Create | M::Truncate;
+        return base | M::create | M::Truncate;
     }
     if (has_a) {
         const M base = has_plus ? M::ReadWrite : M::WriteOnly;
-        return base | M::Create | M::Append;
+        return base | M::create | M::Append;
     }
     // "r" or "r+"
     return has_plus ? M::ReadWrite : M::ReadOnly;

@@ -4,7 +4,7 @@
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/memory/pool_registry.hpp>
 
-#include <cassert>
+#include <xash3dpp/core/assert.hpp>
 #include <cstdlib>  // malloc, realloc, free
 #include <cstring>  // memset, strncpy
 
@@ -68,18 +68,18 @@ PoolHandle create_pool(const char* name, PoolConfig cfg) noexcept
         PoolBucket& b = g_pools[i];
 
         // Fast pre-check with relaxed load to skip non-free slots cheaply.
-        if (b.state.load(std::memory_order_relaxed) != SlotState::kFree)
+        if (b.state.load(std::memory_order_relaxed) != SlotState::Free)
             continue;
 
         // Atomically claim the slot.  The acquire on success synchronises with
         // the release in destroy_pool, ensuring we see its prior field clears.
-        SlotState expected = SlotState::kFree;
-        if (!b.state.compare_exchange_strong(expected, SlotState::kBusy,
+        SlotState expected = SlotState::Free;
+        if (!b.state.compare_exchange_strong(expected, SlotState::Busy,
                 std::memory_order_acquire, std::memory_order_relaxed))
             continue;  // another thread claimed this slot first
 
         // We own the slot exclusively.  All writes below happen-before the
-        // release store of kActive, so any reader that acquire-loads kActive
+        // release store of Active, so any reader that acquire-loads Active
         // is guaranteed to see them.
         b.live_bytes.store  (0, std::memory_order_relaxed);
         b.total_allocs.store(0, std::memory_order_relaxed);
@@ -111,8 +111,8 @@ PoolHandle create_pool(const char* name, PoolConfig cfg) noexcept
         }
 
         // Publish.  The release store makes all prior writes visible to any
-        // thread that subsequently acquire-loads kActive.
-        b.state.store(SlotState::kActive, std::memory_order_release);
+        // thread that subsequently acquire-loads Active.
+        b.state.store(SlotState::Active, std::memory_order_release);
         return PoolHandle { i + 1 };
     }
 
@@ -127,13 +127,12 @@ void destroy_pool(PoolHandle handle) noexcept
     if (!b) return;
 
     // Acquire-load ensures we see all field writes from create_pool.
-    if (b->state.load(std::memory_order_acquire) != SlotState::kActive)
+    if (b->state.load(std::memory_order_acquire) != SlotState::Active)
         return;
 
-    assert(b->live_bytes.load(std::memory_order_relaxed) == 0
-           && "destroy_pool: pool still has live allocations");
+    XASH_ASSERT(b->live_bytes.load(std::memory_order_relaxed) == 0);
 
-    // Clear all fields before the release store.  The release store of kFree
+    // Clear all fields before the release store.  The release store of Free
     // makes these clears visible to the next create_pool that CAS-acquires
     // this slot.
     b->name[0]    = '\0';
@@ -146,7 +145,7 @@ void destroy_pool(PoolHandle handle) noexcept
     b->total_frees.store (0, std::memory_order_relaxed);
 
     // Release the slot for reuse.
-    b->state.store(SlotState::kFree, std::memory_order_release);
+    b->state.store(SlotState::Free, std::memory_order_release);
 }
 
 // ---------------------------------------------------------------------------
@@ -158,9 +157,9 @@ void* mem_alloc(PoolHandle pool, std::size_t size) noexcept
     if (size == 0) return nullptr;
 
     PoolBucket* b = bucket_of(pool);
-    // Acquire-load the slot state.  If not kActive, treat as untracked; the
+    // Acquire-load the slot state.  If not Active, treat as untracked; the
     // acquire also ensures do_alloc / ctx written by create_pool are visible.
-    if (b && b->state.load(std::memory_order_acquire) != SlotState::kActive)
+    if (b && b->state.load(std::memory_order_acquire) != SlotState::Active)
         b = nullptr;
 
     std::size_t raw_size = sizeof(AllocHeader) + size;
@@ -219,9 +218,9 @@ void* mem_realloc(PoolHandle pool, void* ptr, std::size_t new_size) noexcept
     PoolBucket*  new_b    = bucket_of(pool);
 
     // Acquire-load ensures function pointers are visible before we use them.
-    if (old_b && old_b->state.load(std::memory_order_acquire) != SlotState::kActive)
+    if (old_b && old_b->state.load(std::memory_order_acquire) != SlotState::Active)
         old_b = nullptr;
-    if (new_b && new_b->state.load(std::memory_order_acquire) != SlotState::kActive)
+    if (new_b && new_b->state.load(std::memory_order_acquire) != SlotState::Active)
         new_b = nullptr;
 
     const std::size_t raw_size = sizeof(AllocHeader) + new_size;
@@ -281,7 +280,7 @@ void mem_free(void* ptr) noexcept
     PoolBucket*  b    = bucket_of(pool);
 
     // Acquire-load ensures do_free is visible if the pool is still active.
-    if (b && b->state.load(std::memory_order_acquire) != SlotState::kActive)
+    if (b && b->state.load(std::memory_order_acquire) != SlotState::Active)
         b = nullptr;
 
     if (b)
@@ -301,7 +300,7 @@ void mem_free(void* ptr) noexcept
 PoolStats get_stats(PoolHandle handle) noexcept
 {
     PoolBucket* b = bucket_of(handle);
-    if (!b || b->state.load(std::memory_order_acquire) != SlotState::kActive) return {};
+    if (!b || b->state.load(std::memory_order_acquire) != SlotState::Active) return {};
 
     return PoolStats {
         b->name,
@@ -315,7 +314,7 @@ std::size_t pool_count() noexcept
 {
     std::size_t count = 0;
     for (auto& b : g_pools)
-        if (b.state.load(std::memory_order_relaxed) == SlotState::kActive) ++count;
+        if (b.state.load(std::memory_order_relaxed) == SlotState::Active) ++count;
     return count;
 }
 
@@ -325,7 +324,7 @@ void for_each_pool(void (*fn)(PoolStats, void*), void* userdata) noexcept
     for (std::uint32_t i = 0; i < kMaxPools; ++i)
     {
         PoolBucket& b = g_pools[i];
-        if (b.state.load(std::memory_order_acquire) != SlotState::kActive) continue;
+        if (b.state.load(std::memory_order_acquire) != SlotState::Active) continue;
         fn(PoolStats {
             b.name,
             b.live_bytes.load  (std::memory_order_relaxed),

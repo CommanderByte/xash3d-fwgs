@@ -7,11 +7,9 @@
 #include <xash3dpp/utilities/gameinfo_parser.hpp>
 #include <cstdio>
 
-static int g_pass = 0, g_fail = 0;
+#include "../test_helpers.hpp"
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ")"); } } while(0)
+static int g_pass = 0, g_fail = 0;
 
 // ---------------------------------------------------------------------------
 // apply_gameinfo_fixups — clamp budgets to legal ranges

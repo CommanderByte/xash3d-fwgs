@@ -39,7 +39,7 @@ static std::string T(const char *name)
 static bool write_file(const std::string &path, const char *content)
 {
     using M = xash::platform::OpenMode;
-    auto fd = xash::platform::open_file(path, M::WriteOnly | M::Create | M::Truncate);
+    auto fd = xash::platform::open_file(path, M::WriteOnly | M::create | M::Truncate);
     if (!fd.valid()) return false;
     const auto len = static_cast<std::size_t>(std::strlen(content));
     return xash::platform::write(fd, content, len) == static_cast<std::int64_t>(len);
@@ -123,7 +123,7 @@ static void test_flush_no_crash()
 {
     auto fd = xash::platform::open_file(T("flush.tmp"),
                  xash::platform::OpenMode::WriteOnly |
-                 xash::platform::OpenMode::Create   |
+                 xash::platform::OpenMode::create   |
                  xash::platform::OpenMode::Truncate);
     CHECK(fd.valid());
     xash::platform::write(fd, "x", 1);
@@ -169,14 +169,14 @@ static void test_file_time()
 
 static void test_directory_ops()
 {
-    // Create a fresh sub-directory.
+    // create a fresh sub-directory.
     const std::string subdir = (g_testdir / "listdir").string();
     CHECK(xash::platform::make_directory(subdir));
 
     // make_directory must be idempotent (directory already exists → true).
     CHECK(xash::platform::make_directory(subdir));
 
-    // Create a file inside it.
+    // create a file inside it.
     const std::string file_a = (g_testdir / "listdir" / "file_a.tmp").string();
     CHECK(write_file(file_a, "a"));
 
@@ -229,7 +229,7 @@ static void test_is_case_insensitive()
 
 int main()
 {
-    // Create an isolated directory for all test artefacts.
+    // create an isolated directory for all test artefacts.
     g_testdir = fs::temp_directory_path() / "xash3dpp_test_os_io";
     fs::create_directories(g_testdir);
 

@@ -37,55 +37,84 @@ preserving the legacy Quake convention without requiring magic-number indexing.
 ## Scalar helpers
 
 ```cpp
-float rint  ( float f ) noexcept;   // round to nearest integer
-bool  is_nan( float f ) noexcept;   // IEEE 754 NaN check
+constexpr float rint  ( float f ) noexcept;   // round to nearest integer
+constexpr bool  is_nan( float f ) noexcept;   // IEEE 754 NaN check
 ```
 
-`rint` rounds half-values away from zero (same behaviour as the legacy `rint`
-macro in `crtlib.h`). `is_nan` uses `f != f` to detect NaN without including
-`<cmath>` in headers.
+Both are `constexpr`. `rint` rounds half-values away from zero (same behaviour
+as the legacy `rint` macro in `crtlib.h`). `is_nan` uses `f != f` to detect NaN
+without including `<cmath>` in headers.
+
+## Vec3 member functions
+
+`Vec3` provides a small set of member convenience functions in addition to the
+free-function API below:
+
+```cpp
+constexpr vec_t dot ( const Vec3 &o ) const noexcept;
+float           length()             const noexcept;
+Vec3            normalized()         const noexcept;  // zero-vec if length < epsilon
+
+constexpr Vec3 &operator+=( const Vec3 &o ) noexcept;
+constexpr Vec3 &operator-=( const Vec3 &o ) noexcept;
+constexpr Vec3 &operator*=( vec_t s )       noexcept;
+```
+
+The free-function forms (`dot`, `cross`, `length`, `normalize`) remain canonical
+for generic code that may operate on any vector type.
 
 ## Vector free functions
 
 ```cpp
-float dot  ( Vec3 a, Vec3 b ) noexcept;
-Vec3  cross( Vec3 a, Vec3 b ) noexcept;
-float length   ( Vec3 v ) noexcept;
-Vec3  normalize( Vec3 v ) noexcept;    // returns zero-vec if length < epsilon
+constexpr vec_t dot      ( const Vec3 &a, const Vec3 &b ) noexcept;
+constexpr Vec3  cross    ( const Vec3 &a, const Vec3 &b ) noexcept;
+inline    float length   ( const Vec3 &v ) noexcept;
+inline    Vec3  normalize( const Vec3 &v ) noexcept;  // zero-vec if length < epsilon
 ```
 
-All `Vec3` operators (`+`, `-`, `*`, `/`, unary `-`) are defined as `inline`
-free functions. `dot` and `cross` are also available for `Vec2` and `Vec4`.
+`Vec3` arithmetic operators (`+`, `-`, `*` by scalar) are `constexpr` free
+functions. `dot` and `cross` are also available for `Vec2` and `Vec4`.
 
 ## Angle utilities
 
 ```cpp
-// Decompose an Euler angle vector into three orthogonal unit vectors.
-void AngleVectors( Vec3 angles, Vec3 *fwd, Vec3 *right, Vec3 *up ) noexcept;
+// Named return type — replaces the output-pointer form of legacy AngleVectors.
+struct AngleVectors { Vec3 fwd, right, up; };
 
-// Compute a forward vector from an Euler angle (pitch-yaw-roll).
-Vec3 angle_vectors( Vec3 fwd ) noexcept;
+// Decompose Euler angles (deg) into forward / right / up unit vectors.
+// Legacy: AngleVectors (output-pointer form — replaced by this struct return).
+AngleVectors angle_vectors( const Vec3 &angles ) noexcept;
 
-// Compute the yaw angle (in degrees) that points along v.
-float vec_to_yaw( Vec3 v ) noexcept;
+// Forward vector → yaw angle (deg).
+// Legacy: VecToYaw / SV_VecToYaw
+float vec_to_yaw( const Vec3 &v ) noexcept;
 
-// Compute Euler angles from a forward vector and optional up vector.
-Vec3 vector_angles( Vec3 fwd, Vec3 up = {} ) noexcept;
+// Forward vector → pitch+yaw Euler angles (deg).
+// Legacy: VectorAngles
+Vec3 vector_angles( const Vec3 &fwd ) noexcept;
 ```
 
 These mirror the legacy `AngleVectors`, `VectorAngles`, and `VecToYaw` from
 `matrixlib.c`. The argument order and sign conventions are identical.
+`AngleVectors` is now a named-field struct rather than output pointer
+parameters, eliminating nullable-pointer ambiguity at call sites.
 
 ## Matrix3x4 — affine transforms
 
 ```cpp
-struct Matrix3x4 { float m[3][4]; };
+struct Matrix3x4 {
+    std::array<std::array<float, 4>, 3> m{};
+    static Matrix3x4 identity() noexcept;
+    const float *data() const noexcept;  // pointer to m[0][0] for C APIs
+    float       *data()       noexcept;
+};
 ```
 
 A 3×4 row-major matrix representing an affine transform (rotation, scale, and
 translation). The fourth column carries the translation. The underlying storage
-`float m[3][4]` is contiguous and interoperable with the legacy `matrix3x4`
-type used throughout the renderer and studio model code.
+is `std::array<std::array<float,4>,3>` — identical memory layout to the legacy
+`float[3][4]` used throughout the renderer and studio model code. Use `.data()`
+to obtain a `float*` for C API boundaries.
 
 ### Free functions
 
@@ -102,8 +131,8 @@ Matrix3x4 concat( const Matrix3x4 &a, const Matrix3x4 &b ) noexcept;
 // Invert an orthonormal matrix (transpose + translation adjust).
 Matrix3x4 invert_ortho( const Matrix3x4 &m ) noexcept;
 
-// Build a Matrix3x4 from Euler angles (no scale, no translation).
-Matrix3x4 from_angles( Vec3 angles ) noexcept;
+// Build a Matrix3x4 from an origin point and Euler angles (deg).
+Matrix3x4 from_angles( const Vec3 &origin, const Vec3 &angles ) noexcept;
 ```
 
 `invert_ortho` is valid only for matrices without non-uniform scale. It uses the
@@ -121,7 +150,12 @@ Vec3      operator*( const Matrix3x4 &m, Vec3 p ) noexcept;  // calls transform_
 ## Matrix4x4 — projective transforms
 
 ```cpp
-struct Matrix4x4 { float m[4][4]; };
+struct Matrix4x4 {
+    std::array<std::array<float, 4>, 4> m{};
+    static Matrix4x4 identity() noexcept;
+    const float *data() const noexcept;
+    float       *data()       noexcept;
+};
 ```
 
 A 4×4 row-major matrix for full projective transforms (perspective and
@@ -157,10 +191,9 @@ Vec3      operator*( const Matrix4x4 &m, Vec3 p ) noexcept;  // calls transform_
 ## C API interop
 
 Legacy renderer and studio-model code passes `float *` to functions that operate
-on matrix data. `Matrix3x4::m` and `Matrix4x4::m` are accessible directly as
-`float[3][4]` / `float[4][4]` and can be passed to legacy pointers with an
-explicit `&m.m[0][0]`. There is no `.data()` method; use this pattern only at
-ABI boundaries.
+on matrix data. Both `Matrix3x4` and `Matrix4x4` expose a `.data()` accessor
+that returns a `float*` pointing to the first element. Use this at ABI
+boundaries rather than `&m.m[0][0]` directly.
 
 ## Thread safety
 

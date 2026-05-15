@@ -51,7 +51,7 @@ pointers is undefined behaviour.
 ```cpp
 class ScopedPool {
 public:
-    explicit ScopedPool(const char* name, PoolConfig cfg = {}) noexcept;
+    explicit ScopedPool(const char* name) noexcept;
     ~ScopedPool() noexcept;
 
     ScopedPool(const ScopedPool&) = delete;
@@ -62,7 +62,7 @@ public:
 };
 ```
 
-RAII wrapper for pool lifetime. Calls `create_pool(name, cfg)` in the constructor
+RAII wrapper for pool lifetime. Calls `create_pool(name)` in the constructor
 and `destroy_pool(handle_)` in the destructor. `operator bool` returns
 `handle_.valid()`.
 

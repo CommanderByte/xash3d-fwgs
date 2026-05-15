@@ -74,7 +74,7 @@ static void collect_paths_for_dir( xash::memory::PoolHandle pool,
 
     // Plain directory backend — highest priority, added last.
     out.push_back( {
-        backends::DirBackend::Create( pool, dir, flags ),
+        backends::DirBackend::create( pool, dir, flags ),
         std::string{dir},
         flags
     } );
@@ -317,7 +317,7 @@ std::unique_ptr<File> Filesystem::open(std::string_view path,
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        auto f = it->backend->OpenFile(path, mode);
+        auto f = it->backend->open_file(path, mode);
         if (f) return f;
     }
     return nullptr;
@@ -355,14 +355,14 @@ bool Filesystem::write_file(std::string_view path, std::span<const std::byte> da
         const std::string full = xash::utilities::path_join(it->source_path, path);
         OsFd fd = platform::open_file(full,
             platform::OpenMode::WriteOnly |
-            platform::OpenMode::Create   |
+            platform::OpenMode::create   |
             platform::OpenMode::Truncate);
         if (!fd.valid()) continue;
         const FsOffset n   = platform::write(fd, data.data(), data.size());
         const bool     ok  = (n == static_cast<FsOffset>(data.size()));
-        // Invalidate the backend's directory cache so a subsequent file_exists
-        // or FindFile call sees the new file (critical on Linux emulated-CI).
-        if (ok) it->backend->InvalidateDirectory(parent_dir_of(path));
+        // invalidate the backend's directory cache so a subsequent file_exists
+        // or find_file call sees the new file (critical on Linux emulated-CI).
+        if (ok) it->backend->invalidate_directory(parent_dir_of(path));
         return ok;
     }
     return false;
@@ -373,7 +373,7 @@ bool Filesystem::file_exists(std::string_view path, bool gamedironly) const {
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        if (it->backend->FindFile(path)) return true;
+        if (it->backend->find_file(path)) return true;
     }
     return false;
 }
@@ -385,7 +385,7 @@ std::optional<FsOffset> Filesystem::file_size(std::string_view path,
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        auto f = it->backend->OpenFile(path, "rb");
+        auto f = it->backend->open_file(path, "rb");
         if (f) return f->Length();
     }
     return std::nullopt;
@@ -410,7 +410,7 @@ std::optional<std::string> Filesystem::disk_path(std::string_view name,
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (gamedironly && !any(it->flags & SearchPathFlags::GameDir)) continue;
-        auto found = it->backend->FindFile(name);
+        auto found = it->backend->find_file(name);
         if (!found) continue;
         // Only return a path if the file actually lives on disk (not in an archive).
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
@@ -443,19 +443,19 @@ bool Filesystem::rename(std::string_view from, std::string_view to) {
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (any(it->flags & SearchPathFlags::NoWrite)) continue;
-        auto found = it->backend->FindFile(from);
+        auto found = it->backend->find_file(from);
         if (!found) continue;
         const std::string src = xash::utilities::path_join(it->source_path, *found);
         if (!platform::file_size(src)) continue;
         const std::string dst = xash::utilities::path_join(it->source_path, to);
         const bool ok = platform::rename_file(src, dst);
         if (ok) {
-            // Invalidate CI cache for both the source and destination directories
-            // so FindFile picks up the new name and drops the old one.
-            it->backend->InvalidateDirectory(parent_dir_of(from));
+            // invalidate CI cache for both the source and destination directories
+            // so find_file picks up the new name and drops the old one.
+            it->backend->invalidate_directory(parent_dir_of(from));
             const auto pd_to = parent_dir_of(to);
             if (pd_to != parent_dir_of(from))
-                it->backend->InvalidateDirectory(pd_to);
+                it->backend->invalidate_directory(pd_to);
         }
         return ok;
     }
@@ -467,7 +467,7 @@ bool Filesystem::remove(std::string_view path) {
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (any(it->flags & SearchPathFlags::NoWrite)) continue;
-        auto found = it->backend->FindFile(path);
+        auto found = it->backend->find_file(path);
         if (!found) continue;
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
         if (!platform::file_size(disk)) continue;
@@ -523,7 +523,7 @@ std::optional<std::string> Filesystem::find_library(std::string_view name) {
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (!any(it->flags & SearchPathFlags::Exec)) continue;
-        auto found = it->backend->FindFile(name);
+        auto found = it->backend->find_file(name);
         if (!found) continue;
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
         if (platform::file_size(disk)) return disk;

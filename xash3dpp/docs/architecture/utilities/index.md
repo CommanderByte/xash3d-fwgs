@@ -61,6 +61,7 @@ None. No `include/xash3dpp/private/utilities/` directory exists.
 | `parse_token(data, token, size, …)` | function | `COM_ParseFileSafe` |
 | `Tokenizer` | class | — |
 | `Tokenizer::Token` | struct | — |
+| `trim_sv(sv, chars)` | function (inline) | strip leading/trailing chars; returns view into input |
 
 ### `path.hpp`
 
@@ -90,31 +91,33 @@ None. No `include/xash3dpp/private/utilities/` directory exists.
 |--------|------|-------|
 | `vec_t` | type alias | `float` |
 | `Vec2` | struct | `.x`, `.y` |
-| `Vec3` | struct | `.x`, `.y`, `.z` |
+| `Vec3` | struct | `.x`, `.y`, `.z`; members: `.dot()`, `.length()`, `.normalized()`, `+=`, `-=`, `*=` |
 | `Vec4` | struct | `.x`, `.y`, `.z`, `.w` |
 | `PITCH`, `YAW`, `ROLL` | constants | 0, 1, 2 |
 | `dot(a, b)` | function | — |
 | `cross(a, b)` | function | — |
 | `length(v)` | function | — |
 | `normalize(v)` | function | — |
-| `AngleVectors(angles, fwd, right, up)` | function | — |
-| `angle_vectors(fwd)` | function | — |
+| `AngleVectors` | struct | `{Vec3 fwd, right, up}` — named return type |
+| `angle_vectors(angles)` | function | returns `AngleVectors` |
 | `vec_to_yaw(v)` | function | — |
-| `vector_angles(fwd, up)` | function | — |
-| `rint(f)` | function | — |
-| `is_nan(f)` | function | — |
+| `vector_angles(fwd)` | function | no `up` parameter |
+| `rint(f)` | function (constexpr) | — |
+| `is_nan(f)` | function (constexpr) | — |
 
 ### `matrix.hpp`
 
 | Symbol | Kind | Notes |
 |--------|------|-------|
-| `Matrix3x4` | struct | `float[3][4]`, affine |
-| `Matrix4x4` | struct | `float[4][4]`, projective |
+| `Matrix3x4` | struct | `std::array<std::array<float,4>,3>`, affine; `.data()` → `float*` |
+| `Matrix3x4::identity()` | static function | returns identity matrix |
+| `Matrix4x4` | struct | `std::array<std::array<float,4>,4>`, projective; `.data()` → `float*` |
+| `Matrix4x4::identity()` | static function | returns identity matrix |
 | `transform_point(m, p)` | function | — |
 | `rotate_vector(m, v)` | function | — |
 | `concat(a, b)` | function | — |
 | `invert_ortho(m)` | function | — |
-| `from_angles(m, angles)` | function | — |
+| `from_angles(origin, angles)` | function | origin + Euler angles → affine |
 | `to_matrix3x4(m4)` | function | — |
 | `perspective(fov, aspect, near, far)` | function | — |
 | `look_at(eye, target, up)` | function | — |
@@ -126,11 +129,13 @@ None. No `include/xash3dpp/private/utilities/` directory exists.
 | Symbol | Kind | Notes |
 |--------|------|-------|
 | `Crc32` | type alias | `std::uint32_t` |
-| `crc32_init()` | function | — |
-| `crc32_update(state, data, len)` | function | — |
-| `crc32_final(state)` | function | — |
+| `CRC32_INIT` | constant | `0xFFFFFFFFu` — initial CRC state |
+| `crc32_init(state)` | function (constexpr) | pass-by-reference initialise |
+| `crc32_update(state, data, len)` | function | buffer update |
+| `crc32_update(state, byte)` | function | single-byte update |
+| `crc32_final(state)` | function (constexpr) | — |
 | `crc32(data, len)` | function | one-shot |
-| `crc32_block_sequence(blocks)` | function | legacy demo/resource |
+| `crc32_block_sequence(base, length, seq)` | function | sequence-keyed CRC; returns `uint8_t` |
 | `Md5State` | struct | — |
 | `md5_init(state)` | function | — |
 | `md5_update(state, data, len)` | function | — |
@@ -166,10 +171,12 @@ None. No `include/xash3dpp/private/utilities/` directory exists.
 | Symbol | Kind | Notes |
 |--------|------|-------|
 | `Atlas::ATLAS_MAX_SIZE` | constant | 1024 (ABI-frozen) |
+| `Atlas(size)` | constructor | `explicit`; `size ≤ ATLAS_MAX_SIZE` |
 | `Atlas::Block` | struct | `{x, y}` |
 | `Atlas::alloc(w, h)` | function | returns `optional<Block>` |
+| `Atlas::size()` | function | usable edge length |
 | `Atlas::max_height()` | function | current high-water mark |
-| `Atlas::reset()` | function | — |
+| `Atlas::clear()` | function | reset all allocations |
 
 ### `build.hpp` (namespace `xash::utilities::build`)
 
@@ -186,16 +193,16 @@ None. No `include/xash3dpp/private/utilities/` directory exists.
 
 | Symbol | Kind | Notes |
 |--------|------|-------|
-| `ExportEntry` | struct | `{name, **slot}` |
-| `clear_exports(span)` | function | zero all slots |
-| `validate_exports(span)` | function | returns true if all non-null |
+| `ExportEntry` | struct | `{std::string_view name, void **slot}` |
+| `clear_exports(span<const ExportEntry>)` | function | zero all slots |
+| `validate_exports(span<const ExportEntry>)` | function | returns true if all non-null |
 
 ### `gameinfo_parser.hpp` (namespace `xash`)
 
 | Symbol | Kind | Notes |
 |--------|------|-------|
-| `parse_gameinfo_txt(text)` | function | **stub** — returns `nullopt` |
-| `parse_liblist_gam(text)` | function | **stub** — returns `nullopt` |
+| `parse_gameinfo_txt(content, gamefolder)` | function | **stub** — returns `nullopt` |
+| `parse_liblist_gam(content, gamefolder)` | function | **stub** — returns `nullopt` |
 | `serialise_gameinfo(info)` | function | **stub** — returns `""` |
 | `apply_gameinfo_fixups(info)` | function | clamps budgets to safe ranges |
 

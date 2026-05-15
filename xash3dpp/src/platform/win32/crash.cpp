@@ -7,7 +7,7 @@
 
 #include <xash3dpp/platform/crash.hpp>
 
-#include <xash3dpp/private/platform/assert_main.hpp>
+#include <xash3dpp/private/core/assert_main.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN
@@ -51,7 +51,7 @@ LONG WINAPI seh_filter( EXCEPTION_POINTERS * ) noexcept
 
 void install_handler() noexcept
 {
-    detail::assert_main_thread( "crash::install_handler" );
+    core::detail::assert_main_thread( "crash::install_handler" );
     static std::atomic<bool> installed{ false };
     if( installed.exchange( true ) ) return;
     SetUnhandledExceptionFilter( seh_filter );

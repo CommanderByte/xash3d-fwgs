@@ -26,7 +26,7 @@ static int g_pass = 0, g_fail = 0;
 
 static std::filesystem::path g_testdir;
 
-// Create test files used across all groups:
+// create test files used across all groups:
 //   simple.txt     — "abcdef"          (6 bytes, no newline)
 //   multiline.txt  — "first\nsecond\nthird"  (no trailing newline)
 //   crlf.txt       — "line1\r\nline2\r\n"    (Windows line endings)

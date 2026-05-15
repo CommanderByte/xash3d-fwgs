@@ -25,9 +25,10 @@ to do" and stop.
 | Module | Swept commit |
 |--------|-------------|
 | `filesystem` | e14152ee |
-| `cmd_cvar` | e14152ee |
+| `cmd_cvar` | 75c383da |
 | `memory` | e14152ee |
 | `platform` | e14152ee |
+| `utilities` | e14152ee |
 
 ---
 
@@ -59,9 +60,7 @@ Violating them is worse than leaving a minor violation in place.
 
 1. **Conventions** (auto-applied but re-read the critical sections):
    [`xash3dpp/.github/instructions/xash3dpp.instructions.md`](../instructions/xash3dpp.instructions.md)
-2. **Round 2 cleanup plan**:
-   [`xash3dpp/docs/design/round2-cleanup-plan.md`](../../xash3dpp/docs/design/round2-cleanup-plan.md)
-3. **Design Paradigms Round 2** (QA–QK):
+2. **Design Paradigms Round 2** (QA–QK):
    [`xash3dpp/docs/design/design-paradigms-round2.md`](../../xash3dpp/docs/design/design-paradigms-round2.md)
 
 ---
@@ -184,12 +183,24 @@ Rule: use `XASH_ASSERT` / `XASH_FATAL` from `<xash3dpp/platform/assert.hpp>`.
 
 Flag any `#include <cassert>` or bare `assert(` call.
 
-#### QI — No `printf`/`fprintf`/`console::write` for diagnostics
+#### QI — No `printf`/`fprintf` for diagnostics; no raw `console::write` for C++ subsystem errors
 
-Rule: use `platform::log( LogLevel::..., "subsystem", ... )` in `src/`.
+Rule:
+- `printf`, `fprintf`, `std::cout` — **always** flag; replace with `platform::log`.
+- `platform::console::write` — **allowed and encouraged** for intentional
+  game-console output (e.g., the `echo` command, `cvarlist`, `cmdlist`,
+  progress/status messages directed at the player or developer).
+- `platform::console::write` for **C++ subsystem diagnostic messages**
+  (pool allocation failures, internal errors, severe warnings) — flag;
+  replace with `platform::log( LogLevel::Error/Warning, "subsystem", ... )`.
 
-Flag any `printf`, `fprintf`, `console::write`, or `std::cout` used for
-error/info output in `src/` files.
+`platform::log`'s default implementation routes through `console::write`
+internally, so using it does not suppress the message — it just adds the
+structured `[tag][LEVEL]:` prefix and the routing hook.
+
+Flag: `printf`, `fprintf`, `std::cout` anywhere in `src/`. Also flag
+`console::write` used to report a C++ error/warning condition rather than
+to produce user-visible console output.
 
 #### QK — Tests must use `test_helpers.hpp`
 
@@ -283,14 +294,25 @@ the audit identified.
 
 **Round 2 fixes:**
 - **QA**: Add `[[nodiscard]]` before the return type on the declaration.
-- **QE**: Rename via `vscode_renameSymbol` to update all call sites atomically.
+- **QE**: Rename using `replace_string_in_file` / `multi_replace_string_in_file`
+  directly — do **not** use `vscode_renameSymbol` for names that are common
+  English words or are shared by multiple symbols (e.g. `init`, `open`, `read`,
+  `write`, `close`). `vscode_renameSymbol` confuses semantically unrelated symbols
+  that happen to share a name, producing a cascade of wrong renames. Search for
+  all usages with `grep_search` first, then replace each site explicitly.
   Verify the build after any rename.
-- **QF**: Rename enum values via `vscode_renameSymbol`; update all call sites.
+- **QF**: Rename enum values the same way as QE (direct `replace_string_in_file`,
+  not `vscode_renameSymbol`). Grep for every usage of `EnumType::old_name` first.
 - **QH**: Replace `#include <cassert>` with `#include <xash3dpp/platform/assert.hpp>`.
-  Replace `assert(cond)` with `XASH_ASSERT(cond, "message")` or
-  `XASH_FATAL(cond, "message")`.
-- **QI**: Replace diagnostic output with `platform::log`. Add
-  `#include <xash3dpp/platform/log.hpp>` if not already present.
+  Replace `assert(cond)` with `XASH_ASSERT(cond)` (one argument — no message)
+  or `XASH_FATAL(cond, "message")` (two arguments, always-on) for invariants
+  that must abort in release builds.
+- **QI**: Replace `printf`/`fprintf`/`std::cout` with `platform::log`. For
+  `platform::console::write`: keep it when it is intentional game-console
+  output (echo, cmdlist, cvarlist, player-visible messages); replace it with
+  `platform::log( LogLevel::Error/Warning, "<subsystem>", "..." )` only when
+  it is reporting a C++ subsystem error or internal diagnostic condition.
+  Add `#include <xash3dpp/platform/log.hpp>` if not already present.
 - **QK**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"`
   (adjust relative path depth). Remove old `#define CHECK` / `#define REQUIRE` lines.
 - **Forbidden patterns**: Replace with the approved equivalent. Add an inline comment
@@ -310,8 +332,12 @@ the audit identified.
 ## Step 4 — Build and Test
 
 ```powershell
+# cmake --build runs from the Visual Studio build output directory
 cd "c:\git\xash3d-fwgs\xash3dpp\build\Debug"
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build . 2>&1 | Select-String "error C[0-9]|error:"
+
+# CTest must run from the CMake build root (one level up), not the config subdirectory
+cd "c:\git\xash3d-fwgs\xash3dpp\build"
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" -C Debug --output-on-failure -j1 2>&1 | Select-Object -Last 20
 ```
 
@@ -322,6 +348,25 @@ If any test fails, read its output, trace the cause, fix the test or the source,
 rebuild, and re-run. Do not weaken assertions or skip tests.
 
 **Expected outcome**: `100% tests passed`.
+
+---
+
+## Step 4b — Sync boundary doc
+
+After all code fixes are applied, check whether the boundary spec is still
+accurate:
+
+```
+xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md
+```
+
+If the file exists, scan it for any symbol names, enum values, function
+signatures, or structural descriptions that were changed by the fixes in Step 3
+(e.g. a renamed enum value, a new `[[nodiscard]]`, a removed global).
+Update only the lines that are factually wrong — do not rewrite prose or
+restructure sections.
+
+If no boundary spec exists, skip this step.
 
 ---
 
@@ -349,6 +394,10 @@ refactor($ARGUMENTS): apply Round 1+2 and threading compliance
 
 Only list rules that actually had violations. Omit rules where no changes were needed.
 
+**After committing, verify the commit actually landed** — execution_subagent
+fabricates git output. Read `.git/refs/heads/<branch>` directly and confirm
+the hash changed from what it was before the commit.
+
 ---
 
 ## Done Condition
@@ -357,3 +406,4 @@ The task is complete when:
 1. `100% tests passed` in the CTest run.
 2. The commit is made with only `xash3dpp/` files staged.
 3. No violations from Step 2 remain in the module.
+4. The boundary spec (if it exists) reflects any renamed symbols or changed signatures.

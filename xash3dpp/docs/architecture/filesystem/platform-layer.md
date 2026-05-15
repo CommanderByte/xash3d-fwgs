@@ -1,21 +1,26 @@
 # Platform Layer
 
-> **Defined in**: `xash3dpp/include/xash3dpp/private/filesystem/platform/os_io.hpp`,
+> **OS I/O** (`os_io.hpp`, `os_fd.hpp`, `posix/os_io.cpp`, `win32/os_io.cpp`,
+> `android/os_io.cpp`) — owned by **`xash3dpp_platform`** module,
+> not by `xash3dpp_filesystem`. See `xash3dpp/include/xash3dpp/platform/` and
+> `xash3dpp/src/platform/`.
+>
+> **`CIDirectory`** — still owned by `xash3dpp_filesystem`:
 > `xash3dpp/include/xash3dpp/private/filesystem/ci_directory.hpp`,
-> `xash3dpp/src/filesystem/platform/posix.cpp`,
-> `xash3dpp/src/filesystem/platform/win32.cpp`,
-> `xash3dpp/src/filesystem/platform/android.cpp`,
 > `xash3dpp/src/filesystem/ci_directory.cpp`  
-> **Namespace**: `xash::filesystem::platform` / `xash::filesystem`
+> **Namespace**: `xash::filesystem`
 
 ## Overview
 
 The platform layer has two parts:
 
-1. **`platform/os_io.hpp`** — a pure-declaration header that abstracts all
-   OS-level I/O into typed C++ functions. Each platform (POSIX, Win32, Android)
-   provides one or two translation units implementing those declarations. No
-   `#ifdef` blocks appear in any code *above* this layer.
+1. **`platform/os_io.hpp`** — a pure-declaration header (in `xash3dpp_platform`)
+   that abstracts all OS-level I/O into typed C++ functions. Each platform
+   (POSIX, Win32, Android) provides one translation unit implementing those
+   declarations. No `#ifdef` blocks appear in any code *above* this layer.
+   The filesystem module consumes `xash3dpp_platform` as a **private CMake
+   dependency**; nothing in the public `xash3dpp_filesystem` interface
+   exposes these functions.
 
 2. **`CIDirectory`** — a case-insensitive directory resolver that detects
    whether the underlying volume handles case folding natively, and if not,
@@ -27,7 +32,9 @@ The platform layer has two parts:
 
 ## `platform/os_io.hpp` — OS I/O declarations
 
-**Namespace**: `xash::filesystem::platform`
+**Module**: `xash3dpp_platform`  
+**Header**: `xash3dpp/include/xash3dpp/platform/os_io.hpp`  
+**Namespace**: `xash::platform`
 
 ### `OpenMode` enum
 
@@ -84,7 +91,7 @@ same header.
 
 ### Platform-specific implementations
 
-**`posix.cpp`** (Linux / macOS):
+**`src/platform/posix/os_io.cpp`** (Linux / macOS):
 - `open_file`: maps `OpenMode` to `open(2)` flags (`O_RDONLY`, `O_WRONLY`, etc.)
 - `read` / `write`: loops on `EINTR`
 - `is_case_insensitive`: on Linux probes `ioctl(FS_IOC_GETFLAGS)` for
@@ -92,13 +99,13 @@ same header.
   (inverted)
 - `list_directory`: uses POSIX `opendir` / `readdir`
 
-**`win32.cpp`**:
+**`src/platform/win32/os_io.cpp`**:
 - `open_file`: uses `CreateFileW` with `GENERIC_READ`/`WRITE` + relevant flags
 - `is_case_insensitive`: always returns `true` (NTFS is case-insensitive by
   default; the raw Win32 API is case-sensitive but standard usage is not)
 - `list_directory`: uses `FindFirstFileW` / `FindNextFileW`
 
-**`android.cpp`** (`XASH_ANDROID` only):
+**`src/platform/android/os_io.cpp`** (`XASH_ANDROID` only):
 - Provides `list_assets(path)` — calls JNI
   `android.content.res.AssetManager.list()` via `g_jni.env`
 - Provides `open_asset_fd(path)` — calls `AAsset_openFileDescriptor`
@@ -116,8 +123,9 @@ but the contract is implicit.
 
 ## `CIDirectory` — case-insensitive directory resolver
 
+**Module**: `xash3dpp_filesystem`  
 **Header**: `private/filesystem/ci_directory.hpp`  
-**Source**: `ci_directory.cpp`  
+**Source**: `src/filesystem/ci_directory.cpp`  
 **Namespace**: `xash::filesystem`
 
 ### Purpose
@@ -160,7 +168,7 @@ In `Emulated` mode: uses the same lazy-populated cache; applies the same filter.
 #### `Invalidate(subdir)`
 
 Acquires `cache_mutex_` and erases the entry for `root_/subdir` from `cache_`.
-Called by `DirBackend::InvalidateDirectory` after a write.
+Called by `DirBackend::invalidate_directory` after a write.
 
 #### `get_or_populate(dir)` (private)
 
@@ -186,13 +194,13 @@ heap-allocated separately). It is alive as long as the `DirBackend` is alive.
 
 ## Threading model
 
-Platform I/O functions (`posix.cpp`, `win32.cpp`) are **pure functions** of their
-arguments: they carry no file-scope mutable state and are safe to call
-concurrently from any thread.
+Platform I/O functions (`posix/os_io.cpp`, `win32/os_io.cpp`) are **pure
+functions** of their arguments: they carry no file-scope mutable state and are
+safe to call concurrently from any thread.
 
 `CIDirectory` is safe for concurrent use through its `cache_mutex_`.
 
-`android.cpp` JNI globals have an unmitigated race as described above.
+`android/os_io.cpp` JNI globals have an unmitigated race as described above.
 
 ## See also
 

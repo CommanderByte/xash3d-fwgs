@@ -57,7 +57,7 @@ AndroidBackend::AndroidBackend(xash::memory::PoolHandle pool,
 {}
 
 std::unique_ptr<ISearchBackend>
-AndroidBackend::Create(xash::memory::PoolHandle pool,
+AndroidBackend::create(xash::memory::PoolHandle pool,
                        std::string_view path, SearchPathFlags flags) {
     return std::unique_ptr<ISearchBackend>{
         xash::memory::pool_new<AndroidBackend>( pool, pool, path, flags,
@@ -65,18 +65,18 @@ AndroidBackend::Create(xash::memory::PoolHandle pool,
 }
 
 // ---------------------------------------------------------------------------
-// Info
+// info
 // ---------------------------------------------------------------------------
 
-std::string AndroidBackend::Info() const {
+std::string AndroidBackend::info() const {
     return "android-assets://" + base_path_;
 }
 
 // ---------------------------------------------------------------------------
-// OpenFile
+// open_file
 // ---------------------------------------------------------------------------
 
-std::unique_ptr<File> AndroidBackend::OpenFile(std::string_view path,
+std::unique_ptr<File> AndroidBackend::open_file(std::string_view path,
                                                 std::string_view /*mode*/)
 {
     if (!mgr_) return nullptr;
@@ -98,10 +98,10 @@ AndroidBackend::file_time(std::string_view /*path*/) {
 }
 
 // ---------------------------------------------------------------------------
-// FindFile — case-insensitive resolution via directory listing.
+// find_file — case-insensitive resolution via directory listing.
 // ---------------------------------------------------------------------------
 
-std::optional<std::string> AndroidBackend::FindFile(std::string_view path) {
+std::optional<std::string> AndroidBackend::find_file(std::string_view path) {
     if (!mgr_) return std::nullopt;
 
     // Split path into optional directory prefix and filename.

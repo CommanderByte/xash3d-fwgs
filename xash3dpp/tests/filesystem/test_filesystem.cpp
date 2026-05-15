@@ -31,7 +31,7 @@ static int g_pass = 0, g_fail = 0;
 
 static std::filesystem::path g_testdir;
 
-// Create a minimal directory tree used by the integration tests:
+// create a minimal directory tree used by the integration tests:
 //   <tmp>/xash3dpp_fs_test/
 //       direct.txt           — used by test_load_direct_file
 //       game/

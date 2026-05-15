@@ -37,7 +37,7 @@ struct CiNameLess
 // ---------------------------------------------------------------------------
 
 template<typename T>
-const T* ci_find_by_name( const std::vector<T>& entries,
+[[nodiscard]] const T* ci_find_by_name( const std::vector<T>& entries,
                            std::string_view      name ) noexcept
 {
     using xash::utilities::strnicmp;
@@ -65,7 +65,7 @@ const T* ci_find_by_name( const std::vector<T>& entries,
 // ---------------------------------------------------------------------------
 
 template<typename T>
-std::vector<std::string> archive_search_by_name( const std::vector<T>& entries,
+[[nodiscard]] std::vector<std::string> archive_search_by_name( const std::vector<T>& entries,
                                                    std::string_view      pattern )
 {
     using xash::utilities::match_pattern;

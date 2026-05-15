@@ -26,15 +26,15 @@ and MemorySanitizer.
 - **Lock-free slot claim**: `create_pool` uses a CAS loop on a `SlotState` atomic
   to claim a registry slot, eliminating TOCTOU races on concurrent pool creation.
 - **Acquire/release ordering for function pointers**: `PoolBucket::do_alloc`,
-  `do_free`, `do_realloc`, and `ctx` are written during the `kBusy` phase and
-  published via a `release` store of `kActive`; readers `acquire`-load `state`
+  `do_free`, `do_realloc`, and `ctx` are written during the `Busy` phase and
+  published via a `release` store of `Active`; readers `acquire`-load `state`
   before using the pointers, providing the happens-before chain.
 - **Pluggable backing strategy**: `PoolBucket` stores `do_alloc`/`do_free`/
-  `do_realloc` function pointers so future `kArena` and `kSlab` strategies can be
-  added without touching call sites. Today only `kSystem` (malloc/free) is
+  `do_realloc` function pointers so future `Arena` and `Slab` strategies can be
+  added without touching call sites. Today only `System` (malloc/free) is
   implemented.
 - **No exceptions, no RTTI**: compiled with `/EHs-c-` and `/GR-`. All failure
-  paths return `nullptr` or `kNullPool`.
+  paths return `nullptr` or `k_null_pool`.
 - **Compatible `PoolHandle` width**: `PoolHandle::index` is `uint32_t` —
   compatible with the legacy `poolhandle_t` embedded in `model_t` and exposed
   through `ref_api_t` / `physint_t`.
@@ -52,11 +52,11 @@ and MemorySanitizer.
 - `mem_alloc`, `mem_free`, and `mem_realloc` **may** be called concurrently from
   multiple threads for the same pool, provided the pool is active for the duration
   of all calls.
-- The `PoolHandle` value space is 1-based; index 0 (`kNullPool`) is always invalid.
+- The `PoolHandle` value space is 1-based; index 0 (`k_null_pool`) is always invalid.
   A null-pool allocation still succeeds (it calls `malloc` untracked) so the
-  `kNullPool` sentinel is useful for "unowned" allocations.
+  `k_null_pool` sentinel is useful for "unowned" allocations.
 - The registry holds at most `kMaxPools` = 128 simultaneous active pools.
-  `create_pool` returns `kNullPool` when the registry is full.
+  `create_pool` returns `k_null_pool` when the registry is full.
 
 ## Relationship to legacy code
 
@@ -98,9 +98,9 @@ per-allocation source-file/line tracking. Key differences in the rewrite:
                            │ do_alloc / do_free / do_realloc
  ┌─────────────────────────▼───────────────────────────────┐
  │  Platform heap                                          │
- │    kSystem: malloc / realloc / free                     │
- │    kArena:  (future — bump allocator)                   │
- │    kSlab:   (future — fixed-size slab)                  │
+ │    System: malloc / realloc / free                      │
+ │    Arena:  (future — bump allocator)                    │
+ │    Slab:   (future — fixed-size slab)                   │
  └─────────────────────────────────────────────────────────┘
 
  Every allocation:

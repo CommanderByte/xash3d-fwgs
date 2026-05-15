@@ -17,6 +17,6 @@ namespace xash::filesystem::vfs009 {
 // (cast to the appropriate type before deletion).
 // Returns nullptr if the shim is not available (should never happen when
 // the TU is compiled in).
-void* create_vfs009_interface(Filesystem& fs);
+[[nodiscard]] void* create_vfs009_interface(Filesystem& fs);
 
 } // namespace xash::filesystem::vfs009

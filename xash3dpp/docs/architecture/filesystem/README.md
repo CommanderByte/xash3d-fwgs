@@ -20,8 +20,8 @@ transparently inside `OsFile`), or execute any game logic.
 ## Design goals
 
 - **First-match layered search**: the last-added path has highest priority;
-  `ClearPaths` + rebuild fully re-orders the stack without restarting the engine.
-- **Thread-safe for concurrent reads**: `Open`, `LoadFile`, `FileExists`, and all
+- `clear_paths` + rebuild fully re-orders the stack without restarting the engine.
+- **Thread-safe for concurrent reads**: `open`, `load_file`, `file_exists`, and all
   query methods acquire a shared reader lock; mutation methods hold an exclusive
   writer lock. Individual `File` handles are caller-owned (`unique_ptr<File>`) and
   never shared.
@@ -32,24 +32,25 @@ transparently inside `OsFile`), or execute any game logic.
   `SearchPath`, `ISearchBackend`, `OsFile`, and `CIDirectory` are all hidden behind
   the pimpl wall.
 - **Pool-backed allocations**: `Filesystem::Impl` creates a single `PoolHandle` in
-  `Init()`. All backends, `OsFile`, and `MemFile` are allocated from that pool.
+  `init()`. All backends, `OsFile`, and `MemFile` are allocated from that pool.
   `mem_free` is called through a custom `operator delete` on `File` and
   `ISearchBackend`, so `unique_ptr` destruction works correctly through base
   pointers.
-- **Portable via a `platform/` layer**: all OS-level I/O is declared in
-  `platform/os_io.hpp` and implemented in platform-specific translation units. No
-  `#ifdef` blocks appear above the `platform/` boundary.
+- **Portable via `xash3dpp_platform`**: all OS-level I/O is declared in
+  `platform/os_io.hpp` (namespace `xash::platform`) and implemented in the
+  `xash3dpp_platform` module. The filesystem module consumes it as a private
+  dependency; no platform `#ifdef` blocks appear in filesystem source files.
 - **No exceptions, no RTTI**: compiled with `/EHs-c-` and `/GR-`. Errors propagate
   as `nullptr` returns or empty `std::optional`/`std::vector`.
 
 ## Key invariants
 
-- `Filesystem::Init()` must be called **before** any other method and from the
+- `Filesystem::init()` must be called **before** any other method and from the
   main thread before worker threads start.
-- `Filesystem::Shutdown()` must be called after all outstanding `File` handles
+- `Filesystem::shutdown()` must be called after all outstanding `File` handles
   have been destroyed; their `operator delete` calls `mem_free` into the pool that
-  `Shutdown()` will destroy.
-- `ClearPaths()` removes all non-`Static` entries atomically under an exclusive
+  `shutdown()` will destroy.
+- `clear_paths()` removes all non-`Static` entries atomically under an exclusive
   lock; a concurrent reader holding a `shared_lock` may observe an empty path list
   during the brief rebuild window (TOCTOU — see [filesystem-facade.md](./filesystem-facade.md)).
 - The `pool_` field inside `Filesystem::Impl` must outlive every `SearchPath`
@@ -78,6 +79,8 @@ C++ class (`Filesystem`). Key changes:
   `XASH_VFS009_SHIM` CMake option.
 - The `gameinfo_parser` free functions (parse / serialise / fixup) live in
   `xash3dpp_utilities` now, with no filesystem dependency.
+- Platform OS I/O (`os_io.hpp`, `OsFd`, all per-OS `.cpp` files) has moved to
+  the `xash3dpp_platform` module. `xash3dpp_filesystem` links it as a private dep.
 
 ## Architecture at a glance
 

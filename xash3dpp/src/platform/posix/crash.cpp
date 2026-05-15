@@ -11,7 +11,7 @@
 
 #include <xash3dpp/platform/crash.hpp>
 
-#include <xash3dpp/private/platform/assert_main.hpp>
+#include <xash3dpp/private/core/assert_main.hpp>
 
 #include <execinfo.h>    // backtrace, backtrace_symbols_fd
 #include <signal.h>      // sigaction, siginfo_t, SIGSEGV…
@@ -70,7 +70,7 @@ void posix_fault_handler( int signum ) noexcept
 
 void install_handler() noexcept
 {
-    detail::assert_main_thread( "crash::install_handler" );
+    core::detail::assert_main_thread( "crash::install_handler" );
     static std::atomic<bool> installed{ false };
     if( installed.exchange( true ) ) return;
 

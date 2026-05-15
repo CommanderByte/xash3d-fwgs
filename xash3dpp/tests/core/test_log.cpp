@@ -1,4 +1,4 @@
-// xash3dpp — platform logging tests
+// xash3dpp — core logging tests
 // Covers: log() (all levels, empty text, long text truncation),
 //         logf() (formatting, truncation),
 //         log_va() (va_list path),
@@ -12,7 +12,7 @@
 //   (b) the callback receives the expected arguments,
 //   (c) truncation does not overflow the buffer.
 
-#include <xash3dpp/platform/log.hpp>
+#include <xash3dpp/core/log.hpp>
 
 #include <cstring>    // std::strcmp, std::strlen
 #include <string>
@@ -27,14 +27,14 @@ static int g_pass = 0, g_fail = 0;
 
 struct CallbackCapture
 {
-    xash::platform::LogLevel last_level{};
+    xash::core::LogLevel last_level{};
     std::string last_tag;
     std::string last_text;
     int call_count = 0;
 
     static CallbackCapture *instance;
 
-    static void callback( xash::platform::LogLevel level,
+    static void callback( xash::core::LogLevel level,
                           std::string_view tag,
                           std::string_view text ) noexcept
     {
@@ -48,12 +48,12 @@ struct CallbackCapture
     void install()
     {
         instance = this;
-        xash::platform::log_set_callback( &CallbackCapture::callback );
+        xash::core::log_set_callback( &CallbackCapture::callback );
     }
 
     void uninstall()
     {
-        xash::platform::log_set_callback( nullptr );
+        xash::core::log_set_callback( nullptr );
         instance = nullptr;
     }
 };
@@ -66,12 +66,12 @@ CallbackCapture *CallbackCapture::instance = nullptr;
 
 static void test_all_levels_no_crash()
 {
-    using xash::platform::LogLevel;
-    xash::platform::log( LogLevel::Verbose, "test", "verbose message" );
-    xash::platform::log( LogLevel::Info,    "test", "info message"    );
-    xash::platform::log( LogLevel::Warning, "test", "warning message" );
-    xash::platform::log( LogLevel::Error,   "test", "error message"   );
-    xash::platform::log( LogLevel::Fatal,   "test", "fatal message"   );
+    using xash::core::LogLevel;
+    xash::core::log( LogLevel::Verbose, "test", "verbose message" );
+    xash::core::log( LogLevel::Info,    "test", "info message"    );
+    xash::core::log( LogLevel::Warning, "test", "warning message" );
+    xash::core::log( LogLevel::Error,   "test", "error message"   );
+    xash::core::log( LogLevel::Fatal,   "test", "fatal message"   );
     ++g_pass;
 }
 
@@ -81,8 +81,8 @@ static void test_all_levels_no_crash()
 
 static void test_empty_text_no_crash()
 {
-    xash::platform::log( xash::platform::LogLevel::Info, "test", "" );
-    xash::platform::log( xash::platform::LogLevel::Info, "",     "" );
+    xash::core::log( xash::core::LogLevel::Info, "test", "" );
+    xash::core::log( xash::core::LogLevel::Info, "",     "" );
     ++g_pass;
 }
 
@@ -95,12 +95,12 @@ static void test_logf_basic()
     CallbackCapture cap;
     cap.install();
 
-    xash::platform::logf( xash::platform::LogLevel::Info, "fmt",
-                          "value=%d str=%s", 42, "hello" );
+    xash::core::logf( xash::core::LogLevel::Info, "fmt",
+                      "value=%d str=%s", 42, "hello" );
 
     CHECK( cap.call_count == 1 );
     CHECK( cap.last_tag   == "fmt" );
-    CHECK( cap.last_level == xash::platform::LogLevel::Info );
+    CHECK( cap.last_level == xash::core::LogLevel::Info );
     // The body should contain the formatted values.
     CHECK( cap.last_text.find( "42" )    != std::string::npos );
     CHECK( cap.last_text.find( "hello" ) != std::string::npos );
@@ -117,12 +117,12 @@ static void test_callback_tag_and_level()
     CallbackCapture cap;
     cap.install();
 
-    xash::platform::log( xash::platform::LogLevel::Warning, "filesystem",
-                         "path too long" );
+    xash::core::log( xash::core::LogLevel::Warning, "filesystem",
+                     "path too long" );
 
     CHECK( cap.call_count == 1 );
     CHECK( cap.last_tag   == "filesystem" );
-    CHECK( cap.last_level == xash::platform::LogLevel::Warning );
+    CHECK( cap.last_level == xash::core::LogLevel::Warning );
     CHECK( cap.last_text  == "path too long" );
 
     cap.uninstall();
@@ -141,8 +141,8 @@ static void test_long_message_truncated()
     CallbackCapture cap;
     cap.install();
 
-    xash::platform::log( xash::platform::LogLevel::Info, "test",
-                         std::string_view{ long_msg } );
+    xash::core::log( xash::core::LogLevel::Info, "test",
+                     std::string_view{ long_msg } );
 
     // Must have called the callback exactly once and must not have crashed.
     CHECK( cap.call_count == 1 );
@@ -162,8 +162,8 @@ static void test_callback_reset()
     cap.install();
     cap.uninstall();  // sets callback to nullptr
 
-    xash::platform::log( xash::platform::LogLevel::Info, "test",
-                         "should not reach callback" );
+    xash::core::log( xash::core::LogLevel::Info, "test",
+                     "should not reach callback" );
 
     // cap.uninstall sets instance=nullptr, so the callback_count will be 0
     // because instance is nullptr before it can be incremented.  However,
@@ -181,13 +181,13 @@ static void test_callback_replace()
     CallbackCapture cap1, cap2;
     cap1.install();
 
-    xash::platform::log( xash::platform::LogLevel::Info, "t", "first" );
+    xash::core::log( xash::core::LogLevel::Info, "t", "first" );
     CHECK( cap1.call_count == 1 );
 
     // Replace with cap2.
     cap2.install();  // installs cap2 and sets instance = &cap2
 
-    xash::platform::log( xash::platform::LogLevel::Info, "t", "second" );
+    xash::core::log( xash::core::LogLevel::Info, "t", "second" );
     CHECK( cap1.call_count == 1 );  // first callback not called again
     CHECK( cap2.call_count == 1 );
 
@@ -205,7 +205,7 @@ static void test_log_verbose_no_crash()
     CallbackCapture cap;
     cap.install();
 
-    xash::platform::log_verbose( "test", "verbose helper" );
+    xash::core::log_verbose( "test", "verbose helper" );
 
 #ifdef XASH_VERBOSE
     CHECK( cap.call_count == 1 );

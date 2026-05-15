@@ -2,10 +2,10 @@
 
 > **Defined in**: `xash3dpp/include/xash3dpp/filesystem/file.hpp`,
 > `xash3dpp/include/xash3dpp/private/filesystem/mem_file.hpp`,
-> `xash3dpp/include/xash3dpp/private/filesystem/os_fd.hpp`,
+> `xash3dpp/include/xash3dpp/platform/os_fd.hpp` (owned by `xash3dpp_platform`),
 > `xash3dpp/include/xash3dpp/private/filesystem/os_file_factory.hpp`,
 > `xash3dpp/src/filesystem/file.cpp`  
-> **Namespace**: `xash::filesystem`
+> **Namespace**: `xash::filesystem` (`File`, `OsFile`, `MemFile`); `xash::platform` (`OsFd`)
 
 ## Overview
 
@@ -53,7 +53,7 @@ the *dynamic type* first; since neither `OsFile` nor `MemFile` declares their ow
 `operator delete`, the base override is always found. This means:
 
 ```cpp
-std::unique_ptr<File> f = backend->OpenFile("foo.txt", "rb");
+std::unique_ptr<File> f = backend->open_file("foo.txt", "rb");
 // ... f goes out of scope, calls ~OsFile(), then File::operator delete
 // which calls mem_free — correctly reclaims from the pool.
 ```
@@ -160,14 +160,14 @@ construction time and serves them without further I/O.
 
 ## `OsFd` — RAII file descriptor
 
-**Header**: `private/filesystem/os_fd.hpp`
+**Header**: `platform/os_fd.hpp` (namespace `xash::platform`; owned by `xash3dpp_platform`)
 
 A move-only wrapper around a raw `int` fd. Calls `platform::close_fd(fd_)` in
 its destructor. Prevents fd leaks on early-return paths that previously required
 careful `goto cleanup` logic in the legacy C code.
 
 | Operation | Behaviour |
-|-----------|-----------|
+|-----------|----------|
 | Default-constructed | `fd_ = -1` (invalid) |
 | `OsFd(int fd)` | Takes ownership |
 | Move | Transfers fd; source becomes invalid |
@@ -176,8 +176,8 @@ careful `goto cleanup` logic in the legacy C code.
 | `release()` | Detaches and returns raw fd (caller owns it) |
 | `close()` | Calls `platform::close_fd`; sets `fd_ = -1` |
 
-`OsFd::close()` is defined in `platform/posix.cpp` and `platform/win32.cpp`
-(calls `::close` / `::CloseHandle` respectively).
+`OsFd::close()` is implemented in `src/platform/posix/os_io.cpp` and
+`src/platform/win32/os_io.cpp` (calls `::close` / `::CloseHandle` respectively).
 
 ---
 

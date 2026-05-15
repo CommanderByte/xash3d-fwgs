@@ -44,13 +44,13 @@ Each `IFileSystem009` method is mapped to the nearest semantic equivalent on
 
 | `IFileSystem009` method | `Filesystem` equivalent | Notes |
 |------------------------|------------------------|-------|
-| `Mount()` / `Unmount()` | `Init()` / `Shutdown()` | Lifecycle |
-| `AddSearchPath(path, id)` | `AddGameDirectory(path, …)` | |
-| `RemoveSearchPath(path, id)` | `ClearPaths()` (approximate) | Legacy API has no per-path remove |
-| `FileExists(path)` | `FileExists(path)` | |
-| `Open(path, mode, id)` | `Open(path, mode)` | `unique_ptr<File>` wrapped in legacy handle |
+| `Mount()` / `Unmount()` | `init()` / `shutdown()` | Lifecycle |
+| `AddSearchPath(path, id)` | `add_game_directory(path, …)` | |
+| `RemoveSearchPath(path, id)` | `clear_paths()` (approximate) | Legacy API has no per-path remove |
+| `FileExists(path)` | `file_exists(path)` | |
+| `Open(path, mode, id)` | `open(path, mode)` | `unique_ptr<File>` wrapped in legacy handle |
 | `Read / Write / Seek / Tell / Size / Close` | Forwarded to `File` methods | |
-| `FindFirst / FindNext / FindClose` | `Search(pattern)` | Result iterator state is held in a shim-owned struct |
+| `FindFirst / FindNext / FindClose` | `search(pattern)` | Result iterator state is held in a shim-owned struct |
 
 The shim intentionally keeps the legacy `IFileSystem009` header confined to
 `vfs009.cpp`; nothing outside that file needs to know about it.

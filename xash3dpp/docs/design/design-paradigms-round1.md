@@ -154,16 +154,27 @@ Features **available in C++20 but not yet used**:
 
 | Mechanism | Where used | Purpose |
 |-----------|-----------|---------|
-| `IFilesystem` vtable | `filesystem/` | VFileSystem009-compatible C++ vtable ABI for legacy DLL shim |
+| `VFileSystem009` legacy C++ ABI shim | `filesystem/` | GoldSrc `IFileSystem` v9 vtable for legacy DLL consumers — wraps the concrete `Filesystem` class directly |
 | `CvarAbi` C struct / linked list | `cmd_cvar/` | GoldSrc `cvar_t*` ABI for game DLLs |
 | `dynlib::LibHandle` + `get_symbol` | `platform/` | Load and bind game/renderer/menu DLLs |
 | `XASH_GOLDSRC_COMPAT` CMake option | `cmd_cvar/` | Link-time selection of compat shim — zero `#ifdef` in core logic |
 | `extern "C"` entry points | Not yet defined in rewrite | How game/renderer DLLs will be bootstrapped |
 
-**Observation**: `IFilesystem` is the only formal C++ interface (vtable) defined.
-There is no agreed pattern for whether future subsystems exposed to plugins should
-also have `I<Subsystem>` interfaces, or whether DLL bridging will be handled
-differently (e.g. C-struct function tables, or always-static-linked modules).
+**Observation**: there is **no `IFilesystem` C++ interface** in the rewrite —
+the VFileSystem009 shim wraps the concrete `Filesystem` class directly. The only
+formal vtable interfaces in source are four small **internal seams** that exist
+for testability and policy injection, not for crossing a DLL boundary:
+
+| Interface | Defined in | Role |
+|-----------|-----------|------|
+| `ICvarObserver` | `cmd_cvar/observers.hpp` | Notifies when a cvar value changes (debug tooling, mirror state) |
+| `ITrustOracle` | `cmd_cvar/observers.hpp` | Answers "is this stuffcmd batch from a trusted source?" |
+| `ICompatPolicy` | `private/cmd_cvar/compat_policy.hpp` | Routes GoldSrc behavioural quirks (link-time selection via `XASH_GOLDSRC_COMPAT`) |
+| `ISearchBackend` | `private/filesystem/search_backend.hpp` | Pak / WAD / dir backend dispatch — a small internal vtable, never exported |
+
+All four are intra-process seams, Q-7 conformant (small, focused interfaces with
+a single concrete production implementation plus a test fake), and none of them
+cross a DLL boundary.
 
 ---
 
@@ -291,7 +302,7 @@ All error return values carry `[[nodiscard]]`.
   `Sound::init()`.
 - Async asset loading via `JobToken<T>` (atomic status + `unique_ptr` move).
 - `assert_main_thread()` replaced by `assert_thread_role(ThreadRole::Main)`,
-  defined in `platform/thread_role.hpp`.
+  defined in `core/thread_role.hpp`.
 - Render thread optional — renderer plugin declares `wants_render_thread`;
   double-buffered `RenderFrame` is the main↔render boundary.
 - Network I/O thread deferred; Chunk 2 must keep all socket calls inside

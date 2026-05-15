@@ -22,18 +22,18 @@ public:
                    bool engine_package);
 
     static std::unique_ptr<ISearchBackend>
-        Create(xash::memory::PoolHandle pool,
+        create(xash::memory::PoolHandle pool,
                std::string_view path, SearchPathFlags flags);
 
-    std::string Info() const override;
+    std::string info() const override;
 
-    std::unique_ptr<File> OpenFile(std::string_view path,
+    std::unique_ptr<File> open_file(std::string_view path,
                                    std::string_view mode) override;
 
     std::optional<std::filesystem::file_time_type>
         file_time(std::string_view path) override;
 
-    std::optional<std::string> FindFile(std::string_view path) override;
+    std::optional<std::string> find_file(std::string_view path) override;
 
     std::vector<std::string> search(std::string_view pattern,
                                     bool case_insensitive) override;

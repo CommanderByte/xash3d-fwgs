@@ -22,7 +22,7 @@ configuration options (should HD variants be included?).
 |-------|------|------|
 | `backend` | `std::unique_ptr<ISearchBackend>` | The mounted backend; destroyed when the `SearchPath` is erased |
 | `source_path` | `std::string` | The disk path that was mounted (for debug / info output) |
-| `flags` | `SearchPathFlags` | Bitmask copied from the `AddGameDirectory` call |
+| `flags` | `SearchPathFlags` | Bitmask copied from the `add_game_directory` call |
 
 `SearchPath` is a move-only value type stored directly in the deque. Moving it
 transfers ownership of `backend`.
@@ -32,7 +32,7 @@ transfers ownership of `backend`.
 | Flag | Value | Meaning |
 |------|-------|---------|
 | `None` | `0` | No special attributes |
-| `Static` | `1<<0` | Survives `ClearPaths()`; used for engine root paths |
+| `Static` | `1<<0` | Survives `clear_paths()`; used for engine root paths |
 | `NoWrite` | `1<<1` | Never selected as the write destination |
 | `GameDir` | `1<<2` | Part of the active game hierarchy |
 | `Exec` | `1<<3` | May serve native library files (`.so` / `.dll`) |
@@ -50,9 +50,9 @@ provided as `constexpr` free functions in the same header.
 
 The `search_paths` deque is traversed **back-to-front**; the last-added entry has
 the highest priority. This mirrors the legacy `searchpath_t` linked list which
-was prepended on each `AddGameDirectory` call.
+was prepended on each `add_game_directory` call.
 
-Typical mount order after `Init` + `ActivateGame`:
+Typical mount order after `init()` + `activate_game()`:
 
 ```
 front (lowest priority)
@@ -67,7 +67,7 @@ back
 A query iterates from `n+1` down to `0`; the first backend that returns
 non-null/non-empty wins.
 
-## `AddGameDirectory(dir, flags)`
+## `add_game_directory(dir, flags)`
 
 1. Acquires `unique_lock(paths_mutex)`.
 2. Calls `collect_paths_for_dir(pool, dir, flags, search_paths)`:
@@ -83,34 +83,34 @@ non-null/non-empty wins.
 **Mount order within a directory** (lowest to highest priority within that call):
 `pak0.pak` → `pak1.pak` → … → `maps/foo.pk3` → … → `dir_itself`
 
-## `AddGameHierarchy(dir, flags)`
+## `add_game_hierarchy(dir, flags)`
 
-Calls `AddGameDirectory` for `dir`, optionally for `dir_hd` (`MountHD`),
+Calls `add_game_directory` for `dir`, optionally for `dir_hd` (`MountHD`),
 and `dir_lv` (`MountLV`). Each call appends to `search_paths` in that order;
 the plain dir is added last in each group, so `dir_hd/somefile` beats `dir/somefile`.
 
-## `ClearPaths()`
+## `clear_paths()`
 
 Acquires `unique_lock(paths_mutex)`. Erases every `SearchPath` whose `flags`
 does not include `SearchPathFlags::Static`. Backends are destroyed (and their
 pool memory reclaimed) as they fall out of the deque.
 
-**TOCTOU gap**: after `ClearPaths` releases the lock and before `AddGameDirectory`
-re-acquires it during `Rescan`, the deque may contain only `Static` entries (or be
+**TOCTOU gap**: after `clear_paths` releases the lock and before `add_game_directory`
+re-acquires it during `rescan`, the deque may contain only `Static` entries (or be
 empty). Concurrent readers will observe this partial state.
 
-## `AllowDirectPaths(enable)`
+## `allow_direct_paths(enable)`
 
-Atomically sets `allow_direct_paths`. When `true`, `Open()` and related methods
+Atomically sets `allow_direct_paths`. When `true`, `open()` and related methods
 accept paths that start with `/`, `C:\`, or contain `../`. Callers must always
 restore to `false` after the operation that required it.
 
 ## Threading model
 
 - `search_paths` is protected by `std::shared_mutex paths_mutex`.
-  - `shared_lock`: `Open`, `LoadFile`, `FileExists`, `FileSize`, `FileTime`,
-    `DiskPath`, `Search`, `CRC32File`, `MD5File`, `FindLibrary`.
-  - `unique_lock`: `AddGameDirectory`, `ClearPaths`, `MountArchive`.
+  - `shared_lock`: `open`, `load_file`, `file_exists`, `file_size`, `file_time`,
+    `disk_path`, `search`, `crc32_file`, `md5_file`, `find_library`.
+  - `unique_lock`: `add_game_directory`, `clear_paths`, `mount_archive`.
 - `allow_direct_paths` is `std::atomic<bool>`; reads and writes are lock-free
   with default `memory_order_seq_cst`.
 

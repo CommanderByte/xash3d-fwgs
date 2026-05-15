@@ -3,7 +3,7 @@
 
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 #include <xash3dpp/platform/console.hpp>
-#include <xash3dpp/platform/log.hpp>
+#include <xash3dpp/core/log.hpp>
 
 namespace xash::cmd_cvar {
 
@@ -30,7 +30,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 {
     impl_->pool = memory::create_pool("cmd_cvar");
     if (!impl_->pool) {
-        platform::log(platform::LogLevel::Error, "cmd_cvar", "failed to create memory pool");
+        core::log(core::LogLevel::Error, "cmd_cvar", "failed to create memory pool");
         return false;
     }
 

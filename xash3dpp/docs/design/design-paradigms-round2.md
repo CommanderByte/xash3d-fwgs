@@ -189,7 +189,7 @@ touched for another reason.
 "network timeout". Assertions handle *invariant violations* — states that are
 impossible if the code is correct. These are distinct mechanisms with separate tools.
 
-**Decision**: Two tiers, defined in `platform/assert.hpp`.
+**Decision**: Two tiers, defined in `core/assert.hpp`.
 
 **Tier 1: `XASH_ASSERT(expr)` — debug-only**
 
@@ -200,7 +200,7 @@ violated in correct code" but where a release build might limp on safely.
 #ifndef NDEBUG
 #   define XASH_ASSERT(expr) \
         do { if (!(expr)) {                                             \
-            platform::log(platform::LogLevel::Fatal, "assert", #expr); \
+            core::log(core::LogLevel::Fatal, "assert", #expr); \
             platform::crash::abort();                                   \
         } } while(0)
 #else
@@ -217,7 +217,7 @@ on a subsystem, pool handle referencing a destroyed pool.
 ```cpp
 #define XASH_FATAL(expr, msg)                                                 \
     do { if (!(expr)) {                                                       \
-        platform::log(platform::LogLevel::Fatal, "assert", msg ": " #expr);  \
+        core::log(core::LogLevel::Fatal, "assert", msg ": " #expr);  \
         platform::crash::abort();                                             \
     } } while(0)
 ```
@@ -226,7 +226,7 @@ on a subsystem, pool handle referencing a destroyed pool.
 
 | Condition | Mechanism |
 |-----------|-----------|
-| Expected operational failure (file not found, network error) | Q-5: `bool`/`optional`/`expected` + `platform::log(Error, ...)` |
+| Expected operational failure (file not found, network error) | Q-5: `bool`/`optional`/`expected` + `core::log(Error, ...)` |
 | Invariant — "should never happen", debug crash acceptable | `XASH_ASSERT(expr)` |
 | Invariant — must never happen in any build | `XASH_FATAL(expr, msg)` |
 | Thread role contract | `assert_thread_role(role)` (threading model, Q-6) |
@@ -252,10 +252,10 @@ depend on it. Networking (Chunk 2) needs it for structured error reporting.
 - `noexcept`
 - Long-term: route to a diagnostics channel; hook must exist from day one
 
-**Decision: `platform::log` free functions in `platform/log.hpp`**
+**Decision: `core::log` free functions in `core/log.hpp`**
 
 ```cpp
-namespace xash::platform {
+namespace xash::core {
 
 enum class LogLevel { Verbose, Info, Warning, Error, Fatal };
 
@@ -273,7 +273,7 @@ using LogCallback = void (*)(LogLevel, std::string_view tag,
                              std::string_view msg) noexcept;
 void log_set_callback(LogCallback cb) noexcept;
 
-} // namespace xash::platform
+} // namespace xash::core
 ```
 
 **Tag convention**: subsystem name in `snake_case`, lower-case, matching the
@@ -284,6 +284,20 @@ subsystem's directory name: `"filesystem"`, `"networking"`, `"cmd_cvar"`, `"plat
 [filesystem][WARN]: could not open "valve/pak0.pak"
 [networking][ERROR]: connect timeout after 10s
 ```
+
+**`platform::console::write` vs `core::log`**:
+
+- `platform::console::write` is the **correct and encouraged** mechanism for
+  intentional game-console output: command echoes, `cvarlist`/`cmdlist`
+  listings, help text, progress messages directed at the player or developer.
+  The game console is a first-class output channel.
+- `core::log` is the **C++ subsystem diagnostic channel**: allocation
+  failures, invalid arguments, internal invariant violations, and any
+  condition a C++ caller needs to be informed of alongside a failure return.
+  Its default implementation wraps `console::write` with the structured
+  `[tag][LEVEL]:` prefix, so messages are still visible in the console.
+- `printf` / `fprintf` / `std::cout` are **always forbidden** in `src/`.
+  They bypass both channels and cannot be routed or filtered.
 
 **Log level policy:**
 
@@ -296,14 +310,14 @@ subsystem's directory name: `"filesystem"`, `"networking"`, `"cmd_cvar"`, `"plat
 | `Fatal` | Assertion failures (`XASH_FATAL`, `XASH_ASSERT`) | Yes — then `crash::abort()` |
 
 **Rule for Q-5 compliance**: "emit a diagnostic" means call
-`platform::log(LogLevel::Error, tag, msg)` or `platform::logf(...)` *before*
+`core::log(LogLevel::Error, tag, msg)` or `core::logf(...)` *before*
 the `return false` / `return std::nullopt`. The return value tells the caller the
 operation failed; the log tells diagnostics *why*. Both are always required.
 
 **`Verbose` guard pattern** (zero overhead when `XASH_VERBOSE` is absent):
 ```cpp
 #ifdef XASH_VERBOSE
-    platform::logf(LogLevel::Verbose, "filesystem", "scan: %s", path.data());
+    core::logf(LogLevel::Verbose, "filesystem", "scan: %s", path.data());
 #endif
 ```
 
@@ -314,7 +328,7 @@ or a fast spinlock). Callers do not synchronise.
 diagnostics channel are deferred to the diagnostics subsystem (Chunk TBD).
 `log_set_callback` is the hook that will route to it.
 
-**Before Chunk 2 (scheduling)**: `platform/log.hpp` and its implementation must
+**Before Chunk 2 (scheduling)**: `core/log.hpp` and its implementation must
 exist before networking is written, since networking errors are the first case where
 `LogLevel::Error` is needed in production code.
 
@@ -405,9 +419,9 @@ preferred library over GoogleTest (which requires exceptions).
 
 These are blocking for networking (Chunk 2):
 
-- **QI: `platform::log`** — networking errors are the first production use of
-  `LogLevel::Error`. `platform/log.hpp` and its implementation must exist first.
-- **QH: `platform/assert.hpp`** — `XASH_ASSERT` and `XASH_FATAL` must be defined
+- **QI: `core::log`** — networking errors are the first production use of
+  `LogLevel::Error`. `core/log.hpp` and its implementation must exist first.
+- **QH: `core/assert.hpp`** — `XASH_ASSERT` and `XASH_FATAL` must be defined
   before any subsystem relies on them. Low-effort; can be done in a single small PR.
 
 ### 4.2 Bring into conformance when next touched
@@ -430,6 +444,7 @@ All rules in this document apply from the first line of any new subsystem or tes
 - Integer type rules: `size_t` for sizes, `int` for GoldSrc ABI, `uint32_t` for
   internal tokens, `int64_t` for file offsets (QG)
 - `XASH_ASSERT` / `XASH_FATAL` for invariant checking (QH)
-- `platform::log` for diagnostics — not `printf`, not `console::write` directly (QI)
+- `core::log` for C++ subsystem diagnostics; `platform::console::write` for
+  intentional game-console output; never `printf`/`fprintf`/`std::cout` (QI)
 - Copy/move semantics per category table (QJ)
 - Standard test macro set (QK)

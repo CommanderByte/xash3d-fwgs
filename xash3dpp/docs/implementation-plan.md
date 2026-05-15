@@ -17,7 +17,7 @@
 | networking | 0         | ✓        | ✗      | **Skeleton** (include stub exists) |
 | server     | 0         | ✓        | ✗      | **Skeleton** (include stub exists) |
 | client     | 0         | ✓        | ✗      | **Skeleton** (include stub exists) |
-| cmd_cvar   | 0         | ✗        | ✗      | **Skeleton** |
+| cmd_cvar   | 11        | ✓        | ✓      | **Complete** |
 | content    | 0         | ✗        | ✗      | **Skeleton** |
 | demo       | 0         | ✗        | ✗      | **Skeleton** |
 | input      | 0         | ✗        | ✗      | **Skeleton** |
@@ -32,7 +32,7 @@
 
 ## Dependency Graph Summary
 
-The legacy DAG flows: **launcher → host → (cmd_cvar + networking + filesystem) → server ↔ client → plugins (renderer, filesystem)**. The four completed subsystems (`utilities`, `memory`, `filesystem`, `platform`) form the entire foundation layer. The two skeleton subsystems with existing include stubs (`networking`, `server`, `client`) show the intended next tier. `cmd_cvar` is the hub nothing else can start without — it feeds server, client, and host. `world` (BSP/trace/model loaders) is the next hub after that, blocking both server and client. The server path (Chunks 1–5) is significantly more isolated than the client path because it only needs the Game DLL ABI; client adds sound, input, content, rendering, and UI on top.
+The legacy DAG flows: **launcher → host → (cmd_cvar + networking + filesystem) → server ↔ client → plugins (renderer, filesystem)**. The five completed subsystems (`utilities`, `memory`, `filesystem`, `platform`, `cmd_cvar`) form the entire foundation layer — **Chunk 1 is done**. The two skeleton subsystems with existing include stubs (`networking`, `server`, `client`) are the next tier. `world` (BSP/trace/model loaders) is the next hub after networking, blocking both server and physics. The server path (Chunks 2–5) is significantly more isolated than the client path because it only needs the Game DLL ABI; client adds sound, input, content, rendering, and UI on top.
 
 ---
 
@@ -58,14 +58,11 @@ The legacy DAG flows: **launcher → host → (cmd_cvar + networking + filesyste
 
 ## Recommended Work Plan
 
-### Chunk 1 — cmd/cvar
+### Chunk 1 — cmd/cvar ✅ DONE
 
 **Subsystems**: `cmd_cvar`  
 **Depends on**: utilities, memory, platform *(all done)*  
-**Legacy reference**: `engine/common/cmd.c`, `base_cmd.c`, `cvar.c`, `con_utils.c`  
-**Complexity note**: The hardest part is replacing the global linked-list cvar registry with a testable context object; every other subsystem's API shape follows from this decision.  
-**ABI surfaces touched**: none — fully internal  
-**Deliverable**: `xash3dpp_cmd_cvar` builds; unit tests cover `Cmd_Execute`, `Cvar_Get/Set`, config-file parsing
+**Status**: 11 `.cpp` files, 4 public headers, 5 test files — `xash3dpp_cmd_cvar` builds and tests pass.
 
 ---
 

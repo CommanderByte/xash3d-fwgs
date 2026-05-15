@@ -35,7 +35,7 @@ DirBackend::DirBackend(xash::memory::PoolHandle pool,
 }
 
 std::unique_ptr<ISearchBackend>
-DirBackend::Create(xash::memory::PoolHandle pool,
+DirBackend::create(xash::memory::PoolHandle pool,
                    std::string_view path, SearchPathFlags flags) {
     return std::unique_ptr<ISearchBackend>{
         xash::memory::pool_new<DirBackend>( pool, pool, path, flags ) };
@@ -66,7 +66,7 @@ std::string DirBackend::resolve_path(std::string_view rel_path) {
 
         if (component.empty() || component == ".") continue;
 
-        auto canon = ci_.Resolve(resolved, component);
+        auto canon = ci_.resolve(resolved, component);
         if (!canon) return {};  // component not found on disk
 
         if (!resolved.empty()) resolved += '/';
@@ -79,12 +79,12 @@ std::string DirBackend::resolve_path(std::string_view rel_path) {
 // ISearchBackend interface
 // ---------------------------------------------------------------------------
 
-std::string DirBackend::Info() const {
+std::string DirBackend::info() const {
     return root_;
 }
 
 std::unique_ptr<File>
-DirBackend::OpenFile(std::string_view path, std::string_view mode) {
+DirBackend::open_file(std::string_view path, std::string_view mode) {
     const bool is_write = is_write_mode(mode);
 
     std::string disk;
@@ -116,7 +116,7 @@ DirBackend::file_time(std::string_view path) {
 }
 
 std::optional<std::string>
-DirBackend::FindFile(std::string_view path) {
+DirBackend::find_file(std::string_view path) {
     const std::string resolved = resolve_path(path);
     if (resolved.empty() && !path.empty()) return std::nullopt;
 
@@ -144,7 +144,7 @@ DirBackend::search(std::string_view pattern, bool case_insensitive) {
         filename_glob = pattern;
     }
 
-    // Resolve the directory component (CI-safe, may be empty for root).
+    // resolve the directory component (CI-safe, may be empty for root).
     std::string resolved_dir;
     if (!dir_prefix.empty()) {
         resolved_dir = resolve_path(dir_prefix);
@@ -152,7 +152,7 @@ DirBackend::search(std::string_view pattern, bool case_insensitive) {
     }
 
     // List entries in resolved_dir that match filename_glob.
-    auto names = ci_.Glob(resolved_dir, filename_glob, case_insensitive);
+    auto names = ci_.glob(resolved_dir, filename_glob, case_insensitive);
 
     // Prepend the (resolved) directory prefix.
     std::vector<std::string> results;
@@ -185,8 +185,8 @@ DirBackend::load_file(std::string_view path) {
     return buf;
 }
 
-void DirBackend::InvalidateDirectory(std::string_view subdir) noexcept {
-    ci_.Invalidate(subdir);
+void DirBackend::invalidate_directory(std::string_view subdir) noexcept {
+    ci_.invalidate(subdir);
 }
 
 } // namespace xash::filesystem::backends

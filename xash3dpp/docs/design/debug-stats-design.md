@@ -50,7 +50,19 @@ Memory subsystem uses **always-on** atomics in the pool registry (relaxed memory
 measured as negligible overhead). The pool stats API (`get_stats`, `for_each_pool`)
 provides a clean structured read interface.
 
-`platform::console::write(std::string_view)` is the only output channel today.
+**Output channels (codified rule):**
+
+| Channel | Use for |
+|---------|---------|
+| `core::log(LogLevel::Warning\|Error\|Fatal, tag, msg)` | C++ subsystem diagnostics — anything a developer would want in a crash log or CI failure trace. Always reaches the test-capturable callback. |
+| `platform::console::write(std::string_view)` | Game console output — user-facing commands (`echo`, `cvarlist`, `memlist`, stats dumps) and runtime stats reporting. |
+| `core::log(LogLevel::Info, tag, msg)` | Pre-console / early-init only — demoted; do not use for normal subsystem chatter. |
+
+The two channels are intentionally separated: the log path is *diagnostic* (test
+callback can capture, severity-tagged, structured), while `console::write` is the
+*game console* (raw bytes, no formatting). Stats reporting writes structured
+records to `console::write`; subsystem errors that matter for debugging write
+to `core::log`.
 
 **Gap summary:**
 

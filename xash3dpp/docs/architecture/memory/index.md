@@ -4,7 +4,7 @@
 
 | Header | Namespace | Key symbols |
 |--------|-----------|-------------|
-| `memory/memory.hpp` | `xash::memory` | `PoolHandle`, `kNullPool`, `PoolStats`, `PoolConfig`, `AllocStrategy`, `create_pool`, `destroy_pool`, `mem_alloc`, `mem_calloc`, `mem_realloc`, `mem_free`, `get_stats`, `pool_count`, `for_each_pool`, `set_oom_handler`, `pool_new`, `pool_delete`, `ScopedPool`, `PoolDeleter`, `pool_ptr` |
+| `memory/memory.hpp` | `xash::memory` | `PoolHandle`, `k_null_pool`, `PoolStats`, `PoolConfig`, `AllocStrategy`, `create_pool`, `destroy_pool`, `mem_alloc`, `mem_calloc`, `mem_realloc`, `mem_free`, `get_stats`, `pool_count`, `for_each_pool`, `set_oom_handler`, `pool_new`, `pool_delete`, `ScopedPool`, `PoolDeleter`, `pool_ptr` |
 
 ## Private / internal headers
 
@@ -22,15 +22,15 @@
 
 | Type | Kind | Defined in | Role |
 |------|------|-----------|------|
-| `PoolHandle` | struct | `memory/memory.hpp` | 1-based index into the pool registry; `index==0` is `kNullPool` |
+| `PoolHandle` | struct | `memory/memory.hpp` | 1-based index into the pool registry; `index==0` is `k_null_pool` |
 | `PoolStats` | struct | `memory/memory.hpp` | Snapshot of one pool's counters (`name`, `live_bytes`, `total_allocs`, `total_frees`) |
 | `PoolConfig` | struct | `memory/memory.hpp` | Optional configuration for `create_pool` (`strategy`, `reserve`) |
-| `AllocStrategy` | enum class | `memory/memory.hpp` | Backing allocator (`kSystem`, `kArena` (future), `kSlab` (future)) |
+| `AllocStrategy` | enum class | `memory/memory.hpp` | Backing allocator (`System`, `Arena` (future), `Slab` (future)) |
 | `ScopedPool` | class | `memory/memory.hpp` | RAII wrapper: `create_pool` in constructor, `destroy_pool` in destructor |
 | `PoolDeleter` | struct | `memory/memory.hpp` | Custom deleter for `std::unique_ptr` — calls `pool_delete<T>` |
 | `pool_ptr<T>` | alias | `memory/memory.hpp` | `std::unique_ptr<T, PoolDeleter>` |
 | `AllocHeader` | struct | `private/memory/pool_registry.hpp` | 8-byte prefix on every allocation: `pool_index` (u32) + `payload_size` (u32) |
-| `SlotState` | enum class | `private/memory/pool_registry.hpp` | `kFree`, `kBusy`, `kActive` — atomic lifecycle state for each `PoolBucket` |
+| `SlotState` | enum class | `private/memory/pool_registry.hpp` | `Free`, `Busy`, `Active` — atomic lifecycle state for each `PoolBucket` |
 | `PoolBucket` | struct | `private/memory/pool_registry.hpp` | One registry slot: counters, name, state, and allocator function pointers |
 
 ## Free functions
@@ -44,7 +44,7 @@
 | `mem_realloc(pool, ptr, new_size)` | `memory.cpp` | Resize; supports cross-pool migration |
 | `mem_free(ptr)` | `memory.cpp` | Read header; update pool counters; call `do_free` |
 | `get_stats(handle)` | `memory.cpp` | Snapshot counters for one active pool |
-| `pool_count()` | `memory.cpp` | Count `kActive` slots via relaxed scan |
+| `pool_count()` | `memory.cpp` | Count `Active` slots via relaxed scan |
 | `for_each_pool(fn, userdata)` | `memory.cpp` | Iterate active pools; call `fn` for each |
 | `set_oom_handler(handler)` | `memory.cpp` | Store OOM callback in `g_oom_handler` (atomic) |
 | `pool_new<T>(pool, args…)` | `memory.hpp` | `mem_alloc` + placement-new |

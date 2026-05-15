@@ -123,10 +123,10 @@ In priority order (cheapest first):
 
 6. **Add `assert_main_thread()` stubs to lifecycle functions.**  Even if true
    thread safety is deferred, assertions are cheap and catch accidental off-thread
-   calls during development.  Platform-module exposes `xash::platform::detail::assert_main_thread()`
-   but `xash3dpp_memory` does not depend on `xash3dpp_platform`; the simplest
-   approach is to expose a public `platform::is_main_thread()` predicate or
-   capture the main-thread ID inside the memory module independently.
+   calls during development.  `xash3dpp_core` exposes `xash::core::detail::assert_main_thread()`
+   (header-only); `xash3dpp_memory` would need to PRIVATE-link `xash3dpp_core`
+   to use it. Alternatively expose a public `core::is_main_thread()` predicate
+   or capture the main-thread ID inside the memory module independently.
    *(Not yet done.)*
 
 7. **Longer term: per-thread scratch pools.**  The most scalable design for

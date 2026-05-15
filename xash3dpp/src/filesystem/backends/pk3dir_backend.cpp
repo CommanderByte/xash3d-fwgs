@@ -11,7 +11,7 @@ Pk3DirBackend::Pk3DirBackend(xash::memory::PoolHandle pool,
 {}
 
 std::unique_ptr<ISearchBackend>
-Pk3DirBackend::Create(xash::memory::PoolHandle pool,
+Pk3DirBackend::create(xash::memory::PoolHandle pool,
                       std::string_view path, SearchPathFlags flags) {
     return std::unique_ptr<ISearchBackend>{
         xash::memory::pool_new<Pk3DirBackend>( pool, pool, path, flags ) };
@@ -20,16 +20,16 @@ Pk3DirBackend::Create(xash::memory::PoolHandle pool,
 std::unique_ptr<ISearchBackend>
 create_pk3dir(xash::memory::PoolHandle pool,
               std::string_view path, SearchPathFlags flags) {
-    return Pk3DirBackend::Create(pool, path, flags);
+    return Pk3DirBackend::create(pool, path, flags);
 }
 
-std::string Pk3DirBackend::Info() const {
-    return inner_.Info() + " (pk3dir)";
+std::string Pk3DirBackend::info() const {
+    return inner_.info() + " (pk3dir)";
 }
 
-std::unique_ptr<File> Pk3DirBackend::OpenFile(std::string_view path,
+std::unique_ptr<File> Pk3DirBackend::open_file(std::string_view path,
                                                std::string_view mode) {
-    return inner_.OpenFile(path, mode);
+    return inner_.open_file(path, mode);
 }
 
 std::optional<std::filesystem::file_time_type>
@@ -37,8 +37,8 @@ Pk3DirBackend::file_time(std::string_view path) {
     return inner_.file_time(path);
 }
 
-std::optional<std::string> Pk3DirBackend::FindFile(std::string_view path) {
-    return inner_.FindFile(path);
+std::optional<std::string> Pk3DirBackend::find_file(std::string_view path) {
+    return inner_.find_file(path);
 }
 
 std::vector<std::string> Pk3DirBackend::search(std::string_view pattern,
@@ -50,8 +50,8 @@ std::vector<std::byte> Pk3DirBackend::load_file(std::string_view path) {
     return inner_.load_file(path);
 }
 
-void Pk3DirBackend::InvalidateDirectory(std::string_view subdir) noexcept {
-    inner_.InvalidateDirectory(subdir);
+void Pk3DirBackend::invalidate_directory(std::string_view subdir) noexcept {
+    inner_.invalidate_directory(subdir);
 }
 
 } // namespace xash::filesystem::backends

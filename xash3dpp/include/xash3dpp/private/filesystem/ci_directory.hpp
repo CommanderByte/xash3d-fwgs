@@ -22,16 +22,16 @@ public:
 
     // Returns the canonical (exact on-disk) entry name for `name` inside
     // `subdir` (relative to root_path_), or nullopt if not found.
-    std::optional<std::string> Resolve(std::string_view subdir,
+    [[nodiscard]] std::optional<std::string> resolve(std::string_view subdir,
                                        std::string_view name);
 
     // Returns all entries in `subdir` matching `pattern` (glob).
-    std::vector<std::string> Glob(std::string_view subdir,
+    [[nodiscard]] std::vector<std::string> glob(std::string_view subdir,
                                   std::string_view pattern,
                                   bool case_insensitive);
 
-    // Invalidate the cache for `subdir` after a write operation.
-    void Invalidate(std::string_view subdir);
+    // invalidate the cache for `subdir` after a write operation.
+    void invalidate(std::string_view subdir);
 
 private:
     enum class Mode { Native, Emulated };
@@ -44,7 +44,7 @@ private:
     mutable std::mutex                                                 cache_mutex_;
 
     // Populate (or return cached) entry list for `dir`.
-    const std::vector<std::string>& get_or_populate(const std::string& dir) const;
+    [[nodiscard]] const std::vector<std::string>& get_or_populate(const std::string& dir) const;
 };
 
 } // namespace xash::filesystem

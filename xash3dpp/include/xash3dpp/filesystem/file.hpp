@@ -38,17 +38,17 @@ public:
     File(const File&)            = delete;
     File& operator=(const File&) = delete;
 
-    virtual FsOffset Read(std::span<std::byte> buf)        = 0;
-    virtual FsOffset Write(std::span<const std::byte> buf) = 0;
-    virtual FsOffset Seek(FsOffset offset, SeekOrigin origin) = 0;
-    virtual FsOffset Tell()   const                        = 0;
-    virtual FsOffset Length() const                        = 0;  // uncompressed size
-    virtual bool     Eof()    const                        = 0;
+    [[nodiscard]] virtual FsOffset Read(std::span<std::byte> buf)        = 0;
+    [[nodiscard]] virtual FsOffset Write(std::span<const std::byte> buf) = 0;
+    [[nodiscard]] virtual FsOffset Seek(FsOffset offset, SeekOrigin origin) = 0;
+    [[nodiscard]] virtual FsOffset Tell()   const                        = 0;
+    [[nodiscard]] virtual FsOffset Length() const                        = 0;  // uncompressed size
+    [[nodiscard]] virtual bool     Eof()    const                        = 0;
     virtual void     Flush()                               = 0;
 
     // Text helpers — return owned values; no caller-provided buffer needed.
-    virtual std::optional<std::string> Gets()        = 0;
-    virtual int                        Getc()        = 0;
+    [[nodiscard]] virtual std::optional<std::string> Gets()        = 0;
+    [[nodiscard]] virtual int                        Getc()        = 0;
     virtual void                       UnGetc(int c) = 0;
 };
 

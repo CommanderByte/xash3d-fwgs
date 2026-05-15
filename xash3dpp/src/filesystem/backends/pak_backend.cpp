@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <array>
 #include <bit>
-#include <cassert>
 #include <cstring>   // memcpy
 #include <cstdio>    // SEEK_SET
 #include <filesystem>
@@ -106,7 +105,7 @@ PakBackend::PakBackend(xash::memory::PoolHandle pool,
 // ---------------------------------------------------------------------------
 
 std::unique_ptr<ISearchBackend>
-PakBackend::Create(xash::memory::PoolHandle pool,
+PakBackend::create(xash::memory::PoolHandle pool,
                    std::string_view path, SearchPathFlags flags) {
     auto* raw = xash::memory::pool_new<PakBackend>( pool, pool, path, flags );
     if (!raw) return nullptr;
@@ -117,7 +116,7 @@ PakBackend::Create(xash::memory::PoolHandle pool,
 std::unique_ptr<ISearchBackend>
 create_pak(xash::memory::PoolHandle pool,
            std::string_view path, SearchPathFlags flags) {
-    return PakBackend::Create(pool, path, flags);
+    return PakBackend::create(pool, path, flags);
 }
 
 // ---------------------------------------------------------------------------
@@ -133,12 +132,12 @@ PakBackend::find_entry(std::string_view name) const noexcept {
 // ISearchBackend interface
 // ---------------------------------------------------------------------------
 
-std::string PakBackend::Info() const {
+std::string PakBackend::info() const {
     return path_ + " (" + std::to_string(entries_.size()) + " files)";
 }
 
 std::unique_ptr<File>
-PakBackend::OpenFile(std::string_view path, std::string_view mode) {
+PakBackend::open_file(std::string_view path, std::string_view mode) {
     // PAK archives are read-only.
     if (is_write_mode(mode))
         return nullptr;
@@ -163,7 +162,7 @@ PakBackend::file_time(std::string_view path) {
 }
 
 std::optional<std::string>
-PakBackend::FindFile(std::string_view path) {
+PakBackend::find_file(std::string_view path) {
     const Entry* e = find_entry(path);
     if (!e) return std::nullopt;
     return e->name;  // canonical (original case from on-disk directory)

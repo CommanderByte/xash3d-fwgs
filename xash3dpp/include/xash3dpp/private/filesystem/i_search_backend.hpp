@@ -34,32 +34,32 @@ public:
 
     // Human-readable description for debug/path-dump output.
     // Replaces the legacy pfnPrintInfo(char *dst, size_t size) out-buffer pattern.
-    virtual std::string Info() const = 0;
+    [[nodiscard]] virtual std::string info() const = 0;
 
     // Returns nullptr if the file does not exist in this backend.
-    virtual std::unique_ptr<File> OpenFile(std::string_view path,
+    [[nodiscard]] virtual std::unique_ptr<File> open_file(std::string_view path,
                                            std::string_view mode) = 0;
 
     // Returns nullopt if the file does not exist.
-    virtual std::optional<std::filesystem::file_time_type>
+    [[nodiscard]] virtual std::optional<std::filesystem::file_time_type>
         file_time(std::string_view path) = 0;
 
     // Case-insensitive name resolution.
     // Returns the canonical (exact on-disk) name, or nullopt if not found.
-    virtual std::optional<std::string> FindFile(std::string_view path) = 0;
+    [[nodiscard]] virtual std::optional<std::string> find_file(std::string_view path) = 0;
 
-    // Glob search within this backend; returns all matching entry names.
-    virtual std::vector<std::string> search(std::string_view pattern,
+    // glob search within this backend; returns all matching entry names.
+    [[nodiscard]] virtual std::vector<std::string> search(std::string_view pattern,
                                             bool case_insensitive) = 0;
 
     // Whole-file load.  Returns an empty vector if not found.
-    virtual std::vector<std::byte> load_file(std::string_view path) = 0;
+    [[nodiscard]] virtual std::vector<std::byte> load_file(std::string_view path) = 0;
 
-    // Invalidate the per-subdirectory name cache for `subdir` (relative to
+    // invalidate the per-subdirectory name cache for `subdir` (relative to
     // this backend's root).  Called after write_file / rename so that
-    // subsequent FindFile calls see newly created entries.
+    // subsequent find_file calls see newly created entries.
     // Default is a no-op — archive backends have immutable contents.
-    virtual void InvalidateDirectory(std::string_view /*subdir*/) noexcept {}
+    virtual void invalidate_directory(std::string_view /*subdir*/) noexcept {}
 
 protected:
     xash::memory::PoolHandle pool_;
@@ -67,7 +67,7 @@ protected:
 
 // Returns true when 'mode' requests write or append access.
 // All read-only backends (PAK, ZIP, WAD) use this to reject writes early.
-inline bool is_write_mode( std::string_view mode ) noexcept
+[[nodiscard]] inline bool is_write_mode( std::string_view mode ) noexcept
 {
     return mode.find( 'w' ) != std::string_view::npos
         || mode.find( 'a' ) != std::string_view::npos;

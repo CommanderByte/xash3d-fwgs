@@ -7,11 +7,9 @@
 #include <cstdio>
 #include <cstring>
 
-static int g_pass = 0, g_fail = 0;
+#include "../test_helpers.hpp"
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ")"); } } while(0)
+static int g_pass = 0, g_fail = 0;
 
 // Cast to uint8_t for comparison against unsigned hex literals.
 static constexpr uint8_t u8( char c ) noexcept { return static_cast<uint8_t>( c ); }

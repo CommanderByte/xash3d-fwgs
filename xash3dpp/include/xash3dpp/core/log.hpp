@@ -1,7 +1,11 @@
 #pragma once
-// xash3dpp — platform logging contract
+// xash3dpp — diagnostic logging contract
 // Legacy reference: engine/common/con_utils.c (Con_Printf, Con_DPrintf),
 //                   engine/common/host.c (Host_Error, Msg)
+//
+// Library: xash3dpp_core (cross-cutting diagnostic primitives that every
+//          subsystem may call from frame zero).  The default sink is
+//          platform::console::write — see <xash3dpp/platform/console.hpp>.
 //
 // Design notes (QI, design-paradigms-round2.md):
 //   • Free-function API only.  No init / shutdown — callable before EngineContext.
@@ -20,14 +24,14 @@
 //     (which is defined in platform/crash.hpp) separately, or use XASH_FATAL.
 //
 // Typical usage:
-//   platform::log(LogLevel::Warning, "filesystem", "path too long");
-//   platform::logf(LogLevel::Error, "memory", "pool overflow at %zu", bytes);
+//   core::log(LogLevel::Warning, "filesystem", "path too long");
+//   core::logf(LogLevel::Error, "memory", "pool overflow at %zu", bytes);
 
 #include <string_view>
 #include <cstdarg>       // va_list, va_start, va_end
 #include <cstddef>       // std::size_t
 
-namespace xash::platform {
+namespace xash::core {
 
 // ---------------------------------------------------------------------------
 // Log level
@@ -127,4 +131,4 @@ inline void log_fatal( std::string_view tag, std::string_view text ) noexcept
     log( LogLevel::Fatal, tag, text );
 }
 
-} // namespace xash::platform
+} // namespace xash::core

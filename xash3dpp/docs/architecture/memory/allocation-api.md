@@ -48,10 +48,10 @@ void* mem_alloc(PoolHandle pool, std::size_t size) noexcept;
 
 ### Steps
 
-1. **Null pool / kNullPool**: calls `malloc(size)` directly, returning
-   untracked memory. This is intentional — `kNullPool` is a valid sentinel for
+1. **Null pool / `k_null_pool`**: calls `malloc(size)` directly, returning
+   untracked memory. This is intentional — `k_null_pool` is a valid sentinel for
    "unowned" allocations.
-2. **Resolve bucket**: `acquire`-load `state`; if not `kActive`, fall back to
+2. **Resolve bucket**: `acquire`-load `state`; if not `Active`, fall back to
    raw `malloc` (pool is being destroyed or was not created; counters stay at 0).
 3. **Overflow guard**: check `size + sizeof(AllocHeader)` overflows `size_t`
    before calling `malloc`. On overflow, invoke the OOM handler and return
@@ -100,7 +100,7 @@ void mem_free(void* ptr) noexcept;
    `total_frees.fetch_add(1, relaxed)`.
 6. Calls `bucket.do_free(header, bucket.ctx)` (which calls `free`).
 
-The `acquire`-load in step 4 pairs with the `release` store of `kActive` in
+The `acquire`-load in step 4 pairs with the `release` store of `Active` in
 `create_pool`, ensuring the `do_free` pointer and `ctx` are visible.
 
 **No double-free detection** is performed at runtime. Use ASan for that.
@@ -125,7 +125,7 @@ Handles four cases:
 ### Same-pool fast path
 
 1. `old_pool_index = header.pool_index`, `old_size = header.payload_size`.
-2. `acquire`-load `state` on the old pool; assert `kActive`.
+2. `acquire`-load `state` on both old and new buckets; fall through to cross-pool migration if not `Active`.
 3. `bucket.do_realloc(raw, sizeof(AllocHeader) + new_size, ctx)` (which calls
    `realloc`).
 4. Update `header.payload_size = new_size`.

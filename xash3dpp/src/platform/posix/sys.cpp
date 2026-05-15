@@ -21,7 +21,7 @@
 #include <cstdio>       // std::fprintf
 #include <cerrno>       // errno, EINTR
 
-#include <xash3dpp/private/platform/assert_main.hpp>
+#include <xash3dpp/private/core/assert_main.hpp>
 
 #if defined(__APPLE__)
 #  include <mach-o/dyld.h>  // _NSGetExecutablePath
@@ -52,7 +52,7 @@ double get_time() noexcept
     static const double s_epoch = read_clock();
     // Capture main-thread ID on first call (inside magic-static — thread-safe).
     static const bool s_main_captured = []() noexcept {
-        detail::capture_main_thread();
+        core::detail::capture_main_thread();
         return true;
     }();
     (void)s_main_captured;

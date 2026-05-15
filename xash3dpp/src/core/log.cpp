@@ -1,5 +1,5 @@
-// xash3dpp — platform logging implementation
-// Design: see include/xash3dpp/platform/log.hpp for the full contract.
+// xash3dpp — core logging implementation
+// Design: see include/xash3dpp/core/log.hpp for the full contract.
 //
 // Implementation notes:
 //   • A single std::atomic<LogCallback> slot stores the optional callback.
@@ -13,7 +13,7 @@
 //   • The tag is printed as "[tag][LEVEL]: " — matching the legacy Con_Printf
 //     prefix that the GoldSrc game DLLs and users recognise.
 
-#include <xash3dpp/platform/log.hpp>
+#include <xash3dpp/core/log.hpp>
 #include <xash3dpp/platform/console.hpp>
 #include <xash3dpp/limits.hpp>
 
@@ -22,7 +22,7 @@
 #include <cstring>   // std::strlen, std::memcpy
 #include <cstddef>   // std::size_t
 
-namespace xash::platform {
+namespace xash::core {
 
 // ---------------------------------------------------------------------------
 // Internal state
@@ -86,7 +86,7 @@ void emit( LogLevel level, std::string_view tag,
     std::string_view full_line{ buf, end };
 
     // Default sink: platform console.
-    console::write( full_line );
+    platform::console::write( full_line );
 
     // Optional callback (body only, without the prefix and newline).
     LogCallback cb = g_log_callback.load( std::memory_order_relaxed );
@@ -217,4 +217,4 @@ void log_set_callback( LogCallback callback ) noexcept
     g_log_callback.store( callback, std::memory_order_relaxed );
 }
 
-} // namespace xash::platform
+} // namespace xash::core
