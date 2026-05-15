@@ -1,3 +1,6 @@
+> This document has been superseded by the directory
+> [docs/architecture/filesystem/](./filesystem/README.md).
+
 # Filesystem Module Architecture
 
 > Boundary spec: [docs/boundaries/filesystem-boundary.md](../boundaries/filesystem-boundary.md)  
