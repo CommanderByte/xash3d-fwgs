@@ -1,6 +1,9 @@
-# xash3dpp — memory subsystem
-# Zone/pool allocator; memory tracking and tagging.
-# Legacy reference: engine/common/zone.c  (DarkPlaces-derived pool allocator)
-#
-# TODO: add source files and add_library target when implementation begins.
-# Likely dependencies: xash3dpp_utilities
+add_library(xash3dpp_memory STATIC
+    memory.cpp
+)
+
+target_include_directories(xash3dpp_memory
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+)
+
+target_compile_features(xash3dpp_memory PUBLIC cxx_std_20)
