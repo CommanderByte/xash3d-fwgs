@@ -22,8 +22,9 @@ namespace xash::filesystem::backends {
 // Construction / factory
 // ---------------------------------------------------------------------------
 
-DirBackend::DirBackend(std::string_view root_path, SearchPathFlags flags)
-    : root_{root_path}, flags_{flags}, ci_{root_path}
+DirBackend::DirBackend(xash::memory::PoolHandle pool,
+                       std::string_view root_path, SearchPathFlags flags)
+    : ISearchBackend{pool}, root_{root_path}, flags_{flags}, ci_{root_path}
 {
     // Trim any trailing slash so path concatenation is uniform.
     while (!root_.empty() && (root_.back() == '/' || root_.back() == '\\'))
@@ -31,8 +32,10 @@ DirBackend::DirBackend(std::string_view root_path, SearchPathFlags flags)
 }
 
 std::unique_ptr<ISearchBackend>
-DirBackend::Create(std::string_view path, SearchPathFlags flags) {
-    return std::make_unique<DirBackend>(path, flags);
+DirBackend::Create(xash::memory::PoolHandle pool,
+                   std::string_view path, SearchPathFlags flags) {
+    return std::unique_ptr<ISearchBackend>{
+        xash::memory::pool_new<DirBackend>( pool, pool, path, flags ) };
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +102,7 @@ DirBackend::OpenFile(std::string_view path, std::string_view mode) {
     OsFd fd = platform::open_file(disk, mode_flags(mode));
     if (!fd.valid()) return nullptr;
 
-    return make_os_file(std::move(fd), length);
+    return make_os_file(pool_, std::move(fd), length);
 }
 
 std::optional<std::filesystem::file_time_type>
@@ -177,6 +180,10 @@ DirBackend::LoadFile(std::string_view path) {
         return {};
 
     return buf;
+}
+
+void DirBackend::InvalidateDirectory(std::string_view subdir) noexcept {
+    ci_.Invalidate(subdir);
 }
 
 } // namespace xash::filesystem::backends

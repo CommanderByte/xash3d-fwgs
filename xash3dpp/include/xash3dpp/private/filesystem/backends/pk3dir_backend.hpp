@@ -12,10 +12,12 @@ namespace xash::filesystem::backends {
 
 class Pk3DirBackend final : public ISearchBackend {
 public:
-    Pk3DirBackend(std::string_view root_path, SearchPathFlags flags);
+    Pk3DirBackend(xash::memory::PoolHandle pool,
+                  std::string_view root_path, SearchPathFlags flags);
 
     static std::unique_ptr<ISearchBackend>
-        Create(std::string_view path, SearchPathFlags flags);
+        Create(xash::memory::PoolHandle pool,
+               std::string_view path, SearchPathFlags flags);
 
     std::string Info() const override;
 
@@ -31,6 +33,8 @@ public:
                                     bool case_insensitive) override;
 
     std::vector<std::byte> LoadFile(std::string_view path) override;
+
+    void InvalidateDirectory(std::string_view subdir) noexcept override;
 
 private:
     DirBackend inner_;

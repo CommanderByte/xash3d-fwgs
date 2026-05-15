@@ -4,6 +4,7 @@
 // Modernization finding H-1: replaces hand-rolled vtable with virtual class.
 
 #include <xash3dpp/filesystem/file.hpp>
+#include <xash3dpp/memory/memory.hpp>
 
 #include <filesystem>
 #include <memory>
@@ -16,7 +17,20 @@ namespace xash::filesystem {
 
 class ISearchBackend {
 public:
+    explicit ISearchBackend(xash::memory::PoolHandle pool) noexcept
+        : pool_{pool} {}
     virtual ~ISearchBackend() = default;
+
+    // Pool-aware deallocation — called by std::unique_ptr<ISearchBackend>'s
+    // default deleter when *this was created via pool_new.
+    static void operator delete(void* p) noexcept
+    {
+        xash::memory::mem_free(p);
+    }
+    static void operator delete(void* p, std::size_t) noexcept
+    {
+        xash::memory::mem_free(p);
+    }
 
     // Human-readable description for debug/path-dump output.
     // Replaces the legacy pfnPrintInfo(char *dst, size_t size) out-buffer pattern.
@@ -40,6 +54,15 @@ public:
 
     // Whole-file load.  Returns an empty vector if not found.
     virtual std::vector<std::byte> LoadFile(std::string_view path) = 0;
+
+    // Invalidate the per-subdirectory name cache for `subdir` (relative to
+    // this backend's root).  Called after WriteFile / Rename so that
+    // subsequent FindFile calls see newly created entries.
+    // Default is a no-op — archive backends have immutable contents.
+    virtual void InvalidateDirectory(std::string_view /*subdir*/) noexcept {}
+
+protected:
+    xash::memory::PoolHandle pool_;
 };
 
 // Returns true when 'mode' requests write or append access.

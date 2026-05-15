@@ -14,6 +14,7 @@
 
 #include <xash3dpp/filesystem/file.hpp>
 #include <xash3dpp/filesystem/search_path_flags.hpp>
+#include <xash3dpp/memory/memory.hpp>
 
 #include <miniz.h>
 
@@ -32,6 +33,7 @@ using xash::filesystem::SearchPathFlags;
 using namespace xash::filesystem::backends;
 
 static int g_pass = 0, g_fail = 0;
+static xash::memory::PoolHandle g_pool;
 
 #define CHECK(expr) \
     do { if (expr) { ++g_pass; } \
@@ -228,13 +230,13 @@ static void setup_testdir()
 
 static void test_dir_backend_create()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     CHECK( b != nullptr );
 }
 
 static void test_dir_backend_info()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     // Info() returns the root path — just check it's non-empty
     CHECK( !b->Info().empty() );
@@ -242,7 +244,7 @@ static void test_dir_backend_info()
 
 static void test_dir_backend_find_file()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FindFile( "hello.txt" ).has_value() );
     CHECK( !b->FindFile( "ghost.txt" ).has_value() );
@@ -250,7 +252,7 @@ static void test_dir_backend_find_file()
 
 static void test_dir_backend_load_file()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto data = b->LoadFile( "hello.txt" );
     CHECK( data.size() == 11u );
@@ -259,14 +261,14 @@ static void test_dir_backend_load_file()
 
 static void test_dir_backend_load_file_missing()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->LoadFile( "ghost.txt" ).empty() );
 }
 
 static void test_dir_backend_open_file_read()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     auto f = b->OpenFile( "hello.txt", "rb" );
     CHECK( f != nullptr );
@@ -276,14 +278,14 @@ static void test_dir_backend_open_file_read()
 
 static void test_dir_backend_open_file_missing()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "ghost.txt", "rb" ) == nullptr );
 }
 
 static void test_dir_backend_write_creates_file()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     auto f = b->OpenFile( "new_write.txt", "wb" );
     CHECK( f != nullptr );
@@ -299,7 +301,7 @@ static void test_dir_backend_write_creates_file()
 
 static void test_dir_backend_file_time()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FileTime( "hello.txt" ).has_value() );
     CHECK( !b->FileTime( "ghost.txt" ).has_value() );
@@ -307,7 +309,7 @@ static void test_dir_backend_file_time()
 
 static void test_dir_backend_search()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto results = b->Search( "*.txt", true );
     // "hello.txt" must appear; "data.bin" must not.
@@ -321,7 +323,7 @@ static void test_dir_backend_search()
 
 static void test_dir_backend_nested_find()
 {
-    auto b = DirBackend::Create( g_dir_root, SearchPathFlags::None );
+    auto b = DirBackend::Create( g_pool, g_dir_root, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->FindFile( "sub/nested.txt" ).has_value() );
 }
@@ -333,24 +335,24 @@ static void test_dir_backend_nested_find()
 static void test_pak_backend_create_invalid()
 {
     // File with wrong magic → Create returns nullptr.
-    CHECK( PakBackend::Create( g_junk_path, SearchPathFlags::None ) == nullptr );
+    CHECK( PakBackend::Create( g_pool, g_junk_path, SearchPathFlags::None ) == nullptr );
 }
 
 static void test_pak_backend_create_missing()
 {
     const std::string absent = (g_testdir / "absent.pak").string();
-    CHECK( PakBackend::Create( absent, SearchPathFlags::None ) == nullptr );
+    CHECK( PakBackend::Create( g_pool, absent, SearchPathFlags::None ) == nullptr );
 }
 
 static void test_pak_backend_create_valid()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     CHECK( b != nullptr );
 }
 
 static void test_pak_backend_info()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     // Info() = "path (2 files)" — must contain "2".
     CHECK( b->Info().find("2") != std::string::npos );
@@ -358,7 +360,7 @@ static void test_pak_backend_info()
 
 static void test_pak_backend_find_file()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FindFile( "scripts/test.txt" ).has_value() );
     CHECK( !b->FindFile( "scripts/missing.txt" ).has_value() );
@@ -367,7 +369,7 @@ static void test_pak_backend_find_file()
 static void test_pak_backend_find_file_case_insensitive()
 {
     // PAK entries are binary-searched case-insensitively (mirrors Q_stricmp).
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->FindFile( "SCRIPTS/TEST.TXT" ).has_value() );
     CHECK( b->FindFile( "Scripts/Test.Txt" ).has_value() );
@@ -375,7 +377,7 @@ static void test_pak_backend_find_file_case_insensitive()
 
 static void test_pak_backend_load_file()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto data = b->LoadFile( "scripts/test.txt" );
     CHECK( data.size() == 11u );
@@ -384,14 +386,14 @@ static void test_pak_backend_load_file()
 
 static void test_pak_backend_load_file_missing()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->LoadFile( "scripts/missing.txt" ).empty() );
 }
 
 static void test_pak_backend_open_file()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     auto f = b->OpenFile( "scripts/test.txt", "rb" );
     CHECK( f != nullptr );
@@ -401,7 +403,7 @@ static void test_pak_backend_open_file()
 
 static void test_pak_backend_open_file_missing()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "scripts/missing.txt", "rb" ) == nullptr );
 }
@@ -409,7 +411,7 @@ static void test_pak_backend_open_file_missing()
 static void test_pak_backend_write_rejected()
 {
     // PAK archives are read-only; write/append mode must return nullptr.
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "scripts/test.txt", "wb" ) == nullptr );
     CHECK( b->OpenFile( "scripts/test.txt", "ab" ) == nullptr );
@@ -417,7 +419,7 @@ static void test_pak_backend_write_rejected()
 
 static void test_pak_backend_file_time()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     // PAK returns the archive-level mtime for any found entry.
     CHECK(  b->FileTime( "scripts/test.txt" ).has_value() );
@@ -426,7 +428,7 @@ static void test_pak_backend_file_time()
 
 static void test_pak_backend_search()
 {
-    auto b = PakBackend::Create( g_pak_path, SearchPathFlags::None );
+    auto b = PakBackend::Create( g_pool, g_pak_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto results = b->Search( "*.txt", true );
     // archive_search_by_name: "scripts/test.txt" matches "*.txt" (wildcard
@@ -446,31 +448,31 @@ static void test_pak_backend_search()
 
 static void test_zip_backend_create_invalid()
 {
-    CHECK( ZipBackend::Create( g_junk_path, SearchPathFlags::None ) == nullptr );
+    CHECK( ZipBackend::Create( g_pool, g_junk_path, SearchPathFlags::None ) == nullptr );
 }
 
 static void test_zip_backend_create_missing()
 {
     const std::string absent = (g_testdir / "absent.zip").string();
-    CHECK( ZipBackend::Create( absent, SearchPathFlags::None ) == nullptr );
+    CHECK( ZipBackend::Create( g_pool, absent, SearchPathFlags::None ) == nullptr );
 }
 
 static void test_zip_backend_create_valid()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     CHECK( b != nullptr );
 }
 
 static void test_zip_backend_info()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->Info().find("2") != std::string::npos );
 }
 
 static void test_zip_backend_find_file()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FindFile( "scripts/test.txt" ).has_value() );
     CHECK( !b->FindFile( "scripts/missing.txt" ).has_value() );
@@ -478,14 +480,14 @@ static void test_zip_backend_find_file()
 
 static void test_zip_backend_find_file_case_insensitive()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->FindFile( "SCRIPTS/TEST.TXT" ).has_value() );
 }
 
 static void test_zip_backend_load_file()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto data = b->LoadFile( "scripts/test.txt" );
     CHECK( data.size() == 11u );
@@ -494,7 +496,7 @@ static void test_zip_backend_load_file()
 
 static void test_zip_backend_load_file_missing()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->LoadFile( "scripts/missing.txt" ).empty() );
 }
@@ -503,7 +505,7 @@ static void test_zip_backend_open_file()
 {
     // Entries are stored (MZ_NO_COMPRESSION) so Read goes through the direct
     // (non-inflate) path — exercises make_os_file with deflated=false.
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     auto f = b->OpenFile( "scripts/test.txt", "rb" );
     CHECK( f != nullptr );
@@ -513,14 +515,14 @@ static void test_zip_backend_open_file()
 
 static void test_zip_backend_open_file_missing()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "scripts/missing.txt", "rb" ) == nullptr );
 }
 
 static void test_zip_backend_write_rejected()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "scripts/test.txt", "wb" ) == nullptr );
     CHECK( b->OpenFile( "scripts/test.txt", "ab" ) == nullptr );
@@ -528,7 +530,7 @@ static void test_zip_backend_write_rejected()
 
 static void test_zip_backend_file_time()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FileTime( "scripts/test.txt" ).has_value() );
     CHECK( !b->FileTime( "scripts/missing.txt" ).has_value() );
@@ -536,7 +538,7 @@ static void test_zip_backend_file_time()
 
 static void test_zip_backend_search()
 {
-    auto b = ZipBackend::Create( g_zip_path, SearchPathFlags::None );
+    auto b = ZipBackend::Create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto results = b->Search( "*.txt", true );
     const bool found = std::find( results.begin(), results.end(),
@@ -553,24 +555,24 @@ static void test_zip_backend_search()
 
 static void test_wad_backend_create_invalid()
 {
-    CHECK( WadBackend::Create( g_junk_path, SearchPathFlags::None ) == nullptr );
+    CHECK( WadBackend::Create( g_pool, g_junk_path, SearchPathFlags::None ) == nullptr );
 }
 
 static void test_wad_backend_create_missing()
 {
     const std::string absent = (g_testdir / "absent.wad").string();
-    CHECK( WadBackend::Create( absent, SearchPathFlags::None ) == nullptr );
+    CHECK( WadBackend::Create( g_pool, absent, SearchPathFlags::None ) == nullptr );
 }
 
 static void test_wad_backend_create_valid()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     CHECK( b != nullptr );
 }
 
 static void test_wad_backend_info()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( !b->Info().empty() );
 }
@@ -579,7 +581,7 @@ static void test_wad_backend_find_file()
 {
     // "test.txt" → ext "txt" → TYP_SCRIPT=68; strip → lump name "test"
     // FindFile returns e->name (the stored lowercase lump name, no extension).
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto result = b->FindFile( "test.txt" );
     CHECK( result.has_value() );
@@ -592,7 +594,7 @@ static void test_wad_backend_find_file()
 
 static void test_wad_backend_load_file()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     const auto data = b->LoadFile( "test.txt" );
     CHECK( data.size() == 7u );
@@ -601,7 +603,7 @@ static void test_wad_backend_load_file()
 
 static void test_wad_backend_load_file_missing()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->LoadFile( "missing.txt" ).empty() );
 }
@@ -609,7 +611,7 @@ static void test_wad_backend_load_file_missing()
 static void test_wad_backend_open_file()
 {
     // WAD::OpenFile returns a MemFile loaded with the full lump content.
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     auto f = b->OpenFile( "test.txt", "rb" );
     CHECK( f != nullptr );
@@ -619,14 +621,14 @@ static void test_wad_backend_open_file()
 
 static void test_wad_backend_open_file_missing()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "missing.txt", "rb" ) == nullptr );
 }
 
 static void test_wad_backend_write_rejected()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->OpenFile( "test.txt", "wb" ) == nullptr );
     CHECK( b->OpenFile( "test.txt", "ab" ) == nullptr );
@@ -634,7 +636,7 @@ static void test_wad_backend_write_rejected()
 
 static void test_wad_backend_file_time()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FileTime( "test.txt" ).has_value() );
     CHECK( !b->FileTime( "missing.txt" ).has_value() );
@@ -642,7 +644,7 @@ static void test_wad_backend_file_time()
 
 static void test_wad_backend_search()
 {
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     // "*.txt" → TYP_SCRIPT=68; entry "test" matches → result is "test.txt"
     const auto results = b->Search( "*.txt", true );
@@ -656,7 +658,7 @@ static void test_wad_backend_search()
 static void test_wad_backend_qualifier_match()
 {
     // "test.wad/test.txt" — dir qualifier must match WAD stem ("test").
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK(  b->FindFile( "test.wad/test.txt" ).has_value() );
     // Case-insensitive qualifier match
@@ -669,7 +671,7 @@ static void test_wad_backend_case_insensitive_lookup()
 {
     // WAD normalises all names to lowercase on load; lookups must be CI.
     // "TEST.TXT" → strip_extension → "test" (after to_lower in lookup).
-    auto b = WadBackend::Create( g_wad_path, SearchPathFlags::None );
+    auto b = WadBackend::Create( g_pool, g_wad_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     CHECK( b->FindFile( "TEST.TXT" ).has_value() );
     CHECK( b->FindFile( "Test.Txt" ).has_value() );
@@ -682,6 +684,7 @@ static void test_wad_backend_case_insensitive_lookup()
 int main()
 {
     setup_testdir();
+    g_pool = xash::memory::create_pool("test_backends");
 
     // --- DirBackend ---------------------------------------------------------
     test_dir_backend_create();
@@ -742,6 +745,7 @@ int main()
     test_wad_backend_qualifier_match();
     test_wad_backend_case_insensitive_lookup();
 
+    xash::memory::destroy_pool(g_pool);
     std::printf( "backends: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;
 }

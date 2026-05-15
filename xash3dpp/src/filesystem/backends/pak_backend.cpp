@@ -51,8 +51,9 @@ static_assert(sizeof(DiskEntry) == 64);
 // Constructor — open, validate, read directory, sort entries
 // ---------------------------------------------------------------------------
 
-PakBackend::PakBackend(std::string_view pak_path, SearchPathFlags flags)
-    : path_{pak_path}, flags_{flags}
+PakBackend::PakBackend(xash::memory::PoolHandle pool,
+                       std::string_view pak_path, SearchPathFlags flags)
+    : ISearchBackend{pool}, path_{pak_path}, flags_{flags}
 {
     OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
     if (!fd.valid()) return;
@@ -101,15 +102,18 @@ PakBackend::PakBackend(std::string_view pak_path, SearchPathFlags flags)
 // ---------------------------------------------------------------------------
 
 std::unique_ptr<ISearchBackend>
-PakBackend::Create(std::string_view path, SearchPathFlags flags) {
-    auto b = std::make_unique<PakBackend>(path, flags);
-    if (!b->valid_) return nullptr;
-    return b;
+PakBackend::Create(xash::memory::PoolHandle pool,
+                   std::string_view path, SearchPathFlags flags) {
+    auto* raw = xash::memory::pool_new<PakBackend>( pool, pool, path, flags );
+    if (!raw) return nullptr;
+    if (!raw->valid_) { delete raw; return nullptr; }
+    return std::unique_ptr<ISearchBackend>{ raw };
 }
 
 std::unique_ptr<ISearchBackend>
-create_pak(std::string_view path, SearchPathFlags flags) {
-    return PakBackend::Create(path, flags);
+create_pak(xash::memory::PoolHandle pool,
+           std::string_view path, SearchPathFlags flags) {
+    return PakBackend::Create(pool, path, flags);
 }
 
 // ---------------------------------------------------------------------------
@@ -141,7 +145,8 @@ PakBackend::OpenFile(std::string_view path, std::string_view mode) {
     OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
     if (!fd.valid()) return nullptr;
 
-    return make_os_file(std::move(fd),
+    return make_os_file(pool_,
+                        std::move(fd),
                         static_cast<FsOffset>(e->size),
                         static_cast<FsOffset>(e->offset));
 }

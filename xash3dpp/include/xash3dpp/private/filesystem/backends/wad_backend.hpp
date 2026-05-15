@@ -15,10 +15,12 @@ namespace xash::filesystem::backends {
 
 class WadBackend final : public ISearchBackend {
 public:
-    WadBackend(std::string_view wad_path, SearchPathFlags flags);
+    WadBackend(xash::memory::PoolHandle pool,
+               std::string_view wad_path, SearchPathFlags flags);
 
     static std::unique_ptr<ISearchBackend>
-        Create(std::string_view path, SearchPathFlags flags);
+        Create(xash::memory::PoolHandle pool,
+               std::string_view path, SearchPathFlags flags);
 
     std::string Info() const override;
 

@@ -17,11 +17,13 @@ namespace xash::filesystem::backends {
 
 class AndroidBackend final : public ISearchBackend {
 public:
-    AndroidBackend(std::string_view base_path, SearchPathFlags flags,
+    AndroidBackend(xash::memory::PoolHandle pool,
+                   std::string_view base_path, SearchPathFlags flags,
                    bool engine_package);
 
     static std::unique_ptr<ISearchBackend>
-        Create(std::string_view path, SearchPathFlags flags);
+        Create(xash::memory::PoolHandle pool,
+               std::string_view path, SearchPathFlags flags);
 
     std::string Info() const override;
 

@@ -2,6 +2,7 @@
 // Legacy reference: filesystem/filesystem.c
 
 #include <xash3dpp/filesystem/filesystem.hpp>
+#include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/utilities/gameinfo_parser.hpp>
 #include <xash3dpp/private/filesystem/search_path.hpp>
 #include <xash3dpp/private/filesystem/archive_registry.hpp>
@@ -28,6 +29,15 @@ using GameInfo = ::xash::GameInfo;
 // File-local helpers
 // ---------------------------------------------------------------------------
 
+// Returns the parent sub-directory of `path` (relative, no trailing slash).
+// "hello.txt" → "", "sub/dir/file.txt" → "sub/dir".
+static std::string_view parent_dir_of(std::string_view path) noexcept
+{
+    auto pos = path.rfind('/');
+    if (pos == std::string_view::npos) pos = path.rfind('\\');
+    return pos == std::string_view::npos ? std::string_view{} : path.substr(0, pos);
+}
+
 // Reinterpret a byte buffer as a string view without copying.
 // std::byte* → char* aliasing is permitted by [basic.lval].
 static std::string bytes_as_string( std::span<const std::byte> s ) noexcept
@@ -41,7 +51,8 @@ static std::string bytes_as_string( std::span<const std::byte> s ) noexcept
 
 // Fill `out` with SearchPath entries for all archives + the plain directory
 // found under `dir`.  No mutex is held during this call.
-static void collect_paths_for_dir( std::string_view dir, SearchPathFlags flags,
+static void collect_paths_for_dir( xash::memory::PoolHandle pool,
+                                   std::string_view dir, SearchPathFlags flags,
                                    std::vector<SearchPath>& out )
 {
     auto entries = platform::list_directory( dir );
@@ -52,7 +63,7 @@ static void collect_paths_for_dir( std::string_view dir, SearchPathFlags flags,
             const auto ext = xash::utilities::file_extension( entry );
             if ( ext.size() < 2 || ext.substr(1) != at.extension ) continue;
             const std::string full = xash::utilities::path_join( dir, entry );
-            auto backend = at.factory( full, flags | at.default_flags );
+            auto backend = at.factory( pool, full, flags | at.default_flags );
             if ( backend )
                 out.push_back( { std::move(backend), full, flags | at.default_flags } );
         }
@@ -60,7 +71,7 @@ static void collect_paths_for_dir( std::string_view dir, SearchPathFlags flags,
 
     // Plain directory backend — highest priority, added last.
     out.push_back( {
-        backends::DirBackend::Create( dir, flags ),
+        backends::DirBackend::Create( pool, dir, flags ),
         std::string{dir},
         flags
     } );
@@ -68,14 +79,15 @@ static void collect_paths_for_dir( std::string_view dir, SearchPathFlags flags,
 
 // Fill `out` with paths for the full game hierarchy rooted at `dir`
 // (including _hd and _lv variants when the corresponding flags are set).
-static void collect_hierarchy( std::string_view dir, SearchPathFlags flags,
+static void collect_hierarchy( xash::memory::PoolHandle pool,
+                               std::string_view dir, SearchPathFlags flags,
                                std::vector<SearchPath>& out )
 {
-    collect_paths_for_dir( dir, flags, out );
+    collect_paths_for_dir( pool, dir, flags, out );
     if ( any( flags & SearchPathFlags::MountHD ) )
-        collect_paths_for_dir( std::string{dir} + "_hd", flags, out );
+        collect_paths_for_dir( pool, std::string{dir} + "_hd", flags, out );
     if ( any( flags & SearchPathFlags::MountLV ) )
-        collect_paths_for_dir( std::string{dir} + "_lv", flags, out );
+        collect_paths_for_dir( pool, std::string{dir} + "_lv", flags, out );
     // TODO: MountAddon, MountL10n
 }
 
@@ -99,6 +111,9 @@ struct Filesystem::Impl {
     std::deque<SearchPath>      search_paths;
     mutable std::shared_mutex   paths_mutex;
 
+    // Memory pool — created in Init(), destroyed in Shutdown().
+    xash::memory::PoolHandle    pool_;
+
     // Toggle for absolute/traversal paths — atomic for lock-free access.
     std::atomic<bool>           allow_direct_paths{false};
 };
@@ -119,7 +134,8 @@ bool Filesystem::Init(std::string_view rootdir,
     impl_->basedir = basedir;
     impl_->gamedir = gamedir;
     impl_->rodir   = rodir;
-    return true;
+    impl_->pool_   = xash::memory::create_pool("filesystem");
+    return static_cast<bool>(impl_->pool_);
 }
 
 void Filesystem::Shutdown() {
@@ -131,6 +147,10 @@ void Filesystem::Shutdown() {
         std::unique_lock lock{impl_->game_mutex};
         impl_->active_game = {};
         impl_->game_loaded  = false;
+    }
+    if (impl_->pool_) {
+        xash::memory::destroy_pool(impl_->pool_);
+        impl_->pool_ = {};
     }
 }
 
@@ -174,21 +194,25 @@ void Filesystem::Rescan(SearchPathFlags mount_flags, std::string_view language) 
     // Mount in ascending priority order (last added = highest priority).
     // basedir (lowest) → falldir → gamedir (highest).
     if (!g.basedir.empty() && g.basedir != g.gamefolder)
-        collect_hierarchy(xash::utilities::path_join(rootdir, g.basedir),
+        collect_hierarchy(impl_->pool_,
+                          xash::utilities::path_join(rootdir, g.basedir),
                           mount_flags, new_paths);
 
     if (!g.falldir.empty()
             && g.falldir != g.gamefolder
             && g.falldir != g.basedir)
-        collect_hierarchy(xash::utilities::path_join(rootdir, g.falldir),
+        collect_hierarchy(impl_->pool_,
+                          xash::utilities::path_join(rootdir, g.falldir),
                           mount_flags, new_paths);
 
-    collect_hierarchy(xash::utilities::path_join(rootdir, g.gamefolder),
+    collect_hierarchy(impl_->pool_,
+                      xash::utilities::path_join(rootdir, g.gamefolder),
                       mount_flags | SearchPathFlags::GameDir, new_paths);
 
     // Read-only mirror (installed separately from the writable gamedir).
     if (!rodir.empty())
-        collect_hierarchy(xash::utilities::path_join(rodir, g.gamefolder),
+        collect_hierarchy(impl_->pool_,
+                          xash::utilities::path_join(rodir, g.gamefolder),
                           mount_flags | SearchPathFlags::GameDir
                                       | SearchPathFlags::NoWrite,
                           new_paths);
@@ -237,7 +261,7 @@ std::vector<GameInfo> Filesystem::ScanGameDirectories(std::string_view root) con
 
 void Filesystem::AddGameDirectory(std::string_view dir, SearchPathFlags flags) {
     std::vector<SearchPath> new_paths;
-    collect_paths_for_dir(dir, flags, new_paths);
+    collect_paths_for_dir(impl_->pool_, dir, flags, new_paths);
     std::unique_lock lock{ impl_->paths_mutex };
     for (auto& sp : new_paths)
         impl_->search_paths.push_back(std::move(sp));
@@ -245,7 +269,7 @@ void Filesystem::AddGameDirectory(std::string_view dir, SearchPathFlags flags) {
 
 void Filesystem::AddGameHierarchy(std::string_view dir, SearchPathFlags flags) {
     std::vector<SearchPath> new_paths;
-    collect_hierarchy(dir, flags, new_paths);
+    collect_hierarchy(impl_->pool_, dir, flags, new_paths);
     std::unique_lock lock{ impl_->paths_mutex };
     for (auto& sp : new_paths)
         impl_->search_paths.push_back(std::move(sp));
@@ -270,7 +294,7 @@ bool Filesystem::MountArchive(std::string_view path, SearchPathFlags flags) {
 
     for (const auto& at : k_archive_types) {
         if (ext != at.extension) continue;
-        auto backend = at.factory(path, flags);
+        auto backend = at.factory(impl_->pool_, path, flags);
         if (!backend) return false;
         std::unique_lock lock{ impl_->paths_mutex };
         impl_->search_paths.push_back({ std::move(backend), std::string{path}, flags });
@@ -329,8 +353,12 @@ bool Filesystem::WriteFile(std::string_view path, std::span<const std::byte> dat
             platform::OpenMode::Create   |
             platform::OpenMode::Truncate);
         if (!fd.valid()) continue;
-        const FsOffset n = platform::write(fd, data.data(), data.size());
-        return n == static_cast<FsOffset>(data.size());
+        const FsOffset n   = platform::write(fd, data.data(), data.size());
+        const bool     ok  = (n == static_cast<FsOffset>(data.size()));
+        // Invalidate the backend's directory cache so a subsequent FileExists
+        // or FindFile call sees the new file (critical on Linux emulated-CI).
+        if (ok) it->backend->InvalidateDirectory(parent_dir_of(path));
+        return ok;
     }
     return false;
 }
@@ -415,7 +443,16 @@ bool Filesystem::Rename(std::string_view from, std::string_view to) {
         const std::string src = xash::utilities::path_join(it->source_path, *found);
         if (!platform::file_size(src)) continue;
         const std::string dst = xash::utilities::path_join(it->source_path, to);
-        return platform::rename_file(src, dst);
+        const bool ok = platform::rename_file(src, dst);
+        if (ok) {
+            // Invalidate CI cache for both the source and destination directories
+            // so FindFile picks up the new name and drops the old one.
+            it->backend->InvalidateDirectory(parent_dir_of(from));
+            const auto pd_to = parent_dir_of(to);
+            if (pd_to != parent_dir_of(from))
+                it->backend->InvalidateDirectory(pd_to);
+        }
+        return ok;
     }
     return false;
 }

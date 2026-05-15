@@ -43,17 +43,22 @@ AssetFd open_asset_fd(platform::AssetManagerHandle* mgr,
 // Construction
 // ---------------------------------------------------------------------------
 
-AndroidBackend::AndroidBackend(std::string_view base_path,
+AndroidBackend::AndroidBackend(xash::memory::PoolHandle pool,
+                                std::string_view base_path,
                                 SearchPathFlags  flags,
                                 bool             engine_package)
-    : base_path_{base_path},
+    : ISearchBackend{pool},
+      base_path_{base_path},
       flags_{flags},
       mgr_{platform::get_asset_manager(engine_package)}
 {}
 
 std::unique_ptr<ISearchBackend>
-AndroidBackend::Create(std::string_view path, SearchPathFlags flags) {
-    return std::make_unique<AndroidBackend>(path, flags, /*engine_package=*/false);
+AndroidBackend::Create(xash::memory::PoolHandle pool,
+                       std::string_view path, SearchPathFlags flags) {
+    return std::unique_ptr<ISearchBackend>{
+        xash::memory::pool_new<AndroidBackend>( pool, pool, path, flags,
+                                                /*engine_package=*/false ) };
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +82,7 @@ std::unique_ptr<File> AndroidBackend::OpenFile(std::string_view path,
     auto [fd, len] = open_asset_fd(mgr_, full);
     if (!fd.valid()) return nullptr;
 
-    return make_os_file(std::move(fd), len);
+    return make_os_file(pool_, std::move(fd), len);
 }
 
 // ---------------------------------------------------------------------------

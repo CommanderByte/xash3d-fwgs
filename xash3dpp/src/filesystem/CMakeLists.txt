@@ -47,7 +47,7 @@ target_include_directories(xash3dpp_filesystem
 
 target_compile_features(xash3dpp_filesystem PUBLIC cxx_std_20)
 
-target_link_libraries(xash3dpp_filesystem PUBLIC xash3dpp_utilities)
+target_link_libraries(xash3dpp_filesystem PUBLIC xash3dpp_utilities xash3dpp_memory)
 
 if(ANDROID)
     target_link_libraries(xash3dpp_filesystem PRIVATE android log)

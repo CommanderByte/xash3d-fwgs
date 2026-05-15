@@ -8,6 +8,7 @@
 // bitmask and is placed here so every backend can share it.
 
 #include <xash3dpp/filesystem/file.hpp>
+#include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/filesystem/os_fd.hpp>
 #include <xash3dpp/private/filesystem/platform/os_io.hpp>
 
@@ -17,11 +18,13 @@
 namespace xash::filesystem {
 
 // Create a streaming OsFile wrapping `fd`.
+// `pool`        — memory pool to allocate the OsFile from.
 // `length`      — logical (uncompressed) size in bytes.
 // `real_offset` — byte offset of the entry within an archive (0 for plain files).
 // `deflated`    — true for zlib-compressed archive entries.
 // Defined in src/filesystem/file.cpp.
-std::unique_ptr<File> make_os_file(OsFd     fd,
+std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
+                                   OsFd     fd,
                                    FsOffset length,
                                    FsOffset real_offset = 0,
                                    bool     deflated    = false);

@@ -96,8 +96,9 @@ static constexpr std::uint16_t k_METHOD_DEFLATED = 8;
 // Constructor — open, parse central directory, sort entries
 // ---------------------------------------------------------------------------
 
-ZipBackend::ZipBackend(std::string_view zip_path, SearchPathFlags flags)
-    : path_{zip_path}, flags_{flags}
+ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
+                       std::string_view zip_path, SearchPathFlags flags)
+    : ISearchBackend{pool}, path_{zip_path}, flags_{flags}
 {
     auto fsz = platform::file_size(path_);
     if (!fsz || *fsz < static_cast<std::int64_t>(sizeof(DiskEocd))) return;
@@ -229,15 +230,18 @@ ZipBackend::ZipBackend(std::string_view zip_path, SearchPathFlags flags)
 // ---------------------------------------------------------------------------
 
 std::unique_ptr<ISearchBackend>
-ZipBackend::Create(std::string_view path, SearchPathFlags flags) {
-    auto b = std::make_unique<ZipBackend>(path, flags);
-    if (!b->valid_) return nullptr;
-    return b;
+ZipBackend::Create(xash::memory::PoolHandle pool,
+                   std::string_view path, SearchPathFlags flags) {
+    auto* raw = xash::memory::pool_new<ZipBackend>( pool, pool, path, flags );
+    if (!raw) return nullptr;
+    if (!raw->valid_) { delete raw; return nullptr; }
+    return std::unique_ptr<ISearchBackend>{ raw };
 }
 
 std::unique_ptr<ISearchBackend>
-create_zip(std::string_view path, SearchPathFlags flags) {
-    return ZipBackend::Create(path, flags);
+create_zip(xash::memory::PoolHandle pool,
+           std::string_view path, SearchPathFlags flags) {
+    return ZipBackend::Create(pool, path, flags);
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +274,8 @@ ZipBackend::OpenFile(std::string_view path, std::string_view mode) {
     if (!fd.valid()) return nullptr;
 
     const bool deflated = (e->method == k_METHOD_DEFLATED);
-    return make_os_file(std::move(fd),
+    return make_os_file(pool_,
+                        std::move(fd),
                         static_cast<FsOffset>(e->uncomp_size),
                         static_cast<FsOffset>(e->data_offset),
                         deflated);

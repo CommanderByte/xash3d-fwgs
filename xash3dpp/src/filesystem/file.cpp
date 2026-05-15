@@ -3,6 +3,7 @@
 //                   filesystem/filesystem.c (FS_Read, FS_Write, FS_Seek, …)
 
 #include <xash3dpp/filesystem/file.hpp>
+#include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/filesystem/os_fd.hpp>
 #include <xash3dpp/private/filesystem/platform/os_io.hpp>
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
@@ -312,12 +313,31 @@ std::optional<std::string> OsFile::Gets() {
 }
 
 // ---------------------------------------------------------------------------
+// File::operator delete — routes deallocation through the memory subsystem.
+// Called by std::unique_ptr<File>'s default deleter when the object was
+// created via pool_new (which prepends an 8-byte header with the pool index).
+// ---------------------------------------------------------------------------
+
+void File::operator delete( void* p ) noexcept
+{
+    xash::memory::mem_free( p );
+}
+
+void File::operator delete( void* p, std::size_t ) noexcept
+{
+    xash::memory::mem_free( p );
+}
+
+// ---------------------------------------------------------------------------
 // make_os_file — factory used by backends
 // ---------------------------------------------------------------------------
 
-std::unique_ptr<File> make_os_file( OsFd fd, FsOffset length,
+std::unique_ptr<File> make_os_file( xash::memory::PoolHandle pool,
+                                    OsFd fd, FsOffset length,
                                     FsOffset real_offset, bool deflated ) {
-    return std::make_unique<OsFile>( std::move( fd ), length, real_offset, deflated );
+    return std::unique_ptr<File>{
+        xash::memory::pool_new<OsFile>( pool, std::move( fd ),
+                                        length, real_offset, deflated ) };
 }
 
 } // namespace xash::filesystem

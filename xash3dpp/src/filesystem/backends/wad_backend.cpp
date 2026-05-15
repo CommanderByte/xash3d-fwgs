@@ -9,6 +9,7 @@
 
 #include <xash3dpp/private/filesystem/backends/wad_backend.hpp>
 #include <xash3dpp/private/filesystem/mem_file.hpp>
+#include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/filesystem/platform/os_io.hpp>
 #include <xash3dpp/utilities/path.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -120,8 +121,9 @@ static std::string normalise_name(const char (&raw)[16]) {
 // Constructor — open, validate, read LAT, sort entries
 // ---------------------------------------------------------------------------
 
-WadBackend::WadBackend(std::string_view wad_path, SearchPathFlags flags)
-    : path_{wad_path}, flags_{flags}
+WadBackend::WadBackend(xash::memory::PoolHandle pool,
+                       std::string_view wad_path, SearchPathFlags flags)
+    : ISearchBackend{pool}, path_{wad_path}, flags_{flags}
 {
     // Cache lowercase WAD stem (e.g. "halflife.wad" → "halflife")
     stem_ = xash::utilities::file_base(path_);
@@ -184,15 +186,18 @@ WadBackend::WadBackend(std::string_view wad_path, SearchPathFlags flags)
 // ---------------------------------------------------------------------------
 
 std::unique_ptr<ISearchBackend>
-WadBackend::Create(std::string_view path, SearchPathFlags flags) {
-    auto b = std::make_unique<WadBackend>(path, flags);
-    if (!b->valid_) return nullptr;
-    return b;
+WadBackend::Create(xash::memory::PoolHandle pool,
+                   std::string_view path, SearchPathFlags flags) {
+    auto* raw = xash::memory::pool_new<WadBackend>( pool, pool, path, flags );
+    if (!raw) return nullptr;
+    if (!raw->valid_) { delete raw; return nullptr; }
+    return std::unique_ptr<ISearchBackend>{ raw };
 }
 
 std::unique_ptr<ISearchBackend>
-create_wad(std::string_view path, SearchPathFlags flags) {
-    return WadBackend::Create(path, flags);
+create_wad(xash::memory::PoolHandle pool,
+           std::string_view path, SearchPathFlags flags) {
+    return WadBackend::Create(pool, path, flags);
 }
 
 // ---------------------------------------------------------------------------
@@ -287,7 +292,8 @@ WadBackend::OpenFile(std::string_view path, std::string_view mode) {
     auto data = read_lump_bytes(*e);
     if (data.empty() && e->disk_size > 0) return nullptr;
 
-    return std::make_unique<MemFile>(std::move(data));
+    return std::unique_ptr<File>{
+        xash::memory::pool_new<MemFile>( pool_, std::move(data) ) };
 }
 
 std::optional<std::filesystem::file_time_type>

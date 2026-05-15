@@ -15,10 +15,12 @@ namespace xash::filesystem::backends {
 
 class ZipBackend final : public ISearchBackend {
 public:
-    ZipBackend(std::string_view zip_path, SearchPathFlags flags);
+    ZipBackend(xash::memory::PoolHandle pool,
+               std::string_view zip_path, SearchPathFlags flags);
 
     static std::unique_ptr<ISearchBackend>
-        Create(std::string_view path, SearchPathFlags flags);
+        Create(xash::memory::PoolHandle pool,
+               std::string_view path, SearchPathFlags flags);
 
     std::string Info() const override;
 

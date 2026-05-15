@@ -6,6 +6,7 @@
 // Earlier entries shadow later ones (first-match wins).
 
 #include <xash3dpp/filesystem/search_path_flags.hpp>
+#include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/filesystem/i_search_backend.hpp>
 
 #include <array>
@@ -15,7 +16,9 @@
 namespace xash::filesystem {
 
 using BackendFactory =
-    std::unique_ptr<ISearchBackend>(*)(std::string_view path, SearchPathFlags flags);
+    std::unique_ptr<ISearchBackend>(*)(xash::memory::PoolHandle pool,
+                                       std::string_view         path,
+                                       SearchPathFlags          flags);
 
 struct ArchiveType {
     std::string_view extension;      // e.g. "pak", "pk3", "pk3dir", "wad"
@@ -27,10 +30,10 @@ struct ArchiveType {
 
 // Forward-declare the factory functions so this header stays self-contained.
 namespace backends {
-std::unique_ptr<ISearchBackend> create_pak   (std::string_view, SearchPathFlags);
-std::unique_ptr<ISearchBackend> create_zip   (std::string_view, SearchPathFlags);
-std::unique_ptr<ISearchBackend> create_pk3dir(std::string_view, SearchPathFlags);
-std::unique_ptr<ISearchBackend> create_wad   (std::string_view, SearchPathFlags);
+std::unique_ptr<ISearchBackend> create_pak   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+std::unique_ptr<ISearchBackend> create_zip   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+std::unique_ptr<ISearchBackend> create_pk3dir(xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+std::unique_ptr<ISearchBackend> create_wad   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
 } // namespace backends
 
 inline constexpr std::array<ArchiveType, 4> k_archive_types = {{

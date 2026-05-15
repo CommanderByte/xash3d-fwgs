@@ -29,6 +29,12 @@ public:
     File()                       = default;
     virtual ~File()              = default;
 
+    // Pool-aware deallocation — called by std::unique_ptr<File>'s default
+    // deleter when *this was created via pool_new.  mem_free reads back the
+    // 8-byte header prepended by pool_new to locate the owning pool.
+    static void operator delete(void* p) noexcept;
+    static void operator delete(void* p, std::size_t) noexcept;
+
     File(const File&)            = delete;
     File& operator=(const File&) = delete;
 

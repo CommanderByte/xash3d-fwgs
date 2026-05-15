@@ -15,10 +15,12 @@ namespace xash::filesystem::backends {
 
 class PakBackend final : public ISearchBackend {
 public:
-    PakBackend(std::string_view pak_path, SearchPathFlags flags);
+    PakBackend(xash::memory::PoolHandle pool,
+               std::string_view pak_path, SearchPathFlags flags);
 
     static std::unique_ptr<ISearchBackend>
-        Create(std::string_view path, SearchPathFlags flags);
+        Create(xash::memory::PoolHandle pool,
+               std::string_view path, SearchPathFlags flags);
 
     std::string Info() const override;
 
