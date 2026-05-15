@@ -38,14 +38,11 @@ When in doubt about whether a behaviour is an engine contract or an artifact, wr
 // Covers: <comma-separated list of functions>
 
 #include <xash3dpp/utilities/<module>.hpp>
-#include <cstdio>
 #include <cstring>  // add others as needed: <cstdint>, <limits>, etc.
 
-static int g_pass = 0, g_fail = 0;
+#include "../test_helpers.hpp"
 
-#define CHECK(expr) \
-    do { if (expr) { ++g_pass; } \
-         else { ++g_fail; std::puts("FAIL: " #expr " (" __FILE__ ")"); } } while(0)
+static int g_pass = 0, g_fail = 0;
 
 static void test_<function>()
 {
@@ -64,7 +61,8 @@ int main()
 ```
 
 Rules:
-- No third-party test framework — only `<cstdio>`, `<cstring>`, `<cstdint>`, `<limits>`, standard library (no `<cassert>`)
+- Use `#include "../test_helpers.hpp"` for `CHECK`, `CHECK_EQ`, `CHECK_NE`, `CHECK_STREQ`, `REQUIRE`. No local `#define CHECK`.
+- No third-party test framework — only `<cstring>`, `<cstdint>`, `<limits>`, standard library (no `<cassert>`, no `<cstdio>` — test_helpers.hpp covers output)
 - One `static void test_<function>()` per public function
 - Each `CHECK` line tests exactly one thing; add a `// comment` for non-obvious cases
 - Cover: typical inputs, boundary values, empty/zero inputs, negative numbers, any documented quirks that are engine contracts

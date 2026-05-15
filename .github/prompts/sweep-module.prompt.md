@@ -43,7 +43,7 @@ Violating them is worse than leaving a minor violation in place.
   not change for a compliance reason.
 - **Do not refactor logic** — no restructuring of control flow, no extraction
   of helpers, no reordering of declarations beyond what a rule requires.
-- **Do not rename a symbol** unless it violates QE or QF exactly. Do not
+- **Do not rename a symbol** unless it violates NAMING_FN (QE) or NAMING_ENUM (QF) exactly. Do not
   "improve" names that are already compliant.
 - **Do not change test assertions or test logic** — only the macro style
   (QK). If a test was passing before, it must pass after with identical

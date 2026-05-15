@@ -62,8 +62,8 @@ below to assign each item to the earliest layer it qualifies for:
 |-------|------|----------|------|
 | 0 | **Data types** | Enums, `constexpr` values, POD structs | Declaration-only; already done from scaffold — skip if complete |
 | 1 | **Private helpers** | Template data structures (e.g. `CircularBuffer`), compat `.cpp` files (`compat_goldsrc.cpp`, `compat_null.cpp`) | Self-contained; no callers within the subsystem |
-| 2 | **`Impl` fields** | The fields that `Init()` populates inside the `Impl` struct | Everything else depends on these existing |
-| 3 | **Lifecycle** | `Init()` and `Shutdown()` | Pool creation lives here; the pool must exist before any allocation |
+| 2 | **`Impl` fields** | The fields that `init()` populates inside the `Impl` struct | Everything else depends on these existing |
+| 3 | **Lifecycle** | `init()` and `shutdown()` | Pool creation lives here; the pool must exist before any allocation |
 | 4 | **Test-driven core API** | Functions directly called by at least one live test | Highest priority for getting green tests quickly |
 | 5 | **Remaining API** | All other public functions, ordered callee-before-caller | Simple / leaf helpers before complex orchestrators |
 | 6 | **Stats / debug** | Functions guarded by `XASH_STATS`, `XASH_DEBUG_*`, or similar | Can be deferred until the core API is green |
@@ -71,7 +71,7 @@ below to assign each item to the earliest layer it qualifies for:
 To assign a function to a layer, ask:
 1. Is it called by a live test? → Layer 4
 2. Does it call another stubbed function? → must come *after* that function
-3. Does it only read/write `Impl` fields that are set in `Init()`? → Layer 5
+3. Does it only read/write `Impl` fields that are set in `init()`? → Layer 5
 4. Is it guarded by a feature macro? → Layer 6
 
 For multi-file subsystems (e.g. a subsystem with `compat_goldsrc.cpp` and

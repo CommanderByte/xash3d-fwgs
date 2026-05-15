@@ -38,6 +38,8 @@ document-architecture      ← produces the reference docs
     ↓
 finish-subsystem           ← read-only done checklist; must be SHIP-READY before merge
     ↓
+pre-pr                     ← one-shot PR gate: checklist + scan + reviewer; must be SHIP before opening PR
+    ↓
 analyse-modernization      ← optional; future refactoring opportunities only
 ```
 
@@ -106,9 +108,14 @@ analyse-modernization      ← optional, after compliance is clean
 | `sweep-module` | After feature-complete | Yes |
 | `analyse-threading` | After sweep | No |
 | `document-architecture` | After analyse-threading | Yes |
-| `finish-subsystem` | After document-architecture; gate before merge | No |
+| `finish-subsystem` | After document-architecture; done checklist | No |
+| `pre-pr` | After finish-subsystem; final gate before opening PR | No |
 | `analyse-subsystem` | Before rewriting a legacy subsystem | Yes (docs only) |
 | `analyse-modernization` | Optional future cleanup | No |
 | `analyse-utility-consolidation` | Deduplication planning | No |
 | `migrate-to-memory` | Memory migration pass | Yes |
 | `retriever` | Enforce one rule across the entire codebase until clean | Yes |
+| `dependency-graph` | Verify EngineContext init order has no cycles | No |
+| `bisect` | Find the commit that introduced a regression | No |
+| `limits-audit` | Check all magic numbers are in limits.hpp | No |
+| `abi-watchdog` | Verify xash3dpp/ does not conflict with frozen ABI surfaces | No |

@@ -163,10 +163,10 @@ For each pool the subsystem creates, add tests that:
 - If the subsystem has an error path that short-circuits cleanup, verify that the
   error path also reaches `live_bytes == 0` before `destroy_pool`.
 
-Follow the test style in
-[`xash3dpp/tests/memory/test_memory.cpp`](../../xash3dpp/tests/memory/test_memory.cpp):
-static `g_pass`/`g_fail` counters, `CHECK(expr)` macro, one `static void test_*()`
-per scenario, plain `main()`.
+Follow the project test style: `#include "../test_helpers.hpp"`,
+`static int g_pass = 0, g_fail = 0;`, one `static void test_*()` per scenario,
+plain `main()`. See [`xash3dpp/tests/memory/test_memory.cpp`](../../xash3dpp/tests/memory/test_memory.cpp)
+for pool lifecycle test patterns.
 
 ---
 
