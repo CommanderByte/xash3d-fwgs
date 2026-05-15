@@ -1,4 +1,4 @@
-// xash3dpp — platform (POSIX: Linux, macOS, FreeBSD)
+// xash3dpp — platform (POSIX: Linux, macOS, FreeBSD, Android) — process-level services
 // Legacy reference: engine/platform/posix/sys_posix.c,
 //                  engine/common/system.h
 //

@@ -1,4 +1,4 @@
-// xash3dpp — platform (Win32)
+// xash3dpp — platform (Win32) — process-level services
 // Legacy reference: engine/platform/win32/sys_win.c,
 //                  engine/common/system.h
 //

@@ -6,34 +6,16 @@
 // No engine logic lives here.
 
 #include <xash3dpp/host/host.hpp>
+#include <xash3dpp/platform/platform.hpp>
 
 #include <cstdlib>      // atoi, EXIT_SUCCESS
 #include <cstring>      // strcmp
-#include <filesystem>
 #include <string>
 
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #endif
-
-// ---------------------------------------------------------------------------
-// exe_directory — resolve the directory containing the running binary.
-// Used as rootdir so game folders are found relative to the installation.
-// ---------------------------------------------------------------------------
-
-static std::string exe_directory(int argc, char** argv)
-{
-#ifdef _WIN32
-    wchar_t buf[MAX_PATH]{};
-    if (GetModuleFileNameW(nullptr, buf, MAX_PATH))
-        return std::filesystem::path(buf).parent_path().string();
-#endif
-    if (argc > 0 && argv[0][0] != '\0')
-        return std::filesystem::path(argv[0]).parent_path().string();
-
-    return std::filesystem::current_path().string();
-}
 
 // ---------------------------------------------------------------------------
 // Lightweight argv helpers — no heap allocations, no getopt dependency.
@@ -74,7 +56,7 @@ int main(int argc, char** argv)
 
     args.argc    = argc;
     args.argv    = argv;
-    args.rootdir = exe_directory(argc, argv);
+    args.rootdir = xash::platform::get_executable_dir();
 
     // -game <folder>  — active game directory (default: "valve")
     const char* game = get_arg(argc, argv, "-game", "valve");
