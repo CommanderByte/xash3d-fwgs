@@ -4,6 +4,7 @@ description: "Scan all TODO stubs in a scaffolded xash3dpp subsystem, infer the 
 argument-hint: "subsystem name, e.g. 'cmd_cvar', 'sound', 'host'"
 agent: agent
 tools: [read, search]
+model: claude-sonnet-4-6
 ---
 
 # Implementation plan: `$ARGUMENTS`

@@ -5,6 +5,7 @@ argument-hint: "subsystem name, e.g. 'cmd_cvar', 'filesystem', 'sound'"
 agent: agent
 tools: [read, search, run, terminal]
 mode: agent
+model: claude-sonnet-4-6
 ---
 
 # Pre-PR Gate: `$ARGUMENTS`

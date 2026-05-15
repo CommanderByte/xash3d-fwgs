@@ -4,6 +4,7 @@ description: "Read all InitParams structs and EngineContext member declarations 
 agent: agent
 tools: [read, search]
 mode: agent
+model: claude-haiku-4-5-20251001
 ---
 
 # EngineContext Dependency Graph Audit

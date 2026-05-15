@@ -3,6 +3,7 @@ name: "Implementation status and next steps"
 description: "Scan the xash3dpp/ tree, determine what is implemented vs. stub-only, and print a prioritised 'what to do next' plan to chat based on the legacy engine dependency structure. No files are written."
 agent: agent
 tools: [read, search]
+model: claude-haiku-4-5-20251001
 ---
 
 # xash3dpp — Implementation Status and Next Steps

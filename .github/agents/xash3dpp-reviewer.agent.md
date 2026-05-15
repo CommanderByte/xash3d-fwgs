@@ -2,6 +2,7 @@
 name: "xash3dpp Reviewer"
 description: "Use when reviewing xash3dpp/ code for correctness, ABI safety, and project conventions. Reviews C++ code in xash3dpp/src/ against the rewrite principles."
 tools: [read, search]
+model: claude-haiku-4-5-20251001
 ---
 
 You are a code reviewer for the **xash3dpp** C++ rewrite. You read code in

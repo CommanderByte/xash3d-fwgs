@@ -4,6 +4,7 @@ description: "Before making any cross-cutting change (design paradigm, naming co
 argument-hint: "description of the proposed change (e.g. 'rename enum class values from kFoo to Foo', 'add [[nodiscard]] to all bool returns', 'replace raw T* with pool_ptr in public APIs')"
 agent: agent
 tools: [read, search]
+model: claude-sonnet-4-6
 ---
 
 # Impact Assessment: $ARGUMENTS

@@ -5,6 +5,7 @@ argument-hint: "module name, e.g. 'utilities', 'memory', 'platform', 'cmd_cvar',
 agent: agent
 tools: [read, search, edit, run, terminal]
 mode: agent
+model: claude-sonnet-4-6
 ---
 
 # Design Compliance Sweep: `$ARGUMENTS`

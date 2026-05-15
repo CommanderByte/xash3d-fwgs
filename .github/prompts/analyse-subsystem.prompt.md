@@ -4,6 +4,7 @@ description: "Read a legacy subsystem and produce a boundary spec in xash3dpp/do
 argument-hint: "subsystem name (e.g. filesystem, sound, networking, renderer)"
 agent: agent
 tools: [read, search, edit]
+model: claude-sonnet-4-6
 ---
 
 # Analyse Legacy Subsystem: $ARGUMENTS

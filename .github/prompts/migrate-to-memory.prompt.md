@@ -4,6 +4,7 @@ description: "Audit a xash3dpp subsystem for direct malloc/free/new/delete usage
 argument-hint: "subsystem name (e.g. filesystem, sound, networking, renderer)"
 agent: agent
 tools: [read, search, edit]
+model: claude-sonnet-4-6
 ---
 
 # Migrate `$ARGUMENTS` to the xash3dpp memory subsystem

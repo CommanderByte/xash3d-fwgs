@@ -5,6 +5,7 @@ argument-hint: "RULE_NAME: one-sentence description of what changed. E.g. 'ERROR
 agent: agent
 tools: [read, search, edit, run, terminal]
 mode: agent
+model: claude-sonnet-4-6
 ---
 
 # Retriever: `$ARGUMENTS`

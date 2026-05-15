@@ -5,6 +5,7 @@ argument-hint: "description of the failure + optional known-good ref. E.g. 'test
 agent: agent
 tools: [read, search, run, terminal]
 mode: agent
+model: claude-sonnet-4-6
 ---
 
 # Bisect: `$ARGUMENTS`

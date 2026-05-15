@@ -4,6 +4,7 @@ description: "Produce or update technical architecture documentation for a xash3
 argument-hint: "submodule name, e.g. 'memory', 'filesystem', 'utilities'"
 agent: agent
 tools: [read, search, edit]
+model: claude-sonnet-4-6
 ---
 
 # Document architecture for: `$ARGUMENTS`

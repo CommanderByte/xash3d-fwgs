@@ -4,6 +4,7 @@ description: "Create the full directory skeleton for a new xash3dpp subsystem: p
 argument-hint: "subsystem name, e.g. 'sound', 'renderer', 'physics', 'networking'"
 agent: agent
 tools: [read, search, edit]
+model: claude-sonnet-4-6
 ---
 
 # Scaffold new subsystem: `$ARGUMENTS`

@@ -2,6 +2,7 @@
 name: "Init — xash3dpp repo onboarding"
 description: "Onboard to the xash3dpp rewrite repo. Run this at the start of any rewrite session."
 agent: agent
+model: claude-haiku-4-5-20251001
 ---
 
 # Repo Onboarding — xash3dpp

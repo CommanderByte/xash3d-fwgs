@@ -5,6 +5,7 @@ argument-hint: "optional subsystem name to scope the scan, e.g. 'filesystem'. Om
 agent: agent
 tools: [read, search]
 mode: agent
+model: claude-haiku-4-5-20251001
 ---
 
 # Limits Audit: `$ARGUMENTS`

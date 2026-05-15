@@ -4,6 +4,7 @@ description: "Audit a subsystem (legacy or xash3dpp) for C++ modernization oppor
 argument-hint: "subsystem name matching an existing boundary spec (e.g. public-utilities, filesystem, sound)"
 agent: agent
 tools: [read, search, edit]
+model: claude-opus-4-7
 ---
 
 # C++ Modernization Audit: $ARGUMENTS

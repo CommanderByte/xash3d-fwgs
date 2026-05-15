@@ -3,6 +3,7 @@ description: "Write unit tests for a xash3dpp utility module. Uses legacy C beha
 name: "Write xash3dpp unit tests"
 argument-hint: "Module to test, e.g. 'utf', 'matrix', 'path'"
 agent: "agent"
+model: claude-sonnet-4-6
 ---
 
 Write unit tests for the xash3dpp utility module: **$ARGUMENTS**
