@@ -232,7 +232,13 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 
     // echo — print arguments to the console separated by spaces.
     cmd_add("echo", []() noexcept {
-        // TODO: iterate tls_ctx->cmd_argc() / cmd_argv() and print to platform console
+        if (!tls_ctx) return;
+        const int argc = tls_ctx->cmd_argc();
+        for (int i = 1; i < argc; ++i) {
+            if (i > 1) platform::console::write(" ");
+            platform::console::write(tls_ctx->cmd_argv(i));
+        }
+        platform::console::write("\n");
     }, 0, "print a message to the console (useful in scripts)");
 
     // wait — skip the rest of the command buffer for N frames.
@@ -327,6 +333,49 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
     cmd_add("exec", []() noexcept {
         // TODO: depends on xash3dpp_filesystem; stub until that subsystem exists
     }, 0, "execute a script file");
+
+    // cmdlist — list all registered commands to the console.
+    cmd_add("cmdlist", []() noexcept {
+        if (!tls_ctx) return;
+        const Impl &impl = *tls_ctx->impl_;
+        std::size_t count = 0;
+        for (const Command *cmd = impl.cmd_list_head; cmd; cmd = cmd->abi_next) {
+            platform::console::write(cmd->name);
+            if (cmd->desc && *cmd->desc) {
+                platform::console::write(" — ");
+                platform::console::write(cmd->desc);
+            }
+            platform::console::write("\n");
+            ++count;
+        }
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "%zu command(s)\n", count);
+        platform::console::write(buf);
+    }, 0, "list registered commands");
+
+    // cvarlist — list all registered cvars to the console.
+    cmd_add("cvarlist", []() noexcept {
+        if (!tls_ctx) return;
+        const Impl &impl = *tls_ctx->impl_;
+        std::size_t count = 0;
+        for (const Cvar *cv = impl.cvar_list_head; cv; cv = reinterpret_cast<const Cvar *>(cv->abi.next)) {
+            platform::console::write(cv->abi.name);
+            platform::console::write(" = \"");
+            if (cv->abi.string) platform::console::write(cv->abi.string);
+            platform::console::write("\"\n");
+            ++count;
+        }
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "%zu cvar(s)\n", count);
+        platform::console::write(buf);
+    }, 0, "list registered cvars");
+
+#if XASH_DEBUG_CVARS
+    // hashstats — dump hash map bucket statistics.
+    cmd_add("hashstats", []() noexcept {
+        if (tls_ctx) tls_ctx->dump_hash_stats();
+    }, 0, "dump cmd_cvar hash map statistics");
+#endif
 
     return true;
 }
