@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace xash::cmd_cvar {
 
@@ -134,9 +135,9 @@ public:
     // ---------------------------------------------------------------------------
 
 #if XASH_DEBUG_CVARS
-    // Fill out[0..count-1] with per-bucket chain lengths.
-    void bucket_histogram(std::size_t *out, std::size_t count) const noexcept {
-        const std::size_t n = count < kBuckets ? count : kBuckets;
+    // Fill out[i] with per-bucket chain lengths for i in [0, out.size()).
+    void bucket_histogram(std::span<std::size_t> out) const noexcept {
+        const std::size_t n = out.size() < kBuckets ? out.size() : kBuckets;
         for (std::size_t i = 0; i < n; ++i) {
             std::size_t len = 0;
             for (const Node *nd = buckets_[i]; nd; nd = nd->next)

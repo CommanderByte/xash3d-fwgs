@@ -64,6 +64,18 @@ inline std::string to_lower( std::string_view s )
     return result;
 }
 
+// Strip leading and trailing characters found in 'chars' from sv.
+// Default strip set is ASCII space and tab.
+inline std::string_view trim_sv( std::string_view sv,
+                                  std::string_view chars = " \t" ) noexcept
+{
+    while ( !sv.empty() && chars.find( sv.front() ) != std::string_view::npos )
+        sv.remove_prefix( 1 );
+    while ( !sv.empty() && chars.find( sv.back() ) != std::string_view::npos )
+        sv.remove_suffix( 1 );
+    return sv;
+}
+
 // Bounded snprintf — always null-terminates; returns chars written (< size).
 // Legacy: Q_snprintf / Q_vsnprintf
 int snprintf( char *buf, std::size_t size, const char *fmt, ... ) noexcept;

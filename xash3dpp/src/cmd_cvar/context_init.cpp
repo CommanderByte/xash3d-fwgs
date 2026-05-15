@@ -4,8 +4,6 @@
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 #include <xash3dpp/platform/console.hpp>
 
-#include <cstdio>
-
 namespace xash::cmd_cvar {
 
 namespace {
@@ -136,14 +134,14 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
                 a = next;
             }
             impl.alias_list_head = new_head;
-            if (al->value) memory::mem_free(const_cast<char *>(al->value));
+            if (al->value) memory::mem_free(al->value);
             memory::mem_free(al);
             return;
         }
 
         if (al) {
             // Update existing alias value.
-            if (al->value) memory::mem_free(const_cast<char *>(al->value));
+            if (al->value) memory::mem_free(al->value);
             al->value = pool_dup(impl.pool, al_value);
             return;
         }
@@ -173,7 +171,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
             a = next;
         }
         impl.alias_list_head = new_head;
-        if (al->value) memory::mem_free(const_cast<char *>(al->value));
+        if (al->value) memory::mem_free(al->value);
         memory::mem_free(al);
     }, 0, "remove a command alias");
 
@@ -202,7 +200,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
             ++count;
         }
         char buf[64];
-        std::snprintf(buf, sizeof(buf), "%zu command(s)\n", count);
+        utilities::snprintf(buf, sizeof(buf), "%zu command(s)\n", count);
         platform::console::write(buf);
     }, 0, "list registered commands");
 
@@ -211,7 +209,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         if (!tls_ctx) return;
         const Impl &impl = *tls_ctx->impl_;
         std::size_t count = 0;
-        for (const Cvar *cv = impl.cvar_list_head; cv; cv = reinterpret_cast<const Cvar *>(cv->abi.next)) {
+        for (const Cvar *cv = impl.cvar_list_head; cv; cv = cvar_list_next(cv)) {
             platform::console::write(cv->abi.name);
             platform::console::write(" = \"");
             if (cv->abi.string) platform::console::write(cv->abi.string);
@@ -219,7 +217,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
             ++count;
         }
         char buf[64];
-        std::snprintf(buf, sizeof(buf), "%zu cvar(s)\n", count);
+        utilities::snprintf(buf, sizeof(buf), "%zu cvar(s)\n", count);
         platform::console::write(buf);
     }, 0, "list registered cvars");
 
@@ -246,7 +244,7 @@ void CmdCvarContext::shutdown() noexcept
     {
         Cvar *cv = impl_->cvar_list_head;
         while (cv) {
-            Cvar *next = reinterpret_cast<Cvar *>(cv->abi.next);
+            Cvar *next = cvar_list_next(cv);
 
             // Free pool-owned current string.
             if (cv->abi.flags & FCVAR_ALLOCATED) {
@@ -257,7 +255,7 @@ void CmdCvarContext::shutdown() noexcept
 
             if (cv->abi.flags & FCVAR_USER_CREATED) {
                 // All of name, def_string, and cv itself are pool-owned.
-                memory::mem_free(const_cast<char *>(cv->abi.name));
+                memory::mem_free(cv->abi.name);
                 if (cv->def_string)
                     memory::mem_free(const_cast<char *>(cv->def_string));
                 memory::mem_free(cv);
@@ -284,9 +282,9 @@ void CmdCvarContext::shutdown() noexcept
         Command *cmd = impl_->cmd_list_head;
         while (cmd) {
             Command *next = cmd->abi_next;
-            memory::mem_free(const_cast<char *>(cmd->name));
+            memory::mem_free(cmd->name);
             if (cmd->desc)
-                memory::mem_free(const_cast<char *>(cmd->desc));
+                memory::mem_free(cmd->desc);
             memory::mem_free(cmd);
             cmd = next;
         }
@@ -298,7 +296,7 @@ void CmdCvarContext::shutdown() noexcept
         while (al) {
             AliasDef *next = al->abi_next;
             if (al->value)
-                memory::mem_free(const_cast<char *>(al->value));
+                memory::mem_free(al->value);
             memory::mem_free(al);
             al = next;
         }

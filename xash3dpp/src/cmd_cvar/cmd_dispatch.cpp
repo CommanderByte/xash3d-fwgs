@@ -4,7 +4,6 @@
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 
 #include <cstring>
-#include <string>
 
 namespace xash::cmd_cvar {
 
@@ -107,7 +106,7 @@ static void dispatch_cmd(auto &impl, CmdCvarContext &ctx,
 
         // Tokenize into impl scratch.
         char tok_buf[limits::cmd_line_max];
-        impl.tok_argc = tokenize_line(line_copy, impl.tok_argv, impl.k_max_argc,
+        impl.tok_argc = tokenize_line(line_copy, impl.tok_argv.data(), impl.k_max_argc,
                                        tok_buf, sizeof(tok_buf));
         if (impl.tok_argc <= 0) { impl.tok_argc = 0; if (*p) ++p; continue; }
 
@@ -124,7 +123,7 @@ static void dispatch_cmd(auto &impl, CmdCvarContext &ctx,
                 while (*after0 && *after0 != ' ' && *after0 != '\t') ++after0;
             }
             while (*after0 == ' ' || *after0 == '\t') ++after0;
-            utilities::strncpy(impl.tok_argsBuffer, after0, sizeof(impl.tok_argsBuffer));
+            utilities::strncpy(impl.tok_argsBuffer.data(), after0, impl.tok_argsBuffer.size());
         }
 
         execute_tokenized(impl, ctx, is_privileged, depth);
@@ -172,8 +171,11 @@ static void execute_tokenized(auto &impl, CmdCvarContext &ctx,
 
 void CmdCvarContext::cmd_execute_string(std::string_view text) noexcept
 {
-    std::string line{ text };
-    dispatch_cmd(*impl_, *this, line.c_str(), /*is_privileged=*/true, 0);
+    char buf[limits::cmd_line_max];
+    const std::size_t copy_len = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
+    std::memcpy(buf, text.data(), copy_len);
+    buf[copy_len] = '\0';
+    dispatch_cmd(*impl_, *this, buf, /*is_privileged=*/true, 0);
 }
 
 void CmdCvarContext::cbuf_execute() noexcept

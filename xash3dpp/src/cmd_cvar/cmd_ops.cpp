@@ -9,21 +9,22 @@ namespace xash::cmd_cvar {
 // Command registry
 // ---------------------------------------------------------------------------
 
-void CmdCvarContext::cmd_add(const char    *name,
+void CmdCvarContext::cmd_add(std::string_view name,
                               CommandFn      fn,
                               std::uint32_t  flags,
                               const char    *desc) noexcept
 {
-    if (!name || !*name) return;
+    if (name.empty()) return;
+    const char *cname = name.data();
 
     // If a command already exists with the same name:
-    Command *existing = impl_->cmd_map.find(name);
+    Command *existing = impl_->cmd_map.find(cname);
     if (existing) {
         if (existing->flags & FCMD_OVERRIDABLE) {
             // Silently replace: update fn + flags + desc.
             existing->fn    = fn;
             existing->flags = flags;
-            if (existing->desc) memory::mem_free(const_cast<char *>(existing->desc));
+            if (existing->desc) memory::mem_free(existing->desc);
             existing->desc = pool_dup(impl_->pool, desc ? desc : "");
         }
         // else: duplicate — silently ignore (matches legacy behaviour).
@@ -32,13 +33,13 @@ void CmdCvarContext::cmd_add(const char    *name,
 
     // Check compat policy: should this command be flagged FCMD_OVERRIDABLE?
     std::uint32_t effective_flags = flags;
-    if (impl_->compat_policy && impl_->compat_policy->is_overridable_command(name))
+    if (impl_->compat_policy && impl_->compat_policy->is_overridable_command(cname))
         effective_flags |= FCMD_OVERRIDABLE;
 
     Command *cmd = static_cast<Command *>(memory::mem_calloc(impl_->pool, sizeof(Command)));
     if (!cmd) return;
 
-    cmd->name        = pool_dup(impl_->pool, name);
+    cmd->name        = pool_dup(impl_->pool, cname);
     cmd->desc        = pool_dup(impl_->pool, desc ? desc : "");
     cmd->fn          = fn;
     cmd->flags       = effective_flags;
@@ -53,11 +54,11 @@ void CmdCvarContext::cmd_add(const char    *name,
     impl_->cmd_map.insert(cmd->name, cmd);
 }
 
-void CmdCvarContext::cmd_remove(const char *name) noexcept
+void CmdCvarContext::cmd_remove(std::string_view name) noexcept
 {
-    if (!name || !*name) return;
+    if (name.empty()) return;
 
-    Command *cmd = impl_->cmd_map.remove(name);
+    Command *cmd = impl_->cmd_map.remove(name.data());
     if (!cmd) return;
 
     // Rebuild ABI list without this entry.
@@ -75,8 +76,8 @@ void CmdCvarContext::cmd_remove(const char *name) noexcept
     impl_->cmd_list_head = new_head;
 
     // Free pool-owned fields.
-    if (cmd->name) memory::mem_free(const_cast<char *>(cmd->name));
-    if (cmd->desc) memory::mem_free(const_cast<char *>(cmd->desc));
+    if (cmd->name) memory::mem_free(cmd->name);
+    if (cmd->desc) memory::mem_free(cmd->desc);
     memory::mem_free(cmd);
 }
 
@@ -92,8 +93,8 @@ void CmdCvarContext::cmd_unlink(std::uint32_t flags_mask) noexcept
         Command *next = cmd->abi_next;
         if (cmd->flags & flags_mask) {
             impl_->cmd_map.remove(cmd->name);
-            if (cmd->name) memory::mem_free(const_cast<char *>(cmd->name));
-            if (cmd->desc) memory::mem_free(const_cast<char *>(cmd->desc));
+            if (cmd->name) memory::mem_free(cmd->name);
+            if (cmd->desc) memory::mem_free(cmd->desc);
             memory::mem_free(cmd);
         } else {
             *tail         = cmd;
@@ -105,18 +106,18 @@ void CmdCvarContext::cmd_unlink(std::uint32_t flags_mask) noexcept
     impl_->cmd_list_head = new_head;
 }
 
-CommandDesc CmdCvarContext::cmd_describe(const char *name) const noexcept
+CommandDesc CmdCvarContext::cmd_describe(std::string_view name) const noexcept
 {
-    if (!name || !*name) return {};
-    const Command *cmd = impl_->cmd_map.find(name);
+    if (name.empty()) return {};
+    const Command *cmd = impl_->cmd_map.find(name.data());
     if (!cmd) return {};
     return { cmd->name, cmd->desc, cmd->flags };
 }
 
-bool CmdCvarContext::cmd_exists(const char *name) const noexcept
+bool CmdCvarContext::cmd_exists(std::string_view name) const noexcept
 {
-    if (!name || !*name) return false;
-    return impl_->cmd_map.find(name) != nullptr;
+    if (name.empty()) return false;
+    return impl_->cmd_map.find(name.data()) != nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,10 +144,7 @@ static void cbuf_split_push(std::deque<std::string> &dest, std::string_view text
 
         if (!in_quotes && (c == ';' || c == '\n' || at_end)) {
             std::string_view piece{ start, static_cast<std::size_t>(p - start) };
-            while (!piece.empty() && (piece.front() == ' ' || piece.front() == '\t'))
-                piece.remove_prefix(1);
-            while (!piece.empty() && (piece.back() == ' ' || piece.back() == '\t' || piece.back() == '\r'))
-                piece.remove_suffix(1);
+            piece = utilities::trim_sv(piece, " \t\r");
             if (!piece.empty()) {
                 if (front)
                     pieces.push_back(piece);

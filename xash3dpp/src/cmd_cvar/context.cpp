@@ -18,15 +18,32 @@ thread_local CmdCvarContext *tls_ctx = nullptr;
 // ---------------------------------------------------------------------------
 
 CmdCvarContext::CmdCvarContext() noexcept
-    : impl_{ std::make_unique<Impl>() }
+    : impl_{ memory::pool_new<Impl>(memory::kNullPool) }
 {
 }
 
-CmdCvarContext::~CmdCvarContext() = default;
+// Defined here (not in the header) so that pool_delete<Impl> is called only in
+// TUs where Impl is fully defined — the standard pimpl rule.
+CmdCvarContext::~CmdCvarContext()
+{
+    memory::pool_delete(impl_);
+}
 
-// Defined here (not in the header) so that unique_ptr<Impl> is destructed only
-// in TUs where Impl is fully defined — the standard pimpl move pattern.
-CmdCvarContext::CmdCvarContext(CmdCvarContext &&) noexcept            = default;
-CmdCvarContext &CmdCvarContext::operator=(CmdCvarContext &&) noexcept = default;
+CmdCvarContext::CmdCvarContext(CmdCvarContext &&o) noexcept
+    : impl_{ o.impl_ }
+{
+    o.impl_ = nullptr;
+}
+
+CmdCvarContext &CmdCvarContext::operator=(CmdCvarContext &&o) noexcept
+{
+    if (this != &o)
+    {
+        memory::pool_delete(impl_);
+        impl_   = o.impl_;
+        o.impl_ = nullptr;
+    }
+    return *this;
+}
 
 } // namespace xash::cmd_cvar

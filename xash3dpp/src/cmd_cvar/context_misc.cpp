@@ -4,8 +4,6 @@
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 #include <xash3dpp/platform/console.hpp>
 
-#include <cstdio>
-
 namespace xash::cmd_cvar {
 
 // ---------------------------------------------------------------------------
@@ -26,7 +24,7 @@ const char *CmdCvarContext::cmd_argv(int i) const noexcept
 
 const char *CmdCvarContext::cmd_args() const noexcept
 {
-    return impl_->tok_argsBuffer;
+    return impl_->tok_argsBuffer.data();
 }
 
 bool CmdCvarContext::cmd_current_is_privileged() const noexcept
@@ -77,8 +75,8 @@ void CmdCvarContext::dump_hash_stats() const noexcept
     };
 
     auto gather = [](const auto &map, const char *label) -> MapStats {
-        std::size_t hist[limits::cvar_hash_buckets] = {};
-        map.bucket_histogram(hist, limits::cvar_hash_buckets);
+        std::array<std::size_t, limits::cvar_hash_buckets> hist{};
+        map.bucket_histogram(hist);
         MapStats s{ label, 0, 0, 0 };
         for (std::size_t i = 0; i < limits::cvar_hash_buckets; ++i) {
             if (hist[i]) ++s.used_buckets;
@@ -88,16 +86,16 @@ void CmdCvarContext::dump_hash_stats() const noexcept
         return s;
     };
 
-    const MapStats maps[] = {
+    const std::array<MapStats, 3> maps = {{
         gather(impl_->cvar_map,  "cvar_map "),
         gather(impl_->cmd_map,   "cmd_map  "),
         gather(impl_->alias_map, "alias_map"),
-    };
+    }};
 
     char buf[128];
     platform::console::write("cmd_cvar hash stats:\n");
     for (const auto &m : maps) {
-        std::snprintf(buf, sizeof(buf),
+        utilities::snprintf(buf, sizeof(buf),
                       "  %s: %zu/%zu buckets used, %zu entries, max chain %zu\n",
                       m.label,
                       m.used_buckets, static_cast<std::size_t>(limits::cvar_hash_buckets),

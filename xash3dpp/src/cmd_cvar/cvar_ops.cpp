@@ -23,16 +23,17 @@ void CmdCvarContext::add_cvar_observer(ICvarObserver *observer,
 // Cvar registry
 // ---------------------------------------------------------------------------
 
-Cvar *CmdCvarContext::cvar_find(const char *name) noexcept
+Cvar *CmdCvarContext::cvar_find(std::string_view name) noexcept
 {
-    if (!name) return nullptr;
+    if (name.empty()) return nullptr;
+    const char *cname = name.data();
 
     // GoldSrc compat: redirect legacy renamed cvars before lookup.
     if (impl_->compat_policy) {
-        const char *redir = impl_->compat_policy->redirect_cvar_name(name);
-        if (redir) name = redir;
+        const char *redir = impl_->compat_policy->redirect_cvar_name(cname);
+        if (redir) cname = redir;
     }
-    return impl_->cvar_map.find(name);
+    return impl_->cvar_map.find(cname);
 }
 
 void CmdCvarContext::cvar_register_engine(Cvar &cv) noexcept
@@ -49,7 +50,7 @@ void CmdCvarContext::cvar_register_engine(Cvar &cv) noexcept
     }
 
     // Prepend to the ABI linked list.
-    cv.abi.next       = reinterpret_cast<CvarAbi *>(impl_->cvar_list_head);
+    cvar_list_set_next(&cv, impl_->cvar_list_head);
     impl_->cvar_list_head = &cv;
 
     // Insert into hash map (key borrowed from cv.abi.name).
@@ -86,33 +87,34 @@ Cvar *CmdCvarContext::cvar_register_dll(CvarAbi *abi_ptr) noexcept
         (FCVAR_EXTDLL | FCVAR_CLIENTDLL | FCVAR_GAMEUIDLL | FCVAR_REFDLL);
 
     // Prepend to ABI list + hash map.
-    cv->abi.next          = reinterpret_cast<CvarAbi *>(impl_->cvar_list_head);
+    cvar_list_set_next(cv, impl_->cvar_list_head);
     impl_->cvar_list_head = cv;
     impl_->cvar_map.insert(cv->abi.name, cv);
     return cv;
 }
 
-Cvar *CmdCvarContext::cvar_get_or_create(const char    *name,
+Cvar *CmdCvarContext::cvar_get_or_create(std::string_view name,
                                           const char    *default_value,
                                           std::uint32_t  flags) noexcept
 {
-    if (!name) return nullptr;
+    if (name.empty()) return nullptr;
+    const char *cname = name.data();
 
     // Compat redirect.
     if (impl_->compat_policy) {
-        const char *redir = impl_->compat_policy->redirect_cvar_name(name);
-        if (redir) name = redir;
+        const char *redir = impl_->compat_policy->redirect_cvar_name(cname);
+        if (redir) cname = redir;
     }
 
     // Return existing cvar if already registered.
-    Cvar *existing = impl_->cvar_map.find(name);
+    Cvar *existing = impl_->cvar_map.find(cname);
     if (existing) return existing;
 
     // Pool-allocate a new Cvar.
     Cvar *cv = static_cast<Cvar *>(memory::mem_calloc(impl_->pool, sizeof(Cvar)));
     if (!cv) return nullptr;
 
-    cv->abi.name   = pool_dup(impl_->pool, name);
+    cv->abi.name   = pool_dup(impl_->pool, cname);
     // Allocate SEPARATE copies for abi.string and def_string so that
     // cvar_set_direct() can free abi.string without dangling def_string.
     cv->abi.string = pool_dup(impl_->pool, default_value ? default_value : "");
@@ -128,7 +130,7 @@ Cvar *CmdCvarContext::cvar_get_or_create(const char    *name,
     }
 
     // Prepend to ABI list + hash map.
-    cv->abi.next          = reinterpret_cast<CvarAbi *>(impl_->cvar_list_head);
+    cvar_list_set_next(cv, impl_->cvar_list_head);
     impl_->cvar_list_head = cv;
     impl_->cvar_map.insert(cv->abi.name, cv);
     return cv;
@@ -157,11 +159,9 @@ void CmdCvarContext::cvar_set_direct(Cvar           *cv,
     // FCVAR_NOEXTRAWHITESPACE: skip leading/trailing whitespace.
     char trimmed[limits::cmd_line_max];
     if (cv->abi.flags & FCVAR_NOEXTRAWHITESPACE) {
-        while (*value == ' ' || *value == '\t') ++value;
-        utilities::strncpy(trimmed, value, sizeof(trimmed));
-        std::size_t len = utilities::strlen(trimmed);
-        while (len > 0 && (trimmed[len - 1] == ' ' || trimmed[len - 1] == '\t'))
-            trimmed[--len] = '\0';
+        const std::string_view sv = utilities::trim_sv(std::string_view{ value });
+        utilities::strncpy(trimmed, sv.data(),
+                           sv.size() + 1 < sizeof(trimmed) ? sv.size() + 1 : sizeof(trimmed));
         value = trimmed;
     }
 
@@ -231,11 +231,11 @@ void CmdCvarContext::cvar_set_direct(Cvar           *cv,
 #endif
 }
 
-void CmdCvarContext::cvar_set(const char     *name,
+void CmdCvarContext::cvar_set(std::string_view name,
                                const char     *value,
                                CvarWriteSource source) noexcept
 {
-    if (!name) return;
+    if (name.empty()) return;
     Cvar *cv = cvar_find(name);
     if (!cv) {
         // Auto-create user cvars on first write.
@@ -254,10 +254,10 @@ void CmdCvarContext::cvar_unlink(std::uint32_t owner_flags_mask) noexcept
     if ((owner_flags_mask & FCVAR_CLIENTDLL) && impl_->client_dll_loaded) return;
 
     Cvar *new_head = nullptr;
-    Cvar **tail    = &new_head;
+    Cvar *new_tail = nullptr;
 
     for (Cvar *cv = impl_->cvar_list_head; cv; ) {
-        Cvar *next = reinterpret_cast<Cvar *>(cv->abi.next);
+        Cvar *next = cvar_list_next(cv);
 
         if (cv->owner_flags & owner_flags_mask) {
             // Remove from hash map.
@@ -275,7 +275,7 @@ void CmdCvarContext::cvar_unlink(std::uint32_t owner_flags_mask) noexcept
                 : const_cast<char *>("");
 
             if (cv->abi.flags & FCVAR_USER_CREATED) {
-                memory::mem_free(const_cast<char *>(cv->abi.name));
+                memory::mem_free(cv->abi.name);
                 if (cv->def_string)
                     memory::mem_free(const_cast<char *>(cv->def_string));
                 memory::mem_free(cv);
@@ -284,9 +284,10 @@ void CmdCvarContext::cvar_unlink(std::uint32_t owner_flags_mask) noexcept
             }
             // else: DLL owns the struct; leave it alone.
         } else {
-            *tail       = cv;
-            cv->abi.next = nullptr;
-            tail        = reinterpret_cast<Cvar **>(&cv->abi.next);
+            cvar_list_set_next(cv, nullptr);
+            if (new_tail) cvar_list_set_next(new_tail, cv);
+            else          new_head = cv;
+            new_tail = cv;
         }
 
         cv = next;
@@ -297,9 +298,7 @@ void CmdCvarContext::cvar_unlink(std::uint32_t owner_flags_mask) noexcept
 
 CvarAbi *CmdCvarContext::cvar_get_list() const noexcept
 {
-    return impl_->cvar_list_head
-        ? reinterpret_cast<CvarAbi *>(impl_->cvar_list_head)
-        : nullptr;
+    return impl_->cvar_list_head ? &impl_->cvar_list_head->abi : nullptr;
 }
 
 CvarDesc CmdCvarContext::cvar_describe(const Cvar *cv) const noexcept
@@ -317,24 +316,24 @@ CvarDesc CmdCvarContext::cvar_describe(const Cvar *cv) const noexcept
     };
 }
 
-const char *CmdCvarContext::cvar_variable_string(const char *name) const noexcept
+const char *CmdCvarContext::cvar_variable_string(std::string_view name) const noexcept
 {
     const Cvar *cv = const_cast<CmdCvarContext *>(this)->cvar_find(name);
     return cv ? cv->abi.string : "";
 }
 
-float CmdCvarContext::cvar_variable_value(const char *name) const noexcept
+float CmdCvarContext::cvar_variable_value(std::string_view name) const noexcept
 {
     const Cvar *cv = const_cast<CmdCvarContext *>(this)->cvar_find(name);
     return cv ? cv->abi.value : 0.0f;
 }
 
-int CmdCvarContext::cvar_variable_integer(const char *name) const noexcept
+int CmdCvarContext::cvar_variable_integer(std::string_view name) const noexcept
 {
     return static_cast<int>(cvar_variable_value(name));
 }
 
-void CmdCvarContext::cvar_full_set(const char     *name,
+void CmdCvarContext::cvar_full_set(std::string_view name,
                                     const char     *value,
                                     std::uint32_t   flags) noexcept
 {
@@ -344,7 +343,7 @@ void CmdCvarContext::cvar_full_set(const char     *name,
 
 void CmdCvarContext::cvar_set_cheat_state() noexcept
 {
-    for (Cvar *cv = impl_->cvar_list_head; cv; cv = reinterpret_cast<Cvar *>(cv->abi.next)) {
+    for (Cvar *cv = impl_->cvar_list_head; cv; cv = cvar_list_next(cv)) {
         if (!(cv->abi.flags & FCVAR_CHEAT)) continue;
         const char *def = cv->def_string ? cv->def_string : "";
         cvar_set_direct(cv, def, CvarWriteSource::EngineInternal);
@@ -361,7 +360,7 @@ void CmdCvarContext::cvar_write_variables(void          *vfile,
 
 void CmdCvarContext::cvar_prepare_to_unlink(std::uint32_t owner_flags_mask) noexcept
 {
-    for (Cvar *cv = impl_->cvar_list_head; cv; cv = reinterpret_cast<Cvar *>(cv->abi.next)) {
+    for (Cvar *cv = impl_->cvar_list_head; cv; cv = cvar_list_next(cv)) {
         if (!(cv->owner_flags & owner_flags_mask)) continue;
         char *name_copy = pool_dup(impl_->pool, cv->abi.name);
         if (name_copy)

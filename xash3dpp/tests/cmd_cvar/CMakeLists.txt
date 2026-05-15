@@ -27,3 +27,7 @@ add_test(NAME test_privilege COMMAND test_privilege)
 add_executable(test_compat test_compat.cpp)
 target_link_libraries(test_compat PRIVATE cmd_cvar_test_stubs)
 add_test(NAME test_compat COMMAND test_compat)
+
+add_executable(test_memory_accounting test_memory_accounting.cpp)
+target_link_libraries(test_memory_accounting PRIVATE cmd_cvar_test_stubs)
+add_test(NAME test_memory_accounting COMMAND test_memory_accounting)

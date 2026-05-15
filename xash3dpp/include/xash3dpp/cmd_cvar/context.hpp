@@ -13,7 +13,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <memory>
 #include <string_view>
 
 namespace xash::cmd_cvar {
@@ -79,12 +78,12 @@ public:
     // ---- Cvar registry ----------------------------------------------------
 
     // Look up a cvar by name (case-insensitive). Returns nullptr if not found.
-    [[nodiscard]] Cvar *cvar_find(const char *name) noexcept;
+    [[nodiscard]] Cvar *cvar_find(std::string_view name) noexcept;
 
     // Look up or create a cvar.  If the name does not exist, a new cvar is
     // created with FCVAR_USER_CREATED.  Never returns nullptr after a
     // successful init().
-    Cvar *cvar_get_or_create(const char *name,
+    Cvar *cvar_get_or_create(std::string_view name,
                              const char *default_value,
                              std::uint32_t flags) noexcept;
 
@@ -98,7 +97,7 @@ public:
     Cvar *cvar_register_dll(CvarAbi *cv) noexcept;
 
     // Set a cvar's string value.
-    void cvar_set(const char *name,
+    void cvar_set(std::string_view name,
                   const char *value,
                   CvarWriteSource source = CvarWriteSource::EngineInternal) noexcept;
 
@@ -115,12 +114,12 @@ public:
     [[nodiscard]] CvarDesc cvar_describe(const Cvar *cv) const noexcept;
 
     // Read helpers — return sensible defaults when name is not found.
-    [[nodiscard]] const char *cvar_variable_string (const char *name) const noexcept;
-    [[nodiscard]] float       cvar_variable_value   (const char *name) const noexcept;
-    [[nodiscard]] int         cvar_variable_integer (const char *name) const noexcept;
+    [[nodiscard]] const char *cvar_variable_string (std::string_view name) const noexcept;
+    [[nodiscard]] float       cvar_variable_value   (std::string_view name) const noexcept;
+    [[nodiscard]] int         cvar_variable_integer (std::string_view name) const noexcept;
 
     // Force-set: updates value AND flags, bypasses privilege/cheat/latch.
-    void cvar_full_set(const char *name, const char *value,
+    void cvar_full_set(std::string_view name, const char *value,
                        std::uint32_t flags) noexcept;
 
     // Reset all FCVAR_CHEAT cvars to their registered default values.
@@ -143,21 +142,21 @@ public:
 
     // ---- Command registry -------------------------------------------------
 
-    void cmd_add(const char    *name,
+    void cmd_add(std::string_view name,
                  CommandFn      fn,
                  std::uint32_t  flags = 0,
                  const char    *desc  = nullptr) noexcept;
 
-    void cmd_remove(const char *name) noexcept;
+    void cmd_remove(std::string_view name) noexcept;
 
     // Unlink all commands whose flags intersect mask (mirrors cvar_unlink).
     void cmd_unlink(std::uint32_t flags_mask) noexcept;
 
     // Build a copyable descriptor snapshot for a command by name.
-    [[nodiscard]] CommandDesc cmd_describe(const char *name) const noexcept;
+    [[nodiscard]] CommandDesc cmd_describe(std::string_view name) const noexcept;
 
     // Returns true if a command with this name is registered.
-    [[nodiscard]] bool cmd_exists(const char *name) const noexcept;
+    [[nodiscard]] bool cmd_exists(std::string_view name) const noexcept;
 
     // Execute a single command line immediately in the privileged context.
     void cmd_execute_string(std::string_view text) noexcept;
@@ -221,7 +220,12 @@ public:
 
 private:
     struct Impl;
-    std::unique_ptr<Impl> impl_;
+    // Allocated via memory::pool_new(kNullPool) in the constructor so that OOM
+    // is handled through the memory subsystem rather than throwing bad_alloc.
+    // kNullPool: the cmd_cvar pool does not yet exist when the Impl is created
+    // (it is created inside init()); the Impl is the struct that holds the pool
+    // handle, so it cannot itself be pool-allocated from that pool.
+    Impl *impl_ = nullptr;
 };
 
 } // namespace xash::cmd_cvar

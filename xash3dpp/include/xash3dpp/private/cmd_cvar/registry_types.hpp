@@ -25,8 +25,8 @@ namespace xash::cmd_cvar {
 // Command — full internal command record
 // ---------------------------------------------------------------------------
 struct Command {
-    const char   *name;        // pool-owned
-    const char   *desc;        // pool-owned; may be nullptr
+    char         *name;        // pool-owned
+    char         *desc;        // pool-owned; may be nullptr
     CommandFn     fn;
     std::uint32_t flags;       // CommandFlags bitmask
     std::uint32_t owner_flags; // mirrors CvarFlags domain for unlink matching
@@ -38,7 +38,7 @@ struct Command {
 // ---------------------------------------------------------------------------
 struct AliasDef {
     char        name[limits::alias_name_max]; // NUL-terminated; inlined to avoid extra pool alloc
-    const char *value;                        // pool-owned expansion string
+    char       *value;                        // pool-owned expansion string
     AliasDef   *abi_next;
 };
 
