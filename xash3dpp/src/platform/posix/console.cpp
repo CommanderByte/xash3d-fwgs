@@ -7,6 +7,8 @@
 
 #include <xash3dpp/platform/console.hpp>
 
+#include "../detail/assert_main.hpp"
+
 #include <sys/select.h>
 #include <unistd.h>   // STDIN_FILENO, STDOUT_FILENO, read, write
 
@@ -39,6 +41,7 @@ void write( std::string_view text ) noexcept
 
 std::string_view read_line() noexcept
 {
+    detail::assert_main_thread( "console::read_line" );
     static char       accum[1024];
     static std::size_t accum_len = 0;
     static char       result[1024];

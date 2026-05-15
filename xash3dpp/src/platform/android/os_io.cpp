@@ -21,7 +21,6 @@
 #include <unistd.h>   // SEEK_SET, SEEK_END
 
 #include <algorithm>
-#include <cassert>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -59,7 +58,8 @@ JniState g_jni;
 // Cached handles: [0] = engine APK, [1] = app APK.
 AssetManagerHandle g_handles[2];
 
-// Per-slot init flags — ensure each handle is populated exactly once.
+// Init flags — ensure g_jni and each handle are populated exactly once.
+std::once_flag g_jni_flag;
 std::once_flag g_init_flags[2];
 
 } // anonymous namespace
@@ -71,19 +71,20 @@ std::once_flag g_init_flags[2];
 void android_init_jni( JNIEnv *env, jobject activity,
                         jclass activity_class ) noexcept
 {
-    assert( g_jni.env == nullptr && "android_init_jni called more than once" );
-    g_jni.env            = env;
-    g_jni.activity       = activity;
-    g_jni.activity_class = activity_class;
+    std::call_once( g_jni_flag, [&]() noexcept {
+        g_jni.env            = env;
+        g_jni.activity       = activity;
+        g_jni.activity_class = activity_class;
 
-    g_jni.get_package_name    = env->GetMethodID( activity_class, "getPackageName",
-                                                   "()Ljava/lang/String;" );
-    g_jni.get_calling_package = env->GetMethodID( activity_class, "getCallingPackage",
-                                                   "()Ljava/lang/String;" );
-    g_jni.get_assets_list     = env->GetMethodID( activity_class, "getAssetsList",
-                                                   "(ZLjava/lang/String;)[Ljava/lang/String;" );
-    g_jni.get_assets          = env->GetMethodID( activity_class, "getAssets",
-                                                   "(Z)Landroid/content/res/AssetManager;" );
+        g_jni.get_package_name    = env->GetMethodID( activity_class, "getPackageName",
+                                                       "()Ljava/lang/String;" );
+        g_jni.get_calling_package = env->GetMethodID( activity_class, "getCallingPackage",
+                                                       "()Ljava/lang/String;" );
+        g_jni.get_assets_list     = env->GetMethodID( activity_class, "getAssetsList",
+                                                       "(ZLjava/lang/String;)[Ljava/lang/String;" );
+        g_jni.get_assets          = env->GetMethodID( activity_class, "getAssets",
+                                                       "(Z)Landroid/content/res/AssetManager;" );
+    } );
 }
 
 // ---------------------------------------------------------------------------

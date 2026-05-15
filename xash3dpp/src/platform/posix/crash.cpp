@@ -11,11 +11,14 @@
 
 #include <xash3dpp/platform/crash.hpp>
 
+#include "../detail/assert_main.hpp"
+
 #include <execinfo.h>    // backtrace, backtrace_symbols_fd
 #include <signal.h>      // sigaction, siginfo_t, SIGSEGV…
 #include <unistd.h>      // STDERR_FILENO, write
 
 #include <cstring>       // strlen
+#include <atomic>        // std::atomic
 
 namespace xash::platform::crash {
 
@@ -67,9 +70,9 @@ void posix_fault_handler( int signum ) noexcept
 
 void install_handler() noexcept
 {
-    static bool installed = false;
-    if( installed ) return;
-    installed = true;
+    detail::assert_main_thread( "crash::install_handler" );
+    static std::atomic<bool> installed{ false };
+    if( installed.exchange( true ) ) return;
 
     struct sigaction sa{};
     sa.sa_handler = posix_fault_handler;

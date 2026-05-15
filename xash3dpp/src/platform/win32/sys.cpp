@@ -19,6 +19,8 @@
 
 #include <cstring>   // std::memcpy
 
+#include "../detail/assert_main.hpp"
+
 namespace xash::platform {
 
 // ---------------------------------------------------------------------------
@@ -43,6 +45,12 @@ double get_time() noexcept
         }
     };
     static const ClockInit s_clock{};
+    // Capture main-thread ID on first call (inside magic-static — thread-safe).
+    static const bool s_main_captured = []() noexcept {
+        detail::capture_main_thread();
+        return true;
+    }();
+    (void)s_main_captured;
 
     LARGE_INTEGER now;
     QueryPerformanceCounter( &now );

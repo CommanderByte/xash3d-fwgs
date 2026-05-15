@@ -7,6 +7,8 @@
 
 #include <xash3dpp/platform/console.hpp>
 
+#include "../detail/assert_main.hpp"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN
 #endif
@@ -38,6 +40,7 @@ void write( std::string_view text ) noexcept
 
 std::string_view read_line() noexcept
 {
+    detail::assert_main_thread( "console::read_line" );
     static char   accum[1024];
     static DWORD  accum_len = 0;
     static char   result[1024];

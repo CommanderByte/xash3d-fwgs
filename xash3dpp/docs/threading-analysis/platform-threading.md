@@ -71,12 +71,15 @@ concurrently.
 
 ## Hazards
 
-| Symbol | File | Class | Notes |
-|--------|------|-------|-------|
-| `installed` flag in `install_handler()` | `win32/crash.cpp`, `posix/crash.cpp` | **Race-init** | `static bool installed = false; if (installed) return; installed = true;` is a non-atomic read-check-write.  Two threads calling `install_handler()` simultaneously could both observe `false` and both call `SetUnhandledExceptionFilter` / `sigaction`.  The double-registration is benign on both platforms (last write wins, same handler pointer), but the read of a non-`atomic<bool>` across threads is technically undefined behaviour under the C++ abstract machine.  Low severity because the calling contract already forbids it — but the flag should be `std::atomic<bool>` for correctness. |
-| `accum`, `accum_len`, `result` in `console::read_line()` | `win32/console.cpp`, `posix/console.cpp` | **Race-shared** | Three function-scope statics accumulate partial input lines between calls.  No lock guards them.  Concurrent callers from two threads would corrupt both the accumulator and the result buffer, and the returned `string_view` would point into data being overwritten.  The contract says main-thread-only; there is no `assert` to enforce it at development time. |
-| `evbuf[64]` in `console::read_line()` (Win32 only) | `win32/console.cpp` | **Race-shared** | `static INPUT_RECORD evbuf[64]` is written by `PeekConsoleInputA`.  Same threading constraint as `accum` / `result` above. |
-| `g_jni` read vs. write | `android/os_io.cpp` | **Race-init** (weak) | `android_init_jni()` writes all fields of `g_jni` without any synchronisation primitive.  `get_asset_manager()` reads `g_jni.env` and `g_jni.get_assets` without any lock.  If the reads are reordered before the writes (allowed by the C++ memory model absent a `happens-before` edge), `get_asset_manager()` could see a partial `g_jni` state.  In practice the JNI runtime imposes a sequential calling convention here, and `android_init_jni` is called at `JNI_OnLoad` before any Java thread reaches asset code, so the race window does not materialise.  Classified **hazard** because it relies on calling-convention discipline, not C++ synchronisation primitives. |
+All four hazards identified below have been resolved.  The original descriptions
+are kept for historical context; see the **Status** column.
+
+| Symbol | File | Class | Status | Notes |
+|--------|------|-------|--------|-------|
+| `installed` flag in `install_handler()` | `win32/crash.cpp`, `posix/crash.cpp` | **Race-init** | **Fixed** | Promoted to `static std::atomic<bool> installed{ false }`.  `installed.exchange(true)` is a single atomic RMW; concurrent callers are safe. |
+| `accum`, `accum_len`, `result` in `console::read_line()` | `win32/console.cpp`, `posix/console.cpp` | **Race-shared** | **Mitigated** | `detail::assert_main_thread("console::read_line")` added at function entry.  Fires in debug builds if called from a worker thread.  The static buffers remain, so the constraint is enforced rather than removed. |
+| `evbuf[64]` in `console::read_line()` (Win32 only) | `win32/console.cpp` | **Race-shared** | **Mitigated** | Same assert as `accum`/`result` above — the assert covers the entire function body. |
+| `g_jni` read vs. write | `android/os_io.cpp` | **Race-init** (weak) | **Fixed** | `android_init_jni()` now calls `std::call_once(g_jni_flag, [&](){ … })`.  The `once_flag` establishes a C++ `happens-before` edge: any thread that reads `g_jni` after `call_once` completes is guaranteed to see the fully written state. |
 
 ## Required caller contracts
 
@@ -94,39 +97,26 @@ concurrently.
 
 ## Recommendations
 
-Ordered from lowest to highest effort:
+All three actionable recommendations have been implemented.
 
-1. **Add `assert_main_thread()` to `console::read_line()` and
-   `crash::install_handler()`.**  Capture the main thread ID at the earliest
-   platform call (e.g. on the first call to `get_time()`) and assert in the
-   main-thread-only functions.  Catches violations at development time with zero
-   release overhead.
+1. ~~**Add `assert_main_thread()` to `console::read_line()` and
+   `crash::install_handler()`.**~~ **Done.**
+   `src/platform/detail/assert_main.hpp` provides `capture_main_thread()` and
+   `assert_main_thread(loc)`.  `capture_main_thread()` is called from a
+   magic-static in `get_time()` on first use.  Both `console::read_line()` and
+   `crash::install_handler()` call `assert_main_thread()` at entry.
 
-2. **Promote `installed` to `std::atomic<bool>`** in both `install_handler()`
-   implementations.  The function is called once; the only cost is a single
-   `atomic_store` on a cold path.  Eliminates the theoretical UB:
-
+2. ~~**Promote `installed` to `std::atomic<bool>`**~~ **Done.**
+   Both `win32/crash.cpp` and `posix/crash.cpp` now use:
    ```cpp
-   void install_handler() noexcept {
-       static std::atomic<bool> installed{ false };
-       if( installed.exchange( true ) ) return;
-       // ... register handler ...
-   }
+   static std::atomic<bool> installed{ false };
+   if( installed.exchange( true ) ) return;
    ```
 
-3. **Protect `g_jni` with `std::once_flag`** (Android).  Replace the bare struct
-   write with a `std::call_once` block and expose a `bool platform_android_ready()`
-   predicate that callers can check:
-
-   ```cpp
-   static std::once_flag g_jni_flag;
-   void android_init_jni( JNIEnv *env, jobject activity, jclass cls ) noexcept {
-       std::call_once( g_jni_flag, [&]() noexcept {
-           g_jni.env            = env;
-           // ...
-       } );
-   }
-   ```
+3. ~~**Protect `g_jni` with `std::once_flag`**~~ **Done.**
+   `android_init_jni()` now wraps all `g_jni` writes in
+   `std::call_once(g_jni_flag, [&](){ … })`.  The `once_flag` is declared
+   alongside `g_jni` in the anonymous namespace of `android/os_io.cpp`.
 
 4. **Consider a per-call lock for `console::read_line()`.** If the engine ever
    gains a background I/O thread that also needs to issue console prompts, a
