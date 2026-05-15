@@ -61,6 +61,9 @@ pool-based memory accounting accurate.
 
 | Need | Use | Header |
 |------|-----|--------|
+| Structured logging | `core::log(LogLevel, tag, msg)`, `core::logf(LogLevel, tag, fmt, ...)` | `core/log.hpp` |
+| Assertions | `XASH_ASSERT(expr)`, `XASH_FATAL(expr, msg)` | `core/assert.hpp` |
+| Thread-role | `core::register_thread_role(ThreadRole)`, `core::assert_thread_role(ThreadRole)` | `core/thread_role.hpp` |
 | String copy, compare, format, parse | `utilities::strncpy`, `stricmp`, `snprintf`, `atoi`, `parse_token`, `Tokenizer` | `utilities/string.hpp` |
 | Case-insensitive compare / sort key | `utilities::ci_less`, `ci_equal` | `utilities/string.hpp` |
 | Path join, extension, base name | `utilities::path_join`, `file_base`, `replace_extension`, `fix_slashes`, … | `utilities/path.hpp` |
@@ -68,7 +71,7 @@ pool-based memory accounting accurate.
 | Vector / matrix math | `utilities::Vec2/3/4`, `Matrix3x4/4x4`, `dot`, `cross`, `normalize`, … | `utilities/math.hpp`, `utilities/matrix.hpp` |
 | UTF-8 / UTF-16 encode/decode | `utilities::utf::Utf8Decoder`, `encode_utf8`, `utf16_to_utf8` | `utilities/utf.hpp` |
 | Dynamic allocations (pool-backed) | `memory::mem_alloc`, `mem_calloc`, `mem_free`, `pool_new<T>`, `pool_dup` | `memory/memory.hpp` |
-| File open / read / write / search | `IFilesystem` interface injected at construction | `filesystem/filesystem.hpp` |
+| File open / read / write / search | `Filesystem` passed by reference; do not call OS file APIs directly | `filesystem/filesystem.hpp` |
 | Monotonic time | `platform::get_time()` | `platform/sys.hpp` |
 | Console output | `platform::console::write(std::string_view)` | `platform/console.hpp` |
 | Debugger detection / break | `platform::is_debugger_present()`, `XASH_DEBUG_BREAK()` | `platform/sys.hpp` |
@@ -76,7 +79,9 @@ pool-based memory accounting accurate.
 **Forbidden raw alternatives** (flag in code review):
 - `malloc`, `calloc`, `realloc`, `free` — use `memory::mem_alloc` / `mem_free`
 - `new` / `delete` — use pool helpers; `std::make_unique<Impl>()` is the *only* allowed exception (pimpl construction before the subsystem pool exists)
-- `fopen`, `fclose`, `FILE *`, `CreateFile`, `open()` — use `IFilesystem`
+- `fopen`, `fclose`, `FILE *`, `CreateFile`, `open()` — use `Filesystem` passed by reference
+- `printf`, `puts`, `fprintf` — use `core::log` / `core::logf`
+- `assert()` from `<cassert>` — use `XASH_ASSERT` or `XASH_FATAL`
 - `strlen`, `strcpy`, `strcmp`, `sprintf` — use `utilities::` equivalents
 - Custom CRC/MD5/hash implementations — use `utilities::hash.hpp`
 

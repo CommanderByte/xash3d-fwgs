@@ -12,12 +12,13 @@
 | memory     | 1         | ✓        | ✓      | **Complete** |
 | filesystem | 10        | ✓        | ✓      | **Complete** |
 | platform   | 11        | ✓        | ✓      | **Complete** |
+| core       | 3         | ✓        | ✓      | **Complete** |
+| cmd_cvar   | 11        | ✓        | ✓      | **Complete** |
 | host       | 1         | ✓        | ✗      | **Partial** (pimpl skeleton, no tests) |
 | launcher   | 1         | ✗        | ✗      | **Partial** (thin argv bootstrap, no tests) |
 | networking | 0         | ✓        | ✗      | **Skeleton** (include stub exists) |
 | server     | 0         | ✓        | ✗      | **Skeleton** (include stub exists) |
 | client     | 0         | ✓        | ✗      | **Skeleton** (include stub exists) |
-| cmd_cvar   | 11        | ✓        | ✓      | **Complete** |
 | content    | 0         | ✗        | ✗      | **Skeleton** |
 | demo       | 0         | ✗        | ✗      | **Skeleton** |
 | input      | 0         | ✗        | ✗      | **Skeleton** |

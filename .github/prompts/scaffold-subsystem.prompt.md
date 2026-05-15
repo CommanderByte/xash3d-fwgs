@@ -19,25 +19,42 @@ infrastructure that is already provided:
 
 1. **Memory** — [`xash3dpp/include/xash3dpp/memory/memory.hpp`](../../xash3dpp/include/xash3dpp/memory/memory.hpp)
    All dynamic allocations must go through `create_pool` / `mem_alloc` /
-   `pool_new` etc. Never use `malloc`, `new`, or `std::make_unique` directly
-   inside the subsystem.
+   `pool_new` / `pool_dup` etc. `malloc`, `new`, `std::make_unique` are
+   forbidden inside the subsystem — the *only* exception is
+   `std::make_unique<Impl>()` for the pimpl struct itself (allocated before
+   the subsystem pool exists).
 
-2. **Utilities** — scan `xash3dpp/include/xash3dpp/utilities/` for helpers
-   that may already exist: string operations, path joining, hashing, CRC/MD5,
-   math, etc. Do not re-implement anything found here.
+2. **Utilities** — do **not** re-implement anything already in
+   `xash3dpp/include/xash3dpp/utilities/`. Key headers:
+   - `string.hpp` — `strncpy`, `stricmp`, `snprintf`, `atoi`, `parse_token`, `Tokenizer`
+   - `path.hpp` — `path_join`, `file_base`, `replace_extension`, `fix_slashes`
+   - `hash.hpp` — `Crc32Hasher`, `Md5Hasher`, `crc32()` (use these; never write a custom hash)
+   - `math.hpp` / `matrix.hpp` — `Vec3`, `Matrix3x4`, `dot`, `normalize`, …
+   - `utf.hpp` — `Utf8Decoder`, `encode_utf8`, `utf16_to_utf8`
+
    Architecture reference: [`xash3dpp/docs/architecture/utilities/`](../../xash3dpp/docs/architecture/utilities/README.md)
 
-3. **Filesystem** — check `xash3dpp/include/xash3dpp/filesystem/` for file
-   I/O, virtual path resolution, and archive access APIs. If `$ARGUMENTS`
-   reads config files, model data, or any on-disk resource, link against
-   `xash3dpp_filesystem` and use its `IFilesystem` interface rather than
-   calling OS file APIs directly.
+3. **Filesystem** — if `$ARGUMENTS` reads config files, model data, or any
+   on-disk resource, link against `xash3dpp_filesystem` and accept a
+   `Filesystem&` reference in the init-params struct. Never call `fopen`,
+   `fclose`, `FILE *`, `CreateFile`, or `open()` directly.
    Architecture reference: [`xash3dpp/docs/architecture/filesystem/`](../../xash3dpp/docs/architecture/filesystem/README.md)
 
-4. **Platform layer** — check `xash3dpp/include/xash3dpp/platform/` for any
-   OS-abstraction types or functions relevant to `$ARGUMENTS`.
+4. **Platform layer** — for monotonic time use `platform::get_time()`;
+   for console output use `platform::console::write()`; for debugger detection
+   use `platform::is_debugger_present()`. Do not call OS timer or I/O APIs
+   directly. Check `xash3dpp/include/xash3dpp/platform/` before reaching for
+   any OS primitive.
 
-5. **Existing subsystems as structural reference** — read
+5. **Core** — all structured logging must use `core::log` / `core::logf`
+   (never `printf` or `platform::console::write` directly); use `XASH_ASSERT`
+   and `XASH_FATAL` (never `assert()` from `<cassert>`); call
+   `core::register_thread_role(ThreadRole::Main)` at thread-start and
+   `core::assert_thread_role(ThreadRole::Main)` inside every main-thread-only
+   public function.
+   Headers: `core/log.hpp`, `core/assert.hpp`, `core/thread_role.hpp`
+
+6. **Existing subsystems as structural reference** — read
    `xash3dpp/src/filesystem/CMakeLists.txt` and
    `xash3dpp/src/memory/CMakeLists.txt` to understand the canonical CMake
    target shape. Mirror that shape exactly.
@@ -247,6 +264,35 @@ void <Subsystem>::Shutdown()
 } // namespace xash::$ARGUMENTS
 ```
 
+**Stats struct** (add to the public header if the subsystem has non-trivial hot
+paths — see `xash3dpp/docs/design/debug-stats-design.md` for the full model):
+
+```cpp
+// Three-tier instrumentation — add only the tiers this subsystem needs.
+struct $ARGUMENTS_Stats {
+    // Tier 1 — always-on (no guard): ≤ 1 relaxed atomic per event.
+    // std::atomic<std::uint64_t> items_processed{0};
+
+#if XASH_STATS
+    // Tier 2 — lightweight bookkeeping: peak counts, high-water marks.
+    // std::uint32_t peak_active_count{0};
+#endif
+
+#if XASH_DEBUG_$ARGUMENTS
+    // Tier 3 — dev-only heavy tracing: change logs, histograms, break helpers.
+#endif
+};
+```
+
+Expose it from the context class:
+```cpp
+// In the public class:
+const $ARGUMENTS_Stats& stats() const noexcept;
+```
+
+**Rules**: never gate counter *increments* on a runtime bool; never format
+strings inside a hot path (format on demand in a query command instead).
+
 Add the move-operation definitions here (alongside the destructor):
 ```cpp
 <Class>::<Class>(<Class>&&) noexcept            = default;
@@ -347,3 +393,6 @@ Confirm:
 - [ ] No `.hpp` files under `src/`.  Any header shared between TUs but not public lives in `include/xash3dpp/private/$ARGUMENTS/`.
 - [ ] Pimpl move ctor/assignment declared in header, defined `= default` in `.cpp`
 - [ ] Any fixed buffer/count limits added to `limits.hpp` with `XASH_LIMIT_*` override macros
+- [ ] Stats struct defined for hot-path subsystems (`<Subsystem>Stats` with appropriate tiers)
+- [ ] `stats() const noexcept` accessor exposed from the context class
+- [ ] No string formatting in hot paths — raw counters only

@@ -59,7 +59,7 @@ or direct OS timer / I/O calls outside the `platform/` or `filesystem/` subsyste
 
 ## Current State
 
-Four subsystems are complete and tested.  Use `analyse-subsystem` to scope the
+Five subsystems are complete and tested.  Use `analyse-subsystem` to scope the
 next one.
 
 ### `xash3dpp_utilities` — complete
@@ -77,20 +77,31 @@ next one.
 
 ### `xash3dpp_filesystem` — complete
 - **Library**: `xash3dpp/src/filesystem/`; headers in `xash3dpp/include/xash3dpp/filesystem/`
-- **Design**: `Filesystem` pimpl class; `IFilesystem` vtable interface
-  (VFileSystem009-compatible); PAK/WAD/ZIP archive backends; case-insensitive
-  directory cache; `std::shared_mutex` guards the search-path deque
+- **Design**: `Filesystem` pimpl class; `VFileSystem009Adapter` is the legacy
+  ABI shim (wraps `Filesystem` directly); PAK/WAD/ZIP archive backends;
+  `ISearchBackend` vtable for backend dispatch; case-insensitive directory
+  cache; `std::shared_mutex` guards the search-path deque
 - **Tests**: `xash3dpp/tests/filesystem/`
 
 ### `xash3dpp_platform` — complete
 - **Library**: `xash3dpp/src/platform/`; public headers in
-  `xash3dpp/include/xash3dpp/platform/`; private headers in
-  `xash3dpp/include/xash3dpp/private/platform/`
+  `xash3dpp/include/xash3dpp/platform/`
 - **Design**: Single Porting Layer — all OS-specific code lives here.
   Win32 and POSIX backends for `sys` (time, sleep, env), `console` (stdin
   reader), and `crash` (signal/exception handler); Android JNI bootstrap via
   `std::call_once`
 - **Tests**: `xash3dpp/tests/platform/`
+
+### `xash3dpp_core` — complete
+- **Library**: `xash3dpp/src/core/`; public headers in
+  `xash3dpp/include/xash3dpp/core/`; private headers in
+  `xash3dpp/include/xash3dpp/private/core/`
+- **Design**: Cross-cutting singletons shared by all subsystems — structured
+  logging (`core::log`, `core::logf`, `LogLevel` enum), assertion macros
+  (`XASH_ASSERT`, `XASH_FATAL`), and thread-role registration
+  (`core::register_thread_role`, `core::assert_thread_role`); log sink writes
+  via `platform::console::write()`
+- **Tests**: `xash3dpp/tests/core/`
 
 ### `xash3dpp_cmd_cvar` — complete
 - **Library**: `xash3dpp/src/cmd_cvar/`; public headers in
@@ -130,8 +141,9 @@ three subsystems have stats structs.
 
 Full specification: [`xash3dpp/docs/design/threading-model.md`](../../xash3dpp/docs/design/threading-model.md)
 
-Six thread roles are defined in `platform/thread_role.hpp`. Registration at
-thread start + `assert_thread_role()` in debug builds enforce the contracts.
+Six thread roles are defined in `core/thread_role.hpp`. Registration at
+thread start + `core::assert_thread_role()` in debug builds enforce the
+contracts.
 
 | Thread | Starts | Drives |
 |--------|--------|--------|
@@ -186,8 +198,9 @@ Full decisions: [`xash3dpp/docs/design/design-paradigms-round2.md`](../../xash3d
 
 **Instrumentation:**
 - `[[nodiscard]]` is the default on all non-`void` returns; omission requires justification.
-- `XASH_ASSERT(expr)` — debug-only invariant check. `XASH_FATAL(expr, msg)` — always-on unrecoverable invariant. Never use `assert()` from `<cassert>`.
-- `platform::log(LogLevel, tag, msg)` for all diagnostic output — not `printf`, not `console::write` directly.
+- `XASH_ASSERT(expr)` — debug-only invariant check (`core/assert.hpp`). `XASH_FATAL(expr, msg)` — always-on unrecoverable invariant. Never use `assert()` from `<cassert>`.
+- `core::log(LogLevel, tag, msg)` / `core::logf(LogLevel, tag, fmt, ...)` for all diagnostic output — not `printf`, not `console::write` directly.
+- `core::register_thread_role(ThreadRole)` at thread start; `core::assert_thread_role(ThreadRole)` inside main-thread-only functions.
 
 **Integer types:** `size_t` for sizes · `int` for GoldSrc ABI · `uint32_t` for internal tokens · `int64_t` for file offsets · `bool` for booleans · no bare `unsigned`.
 
