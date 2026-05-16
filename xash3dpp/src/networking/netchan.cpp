@@ -455,6 +455,10 @@ bool Netchan::process( std::span<const std::byte> datagram,
     // never mutates the underlying bytes, so a const_cast on the caller's
     // datagram is safe here.  We avoid copying so process() stays O(1) in
     // header bytes regardless of payload size.
+    //
+    // TODO(audit): a MessageBuf::rebind_read(span<const std::byte>) overload
+    // would let us drop the const_cast entirely.  Tracked as a separate
+    // follow-up; not blocking process()' current correctness.
     msg.rebind( std::span<std::byte>{
                     const_cast<std::byte *>( datagram.data() ),
                     datagram.size() },

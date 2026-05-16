@@ -36,6 +36,12 @@ public:
     // Legacy `chan->gs_netchan == true` path: no qport word in the client
     // header.  When the Xash netchan variant is added it will live in its
     // own driver class (or in a parameterised subclass) and return true here.
+    //
+    // TODO(audit): The default registry maps both protocol 48 (GoldSrc) and
+    // protocol 49 (Xash) to this driver, but legacy net_chan.c L1691-1694
+    // ships qport on the standard Xash protocol (gs_netchan=false).  A real
+    // XashProtocolDriver sibling (sends_qport()=true) is needed before
+    // protocol-49 channels are wired through the registry.
     [[nodiscard]] bool sends_qport() const noexcept override { return false; }
 
     [[nodiscard]] Result<void> write_packet_header(
