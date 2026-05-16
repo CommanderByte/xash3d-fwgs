@@ -20,6 +20,14 @@ constexpr std::size_t socket_index( SocketKind kind ) noexcept
     return kind == SocketKind::Client ? 0u : 1u;
 }
 
+// Is `a` a 127.0.0.0/8 IPv4 address?  Used by send_packet to short-circuit
+// to the in-process loopback ring (legacy ref: NA_LOOPBACK routing in
+// NET_SendPacket / NET_SendLoopPacket).
+constexpr bool is_loopback_v4( const NetAddress &a ) noexcept
+{
+    return a.family == xash::platform::IpFamily::V4 && a.addr.v4[ 0 ] == 127;
+}
+
 } // namespace
 
 // Open one OS UDP socket for `kind` on `port` (0 = ephemeral).  Closes any
@@ -169,24 +177,77 @@ Result<void> NetworkContext::config( bool multiplayer, bool change_port ) noexce
 }
 
 Result<std::size_t> NetworkContext::get_packet(
-    SocketKind /*sock*/,
-    NetAddress & /*from*/,
-    std::span<std::byte> /*data*/ ) noexcept
+    SocketKind           sock,
+    NetAddress          &from,
+    std::span<std::byte> data ) noexcept
 {
     if( !is_active() )
         return std::unexpected( NetError::NotInitialised );
-    // TODO(Chunk 4+): consult loopback ring, then IPlatformSockets::recvfrom.
-    return std::unexpected( NetError::WouldBlock );
+
+    // 1) Consult the in-process loopback ring first.  For listen-server
+    //    builds this is the fast path; legacy ref: NET_GetLoopPacket.
+    if( auto loop = impl_->loopback.receive( sock, data ); loop.has_value() )
+    {
+        from = NetAddress::loopback_v4();
+        impl_->stats.packets_received.fetch_add( 1, std::memory_order_relaxed );
+        impl_->stats.bytes_received.fetch_add( *loop, std::memory_order_relaxed );
+        return *loop;
+    }
+    else if( loop.error() != NetError::WouldBlock )
+    {
+        // Loopback returned a hard error (BufferTooSmall, etc.).  Surface it.
+        return std::unexpected( loop.error() );
+    }
+
+    // 2) No loopback packet — drain one datagram from the real socket if it
+    //    is open.  When the socket is closed (e.g. config(false)) this
+    //    short-circuits to WouldBlock so callers can keep polling without
+    //    branching on socket state.
+    const auto idx = socket_index( sock );
+    if( !impl_->os_sockets[ idx ].valid() )
+        return std::unexpected( NetError::WouldBlock );
+
+    auto rx = impl_->sockets->recvfrom( impl_->os_sockets[ idx ], data, from );
+    if( !rx )
+        return std::unexpected( rx.error() );
+
+    impl_->stats.packets_received.fetch_add( 1, std::memory_order_relaxed );
+    impl_->stats.bytes_received.fetch_add( *rx, std::memory_order_relaxed );
+    return *rx;
 }
 
 Result<void> NetworkContext::send_packet(
-    SocketKind /*sock*/,
-    std::span<const std::byte> /*data*/,
-    const NetAddress & /*to*/ ) noexcept
+    SocketKind                  sock,
+    std::span<const std::byte>  data,
+    const NetAddress           &to ) noexcept
 {
     if( !is_active() )
         return std::unexpected( NetError::NotInitialised );
-    // TODO(Chunk 4+): loopback short-circuit, else IPlatformSockets::sendto.
+
+    // 1) Loopback routing — addresses in 127.0.0.0/8 bypass the OS and
+    //    enqueue onto the opposite-side ring (matches legacy NA_LOOPBACK).
+    //    Dedicated builds skip the loopback ring entirely (no local client).
+    if( is_loopback_v4( to ) && !impl_->dedicated )
+    {
+        if( auto r = impl_->loopback.send( sock, data ); !r )
+            return std::unexpected( r.error() );
+
+        impl_->stats.packets_sent.fetch_add( 1, std::memory_order_relaxed );
+        impl_->stats.bytes_sent.fetch_add( data.size(), std::memory_order_relaxed );
+        return {};
+    }
+
+    // 2) Real socket path — refuse if no socket is bound for this kind.
+    const auto idx = socket_index( sock );
+    if( !impl_->os_sockets[ idx ].valid() )
+        return std::unexpected( NetError::NotInitialised );
+
+    auto tx = impl_->sockets->sendto( impl_->os_sockets[ idx ], data, to );
+    if( !tx )
+        return std::unexpected( tx.error() );
+
+    impl_->stats.packets_sent.fetch_add( 1, std::memory_order_relaxed );
+    impl_->stats.bytes_sent.fetch_add( *tx, std::memory_order_relaxed );
     return {};
 }
 
