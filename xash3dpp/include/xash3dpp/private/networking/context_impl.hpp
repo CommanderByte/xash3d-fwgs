@@ -3,9 +3,15 @@
 // Visible only to TUs inside xash3dpp_networking.
 
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/networking/lag_queue.hpp>
 #include <xash3dpp/networking/networking.hpp>
+#include <xash3dpp/private/networking/loopback_transport.hpp>
 #include <xash3dpp/private/networking/master_list.hpp>
+#include <xash3dpp/private/networking/packet_pool.hpp>
 #include <xash3dpp/private/networking/protocol_driver.hpp>
+#include <xash3dpp/private/networking/split_reassembler.hpp>
+
+#include <array>
 
 namespace xash::networking {
 
@@ -25,8 +31,23 @@ struct NetworkContext::Impl
 
     NetworkingStats stats;
 
-    // TODO(Layer 1+): transport state (loopback rings, lag queue, split
-    // reassembly), netchan registry, codec sizebuf, delta tables.
+    // ---- Layer 1 transport state ----
+    //
+    // One dual-ring LoopbackTransport (handles Client<->Server via sock^1
+    // semantics; see docs/architecture/networking/transport-layer.md).
+    LoopbackTransport loopback {};
+
+    // Shared datagram-buffer slab — used by send_packet/get_packet to avoid
+    // per-tick heap traffic.
+    PacketPool packet_pool {};
+
+    // Per-direction (rx-side) fake-lag queue, indexed by SocketKind.
+    // Legacy `fakelag` was rx-side; tx-side delay would be added later.
+    std::array<LagQueue, 2> lag_queues {};
+
+    // Per-socket split-packet reassembler.  Legacy NET_GetLong kept one
+    // LongPacket per socket; we mirror that with one SplitReassembler each.
+    std::array<SplitReassembler, 2> reassemblers {};
 };
 
 } // namespace xash::networking

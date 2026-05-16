@@ -52,6 +52,14 @@ void NetworkContext::shutdown() noexcept
     if( !impl_ || !impl_->initialised )
         return;
 
+    // Drain transport state before releasing the pool so any pool-backed
+    // buffers (Layer 3+) are emptied while their backing pool is still alive.
+    impl_->loopback.clear();
+    for( auto &q : impl_->lag_queues )
+        q.clear();
+    for( auto &r : impl_->reassemblers )
+        r.reset();
+
     if( impl_->pool != xash::memory::k_null_pool )
     {
         xash::memory::destroy_pool( impl_->pool );
