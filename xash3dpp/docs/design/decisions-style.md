@@ -106,8 +106,9 @@ Full naming table:
 
 | Category | Convention | Examples |
 |----------|-----------|---------|
-| Types (class, struct, enum) | `PascalCase` | `Filesystem`, `PoolHandle`, `LogLevel` |
-| Member functions | `snake_case` | `init()`, `shutdown()`, `open()`, `file_exists()` |
+| Types (class, struct, enum) | `PascalCase` | `Filesystem`, `PoolHandle`, `LogLevel` || Vtable interfaces (internal C++ seams) | `I` prefix + `PascalCase` | `IProtocolDriver`, `ICompatPolicy`, `ISearchBackend` |
+| Subsystem init params struct | `<X>InitParams` | `NetworkInitParams`, `FilesystemInitParams` |
+| Per-instance config struct | `<X>Config` | `NetchanConfig`, `SocketConfig` || Member functions | `snake_case` | `init()`, `shutdown()`, `open()`, `file_exists()` |
 | Free functions | `snake_case` | `mem_alloc()`, `cvar_find()`, `create_pool()` |
 | Namespaces | `lowercase` | `xash::filesystem`, `xash::memory`, `xash::platform` |
 | Macros | `UPPER_SNAKE_CASE` | `XASH_ASSERT`, `XASH_GOLDSRC_COMPAT` |

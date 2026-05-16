@@ -113,15 +113,15 @@ is forward-declared.
 #### ERROR_RETURN — Error return diagnostics (Q-5)
 
 Rule: the **public API function** — the first entry point reachable from outside
-the subsystem — must emit a `platform::log` diagnostic **before** returning
-failure. Private and internal helper functions may propagate failure silently
-upward; requiring every helper to log produces cascading duplicate messages.
+the subsystem — must emit a `core::log` diagnostic (at `LogLevel::Error`) **before**
+returning failure. Private and internal helper functions may propagate failure
+silently upward; requiring every helper to log produces cascading duplicate messages.
 
 Exception: `optional<T>` returning `nullopt` for a "not found" query (not an
 error) is explicitly silent by contract — do not add a log there.
 
 Flag: any *public* function returning `false` / `nullptr` on an error path
-that is not preceded by a `platform::log` call. Do **not** flag private or
+that is not preceded by a `core::log` call. Do **not** flag private or
 `static` helpers that return failure silently.
 
 #### OWNERSHIP — Ownership markers in public APIs (Q-9)
@@ -178,6 +178,24 @@ Flag:
 - Counter increment gated on a runtime boolean → **WARNING**
 - String formatting inside a hot path or per-event loop → **WARNING**
 
+#### DRIVER_INHERITANCE (Q-14) — Concrete `I<X>` subclassing
+
+*Skip this check if the module has no `I<X>` interfaces at all.*
+
+Rule (Q-14): a concrete implementation of `I<X>` may subclass another concrete
+implementation only when it differs **solely in policy flags or metadata** (e.g.
+declared version number, capability bit). If the derived class changes any
+algorithm step it must be a **sibling** (both directly implement `I<X>`).
+
+Flag:
+- Concrete `I<X>` subclass whose overridden virtual changes an algorithm step
+  rather than a pure policy/metadata value → **WARNING**
+- Base class in such a hierarchy marked `final` → **BLOCKER**
+- `I<X>` interface method whose behavior differs between caller roles
+  (server-socket vs client-socket, read vs write) where the caller role is
+  inferred from ambient state rather than passed as an explicit parameter →
+  **WARNING** (see `is_server_socket` in decisions-architecture.md §Q-14)
+
 ---
 
 ### Round 2 — Code Style Rules
@@ -219,9 +237,9 @@ Rule:
   progress/status messages directed at the player or developer).
 - `platform::console::write` for **C++ subsystem diagnostic messages**
   (pool allocation failures, internal errors, severe warnings) — flag;
-  replace with `platform::log( LogLevel::Error/Warning, "subsystem", ... )`.
+  replace with `core::log( LogLevel::Error/Warning, "subsystem", ... )`.
 
-`platform::log`'s default implementation routes through `console::write`
+`core::log`'s default implementation routes through `console::write`
 internally, so using it does not suppress the message — it just adds the
 structured `[tag][LEVEL]:` prefix and the routing hook.
 

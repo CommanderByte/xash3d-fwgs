@@ -78,7 +78,7 @@ Subsystem in `xash3dpp/src/` with no corresponding spec in `xash3dpp/docs/` → 
 - `std::expected<T,E>` used before Chunk 2 / before `ErrorCode` is defined → **WARNING**
 - `.value()` called on `std::expected` or `std::optional` → **BLOCKER**
 
-### 10. Design paradigm compliance (see decisions-architecture.md §Q-11, §Q-12)
+### 10. Design paradigm compliance (see decisions-architecture.md §Q-11, §Q-12, §Q-14)
 - Engine-wide compat policy type (`IEngineCompatPolicy`, a unified compat struct shared
   across subsystems, a global `CompatFlags` aggregate, etc.) → **WARNING**
   (compat is per-subsystem per Q-12; each subsystem owns its own `ICompatPolicy` or
@@ -91,26 +91,40 @@ Subsystem in `xash3dpp/src/` with no corresponding spec in `xash3dpp/docs/` → 
   `WSAStartup`, `getaddrinfo`) outside `src/platform/*/os_socket.cpp` → **BLOCKER**
   (all socket I/O is confined to the `IPlatformSockets` layer per
   `docs/architecture/platform/sockets.md` and threading-model §7.3)
+- Concrete `I<X>` implementation subclassing another concrete implementation where the
+  derived class diverges in an **algorithm step** (not just policy flags or metadata
+  overrides) → **WARNING** (algorithm divergence → sibling; policy-only divergence →
+  subclass. See Q-14 DRIVER_INHERITANCE in decisions-architecture.md)
+- Base class in a template-method `I<X>` hierarchy (e.g. `GoldSrcProtocolDriver`)
+  marked `final` → **BLOCKER** (prevents the intended subclass from compiling)
+- `I<X>` method that has direction-asymmetric wire semantics (different format
+  depending on caller's side: server-socket vs client-socket, read vs write) but
+  encodes direction via ambient channel state rather than an explicit parameter →
+  **WARNING** (see Q-14 and the `is_server_socket` lesson in decisions-architecture.md)
 
-### 10. Ownership vocabulary (see OWNERSHIP (Q-9) in decisions-architecture.md)
+### 11. Ownership vocabulary (see OWNERSHIP (Q-9) in decisions-architecture.md)
 - `std::unique_ptr<T>` for non-pimpl owned objects → **WARNING**
 - Raw `T*` returned from public API with no `// @lifetime: <scope>` annotation → **WARNING**
 - `std::span<T>` (mutable) used for a read-only view → **WARNING**
 - `std::string_view` crossing an `extern "C"` or DLL boundary → **BLOCKER**
 
-### 11. Naming conventions (see NAMING_FN (QE), NAMING_ENUM (QF) in decisions-style.md)
+### 12. Naming conventions (see NAMING_FN (QE), NAMING_ENUM (QF) in decisions-style.md)
 - `PascalCase` member function on a non-`I<X>` vtable class → **WARNING**
 - `k`-prefixed `enum class` value in new code → **WARNING**
 - Type name in `snake_case` → **WARNING**
 - File under `xash3dpp/include/` or `src/` not in `snake_case` → **WARNING**
+- Internal vtable interface (`I<X>` seam) whose class name does **not** start with `I`
+  → **WARNING** (convention: `IProtocolDriver`, `ICompatPolicy`, etc.)
+- `<X>Params` struct (ambiguous about lifetime/scope) instead of `<X>InitParams`
+  (for subsystem init) or `<X>Config` (for per-instance setup) → **NOTE**
 
-### 12. Integer types, `[[nodiscard]]`, assertions, logging (see NODISCARD (QA), INT_TYPES (QG), ASSERTIONS (QH), LOGGING (QI) in decisions-style.md)
+### 13. Integer types, `[[nodiscard]]`, assertions, logging (see NODISCARD (QA), INT_TYPES (QG), ASSERTIONS (QH), LOGGING (QI) in decisions-style.md)
 - Non-`void` return missing `[[nodiscard]]` with no documented reason → **WARNING**
 - Bare `unsigned`/`unsigned int` without width qualifier → **WARNING**
 - `assert()` from `<cassert>` instead of `XASH_ASSERT` → **WARNING**
 - Diagnostic output via `printf`/`fprintf`/`OutputDebugString` → **WARNING**
   (exception: test files may use `std::puts` for `CHECK` macro output)
-- Public API function failure path with no preceding `platform::log` call → **WARNING**
+- Public API function failure path with no preceding `core::log` call → **WARNING**
 - `int64_t` for a size/count, or `size_t` for a file offset → **WARNING**
 
 ## Output Format

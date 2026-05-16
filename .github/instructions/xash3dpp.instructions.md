@@ -38,8 +38,9 @@ Full decisions: `xash3dpp/docs/design/decisions-style.md` §NAMING_FN (QE), §NA
 
 | Category | Convention | Examples |
 |----------|-----------|---------|
-| Types (class, struct, enum) | `PascalCase` | `Filesystem`, `PoolHandle`, `LogLevel` |
-| Member functions | `snake_case` | `init()`, `open()`, `file_exists()` |
+| Types (class, struct, enum) | `PascalCase` | `Filesystem`, `PoolHandle`, `LogLevel` || Vtable interfaces (internal C++ seams) | `I` prefix + `PascalCase` | `IProtocolDriver`, `ICompatPolicy`, `ISearchBackend` |
+| Subsystem init params struct | `<X>InitParams` | `NetworkInitParams`, `FilesystemInitParams` |
+| Per-instance config struct | `<X>Config` | `NetchanConfig`, `SocketConfig` || Member functions | `snake_case` | `init()`, `open()`, `file_exists()` |
 | Free functions | `snake_case` | `mem_alloc()`, `cvar_find()`, `create_pool()` |
 | Namespaces | `lowercase` | `xash::filesystem`, `xash::memory` |
 | Macros | `UPPER_SNAKE_CASE` | `XASH_ASSERT`, `XASH_GOLDSRC_COMPAT` |
@@ -141,6 +142,23 @@ separation test in `decisions-architecture.md §Q-11`.  Otherwise they
 stay in the parent target.  A grouping pass at end-of-chunk may move
 related satellite targets into a shared `src/<area>/` subdirectory
 without code changes.
+
+### Driver inheritance (template-method, Q-14)
+When two concrete `I<X>` implementations share all algorithm logic and
+differ only in metadata or policy flags (version numbers, capability bits,
+protocol constants), the second may subclass the first via the
+template-method pattern.  Rules:
+
+- The base class must **not** be marked `final`.
+- The subclass overrides **only** policy/metadata virtuals — never an
+  algorithm-step virtual.
+- If the subclass needs to diverge in an algorithm step, it is a **sibling**
+  of the base (both directly implement `I<X>`), not a subclass.
+- The selection axis (which variant is active and why) must be documented in
+  the subsystem's boundary spec.
+
+See `xash3dpp/docs/design/decisions-architecture.md §Q-14 DRIVER_INHERITANCE`
+for the full decision and decision table.
 
 ### Stats and Debug Instrumentation
 
