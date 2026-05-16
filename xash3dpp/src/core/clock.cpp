@@ -53,6 +53,9 @@ struct Clock::Impl
 
     bool dedicated   = false;
     bool initialised = false;
+
+    // Always-on observability snapshot — updated at every tick() accept and shutdown().
+    ClockStats stats_ {};
 };
 
 Clock::Clock() noexcept : impl_{ std::make_unique<Impl>() } {}
@@ -75,6 +78,10 @@ bool Clock::init( const ClockInitParams &p ) noexcept
     s.oldtime             = now;
     s.last_frame_realtime = now;
     s.framecount_.store( 0, std::memory_order_relaxed );
+
+    s.stats_ = {};
+    s.stats_.starttime = now;
+    s.stats_.realtime  = now;
 
     // Register timing cvars.  Skip when cmd_cvar is null (test / standalone).
     // Legacy: Cvar_RegisterVariable calls in Host_InitCommon.
@@ -110,6 +117,7 @@ void Clock::shutdown() noexcept
     s.realframetime_.store( 0.0, std::memory_order_relaxed );
     s.pureframetime_.store( 0.0, std::memory_order_relaxed );
     s.framecount_.store   ( 0,   std::memory_order_relaxed );
+    s.stats_ = {};
     s.initialised = false;
 }
 
@@ -225,6 +233,14 @@ bool Clock::tick() noexcept
         std::memory_order_relaxed );
 
     s.framecount_.fetch_add( 1, std::memory_order_relaxed );
+
+    // Sync always-on snapshot.
+    s.stats_.realtime      = s.realtime_.load     ( std::memory_order_relaxed );
+    s.stats_.frametime     = s.frametime_.load    ( std::memory_order_relaxed );
+    s.stats_.realframetime = s.realframetime_.load( std::memory_order_relaxed );
+    s.stats_.pureframetime = s.pureframetime_.load( std::memory_order_relaxed );
+    s.stats_.starttime     = s.starttime_.load    ( std::memory_order_relaxed );
+    s.stats_.framecount    = s.framecount_.load   ( std::memory_order_relaxed );
     return true;
 }
 
@@ -234,5 +250,7 @@ double        Clock::realframetime() const noexcept { return impl_->realframetim
 double        Clock::pureframetime() const noexcept { return impl_->pureframetime_.load( std::memory_order_relaxed ); }
 double        Clock::starttime()     const noexcept { return impl_->starttime_.load    ( std::memory_order_relaxed ); }
 std::uint64_t Clock::framecount()    const noexcept { return impl_->framecount_.load   ( std::memory_order_relaxed ); }
+
+const ClockStats& Clock::stats() const noexcept { return impl_->stats_; }
 
 } // namespace xash::core

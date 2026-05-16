@@ -24,6 +24,17 @@ namespace xash::cmd_cvar { class CmdCvarContext; }
 
 namespace xash::core {
 
+// Observable snapshot of Clock runtime state.
+struct ClockStats {
+    double        realtime      = 0.0;  // accumulated scaled time since epoch
+    double        frametime     = 0.0;  // clamped frame delta (possibly cvar-overridden)
+    double        realframetime = 0.0;  // clamped raw wall-clock frame delta
+    double        pureframetime = 0.0;  // raw (unscaled) wall-clock frame delta
+    double        starttime     = 0.0;  // platform time at init()
+    std::uint64_t framecount    = 0;    // number of accepted frames since init()
+};
+
+
 struct ClockInitParams
 {
     // Required: cvar registry the clock registers its timing cvars on.
@@ -82,6 +93,9 @@ public:
     [[nodiscard]] double        pureframetime() const noexcept;
     [[nodiscard]] double        starttime()     const noexcept;
     [[nodiscard]] std::uint64_t framecount()    const noexcept;
+
+    // ---- Observability ----------------------------------------------------
+    [[nodiscard]] const ClockStats& stats() const noexcept;
 
     // Forward declaration is public so file-scope helpers in clock.cpp may
     // take `const Impl&` parameters.  The definition stays in clock.cpp so
