@@ -328,22 +328,119 @@ Result<void> Netchan::create_file_fragments_from_buffer(
 // Transmit / process
 // ---------------------------------------------------------------------------
 
-Result<std::size_t> Netchan::transmit( std::span<const std::byte> /*unreliable*/,
-                                       std::span<std::byte>       /*out*/ ) noexcept
+Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable,
+                                       std::span<std::byte>       out ) noexcept
 {
-    // TODO(Chunk 7): assemble header (w1/w2 sequence words) per driver,
-    // append reliable + frag + unreliable, run optional compression /
-    // munge, return bytes_written.  Update stats and cleartime via
-    // update_choke().
-    return std::unexpected( NetError::NotInitialised );
+    if( !impl_ || !impl_->active )
+        return std::unexpected( NetError::NotInitialised );
+    if( impl_->driver == nullptr )
+        return std::unexpected( NetError::NotInitialised );
+
+    // Wrap the caller's output buffer.  All header / reliable / unreliable
+    // writes flow through MessageBuf so overflow is detected centrally.
+    MessageBuf msg{ out, "netchan-transmit" };
+
+    // Decide whether this packet carries the pending reliable payload.
+    // Legacy net_chan.c only re-emits reliable bytes when the previous
+    // batch has been acknowledged; until process() lands we conservatively
+    // send any pending reliable on every transmit so the channel can drain.
+    // TODO(Chunk 8): gate on (incoming_reliable_acknowledged != reliable_sequence).
+    const bool send_reliable = impl_->reliable_length_bits > 0u;
+
+    // TODO(Chunk 7-frag): consume the front-of-queue FragbufBatch when a
+    // reliable fragment is being shipped.  For now transmit() assumes no
+    // pending fragments and asserts via the queue size — callers should
+    // not invoke transmit() with outstanding fragments yet.
+    const bool send_reliable_fragment = false;
+
+    PacketHeaderInput hdr_in{};
+    hdr_in.outgoing_sequence          = impl_->outgoing_sequence;
+    hdr_in.incoming_sequence          = impl_->incoming_sequence;
+    hdr_in.incoming_reliable_sequence = impl_->incoming_reliable_sequence;
+    hdr_in.qport                      = impl_->qport;
+    hdr_in.send_reliable              = send_reliable;
+    hdr_in.send_reliable_fragment     = send_reliable_fragment;
+    hdr_in.is_client                  = impl_->sock == SocketKind::Client;
+
+    if( auto r = impl_->driver->write_packet_header( msg, hdr_in ); !r.has_value() )
+        return std::unexpected( r.error() );
+
+    // Reliable bits — emitted at the legacy `MSG_WriteBits(reliable_buf,
+    // reliable_length)` slot.  Cleared on success so the next transmit()
+    // begins a fresh reliable batch.
+    if( send_reliable )
+    {
+        std::span<const std::byte> reliable_span{ impl_->reliable_buf.data(),
+                                                  impl_->reliable_buf.size() };
+        if( !msg.write_bits( reliable_span, impl_->reliable_length_bits ) )
+            return std::unexpected( NetError::Overflow );
+    }
+
+    // Unreliable tail — gated by the per-driver Unreliable block size.
+    // Legacy: `pfnBlockSize(client, FRAGSIZE_UNRELIABLE)` returns the max
+    // total datagram size in bytes; we drop the tail if appending it would
+    // exceed that cap.  A non-positive block size means "no cap" (used by
+    // the loopback path).
+    if( !unreliable.empty() )
+    {
+        const int unrel_cap_raw =
+            impl_->block_size_provider->block_size( FragSize::Unreliable );
+        const std::size_t projected = msg.real_bytes_written() + unreliable.size();
+        const bool fits = unrel_cap_raw <= 0
+                       || projected <= static_cast<std::size_t>( unrel_cap_raw );
+        if( fits )
+        {
+            if( !msg.write_bytes( unreliable ) )
+                return std::unexpected( NetError::Overflow );
+        }
+        else
+        {
+            core::log( core::LogLevel::Verbose, "netchan",
+                       "transmit: unreliable tail dropped, would exceed "
+                       "block_size(Unreliable) cap" );
+        }
+    }
+
+    if( msg.overflowed() )
+        return std::unexpected( NetError::Overflow );
+
+    // TODO(Chunk 7-frag): if !loopback and bytes_written < 16, pad with
+    // clc_nop / svc_nop (layer-4 message IDs) so the legacy
+    // anti-spoof-tracking heuristics hold.  Padding is deferred until the
+    // layer-4 message IDs land in xash3dpp.
+
+    const std::size_t bytes_written = msg.real_bytes_written();
+
+    // Bump sequence + clear reliable batch on success.  last_reliable_sequence
+    // remembers the outgoing_sequence in which the reliable was shipped so
+    // process() can match the ack on the receive side.
+    if( send_reliable )
+    {
+        impl_->reliable_buf.clear();
+        impl_->reliable_length_bits = 0u;
+        impl_->last_reliable_sequence = impl_->outgoing_sequence;
+    }
+    ++impl_->outgoing_sequence;
+
+    return bytes_written;
 }
 
-Result<std::size_t> Netchan::transmit_bits( std::span<const std::byte> /*unreliable*/,
-                                            std::size_t                /*length_in_bits*/,
-                                            std::span<std::byte>       /*out*/ ) noexcept
+Result<std::size_t> Netchan::transmit_bits( std::span<const std::byte> unreliable,
+                                            std::size_t                length_in_bits,
+                                            std::span<std::byte>       out ) noexcept
 {
-    // TODO(Chunk 7): byte-align then call transmit().
-    return std::unexpected( NetError::NotInitialised );
+    // Byte-aligned shim: bit-granular unreliable payloads are not used by
+    // any current caller, and a partial trailing byte cannot be represented
+    // through write_bytes().  The legacy engine padded to the next byte
+    // boundary via MSG_WriteBits(); we replicate that by rounding up.
+    if( length_in_bits == 0u )
+        return transmit( {}, out );
+
+    const std::size_t bytes_needed = ( length_in_bits + 7u ) / 8u;
+    if( bytes_needed > unreliable.size() )
+        return std::unexpected( NetError::InvalidArgument );
+
+    return transmit( unreliable.subspan( 0, bytes_needed ), out );
 }
 
 bool Netchan::process( std::span<const std::byte> /*datagram*/,

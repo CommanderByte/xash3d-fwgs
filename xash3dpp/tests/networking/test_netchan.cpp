@@ -4,6 +4,7 @@
 // fragment behaviour is // TODO(Chunk N) and will get its own tests.
 
 #include <xash3dpp/networking/netchan.hpp>
+#include <xash3dpp/private/networking/protocol_driver_default.hpp>
 
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/limits.hpp>
@@ -60,10 +61,16 @@ struct StubBlockSize final : IBlockSizeProvider
 // Returns a fixed fragment chunk size, configurable per-test.
 struct FixedBlockSize final : IBlockSizeProvider
 {
-    int fragment_size { 0 };
+    int fragment_size   { 0 };
+    int unreliable_size { 0 };
     int block_size( FragSize mode ) noexcept override
     {
-        return mode == FragSize::Fragment ? fragment_size : 0;
+        switch( mode )
+        {
+        case FragSize::Fragment:   return fragment_size;
+        case FragSize::Unreliable: return unreliable_size;
+        default:                   return 0;
+        }
     }
 };
 
@@ -177,20 +184,15 @@ static void test_stub_methods_return_not_initialised()
     cfg.pool                 = pool.handle;
     REQUIRE( c.setup( cfg ) );
 
-    std::array<std::byte, 64> out{};
-    std::array<std::byte, 1>  payload{ std::byte{ 0 } };
-
-    // All transmission paths are stubs returning NetError::NotInitialised
-    // until Chunk 7+ fills them in.
-    auto r1 = c.transmit( payload, out );
-    CHECK( !r1.has_value() );
-    CHECK( r1.error() == NetError::NotInitialised );
-
-    auto r2 = c.create_fragments( FragStream::Normal, payload );
-    CHECK( !r2.has_value() );
-
-    // Receive side: not ready until process() ingests fragments.
+    // Receive-side paths remain stubs until Chunk 8 fills them in.
     CHECK( !c.incoming_ready() );
+
+    std::array<std::byte, 64> out_buf{};
+    std::array<char, 16>      filename_out{};
+    auto r_copy_normal = c.copy_normal_fragments( out_buf );
+    CHECK( !r_copy_normal.has_value() );
+    auto r_copy_file = c.copy_file_fragments( out_buf, filename_out );
+    CHECK( !r_copy_file.has_value() );
 
     // can_packet() now takes (now_seconds, choke); fresh channel with
     // cleartime=0 must allow a send at any positive time.
@@ -606,6 +608,178 @@ static void test_create_file_fragments_splits_with_filename_header()
     CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::File ) ), 0 );
 }
 
+// ---------- transmit / transmit_bits --------------------------------------
+
+namespace {
+
+// Build a Netchan wired up to the real GoldSrc protocol driver so the
+// transmit() wire layout can be inspected directly.
+struct GoldSrcHarness
+{
+    Netchan        chan;
+    FixedBlockSize bs;
+    ScopedPool     pool;
+
+    GoldSrcHarness() noexcept { bs.unreliable_size = 1024; }
+
+    bool setup_client() noexcept
+    {
+        NetchanConfig cfg;
+        cfg.sock                = SocketKind::Client;
+        cfg.driver              = default_protocol_driver_registry().resolve( 48 );
+        cfg.block_size_provider = &bs;
+        cfg.pool                = pool.handle;
+        return chan.setup( cfg );
+    }
+};
+
+[[nodiscard]] std::uint32_t le_u32( std::span<const std::byte> b ) noexcept
+{
+    return  static_cast<std::uint32_t>( b[ 0 ] )
+         | ( static_cast<std::uint32_t>( b[ 1 ] ) <<  8 )
+         | ( static_cast<std::uint32_t>( b[ 2 ] ) << 16 )
+         | ( static_cast<std::uint32_t>( b[ 3 ] ) << 24 );
+}
+
+} // namespace
+
+static void test_transmit_inactive_returns_not_initialised()
+{
+    Netchan c;
+    std::array<std::byte, 32> out{};
+    auto r = c.transmit( {}, out );
+    CHECK( !r.has_value() );
+    if( !r.has_value() ) CHECK( r.error() == NetError::NotInitialised );
+}
+
+static void test_transmit_emits_eight_byte_header_when_idle()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    const std::uint32_t pre_seq = h.chan.outgoing_sequence();
+
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit( {}, out );
+    REQUIRE( r.has_value() );
+    CHECK_EQ( static_cast<int>( *r ), 8 );
+
+    const std::uint32_t w1 = le_u32( std::span<const std::byte>{ out.data(), 4 } );
+    const std::uint32_t w2 = le_u32( std::span<const std::byte>{ out.data() + 4, 4 } );
+    CHECK( ( w1 & 0x80000000u ) == 0u );
+    CHECK( ( w1 & ~0xC0000000u ) == pre_seq );
+    CHECK( w2 == 0u );
+
+    CHECK_EQ( static_cast<int>( h.chan.outgoing_sequence() ),
+              static_cast<int>( pre_seq + 1u ) );
+}
+
+static void test_transmit_appends_unreliable_payload()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    const std::array<std::byte, 4> tail{
+        std::byte{ 0xDE }, std::byte{ 0xAD }, std::byte{ 0xBE }, std::byte{ 0xEF } };
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit( tail, out );
+    REQUIRE( r.has_value() );
+    CHECK_EQ( static_cast<int>( *r ), 12 );
+    CHECK( out[  8 ] == std::byte{ 0xDE } );
+    CHECK( out[  9 ] == std::byte{ 0xAD } );
+    CHECK( out[ 10 ] == std::byte{ 0xBE } );
+    CHECK( out[ 11 ] == std::byte{ 0xEF } );
+}
+
+static void test_transmit_drops_unreliable_when_exceeds_cap()
+{
+    GoldSrcHarness h;
+    h.bs.unreliable_size = 10; // 8 header + only 2 tail bytes fit
+    REQUIRE( h.setup_client() );
+
+    const std::array<std::byte, 8> tail{};
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit( tail, out );
+    REQUIRE( r.has_value() );
+    CHECK_EQ( static_cast<int>( *r ), 8 ); // header only
+}
+
+static void test_transmit_with_reliable_sets_bit_and_clears_buf()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    const std::array<std::byte, 3> rel{
+        std::byte{ 0x11 }, std::byte{ 0x22 }, std::byte{ 0x33 } };
+    REQUIRE( h.chan.write_reliable( rel ) );
+    CHECK_EQ( static_cast<int>( h.chan.reliable_length_bits() ), 24 );
+
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit( {}, out );
+    REQUIRE( r.has_value() );
+    CHECK_EQ( static_cast<int>( *r ), 11 ); // 8 header + 3 reliable
+
+    const std::uint32_t w1 = le_u32( std::span<const std::byte>{ out.data(), 4 } );
+    CHECK( ( w1 & 0x80000000u ) != 0u );
+    CHECK( out[  8 ] == std::byte{ 0x11 } );
+    CHECK( out[  9 ] == std::byte{ 0x22 } );
+    CHECK( out[ 10 ] == std::byte{ 0x33 } );
+
+    // Reliable batch drained after transmit.
+    CHECK_EQ( static_cast<int>( h.chan.reliable_length_bits() ), 0 );
+}
+
+static void test_transmit_overflows_on_tiny_buffer()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    std::array<std::byte, 4> tiny{};
+    auto r = h.chan.transmit( {}, tiny );
+    CHECK( !r.has_value() );
+    if( !r.has_value() )
+        CHECK( r.error() == NetError::Overflow );
+}
+
+static void test_transmit_bits_rounds_up_to_byte_boundary()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    const std::array<std::byte, 4> tail{
+        std::byte{ 0xAA }, std::byte{ 0x05 }, std::byte{ 0xCC }, std::byte{ 0xDD } };
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit_bits( tail, /*length_in_bits=*/11u, out );
+    REQUIRE( r.has_value() );
+    CHECK_EQ( static_cast<int>( *r ), 10 ); // 8 header + 2 tail bytes (11 bits → 2 bytes)
+    CHECK( out[ 8 ] == std::byte{ 0xAA } );
+    CHECK( out[ 9 ] == std::byte{ 0x05 } );
+}
+
+static void test_transmit_bits_zero_length_emits_header_only()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit_bits( {}, 0u, out );
+    REQUIRE( r.has_value() );
+    CHECK_EQ( static_cast<int>( *r ), 8 );
+}
+
+static void test_transmit_bits_rejects_too_few_bytes()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    std::array<std::byte, 2> tail{};
+    std::array<std::byte, 64> out{};
+    auto r = h.chan.transmit_bits( tail, /*length_in_bits=*/17u, out );
+    CHECK( !r.has_value() );
+    if( !r.has_value() )
+        CHECK( r.error() == NetError::InvalidArgument );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -653,6 +827,15 @@ int main()
     test_create_file_fragments_rejects_oversize_filename();
     test_create_file_fragments_rejects_filename_filling_chunk();
     test_create_file_fragments_splits_with_filename_header();
+    test_transmit_inactive_returns_not_initialised();
+    test_transmit_emits_eight_byte_header_when_idle();
+    test_transmit_appends_unreliable_payload();
+    test_transmit_drops_unreliable_when_exceeds_cap();
+    test_transmit_with_reliable_sets_bit_and_clears_buf();
+    test_transmit_overflows_on_tiny_buffer();
+    test_transmit_bits_rounds_up_to_byte_boundary();
+    test_transmit_bits_zero_length_emits_header_only();
+    test_transmit_bits_rejects_too_few_bytes();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );
