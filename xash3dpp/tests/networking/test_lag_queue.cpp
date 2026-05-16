@@ -47,9 +47,9 @@ static void test_fifo_order_under_constant_delay()
     const std::byte a[] = { std::byte{ 0xAA } };
     const std::byte b[] = { std::byte{ 0xBB } };
     const std::byte c[] = { std::byte{ 0xCC } };
-    q.enqueue( 100, 10, peer, a );
-    q.enqueue( 101, 10, peer, b );
-    q.enqueue( 102, 10, peer, c );
+    CHECK( q.enqueue( 100, 10, peer, a ) );
+    CHECK( q.enqueue( 101, 10, peer, b ) );
+    CHECK( q.enqueue( 102, 10, peer, c ) );
 
     auto p1 = q.try_dequeue( 200 );
     auto p2 = q.try_dequeue( 200 );
@@ -73,8 +73,8 @@ static void test_clear()
     LagQueue q;
     NetAddress peer{};
     const std::byte b[] = { std::byte{ 1 } };
-    q.enqueue( 0, 0, peer, b );
-    q.enqueue( 0, 0, peer, b );
+    CHECK( q.enqueue( 0, 0, peer, b ) );
+    CHECK( q.enqueue( 0, 0, peer, b ) );
     q.clear();
     CHECK( q.empty() );
 }

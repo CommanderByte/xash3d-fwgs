@@ -119,6 +119,8 @@ public:
     // Reads into caller buffer up to `dst.size()-1` chars; always writes a
     // terminating NUL when `dst.size() > 0`.  Returns the number of chars
     // read (excluding NUL).  Sets overflow if the source string is longer.
+    // [[nodiscard]] omitted — count is advisory; overflow() reports the
+    // error condition.
     std::size_t read_string( std::span<char> dst ) noexcept;
     [[nodiscard]] bool read_bytes( std::span<std::byte> dst ) noexcept;
 

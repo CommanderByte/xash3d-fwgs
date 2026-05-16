@@ -40,10 +40,10 @@ public:
     // Add `data` to the queue, scheduled for release at `now_ms + delay_ms`.
     // Returns false if `data` is empty (still appended as a zero-byte packet
     // is rarely useful and would mask bugs upstream).
-    bool enqueue( std::uint64_t now_ms,
-                  std::uint32_t delay_ms,
-                  const NetAddress &peer,
-                  std::span<const std::byte> data );
+    [[nodiscard]] bool enqueue( std::uint64_t now_ms,
+                                std::uint32_t delay_ms,
+                                const NetAddress &peer,
+                                std::span<const std::byte> data );
 
     // Pop the next packet whose release time is <= `now_ms`.  Returns
     // std::nullopt when none are due.
