@@ -3,3 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 add_executable(test_networking_lifecycle test_networking_lifecycle.cpp)
 target_link_libraries(test_networking_lifecycle PRIVATE xash3dpp_networking)
 add_test(NAME test_networking_lifecycle COMMAND test_networking_lifecycle)
+
+add_executable(test_message_buf test_message_buf.cpp)
+target_link_libraries(test_message_buf PRIVATE xash3dpp_networking)
+add_test(NAME test_message_buf COMMAND test_message_buf)
