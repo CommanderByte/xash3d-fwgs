@@ -97,7 +97,7 @@
 | Target | Type | Public deps | Private deps |
 |--------|------|-------------|--------------|
 | `xash3dpp_networking` | STATIC | include dir (`xash3dpp`), C++23, `xash3dpp_utilities`, `xash3dpp_memory` | `xash3dpp_core`, `xash3dpp_platform` |
-| — | — | LZSS TUs always compiled in; `XASH_NET_COMPRESSION` define gates compression at runtime | bzip2 TU deferred (TODO Chunk 5 #10) |
+| — | — | LZSS TU always compiled in; `XASH_NET_COMPRESSION` selects `compress_bz2.cpp` (ON) vs `compress_null.cpp` (OFF) at link time | bzip2 backend wiring deferred — `compress_bz2.cpp` is a stub TU until 3rdparty/bzip2 lands |
 
 > **Note**: `xash3dpp_utilities` and `xash3dpp_memory` are PUBLIC so downstream
 > targets (e.g. `xash3dpp_host`) that link `xash3dpp_networking` transitively

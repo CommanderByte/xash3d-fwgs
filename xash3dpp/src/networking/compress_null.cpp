@@ -1,14 +1,44 @@
-// xash3dpp — compression backend: null implementation
+// xash3dpp — compression backend: null implementation (link-time selected)
 // Selected by XASH_NET_COMPRESSION=OFF (dedicated-server default).
-// Boundary spec recurring pattern: link-time compat selection (Q-7).
+// Mirror TU: compress_bz2.cpp (selected by XASH_NET_COMPRESSION=ON).
 //
-// Both compress_bz2.cpp and compress_lzss.cpp will provide the same symbols
-// with real implementations when XASH_NET_COMPRESSION=ON.  They land in
-// Layer 4 alongside fragmenting work.
+// Both TUs export the same xash::networking::bz2 symbols; CMake links exactly
+// one of them into xash3dpp_networking.  This file gives netchan a no-op
+// codec that always returns NetError::NotInitialised and advertises
+// `available() == false`, so the caller takes the uncompressed path.
+//
+// Note: LZSS is wire-frozen and always compiled in (see compress_lzss.cpp),
+// regardless of XASH_NET_COMPRESSION — this option only gates the bzip2
+// codec (see docs/architecture/networking/index.md, "CMake targets").
 
-namespace xash::networking {
+#include <xash3dpp/private/networking/compress.hpp>
 
-// TODO(Chunk 5): declare compress_bz2 / decompress_bz2 / compress_lzss /
-// decompress_lzss entry points here as no-ops once the codec layer is ready.
+#include <xash3dpp/core/log.hpp>
 
-} // namespace xash::networking
+namespace xash::networking::bz2 {
+
+namespace core = ::xash::core;
+
+bool available() noexcept
+{
+    return false;
+}
+
+Result<std::vector<std::byte>> compress( std::span<const std::byte> /*src*/ )
+{
+    core::log( core::LogLevel::Verbose, "compress_null",
+               "compress(): compression disabled at build time "
+               "(XASH_NET_COMPRESSION=OFF)" );
+    return std::unexpected( NetError::NotInitialised );
+}
+
+Result<std::size_t> decompress( std::span<const std::byte> /*src*/,
+                                std::span<std::byte>       /*dst*/ ) noexcept
+{
+    core::log( core::LogLevel::Verbose, "compress_null",
+               "decompress(): compression disabled at build time "
+               "(XASH_NET_COMPRESSION=OFF)" );
+    return std::unexpected( NetError::NotInitialised );
+}
+
+} // namespace xash::networking::bz2

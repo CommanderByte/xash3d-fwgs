@@ -50,3 +50,26 @@ inline constexpr std::size_t   lookahead       = 1u << lookshift; // 16
 decompress( std::span<const std::byte> src, std::span<std::byte> dst ) noexcept;
 
 } // namespace xash::networking::lzss
+
+namespace xash::networking::bz2 {
+
+// Link-time selection (OQ-7): compress_bz2.cpp provides the real bzip2-backed
+// implementations when XASH_NET_COMPRESSION=ON; compress_null.cpp provides
+// stub bodies that return NetError::NotInitialised when OFF.  Exactly one TU
+// is linked into xash3dpp_networking.  bzip2 has no on-wire magic of its own
+// in netchan's framing — the netchan flag NETCHAN_USE_BZIP2 decides whether
+// to feed the payload through this codec, so we expose only compress and
+// decompress.
+
+[[nodiscard]] Result<std::vector<std::byte>> compress( std::span<const std::byte> src );
+
+[[nodiscard]] Result<std::size_t>
+decompress( std::span<const std::byte> src, std::span<std::byte> dst ) noexcept;
+
+// True if this build links a working bzip2 backend (compress_bz2.cpp).
+// False when compress_null.cpp is linked instead.  Lets callers fall back
+// to uncompressed transmission without round-tripping through a failing
+// compress() call.
+[[nodiscard]] bool available() noexcept;
+
+} // namespace xash::networking::bz2

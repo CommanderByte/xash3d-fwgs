@@ -27,12 +27,11 @@ option(XASH_NET_COMPRESSION "Enable bzip2/LZSS compression in xash3dpp_networkin
        ${_xash_net_compression_default})
 
 if(XASH_NET_COMPRESSION)
-    # LZSS is always compiled in; XASH_NET_COMPRESSION only gates which codec
-    # adapter is wired into the protocol driver at runtime.
-    # TODO(Layer 1 #10): add compress_bz2.cpp when bzip2 dependency is wired.
-    set(XASH_NET_COMPRESSION_SRC compress_lzss.cpp)
+    # LZSS is always compiled in (wire-frozen, see compress_lzss.cpp);
+    # XASH_NET_COMPRESSION only selects which bzip2 TU is linked.
+    set(XASH_NET_COMPRESSION_SRC compress_bz2.cpp)
 else()
-    set(XASH_NET_COMPRESSION_SRC compress_lzss.cpp compress_null.cpp)
+    set(XASH_NET_COMPRESSION_SRC compress_null.cpp)
 endif()
 
 add_library(xash3dpp_networking STATIC
@@ -48,7 +47,7 @@ add_library(xash3dpp_networking STATIC
     split_reassembler.cpp
     compressed_packet.cpp
     compress_lzss.cpp
-    compress_null.cpp
+    ${XASH_NET_COMPRESSION_SRC}
     protocol_driver_goldsrc.cpp
     master_list.cpp
     netchan.cpp
