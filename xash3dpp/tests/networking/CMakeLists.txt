@@ -19,3 +19,7 @@ add_test(NAME test_split_packet COMMAND test_split_packet)
 add_executable(test_lag_queue test_lag_queue.cpp)
 target_link_libraries(test_lag_queue PRIVATE xash3dpp_networking)
 add_test(NAME test_lag_queue COMMAND test_lag_queue)
+
+add_executable(test_compress_lzss test_compress_lzss.cpp)
+target_link_libraries(test_compress_lzss PRIVATE xash3dpp_networking)
+add_test(NAME test_compress_lzss COMMAND test_compress_lzss)
