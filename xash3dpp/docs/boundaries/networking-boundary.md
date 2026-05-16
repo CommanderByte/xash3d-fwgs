@@ -424,3 +424,19 @@ netchan or delta code.
 
 All eight open questions are now decided. Any further design contention belongs
 in a new `OQ-N` entry above this table.
+
+---
+
+## Satellite components
+
+Sub-features of the networking layer evaluated against the
+`decisions-architecture.md §Q-11` satellite-placement test. Score is the count
+of separation criteria met out of 5; ≥ 2 → separate target.
+
+| Feature | Criteria met | Score | Verdict |
+|---------|--------------|-------|---------|
+| **HTTP downloader** | (a) independent state machine, (b) different external dep (TCP vs UDP), (c) useful without parent (assets, not netchan) | 3 | **separate** target `xash3dpp_http` |
+| **Master-server list** | (d) small interface to parent, only (a) independent state machine fully matches | 1 | **same** target — lives in `xash3dpp_networking` as `master_list.cpp`, exposes `IMasterListClient` |
+| **Async DNS resolver** | (d) small interface to parent (string → NetAddress); shares transport's threading model | 0 | **same** target — lives in `dns.cpp` inside `xash3dpp_networking` |
+| **Default GoldSrc protocol driver** | always linked; selected per-`netchan_t` via `IProtocolDriver`, not a CMake option | n/a | **same** target — `protocol_driver_goldsrc.cpp` |
+| **Compression backends (bzip2 / LZSS)** | link-time-selected by `XASH_NET_COMPRESSION` (Q-7 pattern); not a separation candidate | n/a | **same** target — `compress_{bz2,lzss,null}.cpp` |

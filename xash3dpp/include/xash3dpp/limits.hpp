@@ -143,4 +143,74 @@ inline constexpr std::size_t platform_log_buffer_size = 2048; // stack buffer fo
 inline constexpr std::size_t platform_log_buffer_size = XASH_LIMIT_PLATFORM_LOG_BUFFER_SIZE;
 #endif
 
+// networking subsystem
+// Legacy reference: engine/common/net_ws.h, netchan.h capacity macros.
+// These values are wire-frozen for GoldSrc/Xash protocol compatibility; do
+// not raise them without a protocol-level review.
+#ifndef XASH_LIMIT_NET_MAX_DATAGRAM
+inline constexpr std::size_t net_max_datagram = 16384; // max unreliable UDP payload bytes
+#else
+inline constexpr std::size_t net_max_datagram = XASH_LIMIT_NET_MAX_DATAGRAM;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_MULTICAST
+inline constexpr std::size_t net_max_multicast = 8192; // max multicast payload bytes
+#else
+inline constexpr std::size_t net_max_multicast = XASH_LIMIT_NET_MAX_MULTICAST;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_PAYLOAD
+inline constexpr std::size_t net_max_payload = 196608; // max netchan message bytes (normal build)
+#else
+inline constexpr std::size_t net_max_payload = XASH_LIMIT_NET_MAX_PAYLOAD;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_FRAGMENT
+inline constexpr std::size_t net_max_fragment = 65535; // max single split-packet fragment bytes
+#else
+inline constexpr std::size_t net_max_fragment = XASH_LIMIT_NET_MAX_FRAGMENT;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_LOOPBACK
+inline constexpr std::size_t net_max_loopback = 4; // loopback ring buffer slots per socket
+#else
+inline constexpr std::size_t net_max_loopback = XASH_LIMIT_NET_MAX_LOOPBACK;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_FRAGMENTS
+inline constexpr std::size_t net_max_fragments = 506; // max split-packet fragment count (Xash protocol)
+#else
+inline constexpr std::size_t net_max_fragments = XASH_LIMIT_NET_MAX_FRAGMENTS;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_GOLDSRC_FRAGMENTS
+inline constexpr std::size_t net_max_goldsrc_fragments = 5; // max split-packet fragment count (GoldSrc protocol)
+#else
+inline constexpr std::size_t net_max_goldsrc_fragments = XASH_LIMIT_NET_MAX_GOLDSRC_FRAGMENTS;
+#endif
+
+#ifndef XASH_LIMIT_NET_SPLITPACKET_MIN_SIZE
+inline constexpr std::size_t net_splitpacket_min_size = 508; // min split fragment body (RFC 791)
+#else
+inline constexpr std::size_t net_splitpacket_min_size = XASH_LIMIT_NET_SPLITPACKET_MIN_SIZE;
+#endif
+
+#ifndef XASH_LIMIT_NET_SPLITPACKET_MAX_SIZE
+inline constexpr std::size_t net_splitpacket_max_size = 64000; // max split fragment total
+#else
+inline constexpr std::size_t net_splitpacket_max_size = XASH_LIMIT_NET_SPLITPACKET_MAX_SIZE;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_RELIABLE_PAYLOAD
+inline constexpr std::size_t net_max_reliable_payload = 1400; // max fragment / reliable packet on wire
+#else
+inline constexpr std::size_t net_max_reliable_payload = XASH_LIMIT_NET_MAX_RELIABLE_PAYLOAD;
+#endif
+
+#ifndef XASH_LIMIT_NET_MAX_STREAMS
+inline constexpr std::size_t net_max_streams = 2; // netchan streams: normal data + file download
+#else
+inline constexpr std::size_t net_max_streams = XASH_LIMIT_NET_MAX_STREAMS;
+#endif
+
 } // namespace xash::limits
