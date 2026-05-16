@@ -35,3 +35,7 @@ add_test(NAME test_packet_pool COMMAND test_packet_pool)
 add_executable(test_oob_packet test_oob_packet.cpp)
 target_link_libraries(test_oob_packet PRIVATE xash3dpp_networking)
 add_test(NAME test_oob_packet COMMAND test_oob_packet)
+
+add_executable(test_split_reassembler test_split_reassembler.cpp)
+target_link_libraries(test_split_reassembler PRIVATE xash3dpp_networking)
+add_test(NAME test_split_reassembler COMMAND test_split_reassembler)
