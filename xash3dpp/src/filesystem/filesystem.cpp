@@ -3,6 +3,7 @@
 
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/limits.hpp>
+#include <xash3dpp/core/log.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/utilities/gameinfo_parser.hpp>
 #include <xash3dpp/private/filesystem/search_path.hpp>
@@ -24,6 +25,7 @@
 
 namespace xash::filesystem {
 
+namespace core     = ::xash::core;
 namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
@@ -145,7 +147,11 @@ bool Filesystem::init(std::string_view rootdir,
     impl_->rodir   = rodir;
     impl_->pool_   = xash::memory::create_pool("filesystem");
     impl_->stats_  = {};
-    return static_cast<bool>(impl_->pool_);
+    if (!impl_->pool_) {
+        core::log(core::LogLevel::Error, "filesystem", "failed to create memory pool");
+        return false;
+    }
+    return true;
 }
 
 void Filesystem::shutdown() {
@@ -184,6 +190,10 @@ bool Filesystem::activate_game(std::string_view gamefolder,
             return true;
         }
     }
+    core::logf(core::LogLevel::Error, "filesystem",
+        "activate_game: game directory '%.*s' not found in root '%s'",
+        static_cast<int>(gamefolder.size()), gamefolder.data(),
+        impl_->rootdir.c_str());
     return false;
 }
 
@@ -306,18 +316,31 @@ void Filesystem::allow_direct_paths(bool enable) {
 
 bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
     const auto ext_sv = xash::utilities::file_extension(path);
-    if (ext_sv.size() < 2) return false;
+    if (ext_sv.size() < 2) {
+        core::logf(core::LogLevel::Warning, "filesystem",
+            "mount_archive: no file extension in path '%.*s'",
+            static_cast<int>(path.size()), path.data());
+        return false;
+    }
     const std::string_view ext = ext_sv.substr(1);
 
     for (const auto& at : k_archive_types) {
         if (ext != at.extension) continue;
         auto backend = at.factory(impl_->pool_, path, flags);
-        if (!backend) return false;
+        if (!backend) {
+            core::logf(core::LogLevel::Warning, "filesystem",
+                "mount_archive: failed to open archive '%.*s'",
+                static_cast<int>(path.size()), path.data());
+            return false;
+        }
         std::unique_lock lock{ impl_->paths_mutex };
         impl_->search_paths.push_back({ std::move(backend), std::string{path}, flags });
         impl_->stats_.search_path_count = impl_->search_paths.size();
         return true;
     }
+    core::logf(core::LogLevel::Warning, "filesystem",
+        "mount_archive: unsupported archive extension '%.*s'",
+        static_cast<int>(ext.size()), ext.data());
     return false;
 }
 
@@ -375,9 +398,17 @@ bool Filesystem::write_file(std::string_view path, std::span<const std::byte> da
         const bool     ok  = (n == static_cast<FsOffset>(data.size()));
         // invalidate the backend's directory cache so a subsequent file_exists
         // or find_file call sees the new file (critical on Linux emulated-CI).
-        if (ok) it->backend->invalidate_directory(parent_dir_of(path));
+        if (ok)
+            it->backend->invalidate_directory(parent_dir_of(path));
+        else
+            core::logf(core::LogLevel::Warning, "filesystem",
+                "write_file: write failed for '%.*s'",
+                static_cast<int>(path.size()), path.data());
         return ok;
     }
+    core::logf(core::LogLevel::Warning, "filesystem",
+        "write_file: no writable search path for '%.*s'",
+        static_cast<int>(path.size()), path.data());
     return false;
 }
 
@@ -469,9 +500,17 @@ bool Filesystem::rename(std::string_view from, std::string_view to) {
             const auto pd_to = parent_dir_of(to);
             if (pd_to != parent_dir_of(from))
                 it->backend->invalidate_directory(pd_to);
+        } else {
+            core::logf(core::LogLevel::Warning, "filesystem",
+                "rename: platform rename failed '%.*s' -> '%.*s'",
+                static_cast<int>(from.size()), from.data(),
+                static_cast<int>(to.size()), to.data());
         }
         return ok;
     }
+    core::logf(core::LogLevel::Warning, "filesystem",
+        "rename: '%.*s' not found in any writable search path",
+        static_cast<int>(from.size()), from.data());
     return false;
 }
 
@@ -484,8 +523,16 @@ bool Filesystem::remove(std::string_view path) {
         if (!found) continue;
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
         if (!platform::file_size(disk)) continue;
-        return platform::delete_file(disk);
+        const bool ok = platform::delete_file(disk);
+        if (!ok)
+            core::logf(core::LogLevel::Warning, "filesystem",
+                "remove: platform delete failed for '%.*s'",
+                static_cast<int>(path.size()), path.data());
+        return ok;
     }
+    core::logf(core::LogLevel::Warning, "filesystem",
+        "remove: '%.*s' not found in any writable search path",
+        static_cast<int>(path.size()), path.data());
     return false;
 }
 
