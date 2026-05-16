@@ -42,6 +42,7 @@ add_library(xash3dpp_networking STATIC
     compat_xash.cpp
     compat_goldsrc.cpp
     lag_queue.cpp
+    loopback_transport.cpp
     compress_lzss.cpp
     compress_null.cpp
     protocol_driver_goldsrc.cpp

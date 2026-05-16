@@ -23,3 +23,7 @@ add_test(NAME test_lag_queue COMMAND test_lag_queue)
 add_executable(test_compress_lzss test_compress_lzss.cpp)
 target_link_libraries(test_compress_lzss PRIVATE xash3dpp_networking)
 add_test(NAME test_compress_lzss COMMAND test_compress_lzss)
+
+add_executable(test_loopback_transport test_loopback_transport.cpp)
+target_link_libraries(test_loopback_transport PRIVATE xash3dpp_networking)
+add_test(NAME test_loopback_transport COMMAND test_loopback_transport)
