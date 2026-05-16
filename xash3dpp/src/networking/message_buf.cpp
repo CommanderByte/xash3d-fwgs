@@ -46,6 +46,13 @@ void MessageBuf::rebind( std::span<std::byte> data, const char *name ) noexcept
     reset();
 }
 
+void MessageBuf::rebind_read( std::span<const std::byte> data, const char *name ) noexcept
+{
+    // SAFETY: all read_* methods advance cur_bit_ but never write through
+    // data_.  Callers must not invoke write_* on a buffer bound this way.
+    rebind( std::span<std::byte>{ const_cast<std::byte *>( data.data() ), data.size() }, name );
+}
+
 // ---------------------------------------------------------------------------
 // Accessors
 // ---------------------------------------------------------------------------

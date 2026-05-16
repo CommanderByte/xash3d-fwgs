@@ -25,7 +25,7 @@ inline constexpr std::uint32_t k_reliable_bit = 0x80000000u;
 // being shipped alongside the reliable payload.
 inline constexpr std::uint32_t k_reliable_fragment_bit = 0x40000000u;
 
-class GoldSrcProtocolDriver final : public IProtocolDriver
+class GoldSrcProtocolDriver : public IProtocolDriver
 {
 public:
     [[nodiscard]] const char *name() const noexcept override { return "goldsrc"; }
@@ -34,14 +34,7 @@ public:
     [[nodiscard]] DeltaTableSet delta_tables() const noexcept override { return DeltaTableSet::GoldSrc; }
 
     // Legacy `chan->gs_netchan == true` path: no qport word in the client
-    // header.  When the Xash netchan variant is added it will live in its
-    // own driver class (or in a parameterised subclass) and return true here.
-    //
-    // TODO(audit): The default registry maps both protocol 48 (GoldSrc) and
-    // protocol 49 (Xash) to this driver, but legacy net_chan.c L1691-1694
-    // ships qport on the standard Xash protocol (gs_netchan=false).  A real
-    // XashProtocolDriver sibling (sends_qport()=true) is needed before
-    // protocol-49 channels are wired through the registry.
+    // header.  XashProtocolDriver (below) overrides this to return true.
     [[nodiscard]] bool sends_qport() const noexcept override { return false; }
 
     [[nodiscard]] Result<void> write_packet_header(
@@ -96,10 +89,23 @@ public:
     }
 };
 
-// Wire-protocol identifiers recognised by the built-in registry.  GoldSrc
-// proper uses 48; the Xash bridge uses 49.  Both currently resolve to the
-// same driver because the framing is identical at this layer — the delta
-// table set differentiates them later in Layer 4.
+// XashProtocolDriver — standard Xash netchan (protocol 49, gs_netchan=false).
+// The wire codec (w1/w2 LE words, reliable bits) is identical to GoldSrc;
+// only the metadata and the client-side qport word differ.
+// See legacy net_chan.c L1691-1694 for the qport conditional.
+class XashProtocolDriver final : public GoldSrcProtocolDriver
+{
+public:
+    [[nodiscard]] const char   *name()         const noexcept override { return "xash"; }
+    [[nodiscard]] SplitFormat   split_format() const noexcept override { return SplitFormat::Xash; }
+    [[nodiscard]] DeltaTableSet delta_tables() const noexcept override { return DeltaTableSet::Xash; }
+
+    // Standard Xash clients append a 2-byte qport word after w2 so the
+    // server can demux multiple clients sharing an IP address behind a NAT.
+    [[nodiscard]] bool sends_qport() const noexcept override { return true; }
+};
+
+// Wire-protocol identifiers recognised by the built-in registry.
 inline constexpr std::uint16_t k_protocol_goldsrc = 48;
 inline constexpr std::uint16_t k_protocol_xash    = 49;
 
@@ -108,13 +114,14 @@ class DefaultProtocolDriverRegistry final : public IProtocolDriverRegistry
 public:
     [[nodiscard]] IProtocolDriver *resolve( std::uint16_t protocol ) noexcept override
     {
-        if( protocol == k_protocol_goldsrc || protocol == k_protocol_xash )
-            return &driver_;
+        if( protocol == k_protocol_goldsrc ) return &goldsrc_driver_;
+        if( protocol == k_protocol_xash    ) return &xash_driver_;
         return nullptr;
     }
 
 private:
-    GoldSrcProtocolDriver driver_ {};
+    GoldSrcProtocolDriver goldsrc_driver_ {};
+    XashProtocolDriver    xash_driver_    {};
 };
 
 } // namespace

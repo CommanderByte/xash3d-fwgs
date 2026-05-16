@@ -55,6 +55,10 @@ public:
 
     void reset() noexcept;                                   // rewind to bit 0, clear overflow
     void rebind( std::span<std::byte> data, const char *name = "unnamed" ) noexcept;
+    // Read-only variant: accepts a const view.  Write operations must not
+    // follow; doing so will corrupt logically-const storage.  The
+    // const_cast is performed once here so call sites stay clean.
+    void rebind_read( std::span<const std::byte> data, const char *name = "unnamed" ) noexcept;
 
     // ---- Accessors -------------------------------------------------------
 
