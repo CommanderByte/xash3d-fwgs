@@ -2,8 +2,8 @@
 name: "Plan implementation order for scaffolded subsystem"
 description: "Scan all TODO stubs in a scaffolded xash3dpp subsystem, infer the internal dependency graph, and emit a prioritised implementation plan with a live todo list. Run after scaffold-subsystem and before writing any real code."
 argument-hint: "subsystem name, e.g. 'cmd_cvar', 'sound', 'host'"
-mode: agent
-tools: [read, search]
+agent: agent
+tools: [read, search, todo]
 model: claude-sonnet-4-6
 ---
 

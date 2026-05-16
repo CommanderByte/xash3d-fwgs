@@ -2,8 +2,8 @@
 name: "Scaffold new xash3dpp subsystem"
 description: "Create the full directory skeleton for a new xash3dpp subsystem: public headers, private headers, CMakeLists, stub implementation, and a test harness. Wires in xash3dpp_memory, xash3dpp_utilities, and xash3dpp_filesystem where appropriate. Use when starting a brand-new subsystem from scratch."
 argument-hint: "subsystem name, e.g. 'sound', 'renderer', 'physics', 'networking'"
-mode: agent
-tools: [read, search, edit]
+agent: agent
+tools: [read, search, edit, execute, todo, Build_CMakeTools]
 model: claude-sonnet-4-6
 ---
 

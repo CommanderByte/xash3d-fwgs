@@ -13,13 +13,17 @@ Every `.prompt.md` file must have these fields in this order:
 name: "Short display name (≤ 60 chars)"
 description: "One sentence: what it does, when to invoke it, what it produces."
 argument-hint: "what $ARGUMENTS expects"   # omit only if the prompt takes no argument
-mode: agent
+agent: agent
 tools: [read, search]                       # extend as needed — see Tools policy below
 model: claude-sonnet-4-6                    # see MODEL-GUIDE.md for tier recommendations
 ---
 ```
 
-**Forbidden**: `agent: agent` or `agent: "agent"` — this is a legacy field. Use `mode: agent`.
+**Note**: `agent: agent` is the documented frontmatter field (VS Code docs). `mode: agent`
+is not a documented field — do not use it.
+
+If `tools:` is specified and `agent:` is omitted, VS Code defaults to agent mode automatically.
+The `agent: agent` line is therefore redundant but is kept for clarity.
 
 Every `.agent.md` file uses:
 
@@ -38,12 +42,43 @@ Agents never need `mode:` or `argument-hint:`.
 
 ## Tools policy
 
+### Built-in tools
+
+| Tool name | What it does |
+|---|---|
+| `read` | Read files in the workspace |
+| `search` | Search files in the workspace |
+| `edit` | Edit files in the workspace |
+| `execute` | Execute code and applications (terminal commands) |
+| `todo` | Manage and track todo items for task planning |
+| `agent` | Delegate tasks to other agents |
+| `browser` | Open and interact with integrated browser pages |
+| `vscode` | Use VS Code features |
+| `web` | Fetch information from the web |
+
+### C/C++ DevTools
+
+| Tool name | What it does |
+|---|---|
+| `Build_CMakeTools` | Build a CMake project via CMake Tools extension |
+| `RunCtest_CMakeTools` | Execute CTest tests via CMake Tools extension |
+| `ListTests_CMakeTools` | List available tests for this CMake project |
+| `ListBuildTargets_CMakeTools` | List available CMake build targets |
+| `GetSymbolInfo_CppTools` | Get symbol definition for a C++ symbol |
+| `GetSymbolReferences_CppTools` | Find all references to a C++ symbol |
+| `GetSymbolCallHierarchy_CppTools` | Get call hierarchy for a C++ symbol |
+
+### Access tiers
+
 | Access level | `tools:` value | Use for |
 |---|---|---|
 | Read-only | `[read, search]` | Analysis, audits that produce reports only |
+| Read + symbol nav | `[read, search, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]` | Audits and analyses that trace types/usages |
 | Docs-write | `[read, search, edit]` | Prompts that write docs but not source code |
-| Full | `[read, search, edit, run, terminal]` | Prompts that modify source files, build, and test |
+| Implementation | `[read, search, edit, execute, todo, Build_CMakeTools, RunCtest_CMakeTools]` | Prompts that modify source, build, and test |
+| Debug/bisect | `[read, search, execute, Build_CMakeTools, RunCtest_CMakeTools, ListTests_CMakeTools]` | Regression hunting, build verification |
 
+**Rule**: use `execute` for terminal commands — not `run` or `terminal` (those are not valid tool names).
 **Rule**: grant the minimum access needed. Analysis prompts that do not modify source
 files must not include `edit` in their tools list.
 
