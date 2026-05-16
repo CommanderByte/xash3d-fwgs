@@ -87,7 +87,7 @@ protocol versions implement this and pass it via `NetworkInitParams`.
 
 | Method | Returns | Notes |
 |--------|---------|-------|
-| `find_driver(protocol_number)` | `IProtocolDriver *` | Non-owning; returns nullptr for unknown numbers |
+| `resolve(protocol)` | `IProtocolDriver *` | Non-owning; returns nullptr for unknown protocol numbers |
 
 When `NetworkInitParams::protocol_registry` is `nullptr`, only the built-in
 `GoldSrcProtocolDriver` is available.
@@ -100,22 +100,19 @@ The default driver, always linked into `xash3dpp_networking`. Implements
 `IProtocolDriver` for the GoldSrc wire protocol.
 
 ```
-name()          → "GoldSrc"
+name()          → "goldsrc"
 split_format()  → SplitFormat::GoldSrc
 delta_tables()  → DeltaTableSet::GoldSrc
 ```
 
-Currently lives as a **file-scope singleton** in `protocol_driver_goldsrc.cpp`:
+Lives behind `default_protocol_driver_registry()` (declared in
+`include/xash3dpp/private/networking/protocol_driver_default.hpp`), which
+returns a Meyers-singleton `IProtocolDriverRegistry` that resolves wire
+protocols **48** (GoldSrc) and **49** (Xash) to the same `GoldSrcProtocolDriver`
+instance and `nullptr` for anything else.
 
-```cpp
-// detail-audit: accepted — temporary file-scope singleton; registry accessor
-// will replace this in Chunk 4 per the TODO below.
-[[maybe_unused]] GoldSrcProtocolDriver g_goldsrc_driver;
-```
-
-This is intentionally temporary (see `TODO(Chunk 4)` comment). The singleton
-will be replaced by a proper `IProtocolDriverRegistry::find_driver()` lookup
-once the registry accessor lands in Chunk 4.
+`NetworkContext::init()` falls back to this registry when
+`NetworkInitParams::protocol_registry` is `nullptr`.
 
 ---
 

@@ -51,3 +51,7 @@ add_test(NAME test_compressed_packet COMMAND test_compressed_packet)
 add_executable(test_netchan test_netchan.cpp)
 target_link_libraries(test_netchan PRIVATE xash3dpp_networking)
 add_test(NAME test_netchan COMMAND test_netchan)
+
+add_executable(test_protocol_driver_registry test_protocol_driver_registry.cpp)
+target_link_libraries(test_protocol_driver_registry PRIVATE xash3dpp_networking)
+add_test(NAME test_protocol_driver_registry COMMAND test_protocol_driver_registry)
