@@ -76,6 +76,7 @@ public:
         meta.sequence       = w1 & ~( k_reliable_bit | k_reliable_fragment_bit );
         meta.sequence_ack   = w2 & ~k_reliable_bit;
         meta.is_reliable    = ( w1 & k_reliable_bit ) != 0u;
+        meta.reliable_ack   = ( w2 & k_reliable_bit ) != 0u;
         meta.is_split       = false; // split discriminator lives one layer up
         meta.is_oob         = false;
 

@@ -780,6 +780,141 @@ static void test_transmit_bits_rejects_too_few_bytes()
         CHECK( r.error() == NetError::InvalidArgument );
 }
 
+// ---------- process -------------------------------------------------------
+
+namespace {
+
+// Build a synthetic GoldSrc datagram so process() has something to chew on.
+struct CraftedHeader
+{
+    std::uint32_t w1 { 0 };
+    std::uint32_t w2 { 0 };
+};
+
+void emit_le32( std::span<std::byte> dst, std::uint32_t v ) noexcept
+{
+    dst[ 0 ] = static_cast<std::byte>(   v        & 0xFFu );
+    dst[ 1 ] = static_cast<std::byte>( ( v >>  8 ) & 0xFFu );
+    dst[ 2 ] = static_cast<std::byte>( ( v >> 16 ) & 0xFFu );
+    dst[ 3 ] = static_cast<std::byte>( ( v >> 24 ) & 0xFFu );
+}
+
+void craft_datagram( std::span<std::byte> out, const CraftedHeader &h ) noexcept
+{
+    emit_le32( out.subspan( 0, 4 ), h.w1 );
+    emit_le32( out.subspan( 4, 4 ), h.w2 );
+}
+
+} // namespace
+
+static void test_process_inactive_returns_false()
+{
+    Netchan c;
+    std::array<std::byte, 8> dg{};
+    MessageBuf m;
+    CHECK( !c.process( dg, m ) );
+}
+
+static void test_process_empty_datagram_returns_false()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+    MessageBuf m;
+    CHECK( !h.chan.process( {}, m ) );
+}
+
+static void test_process_truncated_header_returns_false()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    std::array<std::byte, 4> tiny{}; // only 4 of 8 header bytes
+    MessageBuf m;
+    CHECK( !h.chan.process( tiny, m ) );
+}
+
+static void test_process_accepts_valid_header_and_updates_state()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    std::array<std::byte, 16> dg{};
+    craft_datagram( dg, CraftedHeader{ /*w1=*/42u, /*w2=*/0u } );
+    // 8 bytes of payload after the header.
+    for( std::size_t i = 0; i < 8; ++i )
+        dg[ 8u + i ] = static_cast<std::byte>( 0x80u + i );
+
+    MessageBuf m;
+    REQUIRE( h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_sequence() ),     42 );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_acknowledged() ), 0  );
+
+    // Read cursor sits at byte 8 — the next read_byte() must yield 0x80.
+    const auto first = m.read_byte();
+    CHECK_EQ( static_cast<int>( first ), 0x80 );
+}
+
+static void test_process_drops_stale_sequence()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    std::array<std::byte, 8> dg{};
+    craft_datagram( dg, CraftedHeader{ /*w1=*/100u, /*w2=*/0u } );
+    MessageBuf m;
+    REQUIRE( h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_sequence() ), 100 );
+
+    // Older sequence — must be dropped, incoming_sequence unchanged.
+    craft_datagram( dg, CraftedHeader{ /*w1=*/50u, /*w2=*/0u } );
+    CHECK( !h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_sequence() ), 100 );
+
+    // Same sequence — also dropped.
+    craft_datagram( dg, CraftedHeader{ /*w1=*/100u, /*w2=*/0u } );
+    CHECK( !h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_sequence() ), 100 );
+}
+
+static void test_process_tracks_reliable_ack_bit()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    // w2 high bit asserts: sender has acknowledged our reliable payload.
+    std::array<std::byte, 8> dg{};
+    craft_datagram( dg, CraftedHeader{
+        /*w1=*/7u,
+        /*w2=*/( 9u | 0x80000000u ) } );
+    MessageBuf m;
+    REQUIRE( h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_acknowledged() ), 9 );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_reliable_acknowledged() ), 1 );
+}
+
+static void test_process_flips_incoming_reliable_sequence_on_reliable_bit()
+{
+    GoldSrcHarness h;
+    REQUIRE( h.setup_client() );
+
+    CHECK_EQ( static_cast<int>( h.chan.incoming_reliable_sequence() ), 0 );
+
+    std::array<std::byte, 8> dg{};
+    craft_datagram( dg, CraftedHeader{
+        /*w1=*/( 1u | 0x80000000u ),  // sender is shipping reliable bytes
+        /*w2=*/0u } );
+    MessageBuf m;
+    REQUIRE( h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_reliable_sequence() ), 1 );
+
+    // Second reliable packet — parity flips back to 0.
+    craft_datagram( dg, CraftedHeader{
+        /*w1=*/( 2u | 0x80000000u ),
+        /*w2=*/0u } );
+    REQUIRE( h.chan.process( dg, m ) );
+    CHECK_EQ( static_cast<int>( h.chan.incoming_reliable_sequence() ), 0 );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -836,6 +971,13 @@ int main()
     test_transmit_bits_rounds_up_to_byte_boundary();
     test_transmit_bits_zero_length_emits_header_only();
     test_transmit_bits_rejects_too_few_bytes();
+    test_process_inactive_returns_false();
+    test_process_empty_datagram_returns_false();
+    test_process_truncated_header_returns_false();
+    test_process_accepts_valid_header_and_updates_state();
+    test_process_drops_stale_sequence();
+    test_process_tracks_reliable_ack_bit();
+    test_process_flips_incoming_reliable_sequence_on_reliable_bit();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );

@@ -224,6 +224,9 @@ public:
     [[nodiscard]] SocketKind         sock()                const noexcept;
     [[nodiscard]] std::uint16_t      qport()               const noexcept;
     [[nodiscard]] std::uint32_t      incoming_sequence()   const noexcept;
+    [[nodiscard]] std::uint32_t      incoming_acknowledged() const noexcept;
+    [[nodiscard]] std::uint32_t      incoming_reliable_acknowledged() const noexcept;
+    [[nodiscard]] std::uint32_t      incoming_reliable_sequence()   const noexcept;
     [[nodiscard]] std::uint32_t      outgoing_sequence()   const noexcept;
     [[nodiscard]] double             last_received()       const noexcept;
     [[nodiscard]] double             connect_time()        const noexcept;

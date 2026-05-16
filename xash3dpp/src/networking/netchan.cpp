@@ -443,13 +443,60 @@ Result<std::size_t> Netchan::transmit_bits( std::span<const std::byte> unreliabl
     return transmit( unreliable.subspan( 0, bytes_needed ), out );
 }
 
-bool Netchan::process( std::span<const std::byte> /*datagram*/,
-                       MessageBuf                 & /*msg*/ ) noexcept
+bool Netchan::process( std::span<const std::byte> datagram,
+                       MessageBuf                 &msg ) noexcept
 {
-    // TODO(Chunk 8): demux header, run optional unmunge, validate sequence,
-    // handle reliable ack / fragment ingest, set msg to the post-header
-    // payload span.  Returns false on stale / duplicate / malformed packets.
-    return false;
+    if( !impl_ || !impl_->active || impl_->driver == nullptr )
+        return false;
+    if( datagram.empty() )
+        return false;
+
+    // MessageBuf needs a mutable span for rebind(); the read path itself
+    // never mutates the underlying bytes, so a const_cast on the caller's
+    // datagram is safe here.  We avoid copying so process() stays O(1) in
+    // header bytes regardless of payload size.
+    msg.rebind( std::span<std::byte>{
+                    const_cast<std::byte *>( datagram.data() ),
+                    datagram.size() },
+                "netchan-recv" );
+
+    auto meta = impl_->driver->read_packet_header( msg );
+    if( !meta.has_value() )
+    {
+        core::log( core::LogLevel::Verbose, "netchan",
+                   "process: header decode failed, dropping datagram" );
+        return false;
+    }
+    if( meta->is_oob )
+        return false;
+
+    // Stale / duplicate: legacy net_chan.c drops packets whose sequence
+    // is not strictly greater than the last we accepted.  We replicate
+    // that policy here.
+    if( meta->sequence <= impl_->incoming_sequence
+        && impl_->incoming_sequence != 0u )
+    {
+        core::log( core::LogLevel::Verbose, "netchan",
+                   "process: stale or duplicate sequence, dropping datagram" );
+        return false;
+    }
+
+    impl_->incoming_sequence              = meta->sequence;
+    impl_->incoming_acknowledged          = meta->sequence_ack;
+    impl_->incoming_reliable_acknowledged = meta->reliable_ack ? 1u : 0u;
+
+    // Each reliable packet flips the receiver-side reliable parity bit so
+    // the sender can detect drops via the w2 high bit on the next ack.
+    if( meta->is_reliable )
+        impl_->incoming_reliable_sequence ^= 1u;
+
+    // TODO(Chunk 8): if a reliable fragment is being shipped (bit-30 on
+    // w1), parse the per-stream fragid + start + length blocks before
+    // exposing the payload to the caller.
+
+    // msg now holds the post-header payload; its read cursor is positioned
+    // right after the header so the caller can MSG_Read* on it directly.
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -529,6 +576,9 @@ const NetAddress &Netchan::remote_address() const noexcept { return impl_->remot
 SocketKind        Netchan::sock()           const noexcept { return impl_->sock; }
 std::uint16_t     Netchan::qport()          const noexcept { return impl_->qport; }
 std::uint32_t     Netchan::incoming_sequence() const noexcept { return impl_->incoming_sequence; }
+std::uint32_t     Netchan::incoming_acknowledged() const noexcept { return impl_->incoming_acknowledged; }
+std::uint32_t     Netchan::incoming_reliable_acknowledged() const noexcept { return impl_->incoming_reliable_acknowledged; }
+std::uint32_t     Netchan::incoming_reliable_sequence() const noexcept { return impl_->incoming_reliable_sequence; }
 std::uint32_t     Netchan::outgoing_sequence() const noexcept { return impl_->outgoing_sequence; }
 double            Netchan::last_received() const noexcept { return impl_->last_received; }
 double            Netchan::connect_time()  const noexcept { return impl_->connect_time; }
