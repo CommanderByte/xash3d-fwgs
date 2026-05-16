@@ -51,6 +51,7 @@ add_library(xash3dpp_networking STATIC
     compress_null.cpp
     protocol_driver_goldsrc.cpp
     master_list.cpp
+    netchan.cpp
 )
 
 target_include_directories(xash3dpp_networking

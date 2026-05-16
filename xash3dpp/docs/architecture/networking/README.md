@@ -16,8 +16,9 @@ encode/decode helpers (split-packet framing, OOB, LZSS compression), and the
 
 It does **not** execute game logic, parse game assets, manage DNS resolution
 at the application layer, or implement the HTTP downloader. The netchan
-reliable-channel layer and the delta encoder are **not yet implemented** —
-they are Layer 3 and will be added in a subsequent chunk.
+reliable-channel layer is **scaffolded as stubs** in `netchan.hpp` /
+`netchan.cpp` — the public surface is frozen but every method body is a
+`// TODO(Chunk N)` placeholder. The delta encoder is not yet stubbed.
 
 ## Design goals
 
@@ -76,6 +77,7 @@ they are Layer 3 and will be added in a subsequent chunk.
 | Compression | Codec calls embedded in `net_chan.c` | `xash::networking::lzss` namespace, `compressed_packet` wrapper |
 | Protocol compat | `#ifdef XASH_GOLDSRC` scattered guards | `IProtocolDriver` per-channel injectable |
 | Master-server | Free functions + global state | `IMasterListConfig`/`IMasterListClient` interfaces; implementation is a TODO stub |
+| Netchan | `netchan_t` POD + free functions, fragment globals, `pfnBlockSize` callback | `Netchan` value class with pimpl, `NetchanConfig` setup, `IBlockSizeProvider` interface, `IProtocolDriver` chooses framing (no `gs_netchan` bool) |
 
 ## Architecture at a glance
 
@@ -114,8 +116,9 @@ they are Layer 3 and will be added in a subsequent chunk.
   └──────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────┐
-  │               LAYER 3 — netchan (TODO)               │
+  │               LAYER 3 — netchan (stubs)              │
   │  Netchan reliable queue, stream frags, flow ctrl     │
+  │  (public API frozen; bodies are // TODO(Chunk N))    │
   └──────────────────────────────────────────────────────┘
 ```
 

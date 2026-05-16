@@ -12,6 +12,7 @@
 | `networking/stats.hpp` | `xash::networking` | `NetworkingStats` |
 | `networking/master_list.hpp` | `xash::networking` | `IMasterListConfig`, `IMasterListClient` |
 | `networking/protocol_driver.hpp` | `xash::networking` | `IProtocolDriver`, `IProtocolDriverRegistry`, `SplitFormat`, `DeltaTableSet`, `FrameMeta` |
+| `networking/netchan.hpp` | `xash::networking` | `Netchan`, `NetchanConfig`, `NetchanFlags`, `FragStream`, `FragSize`, `IBlockSizeProvider` (Layer 3 — stubs only) |
 
 ## Private / internal headers
 
@@ -48,6 +49,7 @@
 | `src/networking/compat_xash.cpp` | Xash split-packet encode/decode helpers |
 | `src/networking/protocol_driver_goldsrc.cpp` | `GoldSrcProtocolDriver` singleton (temporary; Chunk 4 registry will replace it) |
 | `src/networking/master_list.cpp` | Master-list satellite stub — Chunk 6 TODO |
+| `src/networking/netchan.cpp` | `Netchan` Layer-3 channel — all methods are `// TODO(Chunk N)` stubs |
 
 ## Key types
 
@@ -83,6 +85,12 @@
 | `PacketPool` | class | `private/networking/packet_pool.hpp` | Fixed-slab datagram buffer allocator |
 | `PacketSlot` | class | `private/networking/packet_pool.hpp` | RAII handle for one `PacketPool` slot |
 | `LoopbackTransport` | class | `private/networking/loopback_transport.hpp` | In-process dual-ring loopback |
+| `Netchan` | class | `networking/netchan.hpp` | One reliable channel to a peer (Layer 3 — stub) |
+| `NetchanConfig` | struct | `networking/netchan.hpp` | Setup-time parameters for `Netchan::setup()` |
+| `NetchanFlags` | struct | `networking/netchan.hpp` | Per-channel codec/munge bits (framing comes from `IProtocolDriver`) |
+| `FragStream` | enum class | `networking/netchan.hpp` | `Normal` vs. `File` fragment stream |
+| `FragSize` | enum class | `networking/netchan.hpp` | `Fragment` / `Split` / `Unreliable` block-size query |
+| `IBlockSizeProvider` | struct (pure virt) | `networking/netchan.hpp` | Host-supplied per-channel fragment sizing callback |
 
 ## CMake targets
 

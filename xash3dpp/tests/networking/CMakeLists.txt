@@ -43,3 +43,7 @@ add_test(NAME test_split_reassembler COMMAND test_split_reassembler)
 add_executable(test_compressed_packet test_compressed_packet.cpp)
 target_link_libraries(test_compressed_packet PRIVATE xash3dpp_networking)
 add_test(NAME test_compressed_packet COMMAND test_compressed_packet)
+
+add_executable(test_netchan test_netchan.cpp)
+target_link_libraries(test_netchan PRIVATE xash3dpp_networking)
+add_test(NAME test_netchan COMMAND test_netchan)
