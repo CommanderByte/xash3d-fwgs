@@ -80,17 +80,66 @@ a thin shim.
 |--------|------|-------------|
 | `crash::install_handler()` | function | Register signal/SEH crash handler; idempotent; must be called from the main thread before any other threads |
 | `crash::print_trace()` | function | Write best-effort stack trace to stderr/logcat; async-signal-safe; no heap allocation |
+### Socket I/O (`xash::platform`, `include/xash3dpp/platform/os_socket.hpp` + `platform_sockets.hpp`)
 
+All functions are annotated `// @thread-safety: T_NetIO-ready` — callable from
+`ThreadRole::Main` today; callable from a future `ThreadRole::NetIO` thread
+with no code change (threading-model.md §7).
+
+| Symbol | Kind | Description |
+|--------|------|-------------|
+| `OsSocket` | class | RAII wrapper around a native socket handle (`SocketHandle`). Non-copyable; movable. `close()` defined in the platform TU. |
+| `SocketHandle` | type alias | `int` (POSIX) or `uintptr_t` (Win32, matches `SOCKET`). |
+| `k_invalid_socket` | constant | Platform sentinel for an invalid/closed handle. |
+| `IpFamily` | enum | `V4`, `V6` (re-exported from `networking/address.hpp`). |
+| `NetAddress` | struct | IPv4/IPv6 + port endpoint (re-exported from `networking/address.hpp`). |
+| `socket_init()` | function | Win32: `WSAStartup` ref-counted; POSIX: no-op. |
+| `socket_shutdown()` | function | Win32: `WSACleanup` ref-counted; POSIX: no-op. |
+| `open_udp_socket(family, port, bind_iface)` | function | Create + bind a non-blocking UDP socket; `port==0` → ephemeral. Returns `Result<OsSocket>`. |
+| `open_tcp_socket(family)` | function | Create a non-blocking TCP socket (no bind). Returns `Result<OsSocket>`. |
+| `set_non_blocking(sock, on)` | function | Toggle non-blocking mode (`FIONBIO` / `fcntl O_NONBLOCK`). |
+| `set_broadcast(sock, on)` | function | `SO_BROADCAST` for master-server discovery. |
+| `set_reuse_addr(sock, on)` | function | `SO_REUSEADDR` for dedicated-server restart. |
+| `set_recv_buffer(sock, bytes)` | function | `SO_RCVBUF`. |
+| `set_send_buffer(sock, bytes)` | function | `SO_SNDBUF`. |
+| `bind_socket(sock, address)` | function | Bind a socket not bound at creation. |
+| `sendto(sock, data, to)` | function | UDP send. Returns `Result<size_t>`. |
+| `recvfrom(sock, buffer, from_out)` | function | UDP receive. Returns `NetError::WouldBlock` when no data queued. |
+| `send_stream(sock, data)` | function | TCP write; partial writes reported by byte count. |
+| `recv_stream(sock, buffer)` | function | TCP read; 0 bytes = orderly shutdown. |
+| `connect_stream(sock, to)` | function | Non-blocking connect; `NetError::WouldBlock` = "in progress". |
+| `get_local_address(sock)` | function | Bound local `NetAddress`, or `nullopt`. |
+| `resolve_blocking(host, family)` | function | Synchronous `getaddrinfo`. **Worker/NetIO ONLY** — must not be called from `ThreadRole::Main`. |
+| `IPlatformSockets` | struct (abstract) | Injectable seam for the networking subsystem hot path. |
+| `default_platform_sockets()` | function | Returns the process-singleton production `IPlatformSockets`. |
+
+`Result<T>` is `std::expected<T, xash::networking::NetError>` (C++23,
+introduced with this surface).
+
+**Error mapping** (full table in `docs/architecture/platform/sockets.md`):
+
+| OS error | `NetError` |
+|----------|------------|
+| `EAGAIN`/`EWOULDBLOCK`/`WSAEWOULDBLOCK` | `WouldBlock` |
+| `EBADF`/`WSAENOTSOCK` | `SocketInvalid` |
+| `EADDRINUSE`/`WSAEADDRINUSE` | `BindFailed` |
+| `EMSGSIZE`/`WSAEMSGSIZE` | `Overflow` |
+| `EINVAL` from `bind` | `BadAddress` |
+| Receive buffer truncated | `BufferTooSmall` |
+| Pre-`WSAStartup` call | `NotInitialised` |
+| `EAI_AGAIN` | `DnsAgain` |
+| Other `getaddrinfo` failure | `DnsFailure` |
 ## Dependencies (what this module calls)
 
 | Subsystem | Why |
 |-----------|-----|
 | `xash3dpp_utilities` (PRIVATE) | `path::extract_dir`, `path::fix_slashes` for normalising paths returned by `get_executable_dir` |
-| OS libraries | `kernel32` (Win32, implicit); `dl` (`-ldl`, POSIX) for dlopen/dlsym/dlclose; `android` + `log` (Android NDK) |
+| OS libraries | `kernel32` (Win32, implicit); `Ws2_32` (Win32, sockets); `dl` (`-ldl`, POSIX) for dlopen/dlsym/dlclose; `android` + `log` (Android NDK) |
+| `networking/errors.hpp`, `networking/address.hpp` | Header-only types — `NetError`, `Result<T>`, `NetAddress`, `IpFamily` — used by the socket API surface. No link-time dependency on `xash3dpp_networking`. |
 
 No dependency on `xash3dpp_memory` — all public functions return by value
-(`std::string`, `std::vector`, `OsFd`, `LibHandle`) or operate on primitive
-types. No pool-backed long-lived state is needed.
+(`std::string`, `std::vector`, `OsFd`, `OsSocket`, `LibHandle`) or operate on
+primitive types. No pool-backed long-lived state is needed.
 
 ## Owned state
 
@@ -101,10 +150,12 @@ types. No pool-backed long-lived state is needed.
 | Console input line buffer | `static char` array in `read_line()` | Main-thread only; overwritten on each call |
 | Crash handler flag | `static bool` in `install_handler()` | Set once; prevents double-registration |
 | (Android) JNI state | Statics in `android_init_jni()` | Written once at `JNI_OnLoad`; read-only thereafter |
+| (Win32) WSA refcount | `static std::atomic<int> s_wsa_refcount` in `win32/os_socket.cpp` | Incremented by `socket_init()`, decremented by `socket_shutdown()`. `WSAStartup`/`WSACleanup` called on transitions 0→1 and 1→0. |
 
 No `Init` / `Shutdown` functions. The subsystem is ready to use immediately
 without any explicit initialisation, except that `install_handler()` should be
-called once from the main thread at startup.
+called once from the main thread at startup. On Win32, `socket_init()` must be
+called before any socket functions and `socket_shutdown()` called at teardown;
 
 ## Quirks and invariants
 
@@ -132,6 +183,19 @@ called once from the main thread at startup.
   entry before any threads are spawned; calling it from a non-main thread is
   undefined behaviour on POSIX (signal disposition is process-wide but
   `sigaction` must be called before threads that may catch signals).
+- `open_udp_socket` / `open_tcp_socket` return sockets already in non-blocking
+  mode. `set_non_blocking` exists only for handles obtained externally.
+- `socket_init` / `socket_shutdown` are ref-counted and may be called multiple
+  times (e.g. by different subsystems); the WSAStartup/Cleanup pair fires only
+  on the transitions 0→1 and 1→0. POSIX implementations are no-ops.
+- `resolve_blocking` must not be called from `ThreadRole::Main`. It is
+  synchronous and may block for hundreds of milliseconds. It is intended for
+  the networking DNS worker (today `ThreadRole::Worker`, future `T_NetIO`).
+- IPv4 / IPv6 dual-stack is NOT implemented via `IPV6_V6ONLY=0`. The networking
+  subsystem holds two separate socket handles per logical endpoint (one V4, one
+  V6) and round-robins between them. This matches legacy behaviour exactly.
+- `NetAddress::ip6_0[0..1]` must be zero for V4 addresses. The `to_sockaddr_v4`
+  conversion helpers assert this invariant with `XASH_ASSERT`.
 
 ## Open questions
 
@@ -152,4 +216,7 @@ called once from the main thread at startup.
   `include/xash3dpp/platform/console.hpp` and the platform source files.
 - ~~**Signal / exception crash handler** — should this live in platform?~~ →
   Implemented as `crash::install_handler` / `crash::print_trace` in
-  `include/xash3dpp/platform/crash.hpp`.
+  `include/xash3dpp/platform/crash.hpp`.- ~~**Raw socket API** — should low-level socket ops (UDP, TCP, name resolution)
+  live in platform?~~ → Implemented as free functions + `OsSocket` RAII type
+  in `include/xash3dpp/platform/os_socket.hpp`; the injectable seam
+  `IPlatformSockets` is in `platform_sockets.hpp`.

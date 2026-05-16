@@ -20,3 +20,7 @@ add_test(NAME test_console COMMAND test_console)
 add_executable(test_crash test_crash.cpp)
 target_link_libraries(test_crash PRIVATE xash3dpp_platform)
 add_test(NAME test_crash COMMAND test_crash)
+
+add_executable(test_os_socket test_os_socket.cpp)
+target_link_libraries(test_os_socket PRIVATE xash3dpp_platform)
+add_test(NAME test_os_socket COMMAND test_os_socket)

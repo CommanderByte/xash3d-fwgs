@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(xash3dpp C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+# C++23 is required for std::expected<T,E>, introduced by the sockets layer
+# (include/xash3dpp/networking/errors.hpp) at the start of Chunk 2 (networking).
+# Minimum required toolchains: MSVC 19.34+, GCC 12+ (libstdc++), Clang 16+ (libc++).
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
