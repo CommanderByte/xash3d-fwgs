@@ -2,7 +2,8 @@
 description: "Write unit tests for a xash3dpp utility module. Uses legacy C behaviour as the behavioural baseline. Skips quirks that are pure C-architecture artifacts with no engine-observable effect."
 name: "Write xash3dpp unit tests"
 argument-hint: "Module to test, e.g. 'utf', 'matrix', 'path'"
-agent: "agent"
+mode: agent
+tools: [read, search, edit, run, terminal]
 model: claude-sonnet-4-6
 ---
 

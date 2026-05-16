@@ -2,7 +2,7 @@
 name: "Assess impact of a proposed change"
 description: "Before making any cross-cutting change (design paradigm, naming convention, API signature, dependency), enumerate every affected file and subsystem in fix order. Read-only — no files are edited."
 argument-hint: "description of the proposed change (e.g. 'rename enum class values from kFoo to Foo', 'add [[nodiscard]] to all bool returns', 'replace raw T* with pool_ptr in public APIs')"
-agent: agent
+mode: agent
 tools: [read, search]
 model: claude-sonnet-4-6
 ---

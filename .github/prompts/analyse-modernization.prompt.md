@@ -2,7 +2,7 @@
 name: "Analyse C++ modernization opportunities"
 description: "Audit a subsystem (legacy or xash3dpp) for C++ modernization opportunities — replacing C idioms with modern C++ equivalents — then document findings in xash3dpp/docs/modernization-opportunities/."
 argument-hint: "subsystem name matching an existing boundary spec (e.g. public-utilities, filesystem, sound)"
-agent: agent
+mode: agent
 tools: [read, search, edit]
 model: claude-opus-4-7
 ---

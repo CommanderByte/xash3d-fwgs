@@ -2,9 +2,8 @@
 name: "Sweep module for design compliance"
 description: "Audit and fix an existing xash3dpp module for full compliance with architecture and style decisions: [[nodiscard]], naming conventions, forbidden patterns, test_helpers.hpp migration, stats instrumentation, and thread assertions. Rebuilds and re-runs all tests. Commits when clean."
 argument-hint: "module name, e.g. 'utilities', 'memory', 'platform', 'cmd_cvar', 'filesystem'"
-agent: agent
-tools: [read, search, edit, run, terminal]
 mode: agent
+tools: [read, search, edit, run, terminal]
 model: claude-sonnet-4-6
 ---
 

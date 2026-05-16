@@ -2,7 +2,7 @@
 name: "Migrate subsystem to xash3dpp memory"
 description: "Audit a xash3dpp subsystem for direct malloc/free/new/delete usage and migrate all allocation sites to the xash3dpp memory subsystem (create_pool, mem_alloc, mem_free, pool_new, pool_delete). Use when writing a new subsystem or porting an existing one."
 argument-hint: "subsystem name (e.g. filesystem, sound, networking, renderer)"
-agent: agent
+mode: agent
 tools: [read, search, edit]
 model: claude-sonnet-4-6
 ---

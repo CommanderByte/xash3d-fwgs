@@ -2,9 +2,8 @@
 name: "Detail audit — structural compliance"
 description: "Read-only structural audit of an xash3dpp module. Runs six checks (limits.hpp coverage, header placement, memory/pool integration, stats tiering, dependency injection, compat isolation), produces a numbered violations table, and stops. No source files are changed. Use /implement-audit to apply the identified fixes."
 argument-hint: "module name, e.g. 'networking', 'cmd_cvar', 'filesystem'"
-agent: agent
-tools: [read, search, edit, run, terminal]
 mode: agent
+tools: [read, search]
 model: claude-sonnet-4-6
 ---
 

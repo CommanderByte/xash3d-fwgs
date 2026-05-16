@@ -1,9 +1,8 @@
 ---
 name: "Dependency graph — EngineContext init order audit"
 description: "Read all InitParams structs and EngineContext member declarations to build the subsystem dependency graph, check for cycles, and verify that member init order in EngineContext is consistent with the dependency direction. Read-only."
-agent: agent
-tools: [read, search]
 mode: agent
+tools: [read, search]
 model: claude-haiku-4-5-20251001
 ---
 

@@ -2,7 +2,7 @@
 name: "Document xash3dpp submodule architecture"
 description: "Produce or update technical architecture documentation for a xash3dpp submodule. Creates docs/architecture/<module>/ with README.md (overview), index.md (concept/file index), and one detailed .md per major concept or source file. If docs already exist, audits them for staleness and updates rather than overwrites. Use when a subsystem is complete enough to document, when onboarding needs a reference, or when the subsystem has changed and docs need refreshing."
 argument-hint: "submodule name, e.g. 'memory', 'filesystem', 'utilities'"
-agent: agent
+mode: agent
 tools: [read, search, edit]
 model: claude-sonnet-4-6
 ---

@@ -2,7 +2,7 @@
 name: "Analyse legacy subsystem"
 description: "Read a legacy subsystem and produce a boundary spec in xash3dpp/docs/ before any rewrite work starts."
 argument-hint: "subsystem name (e.g. filesystem, sound, networking, renderer)"
-agent: agent
+mode: agent
 tools: [read, search, edit]
 model: claude-sonnet-4-6
 ---

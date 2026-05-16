@@ -2,9 +2,8 @@
 name: "Pre-PR gate"
 description: "One-shot PR readiness check for a completed xash3dpp subsystem. Runs finish-subsystem checklist, a targeted compliance scan, and the reviewer agent in sequence. Reports a single SHIP / HOLD verdict. Run immediately before opening a pull request."
 argument-hint: "subsystem name, e.g. 'cmd_cvar', 'filesystem', 'sound'"
-agent: agent
-tools: [read, search, run, terminal]
 mode: agent
+tools: [read, search, run, terminal]
 model: claude-sonnet-4-6
 ---
 
