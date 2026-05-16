@@ -4,18 +4,24 @@
 // Existing subsystems used:
 //   xash3dpp_memory     — pool-backed allocations (host pool)
 //   xash3dpp_filesystem — VFS init / game directory activation
-//   xash3dpp_core       — core::log, core::ErrorCode
-//   xash3dpp_platform   — platform::get_time() for monotonic wall clock
+//   xash3dpp_core       — core::log, core::ErrorCode, core::Clock
+//   xash3dpp_cmd_cvar   — command buffer, cvar registry
+//   xash3dpp_map_loader — map-load FSM
+//   xash3dpp_platform   — platform::get_time(), platform::console::read_line()
 
 #include <xash3dpp/host/host.hpp>
+#include <xash3dpp/core/assert.hpp>
+#include <xash3dpp/core/clock.hpp>
 #include <xash3dpp/core/error.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
+#include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/platform/crash.hpp>
 #include <xash3dpp/platform/platform.hpp>
 
 #include <array>
-#include <cstdio>
 #include <cstring>
 
 namespace xash {
@@ -29,40 +35,56 @@ using namespace xash::filesystem;
 
 struct Host::Impl
 {
-    HostArgs    args;
+    // Configuration — owned copies of the non-owning HostInitParams fields.
+    std::string   rootdir, basedir, gamedir, rodir;
+    bool          dedicated = false;
+    int           developer = 0;
+    std::uint32_t bugcomp   = 0;
+
     HostStatus  status     = HostStatus::kInit;
-    double      realtime   = 0.0;
-    int         framecount = 0;
 
     // Frame-abort propagation (Quirk Q-3, OQ-1 hybrid).
     bool                  frame_abort_pending = false;
     core::ErrorCode       frame_abort_code    = core::ErrorCode::Ok;
     std::array<char, 256> frame_abort_detail  {};
 
-    // Subsystems owned by the host.
+    // Injected deps — non-owning; null = standalone / test mode.
+    // Must outlive this Impl.  Only written in init(); never written again.
+    cmd_cvar::CmdCvarContext  *cmd_cvar   = nullptr;
+    core::Clock               *clock      = nullptr;
+    MapLoader                 *map_loader = nullptr;
+    filesystem::Filesystem    *ext_fs     = nullptr;
+
+    // Subsystem owned by the host in standalone mode only.
     // NOTE: pool is the first subsystem created and the last destroyed.
     // Impl itself is system-allocated (make_unique) because the pool does
     // not exist yet when Impl is constructed.
     PoolHandle pool;
-    Filesystem fs;
+    filesystem::Filesystem own_fs;  // used when ext_fs == nullptr
+
+    // Convenience: returns the active filesystem (owned or injected).
+    filesystem::Filesystem &fs() noexcept
+    {
+        return ext_fs ? *ext_fs : own_fs;
+    }
 
     void shutdown() noexcept
     {
-        if (!pool) return;   // already shut down or never initialised
+        if ( !pool ) return;  // already shut down or never initialised
 
-        // TODO: Client::shutdown()   (non-dedicated)
-        // TODO: Server::shutdown()
-        // TODO: Networking::shutdown()
-        // TODO: CmdCvar::shutdown()
-        // TODO: Platform::shutdown()
+        // TODO Chunk 5: Server::shutdown()
+        // TODO Chunk 9: Client::shutdown()
+        // TODO Chunk 2: Networking::shutdown()
 
-        // Filesystem must be shut down before the host pool is released,
-        // because future migrations will route FS allocations through this pool.
-        fs.shutdown();
+        if ( map_loader ) { map_loader->shutdown(); map_loader = nullptr; }
+        if ( clock )      { clock->shutdown();      clock      = nullptr; }
+        if ( cmd_cvar )   { cmd_cvar->shutdown();   cmd_cvar   = nullptr; }
 
-        // All pool-tracked allocations are gone.  Release the pool slot.
-        // (Host::Impl is system-allocated and is not tracked by this pool.)
-        destroy_pool(pool);
+        // Filesystem: only shut down if we own it.
+        if ( !ext_fs ) own_fs.shutdown();
+        ext_fs = nullptr;
+
+        destroy_pool( pool );
         pool = k_null_pool;
 
         status = HostStatus::kShutdown;
@@ -80,76 +102,71 @@ Host::~Host() = default;
 // init
 // ---------------------------------------------------------------------------
 
-bool Host::init(const HostArgs& args)
+bool Host::init(const HostInitParams& p)
 {
     Impl& s = *impl_;
-    s.args   = args;
+
+    // Copy config from non-owning string_views into owned strings.
+    s.rootdir   = std::string( p.rootdir );
+    s.basedir   = std::string( p.basedir );
+    s.gamedir   = std::string( p.gamedir );
+    s.rodir     = std::string( p.rodir );
+    s.dedicated = p.dedicated;
+    s.developer = p.developer;
+    s.bugcomp   = p.bugcomp;
+
+    // Store injected deps (non-owning; null = standalone / test mode).
+    s.cmd_cvar   = p.cmd_cvar;
+    s.clock      = p.clock;
+    s.map_loader = p.map_loader;
+    s.ext_fs     = p.filesystem;
+
     s.status = HostStatus::kInit;
 
     // --- Memory ----------------------------------------------------------
-    // create the host pool first.  All subsequent long-lived allocations
-    // that have been migrated to the memory subsystem are tracked here.
-    s.pool = create_pool("host");
-    if (!s.pool)
+    s.pool = create_pool( "host" );
+    if ( !s.pool )
     {
-        std::fputs("xash3dpp host: create_pool(\"host\") failed (registry full)\n",
-                   stderr);
+        core::log( core::LogLevel::Error, "host",
+                   "create_pool(\"host\") failed (registry full)" );
         return false;
     }
 
-    // --- Platform --------------------------------------------------------
-    // TODO: Platform::init(args.dedicated)
-
-    // --- Filesystem ------------------------------------------------------
-    const std::string_view rootdir = args.rootdir;
-    const std::string_view basedir = args.basedir.empty() ? args.gamedir
-                                                           : args.basedir;
-    const std::string_view gamedir = args.gamedir.empty() ? args.basedir
-                                                           : args.gamedir;
-    const std::string_view rodir   = args.rodir;
-
-    if (!s.fs.init(rootdir, basedir, gamedir, rodir))
+    // --- Filesystem (standalone mode only) -------------------------------
+    // In EngineContext mode, FS is initialised before Host by EngineContext::init().
+    if ( !s.ext_fs )
     {
-        std::fputs("xash3dpp host: Filesystem::init failed\n", stderr);
-        destroy_pool(s.pool);
-        s.pool = k_null_pool;
-        return false;
+        const std::string_view basedir = s.basedir.empty() ? s.gamedir : s.basedir;
+        const std::string_view gamedir = s.gamedir.empty() ? s.basedir : s.gamedir;
+
+        if ( !s.own_fs.init( s.rootdir, basedir, gamedir, s.rodir ) )
+        {
+            core::log( core::LogLevel::Error, "host", "Filesystem::init failed" );
+            destroy_pool( s.pool );
+            s.pool = k_null_pool;
+            return false;
+        }
+
+        const filesystem::SearchPathFlags mount_flags =
+            filesystem::SearchPathFlags::MountHD | filesystem::SearchPathFlags::MountLV;
+
+        if ( !gamedir.empty() && !s.own_fs.activate_game( gamedir, mount_flags ) )
+        {
+            core::logf( core::LogLevel::Warning, "host",
+                        "game directory '%.*s' not found, running in base mode",
+                        static_cast<int>( gamedir.size() ), gamedir.data() );
+        }
     }
 
-    // Scan game directories and activate the requested game.  Non-fatal:
-    // if gamedir is not found we continue in base-only mode.
-    const SearchPathFlags mount_flags = SearchPathFlags::MountHD
-                                      | SearchPathFlags::MountLV;
+    // --- Cmd / Cvar commands & cvars -------------------------------------\n    // When cmd_cvar is null (standalone / test mode) registration is skipped.\n    // TODO Chunk 3: register host lifecycle cvars (host_developer, host_gameloaded,\n    //   host_clientloaded, host_limitlocal, con_gamemaps, host_allow_materials, ...)\n    //   and commands (quit, exit, memlist, host_error, sys_error, crash).\n\n    // --- Networking (Chunk 2) --------------------------------------------\n    // TODO Chunk 2: Networking::init()\n\n    // --- Server (Chunk 5) ------------------------------------------------\n    // TODO Chunk 5: Server::init()\n\n    // --- Client (Chunk 9, non-dedicated only) ----------------------------\n    // TODO Chunk 9: if (!s.dedicated) Client::init()
 
-    if (!gamedir.empty() && !s.fs.activate_game(gamedir, mount_flags))
+    if ( s.developer > 0 )
     {
-        std::fprintf(stderr,
-            "xash3dpp host: game directory '%.*s' not found, "
-            "running in base mode\n",
-            static_cast<int>(gamedir.size()), gamedir.data());
-    }
-
-    // --- Cmd / Cvar ------------------------------------------------------
-    // TODO: CmdCvar::init()
-
-    // --- Networking ------------------------------------------------------
-    // TODO: Networking::init()
-
-    // --- Server ----------------------------------------------------------
-    // TODO: Server::init()
-
-    // --- Client (non-dedicated only) -------------------------------------
-    // TODO: if (!args.dedicated) Client::init()
-
-    if (args.developer > 0)
-    {
-        std::fprintf(stdout,
-            "xash3dpp: host init complete  rootdir='%s'  game='%.*s'  "
-            "dedicated=%d  developer=%d\n",
-            args.rootdir.c_str(),
-            static_cast<int>(gamedir.size()), gamedir.data(),
-            static_cast<int>(args.dedicated),
-            args.developer);
+        core::logf( core::LogLevel::Info, "host",
+                    "host init complete  rootdir='%s'  game='%s'  "
+                    "dedicated=%d  developer=%d",
+                    s.rootdir.c_str(), s.gamedir.c_str(),
+                    static_cast<int>( s.dedicated ), s.developer );
     }
 
     s.status = HostStatus::kRunning;
@@ -163,28 +180,40 @@ bool Host::init(const HostArgs& args)
 void Host::RunFrame()
 {
     Impl& s = *impl_;
-    if (s.status == HostStatus::kShutdown) return;
+    if ( s.status == HostStatus::kShutdown ) return;
 
     // Frame-abort recovery (Quirk Q-3, OQ-1) — runs at frame top so all
     // destructors from the aborted frame have already executed.
-    if (s.frame_abort_pending)
+    if ( s.frame_abort_pending )
     {
         core::log( core::LogLevel::Warning, "host",
                    "frame abort recovered; subsystem cleanup pending" );
         // TODO Chunk 5/9: SV_Shutdown(), CL_Drop(), CL_ClearEdicts(), Mod_FreeAll().
-        s.frame_abort_pending = false;
-        s.frame_abort_code    = core::ErrorCode::Ok;
+        s.frame_abort_pending   = false;
+        s.frame_abort_code      = core::ErrorCode::Ok;
         s.frame_abort_detail[0] = '\0';
     }
 
-    s.realtime = platform::get_time();
-    s.framecount++;
+    // --- Platform event pump -------------------------------------------
+    // TODO Chunk 9: Platform::PollEvents() (client-side input / window events)
 
-    // TODO: Platform::PollEvents()
-    // TODO: CmdCvar::ExecuteCommandBuffer()
-    // TODO: MapLoader::run_frame_step()
-    // TODO: Server::RunFrame()
-    // TODO: Client::RunFrame()   (non-dedicated)
+    // --- Command buffer -------------------------------------------------
+    // cbuf_execute MUST run before map_loader::run_frame_step so that commands
+    // issued this frame (e.g. "map") take effect in the same frame's FSM step.
+    if ( s.cmd_cvar ) s.cmd_cvar->cbuf_execute();
+
+    // --- Map-load FSM step ----------------------------------------------
+    if ( s.map_loader ) s.map_loader->run_frame_step();
+
+    // --- Dedicated stdin ------------------------------------------------
+    // OQ-9: read a line from stdin and push it into the command buffer.
+    // TODO: platform::console::read_line() + cbuf_add_text + cbuf_execute
+
+    // --- Server frame ---------------------------------------------------
+    // TODO Chunk 5: Server::RunFrame()
+
+    // --- Client frame (non-dedicated) -----------------------------------
+    // TODO Chunk 9: Client::RunFrame()
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +225,11 @@ void Host::RequestShutdown(const char* /*reason*/) noexcept
     impl_->status = HostStatus::kShutdown;
 }
 
+void Host::shutdown() noexcept
+{
+    impl_->shutdown();
+}
+
 // ---------------------------------------------------------------------------
 // signal_frame_abort — Quirk Q-3, Resolved-decision OQ-1
 // ---------------------------------------------------------------------------
@@ -205,14 +239,13 @@ void Host::signal_frame_abort(core::ErrorCode code,
 {
     Impl& s = *impl_;
 
-    // Quirk Q-4 — recursive abort within the same frame escalates to fatal.
-    // The Chunk 5/9 implementation replaces this stub with the full
-    // `errorframe == framecount` check from engine/common/host.c.
-    if (s.frame_abort_pending)
+    // Quirk Q-4: recursive abort within the same frame escalates to process abort.
+    // Legacy: `if (host.errorframe == host.framecount) Sys_Error(...)`
+    // Decision ref: host-boundary.md Resolved-decision OQ-1
+    if ( s.frame_abort_pending )
     {
-        core::log( core::LogLevel::Fatal, "host",
-                   "recursive frame abort — escalating" );
-        // TODO Chunk 5/9: platform::crash::abort() once that helper lands.
+        platform::crash::print_trace();
+        XASH_FATAL( false, "recursive frame abort — escalating to process abort" );
     }
 
     s.frame_abort_pending = true;
@@ -230,9 +263,21 @@ void Host::signal_frame_abort(core::ErrorCode code,
 
 int Host::Main(const HostArgs& args)
 {
-    if (!init(args)) return 1;
+    // Build a HostInitParams from the launcher-provided HostArgs.
+    // All dependency pointers are null: standalone / no EngineContext.
+    HostInitParams p;
+    p.rootdir   = args.rootdir;
+    p.basedir   = args.basedir;
+    p.gamedir   = args.gamedir;
+    p.rodir     = args.rodir;
+    p.dedicated = args.dedicated;
+    p.developer = args.developer;
+    p.bugcomp   = args.bugcomp;
+    // dep pointers intentionally left null (standalone path)
 
-    while (impl_->status != HostStatus::kShutdown)
+    if ( !init( p ) ) return 1;
+
+    while ( impl_->status != HostStatus::kShutdown )
         RunFrame();
 
     impl_->shutdown();
@@ -244,8 +289,12 @@ int Host::Main(const HostArgs& args)
 // ---------------------------------------------------------------------------
 
 HostStatus      Host::status()              const noexcept { return impl_->status; }
-bool            Host::dedicated()           const noexcept { return impl_->args.dedicated; }
-double          Host::realtime()            const noexcept { return impl_->realtime; }
+bool            Host::dedicated()           const noexcept { return impl_->dedicated; }
+double          Host::realtime()            const noexcept
+{
+    // Forward through Clock when available; fall back to platform time.
+    return impl_->clock ? impl_->clock->realtime() : platform::get_time();
+}
 bool            Host::frame_abort_pending() const noexcept { return impl_->frame_abort_pending; }
 core::ErrorCode Host::frame_abort_code()    const noexcept { return impl_->frame_abort_code; }
 

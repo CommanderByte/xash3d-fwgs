@@ -43,6 +43,10 @@ struct EngineContextInitParams {
     cmd_cvar::ITrustOracle  *trust_oracle  = nullptr;
     cmd_cvar::ICompatPolicy *compat_policy = nullptr;
 
+    // Mode flags — propagated into HostInitParams at init() time.
+    bool dedicated = false;  // true when -dedicated was passed
+    int  developer = 0;      // verbosity: 0 = normal, 1 = verbose, 2 = extended
+
     // GoldSrc bug-compatibility bitfield (Resolved-decision OQ-7).
     // Parsed once by the launcher; copied verbatim into EngineContext::bugcomp.
     std::uint32_t bugcomp = 0;

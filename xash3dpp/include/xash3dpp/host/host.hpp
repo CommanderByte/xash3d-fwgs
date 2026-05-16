@@ -19,7 +19,11 @@
 #include <string>
 #include <string_view>
 
-namespace xash::core { enum class ErrorCode : std::uint32_t; }
+namespace xash::core       { enum class ErrorCode : std::uint32_t; }
+namespace xash::core       { class Clock; }
+namespace xash::cmd_cvar   { class CmdCvarContext; }
+namespace xash::filesystem { class Filesystem; }
+namespace xash             { class MapLoader; }
 
 namespace xash {
 
@@ -49,6 +53,41 @@ struct HostArgs
     // Subsystems read `engine_context.bugcomp & BUGCOMP_X` at the point of
     // behaviour divergence; there is no central dispatcher.
     std::uint32_t bugcomp = 0;
+};
+
+// ---------------------------------------------------------------------------
+// HostInitParams — init-time configuration + injected dependencies.
+//
+// Decision ref: decisions-architecture.md §DI_PARAMS (Q-4)
+//
+// String fields are non-owning views; caller owns storage for the duration of
+// the init() call — values are copied into the subsystems before returning.
+//
+// Injected dependency pointers are non-owning and nullable:
+//   nullptr = standalone / test mode — Host skips that subsystem's
+//             participation (cvar registration, frame dispatch, etc.).
+// ---------------------------------------------------------------------------
+struct HostInitParams
+{
+    // Filesystem roots
+    std::string_view rootdir;   // engine install directory
+    std::string_view basedir;   // always-mounted base game folder (e.g. "valve")
+    std::string_view gamedir;   // active game folder (e.g. "cstrike"); empty = basedir
+    std::string_view rodir;     // read-only content mirror; empty = disabled
+
+    // Mode flags
+    bool          dedicated = false;  // true when -dedicated was passed
+    int           developer = 0;      // verbosity: 0 = normal, 1 = verbose, 2 = extended
+
+    // GoldSrc bug-compatibility bitfield (Resolved-decision OQ-7).
+    std::uint32_t bugcomp = 0;
+
+    // Injected deps — non-owning; must outlive Host.
+    // nullptr = Host operates in standalone / test mode for that subsystem.
+    cmd_cvar::CmdCvarContext  *cmd_cvar   = nullptr;
+    core::Clock               *clock      = nullptr;
+    MapLoader                 *map_loader = nullptr;
+    filesystem::Filesystem    *filesystem = nullptr;
 };
 
 // ---------------------------------------------------------------------------
@@ -91,8 +130,10 @@ public:
     [[nodiscard]] int Main(const HostArgs& args);
 
     // Granular control for embedding scenarios.
-    [[nodiscard]] bool init(const HostArgs& args);
+    // Use HostInitParams to inject dependencies from an EngineContext.
+    [[nodiscard]] bool init(const HostInitParams& p);
     void               RunFrame();
+    void               shutdown() noexcept;     // explicit teardown; called by EngineContext::shutdown()
     void               RequestShutdown(const char* reason = nullptr) noexcept;
 
     // Frame-abort signalling (Quirk Q-3, Resolved-decision OQ-1).

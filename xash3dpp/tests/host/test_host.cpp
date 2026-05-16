@@ -14,15 +14,16 @@ static int g_pass = 0, g_fail = 0;
 // Lifecycle smoke test
 // ---------------------------------------------------------------------------
 
-static xash::HostArgs make_dedicated_args()
+static xash::HostInitParams make_dedicated_params()
 {
-    xash::HostArgs args;
-    args.rootdir   = ".";
-    args.basedir   = "valve";
-    args.gamedir   = "valve";
-    args.dedicated = true;
-    args.developer = 0;
-    return args;
+    xash::HostInitParams p;
+    p.rootdir   = ".";
+    p.basedir   = "valve";
+    p.gamedir   = "valve";
+    p.dedicated = true;
+    p.developer = 0;
+    // dep pointers left null — standalone / test mode
+    return p;
 }
 
 static void test_init_shutdown()
@@ -30,8 +31,8 @@ static void test_init_shutdown()
     xash::Host host;
     CHECK( host.status() == xash::HostStatus::kInit );
 
-    const auto args = make_dedicated_args();
-    REQUIRE( host.init(args) );
+    const auto params = make_dedicated_params();
+    REQUIRE( host.init(params) );
     CHECK( host.status() == xash::HostStatus::kRunning );
     CHECK( host.dedicated() );
 
@@ -45,8 +46,8 @@ static void test_init_shutdown()
 
 static void test_bugcomp_default_zero()
 {
-    xash::HostArgs args = make_dedicated_args();
-    CHECK_EQ( args.bugcomp, 0u );
+    xash::HostInitParams params = make_dedicated_params();
+    CHECK_EQ( params.bugcomp, 0u );
 }
 
 // ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ static void test_bugcomp_default_zero()
 static void test_signal_frame_abort()
 {
     xash::Host host;
-    REQUIRE( host.init( make_dedicated_args() ) );
+    REQUIRE( host.init( make_dedicated_params() ) );
 
     CHECK( !host.frame_abort_pending() );
     host.signal_frame_abort( xash::core::ErrorCode::HostFatal, "test abort" );
