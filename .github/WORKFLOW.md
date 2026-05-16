@@ -125,6 +125,16 @@ analyse-modernization      ← optional, after compliance is clean
 | `bisect` | Find the commit that introduced a regression | No |
 | `limits-audit` | Check all magic numbers are in limits.hpp | No |
 | `abi-watchdog` | Verify xash3dpp/ does not conflict with frozen ABI surfaces | No |
+| `xash3dpp-reviewer` | Full correctness + ABI safety review of xash3dpp/ code | No |
+
+---
+
+## Related reference docs
+
+| Document | What it covers |
+|---|---|
+| `PROMPT-GUIDE.md` | Frontmatter spec, tool tiers, and model selection for all `.prompt.md` files |
+| `instructions/xash3dpp.instructions.md` | Mandatory C++ patterns and conventions for `xash3dpp/` |
 
 ---
 
