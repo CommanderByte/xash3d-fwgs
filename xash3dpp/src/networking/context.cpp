@@ -6,6 +6,7 @@
 
 #include <xash3dpp/private/networking/context_impl.hpp>
 
+#include <xash3dpp/core/log.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
 #include <utility>
@@ -79,14 +80,22 @@ NetworkContext &NetworkContext::operator=( NetworkContext && ) noexcept = defaul
 bool NetworkContext::init( const NetworkInitParams &params ) noexcept
 {
     if( !impl_ )
+    {
+        core::log( core::LogLevel::Error, "networking",
+                   "init() called on moved-from NetworkContext" );
         return false;
+    }
     if( impl_->initialised )
         return true;
 
     // IPlatformSockets is mandatory; without it no real I/O can happen.
     // See docs/architecture/platform/sockets.md for the contract.
     if( params.sockets == nullptr )
+    {
+        core::log( core::LogLevel::Error, "networking",
+                   "init() requires a non-null IPlatformSockets" );
         return false;
+    }
 
     impl_->sockets            = params.sockets;
     impl_->protocol_registry  = params.protocol_registry;
@@ -95,7 +104,11 @@ bool NetworkContext::init( const NetworkInitParams &params ) noexcept
 
     impl_->pool = xash::memory::create_pool( "networking" );
     if( impl_->pool == xash::memory::k_null_pool )
+    {
+        core::log( core::LogLevel::Error, "networking",
+                   "failed to create memory pool" );
         return false;
+    }
 
     impl_->initialised = true;
     return true;
