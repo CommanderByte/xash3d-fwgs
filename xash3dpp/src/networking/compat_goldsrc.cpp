@@ -48,7 +48,7 @@ SplitProducerGoldSrc::SplitProducerGoldSrc( std::span<const std::byte> payload,
         return;
     body_size_ = splitsize - k_header_size;
     const std::size_t total = ( payload.size() + body_size_ - 1 ) / body_size_;
-    if( total > 15 )                            // nibble cap
+    if( total > static_cast<std::size_t>( goldsrc_nibble_max ) ) // nibble cap
         return;
     total_ = static_cast<std::uint8_t>( total );
 }

@@ -288,6 +288,7 @@ built-in delta types. The `bInitialized` flag per table is mutated at
 | `MAX_LOOPBACK` | 4 | Loopback ring buffer slots per socket |
 | `NET_MAX_FRAGMENTS` | ~506 | Maximum split-packet fragment count (standard protocol) |
 | `NET_MAX_GOLDSRC_FRAGMENTS` | 5 | Maximum split-packet fragment count (GoldSrc protocol) |
+| `net_splitpacket_max_fragments` | 256 | SplitReassembler slot count (uint8_t packet_id field range) |
 | `SPLITPACKET_MIN_SIZE` | 508 bytes | Minimum split fragment body (RFC 791) |
 | `SPLITPACKET_MAX_SIZE` | 64000 bytes | Maximum split fragment total |
 | `MAX_RELIABLE_PAYLOAD` | 1400 bytes | Largest fragment/reliable packet on the wire |
@@ -440,3 +441,19 @@ of separation criteria met out of 5; ≥ 2 → separate target.
 | **Async DNS resolver** | (d) small interface to parent (string → NetAddress); shares transport's threading model | 0 | **same** target — lives in `dns.cpp` inside `xash3dpp_networking` |
 | **Default GoldSrc protocol driver** | always linked; selected per-`netchan_t` via `IProtocolDriver`, not a CMake option | n/a | **same** target — `protocol_driver_goldsrc.cpp` |
 | **Compression backends (bzip2 / LZSS)** | link-time-selected by `XASH_NET_COMPRESSION` (Q-7 pattern); not a separation candidate | n/a | **same** target — `compress_{bz2,lzss,null}.cpp` |
+
+---
+
+## Rewrite — public injectable interfaces
+
+The following injectable interfaces were moved from the private include tree to
+the public include tree (structural compliance fix, detail-audit):
+
+| Public header | Interfaces |
+|---|---|
+| `include/xash3dpp/networking/master_list.hpp` | `IMasterListConfig`, `IMasterListClient` |
+| `include/xash3dpp/networking/protocol_driver.hpp` | `IProtocolDriver`, `IProtocolDriverRegistry`, `SplitFormat`, `DeltaTableSet`, `FrameMeta` |
+
+Callers implementing these interfaces (e.g. the server layer for `IMasterListConfig`)
+should include from the public path directly. The private-tree headers are now
+redirect stubs.

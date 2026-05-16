@@ -102,7 +102,7 @@ private:
     };
 
     // Heap-backed to keep multi-MB pool storage off the call stack.
-    std::vector<Slot>                       slots_;
+    std::vector<Slot>                       slots_; // @pre-reserved: net_packet_pool_slots
     std::array<std::uint32_t, slot_count>   free_stack_{};
     std::uint32_t                           free_top_ { 0 };
     std::size_t                             in_use_   { 0 };

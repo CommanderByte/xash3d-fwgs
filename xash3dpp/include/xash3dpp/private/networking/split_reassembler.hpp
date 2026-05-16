@@ -29,7 +29,7 @@ class SplitReassembler
 public:
     // Caps to uint8_t packet_number/packet_count.  Goldsrc fragments still
     // fit (≤ 15) under the same limit.
-    static constexpr std::size_t max_fragments = 256;
+    static constexpr std::size_t max_fragments = ::xash::limits::net_splitpacket_max_fragments;
 
     enum class Outcome : std::uint8_t
     {

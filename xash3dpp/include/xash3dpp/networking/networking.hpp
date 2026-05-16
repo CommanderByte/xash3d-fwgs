@@ -14,6 +14,8 @@
 
 #include <xash3dpp/networking/address.hpp>
 #include <xash3dpp/networking/errors.hpp>
+#include <xash3dpp/networking/master_list.hpp>
+#include <xash3dpp/networking/protocol_driver.hpp>
 #include <xash3dpp/networking/stats.hpp>
 
 #include <cstdint>
@@ -26,11 +28,6 @@
 namespace xash::platform { struct IPlatformSockets; }
 
 namespace xash::networking {
-
-// Forward-declared private interfaces (defined under include/xash3dpp/private/networking/).
-// Pointers in NetworkInitParams are non-owning; lifetimes must exceed the context.
-struct IProtocolDriverRegistry;
-struct IMasterListConfig;
 
 // ---------------------------------------------------------------------------
 // SocketKind — which logical socket pair an operation uses

@@ -71,6 +71,10 @@ struct SplitHeaderGoldSrc
 static_assert( sizeof( SplitHeaderGoldSrc ) == 9,
                "SplitHeaderGoldSrc wire layout must remain 9 bytes" );
 
+// Maximum fragment number or count encodable in a 4-bit nibble field of
+// SplitHeaderGoldSrc (high nibble = packet_number, low nibble = packet_count).
+static constexpr std::uint8_t goldsrc_nibble_max = 15u;
+
 // ---------------------------------------------------------------------------
 // LongPacket — split-packet reassembly state (not a wire type).
 //

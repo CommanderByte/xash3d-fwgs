@@ -332,4 +332,10 @@ inline constexpr std::size_t net_packet_pool_slots = 64; // preallocated packet 
 inline constexpr std::size_t net_packet_pool_slots = XASH_LIMIT_NET_PACKET_POOL_SLOTS;
 #endif
 
+#ifndef XASH_LIMIT_NET_SPLITPACKET_MAX_FRAGMENTS
+inline constexpr std::size_t net_splitpacket_max_fragments = 256; // SplitReassembler slots (uint8_t packet_id field range)
+#else
+inline constexpr std::size_t net_splitpacket_max_fragments = XASH_LIMIT_NET_SPLITPACKET_MAX_FRAGMENTS;
+#endif
+
 } // namespace xash::limits

@@ -20,6 +20,8 @@ public:
     [[nodiscard]] DeltaTableSet delta_tables() const noexcept override { return DeltaTableSet::GoldSrc; }
 };
 
+// detail-audit: accepted — temporary file-scope singleton; registry accessor
+// will replace this in Chunk 4 per the TODO below.
 [[maybe_unused]] GoldSrcProtocolDriver g_goldsrc_driver;
 
 } // namespace
