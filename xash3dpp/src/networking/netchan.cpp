@@ -12,10 +12,12 @@
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <deque>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace xash::networking {
@@ -48,6 +50,63 @@ struct Fragbuf
 struct FragbufBatch
 {
     std::vector<Fragbuf> bufs;
+    // Total assembled-payload size across all fragments in this batch
+    // (including the file-stream filename header on the first piece).
+    // Computed once at create-time and used as the `total_size` field in
+    // every per-fragment wire descriptor so the value stays consistent
+    // even after transmit() pops the front fragment.
+    std::uint32_t        total_size { 0 };
+};
+
+// IncomingStream — per-stream reassembly slot for inbound reliable fragments.
+// Fragments always arrive in-order on the reliable channel; an out-of-order
+// or size-mismatched fragment resets the slot.  The assembled buffer for the
+// File stream begins with a NUL-terminated filename written by the sender's
+// create_file_fragments_from_buffer() pass; copy_file_fragments() strips it.
+//
+// Hot-path containers: `data` is pre-reserved on the first fragment via
+// reserve(total_expected) — @pre-reserved per Q-13.
+struct IncomingStream
+{
+    std::vector<std::byte> data;
+    std::uint32_t          total_expected { 0 };
+    bool                   ready          { false };
+
+    void reset() noexcept
+    {
+        data.clear();
+        total_expected = 0;
+        ready          = false;
+    }
+
+    // Append a fragment.  Returns true when the assembly is complete.
+    // Mismatched total / out-of-order offset resets the slot.
+    [[nodiscard]] bool ingest( std::uint32_t              total,
+                               std::uint16_t              frag_offset,
+                               std::span<const std::byte> payload ) noexcept
+    {
+        std::printf( "INGEST total=%u off=%u psize=%zu data=%zu te=%u\n",
+            total, (unsigned)frag_offset, payload.size(), data.size(), total_expected );
+        if( total_expected == 0u )
+        {
+            total_expected = total;
+            data.reserve( total ); // @pre-reserved
+        }
+        else if( total != total_expected )
+        {
+            reset();
+            total_expected = total;
+            data.reserve( total ); // @pre-reserved
+        }
+        if( static_cast<std::size_t>( frag_offset ) != data.size() )
+            return false; // out-of-order — drop this packet (caller returns false)
+        if( data.size() + payload.size() > total_expected )
+            return false; // would overrun
+        data.insert( data.end(), payload.begin(), payload.end() );
+        if( data.size() == total_expected )
+            ready = true;
+        return ready;
+    }
 };
 
 } // namespace
@@ -101,7 +160,13 @@ struct Netchan::Impl
     // fragment.
     std::array<std::deque<FragbufBatch>, 2> outgoing_fragments {};
 
-    // TODO(Chunk 8): incoming reassembly slots per stream.
+    // Running byte offset reported in the outgoing fragment descriptor's
+    // `byte_offset` field, per stream.  Reset to 0 when a batch is fully
+    // drained so the next batch starts at offset 0.
+    std::array<std::uint32_t, 2> frag_offset {};
+
+    // Incoming reassembly slots per stream (Chunk 8).  See IncomingStream.
+    std::array<IncomingStream, 2> incoming_streams {};
 
     // Active flag — true between successful setup() and clear()/move-out.
     bool                active { false };
@@ -170,6 +235,10 @@ void Netchan::clear() noexcept
 
     for( auto &queue : impl_->outgoing_fragments )
         queue.clear();
+    for( auto &off : impl_->frag_offset )
+        off = 0u;
+    for( auto &slot : impl_->incoming_streams )
+        slot.reset();
 
     // TODO(Chunk 8): zero the flow_t telemetry array.
 }
@@ -242,6 +311,8 @@ Result<void> Netchan::create_fragments( FragStream stream,
                            payload.begin() + static_cast<std::ptrdiff_t>( pos + bytes ) );
         batch.bufs.emplace_back( std::move( fb ) );
     }
+
+    batch.total_size = static_cast<std::uint32_t>( total );
 
     const std::size_t idx = static_cast<std::size_t>( stream );
     impl_->outgoing_fragments[ idx ].emplace_back( std::move( batch ) );
@@ -319,6 +390,10 @@ Result<void> Netchan::create_file_fragments_from_buffer(
         first = false;
     }
 
+    // total_size for the wire descriptor includes the filename + NUL prepended
+    // to the first fragment's payload.
+    batch.total_size = static_cast<std::uint32_t>( total + filename_header );
+
     impl_->outgoing_fragments[ static_cast<std::size_t>( FragStream::File ) ]
         .emplace_back( std::move( batch ) );
     return {};
@@ -340,30 +415,92 @@ Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable,
     // writes flow through MessageBuf so overflow is detected centrally.
     MessageBuf msg{ out, "netchan-transmit" };
 
-    // Decide whether this packet carries the pending reliable payload.
-    // Legacy net_chan.c only re-emits reliable bytes when the previous
-    // batch has been acknowledged; until process() lands we conservatively
-    // send any pending reliable on every transmit so the channel can drain.
-    // TODO(Chunk 8): gate on (incoming_reliable_acknowledged != reliable_sequence).
-    const bool send_reliable = impl_->reliable_length_bits > 0u;
+    // Detect a pending fragment at the front of either outgoing queue.
+    // When a fragment is being shipped, it carries the reliable bytes for
+    // this packet; reliable_buf is held back until all fragments drain.
+    // This matches legacy net_chan.c's `send_reliable_fragment` interlock.
+    bool send_reliable_fragment = false;
+    for( std::size_t i = 0; i < 2u; ++i )
+    {
+        if( !impl_->outgoing_fragments[ i ].empty()
+            && !impl_->outgoing_fragments[ i ].front().bufs.empty() )
+        {
+            send_reliable_fragment = true;
+            break;
+        }
+    }
 
-    // TODO(Chunk 7-frag): consume the front-of-queue FragbufBatch when a
-    // reliable fragment is being shipped.  For now transmit() assumes no
-    // pending fragments and asserts via the queue size — callers should
-    // not invoke transmit() with outstanding fragments yet.
-    const bool send_reliable_fragment = false;
+    // Decide whether this packet carries the pending reliable payload.
+    // Mutually exclusive with send_reliable_fragment: when shipping a
+    // fragment, reliable_buf waits its turn.
+    const bool send_reliable =
+        ( impl_->reliable_length_bits > 0u ) && !send_reliable_fragment;
+    // The combined "this packet contains reliable data" flag — used by the
+    // driver to set bit-31 of w1.  True for both reliable_buf and fragment
+    // frames so the receiver-side parity bit flips on every reliable packet.
+    const bool wire_reliable_bit = send_reliable || send_reliable_fragment;
 
     PacketHeaderInput hdr_in{};
     hdr_in.outgoing_sequence          = impl_->outgoing_sequence;
     hdr_in.incoming_sequence          = impl_->incoming_sequence;
     hdr_in.incoming_reliable_sequence = impl_->incoming_reliable_sequence;
     hdr_in.qport                      = impl_->qport;
-    hdr_in.send_reliable              = send_reliable;
+    hdr_in.send_reliable              = wire_reliable_bit;
     hdr_in.send_reliable_fragment     = send_reliable_fragment;
     hdr_in.is_client                  = impl_->sock == SocketKind::Client;
 
     if( auto r = impl_->driver->write_packet_header( msg, hdr_in ); !r.has_value() )
         return std::unexpected( r.error() );
+
+    // Fragment descriptor block — written by the channel directly so the
+    // driver stays header-only.  Format (xash3dpp wire encoding):
+    //   per pending stream:
+    //     word(stream_1based), word(bufferid), dword(total_size),
+    //     word(byte_offset), word(frag_size), frag_size bytes payload
+    //   terminator: word(0)
+    // For file-stream fragments whose first piece carries a filename, the
+    // NUL-terminated filename is prepended to that piece's wire payload;
+    // total_size and frag_size include the filename header bytes.
+    if( send_reliable_fragment )
+    {
+        for( std::size_t i = 0; i < 2u; ++i )
+        {
+            if( impl_->outgoing_fragments[ i ].empty() ) continue;
+            const auto &batch = impl_->outgoing_fragments[ i ].front();
+            if( batch.bufs.empty() ) continue;
+            const auto &fb = batch.bufs.front();
+
+            // total_size is precomputed at create-time so it stays stable
+            // as transmit() pops successive fragments off the front.
+            const std::uint32_t total = batch.total_size;
+
+            const std::size_t header_extra =
+                ( fb.is_file && !fb.filename.empty() )
+                    ? fb.filename.size() + 1u
+                    : 0u;
+            const std::size_t frag_size_bytes = fb.payload.size() + header_extra;
+
+            msg.write_word( static_cast<std::uint16_t>( i + 1u ) );
+            msg.write_word( static_cast<std::uint16_t>( fb.bufferid ) );
+            msg.write_dword( static_cast<std::uint32_t>( total ) );
+            msg.write_word( static_cast<std::uint16_t>( impl_->frag_offset[ i ] ) );
+            msg.write_word( static_cast<std::uint16_t>( frag_size_bytes ) );
+
+            if( header_extra > 0u )
+            {
+                if( !msg.write_string( fb.filename ) )
+                    return std::unexpected( NetError::Overflow );
+            }
+            if( !fb.payload.empty() )
+            {
+                if( !msg.write_bytes( fb.payload ) )
+                    return std::unexpected( NetError::Overflow );
+            }
+        }
+        msg.write_word( 0u ); // terminator
+        if( msg.overflowed() )
+            return std::unexpected( NetError::Overflow );
+    }
 
     // Reliable bits — emitted at the legacy `MSG_WriteBits(reliable_buf,
     // reliable_length)` slot.  Cleared on success so the next transmit()
@@ -418,6 +555,37 @@ Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable,
     {
         impl_->reliable_buf.clear();
         impl_->reliable_length_bits = 0u;
+        impl_->last_reliable_sequence = impl_->outgoing_sequence;
+    }
+    if( send_reliable_fragment )
+    {
+        // Pop the front fragment of each stream we shipped a piece of; on
+        // batch exhaustion, reset the per-stream byte_offset so the next
+        // batch starts at offset 0.
+        for( std::size_t i = 0; i < 2u; ++i )
+        {
+            if( impl_->outgoing_fragments[ i ].empty() ) continue;
+            auto &batch = impl_->outgoing_fragments[ i ].front();
+            if( batch.bufs.empty() )
+            {
+                impl_->outgoing_fragments[ i ].pop_front();
+                impl_->frag_offset[ i ] = 0u;
+                continue;
+            }
+            const auto &fb = batch.bufs.front();
+            const std::size_t shipped_bytes =
+                fb.payload.size()
+                + ( ( fb.is_file && !fb.filename.empty() )
+                        ? fb.filename.size() + 1u
+                        : 0u );
+            impl_->frag_offset[ i ] += static_cast<std::uint32_t>( shipped_bytes );
+            batch.bufs.erase( batch.bufs.begin() );
+            if( batch.bufs.empty() )
+            {
+                impl_->outgoing_fragments[ i ].pop_front();
+                impl_->frag_offset[ i ] = 0u;
+            }
+        }
         impl_->last_reliable_sequence = impl_->outgoing_sequence;
     }
     ++impl_->outgoing_sequence;
@@ -484,9 +652,40 @@ bool Netchan::process( std::span<const std::byte> datagram,
     if( meta->is_reliable )
         impl_->incoming_reliable_sequence ^= 1u;
 
-    // TODO(Chunk 8): if a reliable fragment is being shipped (bit-30 on
-    // w1), parse the per-stream fragid + start + length blocks before
-    // exposing the payload to the caller.
+    // Reliable-fragment descriptor block (bit-30 of w1).  Parse the
+    // per-stream descriptors and ingest each fragment payload into the
+    // matching IncomingStream slot.  See transmit() for the wire format.
+    if( meta->is_fragment )
+    {
+        for( ;; )
+        {
+            if( msg.num_bytes_left() < 2u ) return false;
+            const std::uint16_t stream_1based = msg.read_word();
+            if( msg.overflowed() ) return false;
+            if( stream_1based == 0u ) break; // terminator
+
+            const std::size_t si = static_cast<std::size_t>( stream_1based - 1u );
+            if( si >= 2u ) return false; // malformed: only streams 0 and 1 exist
+
+            // Descriptor body: word + dword + word + word = 10 bytes.
+            if( msg.num_bytes_left() < 10u ) return false;
+            (void) msg.read_word();                          // bufferid (unused on receive)
+            const std::uint32_t total_size  = msg.read_dword();
+            const std::uint16_t byte_offset = msg.read_word();
+            const std::uint16_t frag_size   = msg.read_word();
+            if( msg.overflowed() ) return false;
+            if( static_cast<std::size_t>( frag_size ) > msg.num_bytes_left() )
+                return false;
+
+            std::vector<std::byte> frag_payload( frag_size );
+            if( !msg.read_bytes( frag_payload ) )
+                return false;
+
+            (void) impl_->incoming_streams[ si ].ingest(
+                total_size, byte_offset,
+                std::span<const std::byte>{ frag_payload.data(), frag_payload.size() } );
+        }
+    }
 
     // msg now holds the post-header payload; its read cursor is positioned
     // right after the header so the caller can MSG_Read* on it directly.
@@ -499,21 +698,85 @@ bool Netchan::process( std::span<const std::byte> datagram,
 
 bool Netchan::incoming_ready() const noexcept
 {
-    // TODO(Chunk 8): scan per-stream incomingready flags.
+    if( !impl_ || !impl_->active ) return false;
+    for( const auto &slot : impl_->incoming_streams )
+        if( slot.ready ) return true;
     return false;
 }
 
-Result<std::size_t> Netchan::copy_normal_fragments( std::span<std::byte> /*out*/ ) noexcept
+Result<std::size_t> Netchan::copy_normal_fragments( std::span<std::byte> out ) noexcept
 {
-    // TODO(Chunk 8): copy assembled normal-stream fragments into out.
-    return std::unexpected( NetError::NotInitialised );
+    if( !impl_ || !impl_->active )
+        return std::unexpected( NetError::NotInitialised );
+    auto &slot = impl_->incoming_streams[ static_cast<std::size_t>( FragStream::Normal ) ];
+    if( !slot.ready )
+        return std::size_t{ 0 };
+    if( out.size() < slot.data.size() )
+        return std::unexpected( NetError::BufferTooSmall );
+    const std::size_t n = slot.data.size();
+    if( n > 0u )
+        std::memcpy( out.data(), slot.data.data(), n );
+    slot.reset();
+    return n;
 }
 
-Result<std::size_t> Netchan::copy_file_fragments( std::span<std::byte> /*out*/,
-                                                  std::span<char>      /*filename_out*/ ) noexcept
+Result<std::size_t> Netchan::copy_file_fragments( std::span<std::byte> out,
+                                                  std::span<char>      filename_out ) noexcept
 {
-    // TODO(Chunk 8): copy assembled file-stream fragments + filename out.
-    return std::unexpected( NetError::NotInitialised );
+    if( !impl_ || !impl_->active )
+        return std::unexpected( NetError::NotInitialised );
+    auto &slot = impl_->incoming_streams[ static_cast<std::size_t>( FragStream::File ) ];
+    if( !slot.ready )
+        return std::size_t{ 0 };
+
+    // Assembled buffer layout: [NUL-terminated filename][file data bytes].
+    const std::byte *const begin = slot.data.data();
+    const std::byte *const end   = begin + slot.data.size();
+    const std::byte *      nul   = begin;
+    while( nul < end && *nul != std::byte{ 0 } )
+        ++nul;
+    if( nul == end )
+    {
+        // Malformed: no filename terminator.  Drop the slot to avoid
+        // wedging future copies on the same bad state.
+        slot.reset();
+        return std::unexpected( NetError::InvalidArgument );
+    }
+
+    const std::size_t name_len = static_cast<std::size_t>( nul - begin );
+    const std::byte  *data_ptr = nul + 1;
+    const std::size_t data_len = static_cast<std::size_t>( end - data_ptr );
+
+    // SECURITY (OWASP path-traversal): reject filenames containing
+    // parent-directory traversal sequences or backslashes before we hand
+    // them to the caller's filesystem layer.
+    const std::string_view raw_name(
+        reinterpret_cast<const char *>( begin ), name_len );
+    if( raw_name.find( ".." )  != std::string_view::npos
+        || raw_name.find( '\\' ) != std::string_view::npos
+        || ( !raw_name.empty() && raw_name.front() == '/' ) )
+    {
+        core::log( core::LogLevel::Warning, "netchan",
+                   "copy_file_fragments: rejected filename with path-traversal "
+                   "sequence" );
+        slot.reset();
+        return std::unexpected( NetError::InvalidArgument );
+    }
+
+    if( out.size() < data_len )
+        return std::unexpected( NetError::BufferTooSmall );
+    if( !filename_out.empty() )
+    {
+        const std::size_t copy_n =
+            std::min( name_len, filename_out.size() - 1u );
+        if( copy_n > 0u )
+            std::memcpy( filename_out.data(), raw_name.data(), copy_n );
+        filename_out[ copy_n ] = '\0';
+    }
+    if( data_len > 0u )
+        std::memcpy( out.data(), data_ptr, data_len );
+    slot.reset();
+    return data_len;
 }
 
 // ---------------------------------------------------------------------------

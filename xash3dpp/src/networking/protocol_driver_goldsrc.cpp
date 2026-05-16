@@ -53,8 +53,12 @@ public:
         if( sends_qport() && in.is_client )
             out.write_word( in.qport );
 
-        // TODO: reliable-fragment block descriptors (per-stream
-        // fragid/start/length) when transmit() ships fragment integration.
+        // Reliable-fragment block descriptors (per-stream fragid / start /
+        // length / terminator) are written by Netchan::transmit() directly
+        // after this call when in.send_reliable_fragment is true.  Keeping
+        // the descriptor pass in the channel keeps the driver header-only
+        // and lets the channel walk its outgoing_fragments deques without
+        // exposing them through the IProtocolDriver seam.
 
         if( out.overflowed() )
             return std::unexpected( NetError::Overflow );
@@ -77,6 +81,7 @@ public:
         meta.sequence_ack   = w2 & ~k_reliable_bit;
         meta.is_reliable    = ( w1 & k_reliable_bit ) != 0u;
         meta.reliable_ack   = ( w2 & k_reliable_bit ) != 0u;
+        meta.is_fragment    = ( w1 & k_reliable_fragment_bit ) != 0u;
         meta.is_split       = false; // split discriminator lives one layer up
         meta.is_oob         = false;
 

@@ -47,6 +47,7 @@ struct FrameMeta
     std::uint32_t sequence_ack   { 0 };
     bool          is_reliable    { false }; // w1 high bit — sender carries reliable bytes
     bool          reliable_ack   { false }; // w2 high bit — sender acks our reliable_sequence
+    bool          is_fragment    { false }; // w1 bit-30 — reliable-fragment block descriptors follow
     bool          is_split       { false };
     bool          is_oob         { false };
 };

@@ -184,15 +184,19 @@ static void test_stub_methods_return_not_initialised()
     cfg.pool                 = pool.handle;
     REQUIRE( c.setup( cfg ) );
 
-    // Receive-side paths remain stubs until Chunk 8 fills them in.
+    // Receive-side paths: no fragments have arrived, so incoming_ready()
+    // must be false and the copy_* methods must return 0 bytes (success,
+    // nothing to deliver) rather than an error.
     CHECK( !c.incoming_ready() );
 
     std::array<std::byte, 64> out_buf{};
     std::array<char, 16>      filename_out{};
     auto r_copy_normal = c.copy_normal_fragments( out_buf );
-    CHECK( !r_copy_normal.has_value() );
+    CHECK( r_copy_normal.has_value() );
+    if( r_copy_normal.has_value() ) CHECK_EQ( static_cast<int>( *r_copy_normal ), 0 );
     auto r_copy_file = c.copy_file_fragments( out_buf, filename_out );
-    CHECK( !r_copy_file.has_value() );
+    CHECK( r_copy_file.has_value() );
+    if( r_copy_file.has_value() ) CHECK_EQ( static_cast<int>( *r_copy_file ), 0 );
 
     // can_packet() now takes (now_seconds, choke); fresh channel with
     // cleartime=0 must allow a send at any positive time.
@@ -915,6 +919,202 @@ static void test_process_flips_incoming_reliable_sequence_on_reliable_bit()
     CHECK_EQ( static_cast<int>( h.chan.incoming_reliable_sequence() ), 0 );
 }
 
+// ---------- fragment round-trip ------------------------------------------
+
+namespace {
+
+// Build a sender + receiver pair sharing the same GoldSrc driver so the
+// wire bytes a sender's transmit() emits flow back into a receiver's
+// process() unchanged.  Both sides use the same chunk size so the sender's
+// fragment slicing decisions are independent of the test's choice.
+struct FragHarness
+{
+    GoldSrcHarness sender;
+    GoldSrcHarness receiver;
+
+    FragHarness() noexcept
+    {
+        sender.bs.fragment_size     = 16;
+        sender.bs.unreliable_size   = 1024;
+        receiver.bs.fragment_size   = 16;
+        receiver.bs.unreliable_size = 1024;
+    }
+
+    [[nodiscard]] bool setup_pair() noexcept
+    {
+        return sender.setup_client() && receiver.setup_client();
+    }
+
+    // Drain one packet from sender -> receiver.  Returns the packet size.
+    [[nodiscard]] std::size_t pump_one( std::array<std::byte, 256> &buf ) noexcept
+    {
+        auto r = sender.chan.transmit( {}, buf );
+        if( !r.has_value() ) return 0u;
+        MessageBuf m;
+        const bool ok = receiver.chan.process(
+            std::span<const std::byte>{ buf.data(), *r }, m );
+        return ok ? *r : 0u;
+    }
+};
+
+} // namespace
+
+static void test_fragment_round_trip_normal_stream()
+{
+    FragHarness h;
+    REQUIRE( h.setup_pair() );
+
+    // Build a 40-byte payload that slices into 16/16/8 fragment pieces.
+    std::vector<std::byte> payload( 40u );
+    for( std::size_t i = 0; i < payload.size(); ++i )
+        payload[ i ] = static_cast<std::byte>( 0xA0u + ( i & 0x1Fu ) );
+
+    auto cf = h.sender.chan.create_fragments( FragStream::Normal, payload );
+    REQUIRE( cf.has_value() );
+    CHECK_EQ( static_cast<int>( h.sender.chan.pending_fragments( FragStream::Normal ) ), 3 );
+
+    std::array<std::byte, 256> buf{};
+    // Pump three packets (one per fragment).
+    REQUIRE( h.pump_one( buf ) > 0u );
+    CHECK( !h.receiver.chan.incoming_ready() );
+    REQUIRE( h.pump_one( buf ) > 0u );
+    CHECK( !h.receiver.chan.incoming_ready() );
+    REQUIRE( h.pump_one( buf ) > 0u );
+    REQUIRE( h.receiver.chan.incoming_ready() );
+
+    // Sender side: all fragments drained.
+    CHECK_EQ( static_cast<int>( h.sender.chan.pending_fragments( FragStream::Normal ) ), 0 );
+
+    std::array<std::byte, 128> out{};
+    auto cn = h.receiver.chan.copy_normal_fragments( out );
+    REQUIRE( cn.has_value() );
+    CHECK_EQ( static_cast<int>( *cn ), static_cast<int>( payload.size() ) );
+    for( std::size_t i = 0; i < payload.size(); ++i )
+        CHECK( out[ i ] == payload[ i ] );
+
+    // copy_* must reset the slot so a second call returns 0 bytes ready.
+    CHECK( !h.receiver.chan.incoming_ready() );
+    auto cn2 = h.receiver.chan.copy_normal_fragments( out );
+    REQUIRE( cn2.has_value() );
+    CHECK_EQ( static_cast<int>( *cn2 ), 0 );
+}
+
+static void test_fragment_round_trip_file_stream()
+{
+    FragHarness h;
+    REQUIRE( h.setup_pair() );
+
+    // Filename header consumes 9 bytes ("model.mdl" + NUL) of the first
+    // fragment's chunk capacity, leaving 7 bytes for data; subsequent
+    // fragments carry up to 16 bytes each.
+    std::vector<std::byte> payload( 30u );
+    for( std::size_t i = 0; i < payload.size(); ++i )
+        payload[ i ] = static_cast<std::byte>( 0x10u + i );
+
+    auto cf = h.sender.chan.create_file_fragments_from_buffer( "model.mdl", payload );
+    REQUIRE( cf.has_value() );
+    // 30 bytes payload, 7 in first fragment, 16+7 in second/third
+    // -> 3 fragments total.
+    CHECK_EQ( static_cast<int>( h.sender.chan.pending_fragments( FragStream::File ) ), 3 );
+
+    std::array<std::byte, 256> buf{};
+    REQUIRE( h.pump_one( buf ) > 0u );
+    REQUIRE( h.pump_one( buf ) > 0u );
+    REQUIRE( h.pump_one( buf ) > 0u );
+    REQUIRE( h.receiver.chan.incoming_ready() );
+
+    std::array<std::byte, 128> out{};
+    std::array<char, 32>       name{};
+    auto cf2 = h.receiver.chan.copy_file_fragments( out, name );
+    REQUIRE( cf2.has_value() );
+    CHECK_EQ( static_cast<int>( *cf2 ), static_cast<int>( payload.size() ) );
+    CHECK( std::string_view{ name.data() } == std::string_view{ "model.mdl" } );
+    for( std::size_t i = 0; i < payload.size(); ++i )
+        CHECK( out[ i ] == payload[ i ] );
+}
+
+static void test_fragment_descriptor_sets_w1_bit_30()
+{
+    FragHarness h;
+    REQUIRE( h.setup_pair() );
+
+    const std::array<std::byte, 8> payload{
+        std::byte{ 1 }, std::byte{ 2 }, std::byte{ 3 }, std::byte{ 4 },
+        std::byte{ 5 }, std::byte{ 6 }, std::byte{ 7 }, std::byte{ 8 } };
+    auto cf = h.sender.chan.create_fragments( FragStream::Normal, payload );
+    REQUIRE( cf.has_value() );
+
+    std::array<std::byte, 256> buf{};
+    auto r = h.sender.chan.transmit( {}, buf );
+    REQUIRE( r.has_value() );
+
+    const std::uint32_t w1 = le_u32( std::span<const std::byte>{ buf.data(), 4 } );
+    CHECK( ( w1 & 0x80000000u ) != 0u ); // reliable
+    CHECK( ( w1 & 0x40000000u ) != 0u ); // reliable-fragment
+}
+
+static void test_fragment_round_trip_resets_offset_between_batches()
+{
+    FragHarness h;
+    REQUIRE( h.setup_pair() );
+
+    // Queue two back-to-back batches on the Normal stream.  After the
+    // first drains, byte_offset must reset to 0 for the second.
+    const std::array<std::byte, 8> a{
+        std::byte{ 0xA0 }, std::byte{ 0xA1 }, std::byte{ 0xA2 }, std::byte{ 0xA3 },
+        std::byte{ 0xA4 }, std::byte{ 0xA5 }, std::byte{ 0xA6 }, std::byte{ 0xA7 } };
+    const std::array<std::byte, 8> b{
+        std::byte{ 0xB0 }, std::byte{ 0xB1 }, std::byte{ 0xB2 }, std::byte{ 0xB3 },
+        std::byte{ 0xB4 }, std::byte{ 0xB5 }, std::byte{ 0xB6 }, std::byte{ 0xB7 } };
+    REQUIRE( h.sender.chan.create_fragments( FragStream::Normal, a ).has_value() );
+    REQUIRE( h.sender.chan.create_fragments( FragStream::Normal, b ).has_value() );
+
+    std::array<std::byte, 256> buf{};
+    // Drain batch a (single fragment, fits in chunk size 16).
+    REQUIRE( h.pump_one( buf ) > 0u );
+    REQUIRE( h.receiver.chan.incoming_ready() );
+    std::array<std::byte, 64> out{};
+    auto c1 = h.receiver.chan.copy_normal_fragments( out );
+    REQUIRE( c1.has_value() );
+    CHECK_EQ( static_cast<int>( *c1 ), 8 );
+    for( std::size_t i = 0; i < a.size(); ++i ) CHECK( out[ i ] == a[ i ] );
+
+    // Drain batch b — the second fragment's byte_offset on the wire is 0.
+    REQUIRE( h.pump_one( buf ) > 0u );
+    REQUIRE( h.receiver.chan.incoming_ready() );
+    out.fill( std::byte{} );
+    auto c2 = h.receiver.chan.copy_normal_fragments( out );
+    REQUIRE( c2.has_value() );
+    CHECK_EQ( static_cast<int>( *c2 ), 8 );
+    for( std::size_t i = 0; i < b.size(); ++i ) CHECK( out[ i ] == b[ i ] );
+}
+
+static void test_copy_file_fragments_rejects_path_traversal()
+{
+    // Craft a malicious assembled buffer directly through the round-trip
+    // path: a filename containing "../" must be rejected before any data
+    // is copied to the caller.  We do this by sending a hand-built batch
+    // whose filename is "../etc/passwd".
+    FragHarness h;
+    REQUIRE( h.setup_pair() );
+
+    const std::array<std::byte, 4> payload{
+        std::byte{ 1 }, std::byte{ 2 }, std::byte{ 3 }, std::byte{ 4 } };
+    auto cf = h.sender.chan.create_file_fragments_from_buffer( "../etc/passwd", payload );
+    REQUIRE( cf.has_value() );
+
+    std::array<std::byte, 256> buf{};
+    while( h.sender.chan.pending_fragments( FragStream::File ) > 0u )
+        REQUIRE( h.pump_one( buf ) > 0u );
+
+    REQUIRE( h.receiver.chan.incoming_ready() );
+    std::array<std::byte, 64> out{};
+    std::array<char, 32>       name{};
+    auto cf2 = h.receiver.chan.copy_file_fragments( out, name );
+    CHECK( !cf2.has_value() );
+    if( !cf2.has_value() ) CHECK( cf2.error() == NetError::InvalidArgument );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -978,6 +1178,11 @@ int main()
     test_process_drops_stale_sequence();
     test_process_tracks_reliable_ack_bit();
     test_process_flips_incoming_reliable_sequence_on_reliable_bit();
+    test_fragment_round_trip_normal_stream();
+    test_fragment_round_trip_file_stream();
+    test_fragment_descriptor_sets_w1_bit_30();
+    test_fragment_round_trip_resets_offset_between_batches();
+    test_copy_file_fragments_rejects_path_traversal();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );
