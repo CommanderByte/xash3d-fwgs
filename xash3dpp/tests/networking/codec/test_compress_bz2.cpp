@@ -8,9 +8,9 @@
 // `available() == true` branch below should switch to a round-trip
 // expectation.
 
-#include <xash3dpp/private/networking/compress.hpp>
+#include <xash3dpp/private/networking/codec/compress.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 

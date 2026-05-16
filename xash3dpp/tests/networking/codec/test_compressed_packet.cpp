@@ -1,8 +1,8 @@
 // xash3dpp — Compressed-packet wrapper tests
 
-#include <xash3dpp/private/networking/compressed_packet.hpp>
+#include <xash3dpp/private/networking/codec/compressed_packet.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <cstring>
 #include <vector>

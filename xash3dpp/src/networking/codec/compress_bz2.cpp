@@ -14,7 +14,7 @@
 // so callers fall back to uncompressed transmission.  This keeps the
 // link-time seam in place and forbids accidental linkage of *both* backends.
 
-#include <xash3dpp/private/networking/compress.hpp>
+#include <xash3dpp/private/networking/codec/compress.hpp>
 
 #include <xash3dpp/core/log.hpp>
 

@@ -1,8 +1,8 @@
 // xash3dpp — PacketPool tests
 
-#include <xash3dpp/private/networking/packet_pool.hpp>
+#include <xash3dpp/private/networking/transport/packet_pool.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <vector>
 

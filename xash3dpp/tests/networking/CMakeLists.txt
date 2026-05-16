@@ -12,49 +12,53 @@ add_executable(test_netadr test_netadr.cpp)
 target_link_libraries(test_netadr PRIVATE xash3dpp_networking)
 add_test(NAME test_netadr COMMAND test_netadr)
 
-add_executable(test_split_packet test_split_packet.cpp)
-target_link_libraries(test_split_packet PRIVATE xash3dpp_networking)
-add_test(NAME test_split_packet COMMAND test_split_packet)
-
-add_executable(test_lag_queue test_lag_queue.cpp)
-target_link_libraries(test_lag_queue PRIVATE xash3dpp_networking)
-add_test(NAME test_lag_queue COMMAND test_lag_queue)
-
-add_executable(test_compress_lzss test_compress_lzss.cpp)
+# codec
+add_executable(test_compress_lzss codec/test_compress_lzss.cpp)
 target_link_libraries(test_compress_lzss PRIVATE xash3dpp_networking)
 add_test(NAME test_compress_lzss COMMAND test_compress_lzss)
 
-add_executable(test_compress_bz2 test_compress_bz2.cpp)
+add_executable(test_compress_bz2 codec/test_compress_bz2.cpp)
 target_link_libraries(test_compress_bz2 PRIVATE xash3dpp_networking)
 add_test(NAME test_compress_bz2 COMMAND test_compress_bz2)
 
-add_executable(test_loopback_transport test_loopback_transport.cpp)
-target_link_libraries(test_loopback_transport PRIVATE xash3dpp_networking)
-add_test(NAME test_loopback_transport COMMAND test_loopback_transport)
-
-add_executable(test_packet_pool test_packet_pool.cpp)
-target_link_libraries(test_packet_pool PRIVATE xash3dpp_networking)
-add_test(NAME test_packet_pool COMMAND test_packet_pool)
-
-add_executable(test_oob_packet test_oob_packet.cpp)
-target_link_libraries(test_oob_packet PRIVATE xash3dpp_networking)
-add_test(NAME test_oob_packet COMMAND test_oob_packet)
-
-add_executable(test_split_reassembler test_split_reassembler.cpp)
-target_link_libraries(test_split_reassembler PRIVATE xash3dpp_networking)
-add_test(NAME test_split_reassembler COMMAND test_split_reassembler)
-
-add_executable(test_compressed_packet test_compressed_packet.cpp)
+add_executable(test_compressed_packet codec/test_compressed_packet.cpp)
 target_link_libraries(test_compressed_packet PRIVATE xash3dpp_networking)
 add_test(NAME test_compressed_packet COMMAND test_compressed_packet)
 
+# wire
+add_executable(test_split_packet wire/test_split_packet.cpp)
+target_link_libraries(test_split_packet PRIVATE xash3dpp_networking)
+add_test(NAME test_split_packet COMMAND test_split_packet)
+
+add_executable(test_oob_packet wire/test_oob_packet.cpp)
+target_link_libraries(test_oob_packet PRIVATE xash3dpp_networking)
+add_test(NAME test_oob_packet COMMAND test_oob_packet)
+
+add_executable(test_protocol_driver_registry wire/test_protocol_driver_registry.cpp)
+target_link_libraries(test_protocol_driver_registry PRIVATE xash3dpp_networking)
+add_test(NAME test_protocol_driver_registry COMMAND test_protocol_driver_registry)
+
+# transport
+add_executable(test_lag_queue transport/test_lag_queue.cpp)
+target_link_libraries(test_lag_queue PRIVATE xash3dpp_networking)
+add_test(NAME test_lag_queue COMMAND test_lag_queue)
+
+add_executable(test_loopback_transport transport/test_loopback_transport.cpp)
+target_link_libraries(test_loopback_transport PRIVATE xash3dpp_networking)
+add_test(NAME test_loopback_transport COMMAND test_loopback_transport)
+
+add_executable(test_packet_pool transport/test_packet_pool.cpp)
+target_link_libraries(test_packet_pool PRIVATE xash3dpp_networking)
+add_test(NAME test_packet_pool COMMAND test_packet_pool)
+
+add_executable(test_split_reassembler transport/test_split_reassembler.cpp)
+target_link_libraries(test_split_reassembler PRIVATE xash3dpp_networking)
+add_test(NAME test_split_reassembler COMMAND test_split_reassembler)
+
+# channel
 add_executable(test_netchan test_netchan.cpp)
 target_link_libraries(test_netchan PRIVATE xash3dpp_networking)
 add_test(NAME test_netchan COMMAND test_netchan)
-
-add_executable(test_protocol_driver_registry test_protocol_driver_registry.cpp)
-target_link_libraries(test_protocol_driver_registry PRIVATE xash3dpp_networking)
-add_test(NAME test_protocol_driver_registry COMMAND test_protocol_driver_registry)
 
 add_executable(test_network_context_sockets test_network_context_sockets.cpp)
 target_link_libraries(test_network_context_sockets PRIVATE xash3dpp_networking xash3dpp_platform)

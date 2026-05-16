@@ -1,6 +1,6 @@
 // xash3dpp — split-packet reassembler implementation
 
-#include <xash3dpp/private/networking/split_reassembler.hpp>
+#include <xash3dpp/private/networking/transport/split_reassembler.hpp>
 
 namespace xash::networking {
 

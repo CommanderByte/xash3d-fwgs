@@ -9,8 +9,8 @@
 // (default_protocol_driver_registry()) that NetworkContext falls back to
 // when NetworkInitParams::protocol_registry is nullptr.
 
-#include <xash3dpp/private/networking/protocol_driver.hpp>
-#include <xash3dpp/private/networking/protocol_driver_default.hpp>
+#include <xash3dpp/private/networking/wire/protocol_driver.hpp>
+#include <xash3dpp/private/networking/wire/protocol_driver_default.hpp>
 
 #include <xash3dpp/networking/message_buf.hpp>
 

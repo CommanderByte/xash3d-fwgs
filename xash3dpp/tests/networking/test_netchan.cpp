@@ -4,7 +4,7 @@
 // fragment behaviour is // TODO(Chunk N) and will get its own tests.
 
 #include <xash3dpp/networking/netchan.hpp>
-#include <xash3dpp/private/networking/protocol_driver_default.hpp>
+#include <xash3dpp/private/networking/wire/protocol_driver_default.hpp>
 
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/limits.hpp>

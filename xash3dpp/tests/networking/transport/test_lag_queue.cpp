@@ -2,7 +2,7 @@
 
 #include <xash3dpp/networking/lag_queue.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 #include <cstring>

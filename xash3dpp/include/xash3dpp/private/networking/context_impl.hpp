@@ -7,11 +7,11 @@
 #include <xash3dpp/networking/networking.hpp>
 #include <xash3dpp/platform/os_socket.hpp>
 #include <xash3dpp/platform/platform_sockets.hpp>
-#include <xash3dpp/private/networking/loopback_transport.hpp>
+#include <xash3dpp/private/networking/transport/loopback_transport.hpp>
 #include <xash3dpp/private/networking/master_list.hpp>
-#include <xash3dpp/private/networking/packet_pool.hpp>
-#include <xash3dpp/private/networking/protocol_driver.hpp>
-#include <xash3dpp/private/networking/split_reassembler.hpp>
+#include <xash3dpp/private/networking/transport/packet_pool.hpp>
+#include <xash3dpp/private/networking/wire/protocol_driver.hpp>
+#include <xash3dpp/private/networking/transport/split_reassembler.hpp>
 
 #include <array>
 #include <cstdint>

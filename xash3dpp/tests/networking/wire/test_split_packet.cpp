@@ -1,8 +1,8 @@
 // xash3dpp — split-packet encode/decode round-trip test
 
-#include <xash3dpp/private/networking/split_packet.hpp>
+#include <xash3dpp/private/networking/wire/split_packet.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 #include <cstring>

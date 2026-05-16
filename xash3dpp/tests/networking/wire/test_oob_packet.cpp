@@ -1,8 +1,8 @@
 // xash3dpp — OOB packet tests
 
-#include <xash3dpp/private/networking/oob_packet.hpp>
+#include <xash3dpp/private/networking/wire/oob_packet.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 #include <cstring>

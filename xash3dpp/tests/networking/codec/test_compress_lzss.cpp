@@ -3,9 +3,9 @@
 // reject malformed inputs.  Cross-checking against the legacy binary output
 // will land in the integration test suite (item #49).
 
-#include <xash3dpp/private/networking/compress.hpp>
+#include <xash3dpp/private/networking/codec/compress.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 #include <cstring>

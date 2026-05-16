@@ -11,7 +11,7 @@
 // regardless of XASH_NET_COMPRESSION — this option only gates the bzip2
 // codec (see docs/architecture/networking/index.md, "CMake targets").
 
-#include <xash3dpp/private/networking/compress.hpp>
+#include <xash3dpp/private/networking/codec/compress.hpp>
 
 #include <xash3dpp/core/log.hpp>
 

@@ -1,7 +1,7 @@
 // xash3dpp — LoopbackTransport implementation
 // Boundary: docs/boundaries/networking-boundary.md (loopback pathway).
 
-#include <xash3dpp/private/networking/loopback_transport.hpp>
+#include <xash3dpp/private/networking/transport/loopback_transport.hpp>
 
 #include <cstring>
 

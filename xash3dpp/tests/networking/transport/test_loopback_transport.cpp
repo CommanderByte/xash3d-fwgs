@@ -1,8 +1,8 @@
 // xash3dpp — LoopbackTransport tests
 
-#include <xash3dpp/private/networking/loopback_transport.hpp>
+#include <xash3dpp/private/networking/transport/loopback_transport.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 #include <cstring>

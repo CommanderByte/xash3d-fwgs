@@ -14,7 +14,7 @@
 //
 // Threading: caller-synchronised.
 
-#include <xash3dpp/private/networking/split_packet.hpp>
+#include <xash3dpp/private/networking/wire/split_packet.hpp>
 
 #include <array>
 #include <cstddef>

@@ -1,7 +1,7 @@
 // xash3dpp — Xash SPLITPACKET encode/decode helpers
 // Legacy reference: engine/common/net_ws.c NET_SendLong / NET_GetLong (Xash branch)
 
-#include <xash3dpp/private/networking/split_packet.hpp>
+#include <xash3dpp/private/networking/wire/split_packet.hpp>
 
 #include <algorithm>
 #include <cstring>

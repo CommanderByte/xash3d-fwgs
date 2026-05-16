@@ -7,7 +7,7 @@
 // This port preserves the exact byte sequence the legacy implementation
 // produces for any given input.
 
-#include <xash3dpp/private/networking/compress.hpp>
+#include <xash3dpp/private/networking/codec/compress.hpp>
 
 #include <algorithm>
 #include <cstring>

@@ -29,28 +29,31 @@ option(XASH_NET_COMPRESSION "Enable bzip2/LZSS compression in xash3dpp_networkin
 if(XASH_NET_COMPRESSION)
     # LZSS is always compiled in (wire-frozen, see compress_lzss.cpp);
     # XASH_NET_COMPRESSION only selects which bzip2 TU is linked.
-    set(XASH_NET_COMPRESSION_SRC compress_bz2.cpp)
+    set(XASH_NET_COMPRESSION_SRC codec/compress_bz2.cpp)
 else()
-    set(XASH_NET_COMPRESSION_SRC compress_null.cpp)
+    set(XASH_NET_COMPRESSION_SRC codec/compress_null.cpp)
 endif()
 
 add_library(xash3dpp_networking STATIC
     context.cpp
     address.cpp
     message_buf.cpp
-    compat_xash.cpp
-    compat_goldsrc.cpp
-    lag_queue.cpp
-    loopback_transport.cpp
-    packet_pool.cpp
-    oob_packet.cpp
-    split_reassembler.cpp
-    compressed_packet.cpp
-    compress_lzss.cpp
-    ${XASH_NET_COMPRESSION_SRC}
-    protocol_driver_goldsrc.cpp
-    master_list.cpp
     netchan.cpp
+    master_list.cpp
+    # codec — compression backends (link-time selected)
+    codec/compressed_packet.cpp
+    codec/compress_lzss.cpp
+    ${XASH_NET_COMPRESSION_SRC}
+    # wire — protocol-specific framing and drivers
+    wire/compat_goldsrc.cpp
+    wire/compat_xash.cpp
+    wire/oob_packet.cpp
+    wire/protocol_driver_goldsrc.cpp
+    # transport — Layer 1 primitives
+    transport/lag_queue.cpp
+    transport/loopback_transport.cpp
+    transport/packet_pool.cpp
+    transport/split_reassembler.cpp
 )
 
 target_include_directories(xash3dpp_networking

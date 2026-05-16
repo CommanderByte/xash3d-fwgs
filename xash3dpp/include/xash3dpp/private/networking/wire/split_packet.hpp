@@ -14,7 +14,7 @@
 // per packet, with 5 used in practice (NET_MAX_GOLDSRC_FRAGMENTS).
 
 #include <xash3dpp/networking/errors.hpp>
-#include <xash3dpp/private/networking/wire_format.hpp>
+#include <xash3dpp/private/networking/wire/wire_format.hpp>
 
 #include <cstddef>
 #include <cstdint>

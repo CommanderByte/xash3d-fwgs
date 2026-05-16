@@ -2,10 +2,10 @@
 // Exercises both Xash and GoldSrc fragment streams since the reassembler is
 // format-agnostic past the decode step.
 
-#include <xash3dpp/private/networking/split_packet.hpp>
-#include <xash3dpp/private/networking/split_reassembler.hpp>
+#include <xash3dpp/private/networking/wire/split_packet.hpp>
+#include <xash3dpp/private/networking/transport/split_reassembler.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <cstring>
 #include <vector>

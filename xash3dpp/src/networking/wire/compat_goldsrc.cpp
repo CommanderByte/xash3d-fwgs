@@ -5,7 +5,7 @@
 // so both values are capped at 15.  The legacy engine restricted this further
 // to NET_MAX_GOLDSRC_FRAGMENTS = 5.
 
-#include <xash3dpp/private/networking/split_packet.hpp>
+#include <xash3dpp/private/networking/wire/split_packet.hpp>
 
 #include <algorithm>
 #include <cstring>

@@ -1,7 +1,7 @@
 // xash3dpp — Out-of-band packet encode/decode implementation
 // Boundary: docs/boundaries/networking-boundary.md (OOB pathway).
 
-#include <xash3dpp/private/networking/oob_packet.hpp>
+#include <xash3dpp/private/networking/wire/oob_packet.hpp>
 
 #include <cstring>
 

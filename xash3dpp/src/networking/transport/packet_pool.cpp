@@ -1,7 +1,7 @@
 // xash3dpp — PacketPool implementation
 // Boundary: docs/boundaries/networking-boundary.md.
 
-#include <xash3dpp/private/networking/packet_pool.hpp>
+#include <xash3dpp/private/networking/transport/packet_pool.hpp>
 
 namespace xash::networking {
 

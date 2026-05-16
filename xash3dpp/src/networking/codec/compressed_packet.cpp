@@ -1,8 +1,8 @@
 // xash3dpp — Compressed-packet wrapper implementation
 // Boundary: docs/boundaries/networking-boundary.md.
 
-#include <xash3dpp/private/networking/compress.hpp>
-#include <xash3dpp/private/networking/compressed_packet.hpp>
+#include <xash3dpp/private/networking/codec/compress.hpp>
+#include <xash3dpp/private/networking/codec/compressed_packet.hpp>
 
 #include <cstring>
 

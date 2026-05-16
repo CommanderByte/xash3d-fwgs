@@ -3,10 +3,10 @@
 // (protocol 49) are correctly registered, and that nullptr is returned for
 // anything else.
 
-#include <xash3dpp/private/networking/protocol_driver_default.hpp>
+#include <xash3dpp/private/networking/wire/protocol_driver_default.hpp>
 #include <xash3dpp/networking/message_buf.hpp>
 
-#include "../test_helpers.hpp"
+#include "../../test_helpers.hpp"
 
 #include <array>
 #include <cstring>

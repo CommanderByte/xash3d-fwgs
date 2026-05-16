@@ -10,7 +10,7 @@
 // once the outer wrapper magic has been stripped.
 
 #include <xash3dpp/networking/errors.hpp>
-#include <xash3dpp/private/networking/wire_format.hpp>
+#include <xash3dpp/private/networking/wire/wire_format.hpp>
 
 #include <cstddef>
 #include <cstdint>
