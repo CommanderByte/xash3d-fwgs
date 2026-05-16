@@ -78,9 +78,8 @@ grouped under a `// $ARGUMENTS subsystem` comment block, with an
 2. Find any numeric literal that is:
    - A buffer or array size (used in `std::array<T, N>`, `std::vector.reserve(N)`,
      loop bounds, ring-buffer indices)
-   - A wire-protocol constant (magic byte sequences, packet type identifiers,
+   - A capacity or threshold (pool slots, max retries, timeout values,
      fragment-count limits)
-   - A capacity or threshold (pool slots, max retries, timeout values)
 3. Check whether each such literal is already referenced via `limits.hpp`.
 
 **Flag**:
@@ -90,7 +89,13 @@ grouped under a `// $ARGUMENTS subsystem` comment block, with an
 
 **Exempt**:
 - Literals that are mathematical constants (0, 1, 2, powers of 2 used in bit ops)
-- GoldSrc ABI literals that are frozen in a legacy header
+- **Wire protocol discriminators**: magic byte sequences, packet-type-tag constants,
+  and codec algorithm parameters that are wire-frozen and have no meaningful
+  build-time variant (e.g., LZSS magic/window/lookahead values, packet header
+  magic words). These belong in the protocol definition header that uses them
+  (e.g., `wire_format.hpp`, `compress.hpp`). Name them as `static constexpr` in
+  that header — not in `limits.hpp`. The `XASH_LIMIT_<NAME>` override mechanism
+  is for tuneable sizes and counts only.
 - Literals that appear only in test files (not subsystem code)
 
 ---
@@ -150,6 +155,11 @@ grouped under a `// $ARGUMENTS subsystem` comment block, with an
      ALLOC_POLICY: hot-path containers must `.reserve(N)` at init using a `limits.hpp`
      constant. Warm-path and cold-path containers are exempt — see Q-13 for the
      three-tier classification.)
+   - Exception: `std::array<std::vector<T>, N>` members where slots are sparsely
+     populated at receive/use time (not all N slots filled at init) are not Q-13
+     violations. Pre-reserving all N sub-vectors at construction is incorrect when
+     occupancy is sparse — it wastes N × slot_size memory. Per-slot allocation at
+     receive time is inherently cold/warm-path.
    - If a `// @pre-reserved:` annotation is present, is the matching `.reserve()`
      call present in the class `init()` or constructor?
    - Is a long-lived object allocated with a short-lived pool or vice versa? Flag.
