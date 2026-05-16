@@ -78,6 +78,20 @@ Subsystem in `xash3dpp/src/` with no corresponding spec in `xash3dpp/docs/` → 
 - `std::expected<T,E>` used before Chunk 2 / before `ErrorCode` is defined → **WARNING**
 - `.value()` called on `std::expected` or `std::optional` → **BLOCKER**
 
+### 10. Design paradigm compliance (see decisions-architecture.md §Q-11, §Q-12)
+- Engine-wide compat policy type (`IEngineCompatPolicy`, a unified compat struct shared
+  across subsystems, a global `CompatFlags` aggregate, etc.) → **WARNING**
+  (compat is per-subsystem per Q-12; each subsystem owns its own `ICompatPolicy` or
+  feature-specific variant like `IProtocolDriver`)
+- New feature living in a parent subsystem's CMake target that scores ≥ 2 on the Q-11
+  satellite test (independent state machine **or** different external dependency **or**
+  useful without the parent) → **NOTE** (review for separation; does not block if the
+  decision is documented in the subsystem's boundary spec)
+- Direct OS socket call (`::socket()`, `::bind()`, `::sendto()`, `::recvfrom()`,
+  `WSAStartup`, `getaddrinfo`) outside `src/platform/*/os_socket.cpp` → **BLOCKER**
+  (all socket I/O is confined to the `IPlatformSockets` layer per
+  `docs/architecture/platform/sockets.md` and threading-model §7.3)
+
 ### 10. Ownership vocabulary (see OWNERSHIP (Q-9) in decisions-architecture.md)
 - `std::unique_ptr<T>` for non-pimpl owned objects → **WARNING**
 - Raw `T*` returned from public API with no `// @lifetime: <scope>` annotation → **WARNING**

@@ -47,6 +47,14 @@ infrastructure that is already provided:
    directly. Check `xash3dpp/include/xash3dpp/platform/` before reaching for
    any OS primitive.
 
+   If `$ARGUMENTS` requires socket I/O, it must route through `IPlatformSockets`
+   (not yet implemented — requirements in
+   [`xash3dpp/docs/architecture/platform/sockets.md`](../../xash3dpp/docs/architecture/platform/sockets.md)).
+   Do **not** call `::socket()`, `::bind()`, `::sendto()`, `::recvfrom()`, or
+   any Winsock / BSD-socket API directly outside
+   `src/platform/*/os_socket.cpp`. Record `IPlatformSockets` as a blocker in
+   the boundary spec if networking is required.
+
 5. **Core** — all structured logging must use `core::log` / `core::logf`
    (never `printf` or `platform::console::write` directly); use `XASH_ASSERT`
    and `XASH_FATAL` (never `assert()` from `<cassert>`); call
@@ -59,6 +67,14 @@ infrastructure that is already provided:
    `xash3dpp/src/filesystem/CMakeLists.txt` and
    `xash3dpp/src/memory/CMakeLists.txt` to understand the canonical CMake
    target shape. Mirror that shape exactly.
+
+7. **Satellite features** — list any sub-features of `$ARGUMENTS` that are
+   conceptually distinct (e.g. a downloader, a discovery/heartbeat protocol,
+   an async resolver). For each, apply the Q-11 satellite test from
+   [`decisions-architecture.md §Q-11`](../../xash3dpp/docs/design/decisions-architecture.md):
+   score ≥ 2 → **separate CMake target**; score < 2 → same target. Record
+   the verdict in the boundary spec (Step 1) and set up the extra target(s)
+   in Step 3 if required.
 
 Collect the names of any utilities/platform helpers you will use. Record them
 in a brief comment at the top of the implementation stub.
@@ -96,6 +112,12 @@ Significant global / static state.
 
 ## Quirks and invariants
 - Bullet list of non-obvious behaviours the rewrite must preserve.
+
+## Satellite components
+Sub-features evaluated with the Q-11 separation test.
+| Feature | Criteria met | Verdict (same / separate) |
+|---------|-------------|---------------------------|
+| ...     | ...         | ...                        |
 
 ## Open questions
 Design decisions still outstanding.

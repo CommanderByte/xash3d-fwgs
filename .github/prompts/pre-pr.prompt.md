@@ -59,6 +59,13 @@ cd "c:\git\xash3d-fwgs\xash3dpp\build"
 
 - [ ] `100% tests passed` for the `test_$ARGUMENTS` target
 
+**9. Compat and satellite design (Q-11 / Q-12)**
+- [ ] No engine-wide compat policy type (`IEngineCompatPolicy`, unified compat struct, etc.) —
+      compat is per-subsystem per Q-12
+- [ ] Sub-features scoring ≥ 2 on the Q-11 satellite test have their own CMake target;
+      verdict documented in the boundary spec
+- [ ] No direct OS socket call outside `src/platform/*/os_socket.cpp`
+
 ---
 
 ## Phase 2 — Targeted compliance scan
@@ -77,6 +84,10 @@ Select-String -Path "$src\*","$inc\*" -Pattern 'extern\s+"C"' -Recurse
 Select-String -Path "$src\*" -Pattern "\bprintf\b|\bfprintf\b|\bstd::cout\b" -Recurse
 # Missing thread role assertion (stateful public functions)
 Select-String -Path "$src\*" -Pattern "void.*::(init|shutdown|reset|flush|add|remove|register|unregister|set_|update_)" -Recurse
+# Engine-wide compat policy (Q-12 violation)
+Select-String -Path "$src\*","$inc\*" -Pattern "IEngineCompatPolicy|GlobalCompatPolicy|unified_compat" -Recurse
+# Direct socket API outside platform layer (Q-11 / sockets.md violation)
+Select-String -Path "$src\*" -Pattern "::(socket|bind|sendto|recvfrom|WSAStartup|getaddrinfo)\b" -Recurse
 ```
 
 For each hit, classify:
@@ -109,7 +120,7 @@ Suggestion: <optional fix>
 
 ```
 $ARGUMENTS — pre-PR gate
-Phase 1 checklist:  <N>/8 green
+Phase 1 checklist:  <N>/9 green
 Phase 2 scan:       CLEAN | <N> hits
 Phase 3 review:     CLEAN | <N> findings
 

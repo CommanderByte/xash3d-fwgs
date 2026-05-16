@@ -67,6 +67,14 @@ List of significant global/static state this module owns today.
 Bullet list of non-obvious behaviours, bug-compatibility flags, and ordering
 constraints that the rewrite must preserve.
 
+## Satellite components
+Sub-features of this subsystem that may belong in a separate CMake target.
+Apply the Q-11 separation test from `decisions-architecture.md §Q-11` to each
+candidate. Record the verdict (same target / separate target) with one-line rationale.
+| Candidate feature | Score (0-5) | Verdict |
+|-------------------|-------------|---------|
+| ...               | ...         | ...     |
+
 ## Open questions
 Things that need a design decision before implementation can start.
 ```

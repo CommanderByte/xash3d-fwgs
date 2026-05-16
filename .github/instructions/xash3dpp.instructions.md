@@ -118,6 +118,21 @@ Use a CMake option (e.g. `XASH_GOLDSRC_COMPAT`) to select between two `.cpp`
 files at link time (`compat_goldsrc.cpp` / `compat_null.cpp`).  Zero
 `#ifdef` guards in core logic.
 
+Compat policy is **per-subsystem**, never engine-wide.  Each subsystem with
+behavioural quirks owns its own `ICompatPolicy` (or a feature-specific
+variant such as `IProtocolDriver`) defined under
+`include/xash3dpp/private/<subsystem>/`.  See
+`xash3dpp/docs/design/decisions-architecture.md §Q-12`.
+
+### Satellite module placement
+Small features that share a parent subsystem's layer but not its core
+concern (e.g. HTTP downloader and master-server list relative to
+networking) are split into separate targets when they score ≥ 2 on the
+separation test in `decisions-architecture.md §Q-11`.  Otherwise they
+stay in the parent target.  A grouping pass at end-of-chunk may move
+related satellite targets into a shared `src/<area>/` subdirectory
+without code changes.
+
 ### Stats and Debug Instrumentation
 
 All subsystems with non-trivial hot paths follow a three-tier model

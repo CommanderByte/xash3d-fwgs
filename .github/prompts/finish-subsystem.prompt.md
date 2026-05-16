@@ -65,6 +65,17 @@ note. Output nothing else until the summary at the end.
       `throw`/`try`/`catch`, `malloc`/`new` outside pimpl, `string_view` at DLL
       boundary, game DLL call off main thread, etc.)
 
+## 9. Compat and satellite design (Q-11 / Q-12)
+
+- [ ] No engine-wide compat policy type (`IEngineCompatPolicy`, a unified compat
+      struct shared across subsystems, etc.) — each subsystem with behavioural quirks
+      owns its own `ICompatPolicy` or feature-specific variant (Q-12).
+- [ ] Sub-features that scored ≥ 2 on the Q-11 satellite test have their own CMake
+      target and are not bundled into the parent library. Verdict is documented in
+      the boundary spec.
+- [ ] No direct OS socket call (`::socket`, `::bind`, `::sendto`, `::recvfrom`,
+      `WSAStartup`) outside `src/platform/*/os_socket.cpp`.
+
 ---
 
 ## Summary
@@ -73,10 +84,10 @@ After checking all items, output:
 
 ```
 $ARGUMENTS — done checklist summary
-Passed: <N>/8 sections fully green
+Passed: <N>/9 sections fully green
 Blocked: <list any [ ] items that are BLOCKERs>
 Warnings: <list any [ ] items that are non-blocking>
 Verdict: SHIP-READY | NEEDS-WORK
 ```
 
-`SHIP-READY` requires all 8 sections fully `[x]`.
+`SHIP-READY` requires all 9 sections fully `[x]`.

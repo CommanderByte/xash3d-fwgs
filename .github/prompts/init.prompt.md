@@ -66,13 +66,18 @@ Six subsystems are complete and tested.
   cache; `std::shared_mutex` guards the search-path deque
 - **Tests**: `xash3dpp/tests/filesystem/`
 
-### `xash3dpp_platform` — complete
+### `xash3dpp_platform` — complete (sockets layer pending)
 - **Library**: `xash3dpp/src/platform/`; public headers in
   `xash3dpp/include/xash3dpp/platform/`
 - **Design**: Single Porting Layer — all OS-specific code lives here.
   Win32 and POSIX backends for `sys` (time, sleep, env), `console` (stdin
   reader), and `crash` (signal/exception handler); Android JNI bootstrap via
   `std::call_once`
+- **Pending**: `IPlatformSockets` / `OsSocket` RAII socket layer is **not yet
+  implemented**. Requirements are in
+  `xash3dpp/docs/architecture/platform/sockets.md`. This is a hard prerequisite
+  for Chunk 4 (networking). Do not call BSD/Winsock socket APIs directly from
+  any subsystem outside `src/platform/*/os_socket.cpp`.
 - **Tests**: `xash3dpp/tests/platform/`
 
 ### `xash3dpp_core` — complete
