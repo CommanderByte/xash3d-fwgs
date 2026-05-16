@@ -118,6 +118,10 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
+
+    // Internal helpers — defined in context.cpp where Impl is complete.
+    [[nodiscard]] Result<void> open_socket_for_kind_( SocketKind kind, std::uint16_t port ) noexcept;
+    void                       close_socket_for_kind_( SocketKind kind ) noexcept;
 };
 
 } // namespace xash::networking

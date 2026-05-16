@@ -12,6 +12,52 @@
 
 namespace xash::networking {
 
+namespace {
+
+// SocketKind → 0/1 index used into Impl::os_sockets and Impl::bound_ports.
+constexpr std::size_t socket_index( SocketKind kind ) noexcept
+{
+    return kind == SocketKind::Client ? 0u : 1u;
+}
+
+} // namespace
+
+// Open one OS UDP socket for `kind` on `port` (0 = ephemeral).  Closes any
+// previously-owned socket on this slot first.  Returns the NetError from the
+// platform layer on failure; the slot is left invalid in that case.
+//
+// Member function so it can access the private Impl type without friendship.
+Result<void> NetworkContext::open_socket_for_kind_(
+    SocketKind    kind,
+    std::uint16_t port ) noexcept
+{
+    const auto idx = socket_index( kind );
+
+    // Drop any prior socket first; assigning OsSocket onto a valid slot
+    // would close it via OsSocket::operator=, but doing it explicitly makes
+    // the intent obvious.
+    impl_->os_sockets[ idx ] = xash::platform::OsSocket{};
+
+    auto result = impl_->sockets->open_udp(
+        xash::platform::IpFamily::V4,
+        port,
+        /*bind_iface=*/ std::string_view{} );
+
+    if( !result )
+        return std::unexpected( result.error() );
+
+    impl_->os_sockets[ idx ]  = std::move( *result );
+    impl_->bound_ports[ idx ] = port;
+    return {};
+}
+
+void NetworkContext::close_socket_for_kind_( SocketKind kind ) noexcept
+{
+    const auto idx = socket_index( kind );
+    impl_->os_sockets[ idx ]  = xash::platform::OsSocket{};
+    impl_->bound_ports[ idx ] = 0;
+}
+
 NetworkContext::NetworkContext() noexcept
     : impl_( std::make_unique<Impl>() )
 {
@@ -52,6 +98,11 @@ void NetworkContext::shutdown() noexcept
     if( !impl_ || !impl_->initialised )
         return;
 
+    // Close OS sockets before clearing the IPlatformSockets pointer so the
+    // RAII close still goes through the right platform layer.
+    close_socket_for_kind_( SocketKind::Client );
+    close_socket_for_kind_( SocketKind::Server );
+
     // Drain transport state before releasing the pool so any pool-backed
     // buffers (Layer 3+) are emptied while their backing pool is still alive.
     impl_->loopback.clear();
@@ -78,11 +129,42 @@ bool NetworkContext::is_active() const noexcept
     return impl_ && impl_->initialised;
 }
 
-Result<void> NetworkContext::config( bool /*multiplayer*/, bool /*change_port*/ ) noexcept
+Result<void> NetworkContext::config( bool multiplayer, bool change_port ) noexcept
 {
     if( !is_active() )
         return std::unexpected( NetError::NotInitialised );
-    // TODO(Chunk 4): open/close real UDP sockets via IPlatformSockets.
+
+    if( !multiplayer )
+    {
+        // Tear down both sockets.  Loopback ring and transport state remain
+        // intact for in-process single-player.
+        close_socket_for_kind_( SocketKind::Client );
+        close_socket_for_kind_( SocketKind::Server );
+        impl_->configured = false;
+        return {};
+    }
+
+    // Open the server socket first if not already open.  Dedicated builds
+    // still want a server socket; only the client socket is suppressed.
+    if( !impl_->os_sockets[ socket_index( SocketKind::Server ) ].valid() )
+    {
+        if( auto r = open_socket_for_kind_( SocketKind::Server, 0 ); !r )
+            return std::unexpected( r.error() );
+    }
+
+    if( !impl_->dedicated )
+    {
+        const bool need_open  = !impl_->os_sockets[ socket_index( SocketKind::Client ) ].valid();
+        const bool need_reopen = change_port && !need_open;
+
+        if( need_open || need_reopen )
+        {
+            if( auto r = open_socket_for_kind_( SocketKind::Client, 0 ); !r )
+                return std::unexpected( r.error() );
+        }
+    }
+
+    impl_->configured = true;
     return {};
 }
 

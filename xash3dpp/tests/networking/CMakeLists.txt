@@ -55,3 +55,7 @@ add_test(NAME test_netchan COMMAND test_netchan)
 add_executable(test_protocol_driver_registry test_protocol_driver_registry.cpp)
 target_link_libraries(test_protocol_driver_registry PRIVATE xash3dpp_networking)
 add_test(NAME test_protocol_driver_registry COMMAND test_protocol_driver_registry)
+
+add_executable(test_network_context_sockets test_network_context_sockets.cpp)
+target_link_libraries(test_network_context_sockets PRIVATE xash3dpp_networking xash3dpp_platform)
+add_test(NAME test_network_context_sockets COMMAND test_network_context_sockets)
