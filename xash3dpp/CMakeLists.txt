@@ -27,7 +27,9 @@ target_include_directories(xash3dpp_miniz INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/
 
 add_subdirectory(src/filesystem)
 add_subdirectory(src/cmd_cvar)
+add_subdirectory(src/map_loader)
 add_subdirectory(src/host)
+add_subdirectory(src/abi)
 add_subdirectory(src/launcher)
 
 option(XASH3DPP_BUILD_TESTS "Build unit tests" ON)
@@ -39,4 +41,5 @@ if(XASH3DPP_BUILD_TESTS)
     add_subdirectory(tests/platform)
     add_subdirectory(tests/core)
     add_subdirectory(tests/cmd_cvar)
+    add_subdirectory(tests/host)
 endif()

@@ -10,4 +10,8 @@ target_link_libraries(xash3dpp_host
     PUBLIC
         xash3dpp_memory
         xash3dpp_filesystem
+        xash3dpp_core
+    PRIVATE
+        xash3dpp_platform
+        xash3dpp_cmd_cvar
 )

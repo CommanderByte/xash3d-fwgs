@@ -1,13 +1,22 @@
 // xash3dpp — Host implementation
 // Legacy reference: engine/common/host.c
+//
+// Existing subsystems used:
+//   xash3dpp_memory     — pool-backed allocations (host pool)
+//   xash3dpp_filesystem — VFS init / game directory activation
+//   xash3dpp_core       — core::log, core::ErrorCode
+//   xash3dpp_platform   — platform::get_time() for monotonic wall clock
 
 #include <xash3dpp/host/host.hpp>
-#include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/core/error.hpp>
+#include <xash3dpp/core/log.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
+#include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/platform/platform.hpp>
 
-#include <cassert>
-#include <chrono>
+#include <array>
 #include <cstdio>
+#include <cstring>
 
 namespace xash {
 
@@ -24,6 +33,11 @@ struct Host::Impl
     HostStatus  status     = HostStatus::kInit;
     double      realtime   = 0.0;
     int         framecount = 0;
+
+    // Frame-abort propagation (Quirk Q-3, OQ-1 hybrid).
+    bool                  frame_abort_pending = false;
+    core::ErrorCode       frame_abort_code    = core::ErrorCode::Ok;
+    std::array<char, 256> frame_abort_detail  {};
 
     // Subsystems owned by the host.
     // NOTE: pool is the first subsystem created and the last destroyed.
@@ -61,17 +75,6 @@ struct Host::Impl
 
 Host::Host()  : impl_{ std::make_unique<Impl>() } {}
 Host::~Host() = default;
-
-// ---------------------------------------------------------------------------
-// Internal: monotonic clock
-// ---------------------------------------------------------------------------
-
-static double steady_seconds() noexcept
-{
-    using Clock = std::chrono::steady_clock;
-    static const Clock::time_point k_start = Clock::now();
-    return std::chrono::duration<double>(Clock::now() - k_start).count();
-}
 
 // ---------------------------------------------------------------------------
 // init
@@ -162,11 +165,24 @@ void Host::RunFrame()
     Impl& s = *impl_;
     if (s.status == HostStatus::kShutdown) return;
 
-    s.realtime = steady_seconds();
+    // Frame-abort recovery (Quirk Q-3, OQ-1) — runs at frame top so all
+    // destructors from the aborted frame have already executed.
+    if (s.frame_abort_pending)
+    {
+        core::log( core::LogLevel::Warning, "host",
+                   "frame abort recovered; subsystem cleanup pending" );
+        // TODO Chunk 5/9: SV_Shutdown(), CL_Drop(), CL_ClearEdicts(), Mod_FreeAll().
+        s.frame_abort_pending = false;
+        s.frame_abort_code    = core::ErrorCode::Ok;
+        s.frame_abort_detail[0] = '\0';
+    }
+
+    s.realtime = platform::get_time();
     s.framecount++;
 
     // TODO: Platform::PollEvents()
     // TODO: CmdCvar::ExecuteCommandBuffer()
+    // TODO: MapLoader::run_frame_step()
     // TODO: Server::RunFrame()
     // TODO: Client::RunFrame()   (non-dedicated)
 }
@@ -178,6 +194,34 @@ void Host::RunFrame()
 void Host::RequestShutdown(const char* /*reason*/) noexcept
 {
     impl_->status = HostStatus::kShutdown;
+}
+
+// ---------------------------------------------------------------------------
+// signal_frame_abort — Quirk Q-3, Resolved-decision OQ-1
+// ---------------------------------------------------------------------------
+
+void Host::signal_frame_abort(core::ErrorCode code,
+                              std::string_view detail) noexcept
+{
+    Impl& s = *impl_;
+
+    // Quirk Q-4 — recursive abort within the same frame escalates to fatal.
+    // The Chunk 5/9 implementation replaces this stub with the full
+    // `errorframe == framecount` check from engine/common/host.c.
+    if (s.frame_abort_pending)
+    {
+        core::log( core::LogLevel::Fatal, "host",
+                   "recursive frame abort — escalating" );
+        // TODO Chunk 5/9: platform::crash::abort() once that helper lands.
+    }
+
+    s.frame_abort_pending = true;
+    s.frame_abort_code    = code;
+    const std::size_t n   = detail.size() < s.frame_abort_detail.size() - 1
+                            ? detail.size()
+                            : s.frame_abort_detail.size() - 1;
+    std::memcpy( s.frame_abort_detail.data(), detail.data(), n );
+    s.frame_abort_detail[n] = '\0';
 }
 
 // ---------------------------------------------------------------------------
@@ -193,15 +237,16 @@ int Host::Main(const HostArgs& args)
 
     impl_->shutdown();
     return 0;
-    return 0;
 }
 
 // ---------------------------------------------------------------------------
 // Accessors
 // ---------------------------------------------------------------------------
 
-HostStatus Host::status()    const noexcept { return impl_->status; }
-bool       Host::dedicated() const noexcept { return impl_->args.dedicated; }
-double     Host::realtime()  const noexcept { return impl_->realtime; }
+HostStatus      Host::status()              const noexcept { return impl_->status; }
+bool            Host::dedicated()           const noexcept { return impl_->args.dedicated; }
+double          Host::realtime()            const noexcept { return impl_->realtime; }
+bool            Host::frame_abort_pending() const noexcept { return impl_->frame_abort_pending; }
+core::ErrorCode Host::frame_abort_code()    const noexcept { return impl_->frame_abort_code; }
 
 } // namespace xash

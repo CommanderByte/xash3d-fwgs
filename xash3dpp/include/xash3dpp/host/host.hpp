@@ -14,8 +14,12 @@
 //   • Command-line argument parsing (that is the launcher's job).
 //   • Platform window management, sound, input (future subsystems).
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
+
+namespace xash::core { enum class ErrorCode : std::uint32_t; }
 
 namespace xash {
 
@@ -39,6 +43,12 @@ struct HostArgs
     // Mode flags
     bool dedicated = false;  // true when -dedicated was passed
     int  developer = 0;      // verbosity: 0 = normal, 1 = verbose, 2 = extended
+
+    // GoldSrc bug-compatibility bitfield (Quirk Q-11, Resolved-decision OQ-7).
+    // Parsed once from `-bugcomp peoei,gsmrf,sp_attn_none,...` by the launcher.
+    // Subsystems read `engine_context.bugcomp & BUGCOMP_X` at the point of
+    // behaviour divergence; there is no central dispatcher.
+    std::uint32_t bugcomp = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -85,10 +95,22 @@ public:
     void               RunFrame();
     void               RequestShutdown(const char* reason = nullptr) noexcept;
 
+    // Frame-abort signalling (Quirk Q-3, Resolved-decision OQ-1).
+    // Engine-internal callers and the GAME_EXPORT Host_Error ABI shim invoke
+    // this to mark the current frame as aborted.  Recovery (SV_Shutdown /
+    // CL_Drop / etc.) runs at the top of the next RunFrame.  No setjmp/longjmp.
+    //
+    // |code|   — typed reason; appears in diagnostics and frame_abort_code().
+    // |detail| — short, non-owning view; copied into a fixed buffer (no heap).
+    void signal_frame_abort(core::ErrorCode code,
+                            std::string_view detail) noexcept;
+
     // Observers
-    [[nodiscard]] HostStatus status()    const noexcept;
-    [[nodiscard]] bool       dedicated() const noexcept;
-    [[nodiscard]] double     realtime()  const noexcept;
+    [[nodiscard]] HostStatus       status()             const noexcept;
+    [[nodiscard]] bool             dedicated()          const noexcept;
+    [[nodiscard]] double           realtime()           const noexcept;
+    [[nodiscard]] bool             frame_abort_pending() const noexcept;
+    [[nodiscard]] core::ErrorCode  frame_abort_code()   const noexcept;
 
 private:
     struct Impl;

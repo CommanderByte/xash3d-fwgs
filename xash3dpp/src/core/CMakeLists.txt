@@ -15,6 +15,8 @@ cmake_minimum_required(VERSION 3.16)
 add_library(xash3dpp_core STATIC
     log.cpp
     thread_role.cpp
+    error.cpp
+    clock.cpp
 )
 
 target_include_directories(xash3dpp_core
