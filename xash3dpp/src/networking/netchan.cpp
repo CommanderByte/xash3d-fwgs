@@ -14,12 +14,40 @@
 
 #include <array>
 #include <cstring>
+#include <deque>
 #include <vector>
 
 namespace xash::networking {
 
 namespace core     = ::xash::core;
 namespace limits   = ::xash::limits;
+
+// ---------------------------------------------------------------------------
+// Internal fragment-queue types.  Mirrors legacy fragbuf_t / fragbufwaiting_t
+// but uses owning std::vector for the payload bytes so we can free per-batch
+// without manual pool walks.  TODO(pool-migration): switch the payload
+// storage onto the parent NetworkContext's PoolHandle once a pool-backed
+// byte-vector adapter exists.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+struct Fragbuf
+{
+    std::uint32_t          bufferid { 0 }; // 1-based within its batch
+    std::vector<std::byte> payload;
+};
+
+// One create_fragments() call produces exactly one FragbufBatch — the legacy
+// `fragbufwaiting_t`.  Batches preserve the user's logical message grouping
+// so that transmit() can mark a batch "complete" after its final fragment
+// has been acknowledged.
+struct FragbufBatch
+{
+    std::vector<Fragbuf> bufs;
+};
+
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Impl — owns all mutable channel state.  Lives behind a unique_ptr so the
@@ -63,8 +91,14 @@ struct Netchan::Impl
     std::vector<std::byte> reliable_buf;
     std::size_t            reliable_length_bits { 0 };
 
-    // Pending fragment / reassembly state.  Real types land in Chunk 7+.
-    // TODO(Chunk 7): fragbufwaiting + per-stream queues + incoming reassembly.
+    // Outgoing fragment queues — one per FragStream (Normal, File).  Each
+    // queue entry is a FragbufBatch (legacy fragbufwaiting_t): one logical
+    // message that was sliced into fragment-sized chunks by
+    // create_fragments().  transmit() drains the front batch fragment-by-
+    // fragment.
+    std::array<std::deque<FragbufBatch>, 2> outgoing_fragments {};
+
+    // TODO(Chunk 8): incoming reassembly slots per stream.
 
     // Active flag — true between successful setup() and clear()/move-out.
     bool                active { false };
@@ -131,7 +165,9 @@ void Netchan::clear() noexcept
     impl_->reliable_length_bits = 0;
     impl_->cleartime            = 0.0;
 
-    // TODO(Chunk 7): walk all per-stream queues and free their fragbufs.
+    for( auto &queue : impl_->outgoing_fragments )
+        queue.clear();
+
     // TODO(Chunk 8): zero the flow_t telemetry array.
 }
 
@@ -165,11 +201,48 @@ bool Netchan::write_reliable( std::span<const std::byte> bytes ) noexcept
     return true;
 }
 
-Result<void> Netchan::create_fragments( FragStream /*stream*/,
-                                        std::span<const std::byte> /*payload*/ ) noexcept
+Result<void> Netchan::create_fragments( FragStream stream,
+                                        std::span<const std::byte> payload ) noexcept
 {
-    // TODO(Chunk 7): split payload into fragbufs sized via block_size_provider(Fragment).
-    return std::unexpected( NetError::NotInitialised );
+    if( !impl_ || !impl_->active )
+        return std::unexpected( NetError::NotInitialised );
+    if( payload.empty() )
+        return {};
+    if( payload.size() > ::xash::limits::net_max_payload )
+    {
+        core::log( core::LogLevel::Warning, "netchan",
+                   "create_fragments: payload exceeds net_max_payload" );
+        return std::unexpected( NetError::Overflow );
+    }
+
+    const int chunksize_raw = impl_->block_size_provider->block_size( FragSize::Fragment );
+    if( chunksize_raw <= 0 )
+    {
+        core::log( core::LogLevel::Error, "netchan",
+                   "create_fragments: block_size_provider returned non-positive size" );
+        return std::unexpected( NetError::InvalidArgument );
+    }
+    const std::size_t chunksize = static_cast<std::size_t>( chunksize_raw );
+
+    FragbufBatch batch;
+    const std::size_t total = payload.size();
+    const std::size_t batch_count = ( total + chunksize - 1u ) / chunksize;
+    batch.bufs.reserve( batch_count );
+
+    std::uint32_t bufferid = 1; // legacy bufferid is 1-based within a batch
+    for( std::size_t pos = 0; pos < total; pos += chunksize )
+    {
+        const std::size_t bytes = ( total - pos < chunksize ) ? total - pos : chunksize;
+        Fragbuf fb;
+        fb.bufferid = bufferid++;
+        fb.payload.assign( payload.begin() + static_cast<std::ptrdiff_t>( pos ),
+                           payload.begin() + static_cast<std::ptrdiff_t>( pos + bytes ) );
+        batch.bufs.emplace_back( std::move( fb ) );
+    }
+
+    const std::size_t idx = static_cast<std::size_t>( stream );
+    impl_->outgoing_fragments[ idx ].emplace_back( std::move( batch ) );
+    return {};
 }
 
 Result<void> Netchan::create_file_fragments_from_buffer(
@@ -294,6 +367,17 @@ double            Netchan::connect_time()  const noexcept { return impl_->connec
 double            Netchan::rate()          const noexcept { return impl_->rate; }
 IProtocolDriver  *Netchan::driver()        const noexcept { return impl_->driver; }
 std::size_t       Netchan::reliable_length_bits() const noexcept { return impl_->reliable_length_bits; }
+
+std::size_t Netchan::pending_fragments( FragStream stream ) const noexcept
+{
+    if( !impl_ ) return 0;
+    const std::size_t idx = static_cast<std::size_t>( stream );
+    if( idx >= impl_->outgoing_fragments.size() ) return 0;
+    std::size_t total = 0;
+    for( const auto &batch : impl_->outgoing_fragments[ idx ] )
+        total += batch.bufs.size();
+    return total;
+}
 
 void Netchan::bind_stats( NetworkingStats *stats ) noexcept { impl_->stats = stats; }
 NetworkingStats *Netchan::stats() const noexcept             { return impl_->stats; }

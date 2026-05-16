@@ -235,6 +235,12 @@ public:
     // `chan->reliable_length`.
     [[nodiscard]] std::size_t        reliable_length_bits() const noexcept;
 
+    // Number of pending fragment buffers queued for the given outgoing
+    // stream (sum across all batches).  Zero when the stream is idle.
+    // Used by telemetry and by tests; the legacy engine exposes the same
+    // information via `chan->waitlist[stream]`.
+    [[nodiscard]] std::size_t        pending_fragments( FragStream stream ) const noexcept;
+
     // Optional Tier-2 instrumentation.  Owned by the parent NetworkContext;
     // bound here at setup() time.  May be nullptr if the parent did not
     // wire stats.

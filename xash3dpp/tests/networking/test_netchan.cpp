@@ -45,6 +45,16 @@ struct StubBlockSize final : IBlockSizeProvider
     int block_size( FragSize ) noexcept override { return 0; }
 };
 
+// Returns a fixed fragment chunk size, configurable per-test.
+struct FixedBlockSize final : IBlockSizeProvider
+{
+    int fragment_size { 0 };
+    int block_size( FragSize mode ) noexcept override
+    {
+        return mode == FragSize::Fragment ? fragment_size : 0;
+    }
+};
+
 } // namespace
 
 static void test_default_construction_is_inactive()
@@ -337,6 +347,134 @@ static void test_update_choke_no_rate_is_noop()
     CHECK( c.can_packet( 1.05, true ) );
 }
 
+static void test_create_fragments_inactive_rejected()
+{
+    Netchan c;
+    std::array<std::byte, 4> payload{};
+    auto r = c.create_fragments( FragStream::Normal, payload );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::NotInitialised );
+}
+
+static void test_create_fragments_empty_is_noop()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 256;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    std::array<std::byte, 0> empty{};
+    auto r = c.create_fragments( FragStream::Normal, empty );
+    CHECK( r.has_value() );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 0 );
+}
+
+static void test_create_fragments_rejects_bad_chunk_size()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 0; // provider misbehaves
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    std::array<std::byte, 4> payload{};
+    auto r = c.create_fragments( FragStream::Normal, payload );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::InvalidArgument );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 0 );
+}
+
+static void test_create_fragments_splits_evenly()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 100;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    // 300 bytes / 100 per fragment = exactly 3 fragments.
+    std::vector<std::byte> payload( 300u, std::byte{ 0x7E } );
+    auto r = c.create_fragments( FragStream::Normal, payload );
+    CHECK( r.has_value() );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 3 );
+
+    // File stream is independent.
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::File ) ), 0 );
+}
+
+static void test_create_fragments_splits_with_remainder()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 100;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    // 250 bytes → 3 fragments (100, 100, 50).
+    std::vector<std::byte> payload( 250u, std::byte{ 0x42 } );
+    auto r = c.create_fragments( FragStream::Normal, payload );
+    CHECK( r.has_value() );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 3 );
+
+    // A second batch on the same stream accumulates.
+    std::vector<std::byte> payload2( 50u, std::byte{ 0x00 } );
+    auto r2 = c.create_fragments( FragStream::Normal, payload2 );
+    CHECK( r2.has_value() );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 4 );
+
+    // clear() drains both queues.
+    c.clear();
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 0 );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::File ) ), 0 );
+}
+
+static void test_create_fragments_rejects_oversize_payload()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 1024;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    // One byte over net_max_payload should be refused as Overflow.
+    std::vector<std::byte> huge( xash::limits::net_max_payload + 1u, std::byte{ 0xCC } );
+    auto r = c.create_fragments( FragStream::Normal, huge );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::Overflow );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 0 );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -372,6 +510,12 @@ int main()
     test_can_packet_bypasses_choke_for_loopback_and_oob();
     test_update_choke_advances_cleartime();
     test_update_choke_no_rate_is_noop();
+    test_create_fragments_inactive_rejected();
+    test_create_fragments_empty_is_noop();
+    test_create_fragments_rejects_bad_chunk_size();
+    test_create_fragments_splits_evenly();
+    test_create_fragments_splits_with_remainder();
+    test_create_fragments_rejects_oversize_payload();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );

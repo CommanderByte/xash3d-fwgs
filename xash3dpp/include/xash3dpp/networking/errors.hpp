@@ -31,6 +31,7 @@ enum class NetError : std::uint32_t
     BadAddress,     // EINVAL from bind with malformed address
     BufferTooSmall, // Receive buffer truncated
     NotInitialised, // Socket layer not initialised (Win32 pre-WSAStartup)
+    InvalidArgument, // Caller-supplied parameter is malformed or out of range
 
     // DNS errors
     DnsAgain,    // EAI_AGAIN — transient failure; retry later
