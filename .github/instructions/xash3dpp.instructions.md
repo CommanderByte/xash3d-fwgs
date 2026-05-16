@@ -79,6 +79,7 @@ pool-based memory accounting accurate.
 | Vector / matrix math | `utilities::Vec2/3/4`, `Matrix3x4/4x4`, `dot`, `cross`, `normalize`, … | `utilities/math.hpp`, `utilities/matrix.hpp` |
 | UTF-8 / UTF-16 encode/decode | `utilities::utf::Utf8Decoder`, `encode_utf8`, `utf16_to_utf8` | `utilities/utf.hpp` |
 | Dynamic allocations (pool-backed) | `memory::mem_alloc`, `mem_calloc`, `mem_free`, `pool_new<T>`, `pool_dup` | `memory/memory.hpp` |
+| Dynamic sequences (hot-path class members) | `std::vector<T>` with `.reserve(N)` at init; N from `limits.hpp`; mark member `// @pre-reserved: <LIMIT_NAME>` | see Q-13 ALLOC_POLICY |
 | File open / read / write / search | `Filesystem` passed by reference; do not call OS file APIs directly | `filesystem/filesystem.hpp` |
 | Monotonic time | `platform::get_time()` | `platform/sys.hpp` |
 | Console output | `platform::console::write(std::string_view)` | `platform/console.hpp` |

@@ -38,7 +38,7 @@ Work autonomously from analysis through to commit. Do not ask for confirmation.
 Read these before auditing. The specific sections are called out in each check.
 
 1. `xash3dpp/include/xash3dpp/limits.hpp` — canonical location for all fixed limits
-2. `xash3dpp/docs/design/decisions-architecture.md` — DI_PARAMS (Q-4), OWNERSHIP (Q-9), STATS_TIERS, Q-11/Q-12
+2. `xash3dpp/docs/design/decisions-architecture.md` — DI_PARAMS (Q-4), OWNERSHIP (Q-9), ALLOC_POLICY (Q-13), STATS_TIERS, Q-11/Q-12
 3. `xash3dpp/docs/design/debug-stats-design.md` — three-tier model, exemption criteria
 4. `.github/instructions/xash3dpp.instructions.md` — header placement rules, pool/memory rules
 
@@ -145,10 +145,13 @@ grouped under a `// $ARGUMENTS subsystem` comment block, with an
 2. For each:
    - Is `std::make_unique` used for anything other than pimpl construction? Flag.
    - Is `new T(` used outside `std::make_unique`? Flag as BLOCKER.
-   - Does `std::vector` in a context where it grows unboundedly at runtime use
-     the framework allocator? (Note: STL containers cannot use the custom pool
-     allocator yet — this is deferred, so `std::vector` for dynamic sequences is
-     acceptable but record as NOTE for future migration.)
+   - Is any `std::vector` or `std::deque` class member in a hot-path class body
+     (called per-frame) missing a `// @pre-reserved: <LIMIT_NAME>` comment? (Q-13
+     ALLOC_POLICY: hot-path containers must `.reserve(N)` at init using a `limits.hpp`
+     constant. Warm-path and cold-path containers are exempt — see Q-13 for the
+     three-tier classification.)
+   - If a `// @pre-reserved:` annotation is present, is the matching `.reserve()`
+     call present in the class `init()` or constructor?
    - Is a long-lived object allocated with a short-lived pool or vice versa? Flag.
 3. Check that the `*InitParams` struct for this subsystem includes a `MemoryPool*`
    or `MemoryContext*` parameter if the subsystem performs any non-trivial allocation.
@@ -157,6 +160,9 @@ grouped under a `// $ARGUMENTS subsystem` comment block, with an
 - `new T(` outside `std::make_unique<Impl>()` → **BLOCKER**
 - `malloc`, `calloc`, `free`, `delete` → **BLOCKER**
 - `std::make_unique<T>` where T is not a pimpl Impl → **WARNING** (migrate to pool_new when pool exists)
+- Hot-path `std::vector`/`std::deque` class member without `// @pre-reserved: <LIMIT_NAME>` → **WARNING** (Q-13)
+- Pre-reserve annotation present but no `.reserve()` in init/constructor → **WARNING** (Q-13)
+- Custom `PoolAllocator<T>` implementation before migration trigger is met → **BLOCKER** (Q-13)
 - Module allocates long-lived objects but no pool handle in `InitParams` → **WARNING**
 
 ---

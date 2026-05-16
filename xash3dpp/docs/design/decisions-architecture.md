@@ -513,9 +513,67 @@ compat scope and documents it in its boundary spec.
 
 ______________________________________________________________________
 
+### ALLOC_POLICY (Q-13): How should `std::vector` and STL containers relate to the framework pool allocator?
+
+> **Status**: ✅ DECIDED
+
+**Context**: `memory::pool_new<T>` and `memory::mem_alloc` give pool accounting
+(`memlist`), lifetime-scoped arenas, and fragmentation control. `std::vector<T>`
+and other STL containers with the default allocator use `::operator new` directly,
+bypassing the pool. Pool-invisible allocations cannot be lifetime-scoped, appear in
+no `memlist` report, and may cause unbounded OS-heap traffic on the per-frame path.
+
+**Options considered**:
+
+- **A — explicit pools only (current implicit practice)**: `pool_new<T>` / `mem_alloc`
+  for objects; STL containers free to use `::operator new`. Zero implementation cost,
+  but STL growth on the hot path produces unpredictable allocation latency spikes,
+  long-run heap fragmentation, and cross-thread cache-line contention on the heap lock.
+
+- **B — pre-reserve discipline (chosen)**: STL containers remain `::operator new`-backed
+  but **hot-path** containers must call `.reserve(N)` at init time using a named limit
+  from `limits.hpp`. After reserve, every `push_back` within capacity is a single
+  cache-warm write — zero OS calls, zero lock contention, zero fragmentation growth
+  during gameplay. Cold-path containers (init, parsing, loading, teardown) are exempt.
+  The one-time `reserve()` at init pays one OS allocation; all frame-rate-sensitive paths
+  are fully deterministic thereafter.
+
+- **C — `PoolAllocator<T>` for STL**: route STL allocation through the framework pool
+  via a C++ stateful allocator. Performance analysis shows this only helps if the pool
+  is a fixed-size slab or bump-pointer arena — neither compatible with `std::vector`'s
+  variable-size growth strategy. Over a general-purpose pool, Option C adds pool-bookkeeping
+  overhead on top of what is still a `malloc`-equivalent, making hot-path cost *higher*
+  than Option B. C's true value is **observability** (`memlist` coverage), not
+  performance. Implementation cost is also high: stateful allocator `rebind`,
+  `propagate_on_container_*`, allocator-equality semantics, and MSVC debug-iterator
+  interaction all require careful implementation.
+
+**Decision**: **Option B — pre-reserve discipline.**
+
+| Code path | Rule |
+|-----------|------|
+| **Hot** — per-frame (packet recv/send, entity updates, physics) | `pool_new<T>` for objects. `std::vector` allowed only if `.reserve(N)` is called at init using a `limits.hpp` constant. Mark the member with `// @pre-reserved: <LIMIT_NAME>`. |
+| **Warm** — occasional (netchan fragment accumulation, config reload) | `std::vector` freely. `pool_new<T>` preferred for long-lived objects. |
+| **Cold** — init, parsing, resource loading, teardown | `std::vector` and `std::make_unique` both acceptable. No annotation required. |
+
+**`PoolAllocator<T>` migration trigger** (deferred — do not implement before
+then): heap fragmentation or allocation latency visible in profiler data, OR a
+subsystem has > 500 KB of STL container memory invisible to `memlist`. Document
+the trigger event in a new Q entry when it is met.
+
+**Audit enforcement** (`detail-audit` check `ALLOC_POLICY`):
+- Any `std::vector` or `std::deque` class member in a hot-path class body that
+  lacks a `// @pre-reserved: <LIMIT_NAME>` comment → **WARNING**
+- Pre-reserve annotation present but no `.reserve()` in `init()` or constructor
+  → **WARNING**
+- Custom `PoolAllocator<T>` implementation landed before the migration trigger is
+  met → **BLOCKER**
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
-All ten open questions are decided. This section records when each rule applies.
+All open questions are decided. This section records when each rule applies.
 
 ### 4.1 Must happen before Chunk 3
 
@@ -556,6 +614,8 @@ These rules apply from the first line of any new subsystem:
 - Separate-target test for satellite features at boundary-spec stage (Q-11)
 - Per-subsystem `ICompatPolicy` (or feature-specific variant) named for the
   subsystem; link-time selected; never exported publicly (Q-12)
+- Hot-path `std::vector` members pre-reserved at init; member marked
+  `// @pre-reserved: <LIMIT_NAME>` (Q-13)
 
 ______________________________________________________________________
 

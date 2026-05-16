@@ -251,7 +251,24 @@ When in doubt, compute `N * sizeof(T)` explicitly.
 
 Fix: replace with `std::vector<T>` and `member_.resize(N)` in the constructor.
 
-#### NS_QUALIFY (QM) — Absolute qualification for sibling-namespace references
+#### ALLOC_POLICY (Q-13) — Pre-reserve discipline for hot-path containers
+
+Rule: any `std::vector<T>` or `std::deque<T>` that is a **class member** (not a
+local variable or function-scope temporary) in a subsystem class must be annotated
+with `// @pre-reserved: <LIMIT_NAME>` on the same line as the member declaration,
+and the class's `init()` method or constructor must call `.reserve(N)` using the
+named limit from `limits.hpp`.
+
+Cold-path and warm-path containers — those only populated during init, config
+parsing, or resource loading and never accessed in per-frame code — are exempt
+from the annotation requirement.
+
+Flag:
+- `std::vector<…>` or `std::deque<…>` class member with no `// @pre-reserved:`
+  comment and no matching `.reserve()` in the constructor or `init()` — verify
+  whether it is hot-path or cold-path before flagging; if unsure, flag as **WARNING**.
+- `// @pre-reserved: LIMIT_NAME` annotation present but no `.reserve()` in `init()`
+  or constructor → **WARNING**. — Absolute qualification for sibling-namespace references
 
 Rule: inside any `xash::X::` nested namespace, every reference to a sibling
 `xash::Y::` must use the absolute form `::xash::Y::`.
