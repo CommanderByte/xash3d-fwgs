@@ -213,4 +213,10 @@ inline constexpr std::size_t net_max_streams = 2; // netchan streams: normal dat
 inline constexpr std::size_t net_max_streams = XASH_LIMIT_NET_MAX_STREAMS;
 #endif
 
+#ifndef XASH_LIMIT_NET_PACKET_POOL_SLOTS
+inline constexpr std::size_t net_packet_pool_slots = 64; // preallocated packet buffers
+#else
+inline constexpr std::size_t net_packet_pool_slots = XASH_LIMIT_NET_PACKET_POOL_SLOTS;
+#endif
+
 } // namespace xash::limits

@@ -27,3 +27,7 @@ add_test(NAME test_compress_lzss COMMAND test_compress_lzss)
 add_executable(test_loopback_transport test_loopback_transport.cpp)
 target_link_libraries(test_loopback_transport PRIVATE xash3dpp_networking)
 add_test(NAME test_loopback_transport COMMAND test_loopback_transport)
+
+add_executable(test_packet_pool test_packet_pool.cpp)
+target_link_libraries(test_packet_pool PRIVATE xash3dpp_networking)
+add_test(NAME test_packet_pool COMMAND test_packet_pool)
