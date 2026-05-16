@@ -39,6 +39,7 @@ add_library(xash3dpp_networking STATIC
     message_buf.cpp
     compat_xash.cpp
     compat_goldsrc.cpp
+    lag_queue.cpp
     protocol_driver_goldsrc.cpp
     master_list.cpp
     ${XASH_NET_COMPRESSION_SRC}

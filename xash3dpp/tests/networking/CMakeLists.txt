@@ -15,3 +15,7 @@ add_test(NAME test_netadr COMMAND test_netadr)
 add_executable(test_split_packet test_split_packet.cpp)
 target_link_libraries(test_split_packet PRIVATE xash3dpp_networking)
 add_test(NAME test_split_packet COMMAND test_split_packet)
+
+add_executable(test_lag_queue test_lag_queue.cpp)
+target_link_libraries(test_lag_queue PRIVATE xash3dpp_networking)
+add_test(NAME test_lag_queue COMMAND test_lag_queue)
