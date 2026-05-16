@@ -361,3 +361,19 @@ After all files have been written or updated, do a final consistency sweep:
 - [ ] Thread-safety addressed on every concept with shared mutable state
 - [ ] All cross-links between pages resolve correctly
 - [ ] Legacy flat file redirects to the directory (if it existed)
+
+---
+
+## Step 8 — Commit
+
+Once the Final checklist is green:
+
+```
+git add xash3dpp/docs/architecture/$ARGUMENTS/
+git commit -m "$ARGUMENTS: write architecture docs"
+```
+
+Commit message bullets:
+
+- List the doc files created or updated (README.md, index.md, concept pages).
+- If in update mode, note which sections were stale and what was corrected.

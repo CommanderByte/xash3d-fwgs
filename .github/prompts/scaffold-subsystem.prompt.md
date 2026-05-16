@@ -415,3 +415,23 @@ Confirm:
 - [ ] Stats struct defined for hot-path subsystems (`<Subsystem>Stats` with appropriate tiers)
 - [ ] `stats() const noexcept` accessor exposed from the context class
 - [ ] No string formatting in hot paths — raw counters only
+
+---
+
+## Step 7 — Commit
+
+Once Step 6 Verify is fully green:
+
+```
+git add xash3dpp/src/$ARGUMENTS/ xash3dpp/include/xash3dpp/$ARGUMENTS/ \
+        xash3dpp/include/xash3dpp/private/$ARGUMENTS/ \
+        xash3dpp/tests/$ARGUMENTS/ xash3dpp/CMakeLists.txt \
+        xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md
+git commit -m "$ARGUMENTS: scaffold subsystem skeleton"
+```
+
+Commit message bullets:
+
+- Boundary doc location.
+- Public header / CMake target name.
+- What the stub implements vs. what is left as TODO.

@@ -181,3 +181,22 @@ for pool lifecycle test patterns.
 - [ ] `#include <xash3dpp/memory/memory.hpp>` is present in every migrated file.
 - [ ] Unit tests verify zero `live_bytes` after the subsystem lifecycle.
 - [ ] `CMakeLists.txt` for the subsystem links `xash3dpp_memory`.
+
+---
+
+## Step 8 — Commit
+
+Once the checklist above is fully green:
+
+```
+git add xash3dpp/src/$ARGUMENTS/ xash3dpp/include/xash3dpp/$ARGUMENTS/ \
+        xash3dpp/include/xash3dpp/private/$ARGUMENTS/ \
+        xash3dpp/tests/$ARGUMENTS/ xash3dpp/CMakeLists.txt
+git commit -m "$ARGUMENTS: migrate all allocations to xash3dpp memory subsystem"
+```
+
+Commit message bullets (add after the one-liner):
+
+- One bullet per subsystem component that was migrated.
+- Note any pools that were created or renamed.
+- Note if unit tests were added or updated.

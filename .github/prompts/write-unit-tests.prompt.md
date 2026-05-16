@@ -98,3 +98,11 @@ CHECK( u8( buf[0] ) == 0xC2u );
 After writing the test file:
 1. Add the new file to `xash3dpp/tests/utilities/CMakeLists.txt` (append to the `add_executable` sources list).
 2. Run `get_errors` on the new file and fix any compile errors before finishing.
+3. Commit once all tests pass:
+
+```
+git add xash3dpp/tests/utilities/
+git commit -m "utilities: add unit tests for $ARGUMENTS"
+```
+
+Commit message bullets: one bullet per test scenario added.
