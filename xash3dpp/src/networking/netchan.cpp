@@ -143,10 +143,25 @@ bool Netchan::is_active() const noexcept
 // Reliable / fragment queue input
 // ---------------------------------------------------------------------------
 
-bool Netchan::write_reliable( std::span<const std::byte> /*bytes*/ ) noexcept
+bool Netchan::write_reliable( std::span<const std::byte> bytes ) noexcept
 {
-    // TODO(Chunk 7): append to impl_->reliable_buf with overflow check.
-    return false;
+    if( !impl_ || !impl_->active ) return false;
+    if( bytes.empty() ) return true;
+
+    const std::size_t current = impl_->reliable_buf.size();
+    if( bytes.size() > ::xash::limits::net_max_payload - current )
+    {
+        // Would overflow the reliable queue.  Drop and signal the caller;
+        // the legacy engine treats this as a fatal condition for the
+        // channel, but at this layer we only refuse the write.
+        core::log( core::LogLevel::Warning, "netchan",
+                   "write_reliable: reliable buffer overflow, dropping payload" );
+        return false;
+    }
+
+    impl_->reliable_buf.insert( impl_->reliable_buf.end(), bytes.begin(), bytes.end() );
+    impl_->reliable_length_bits = impl_->reliable_buf.size() * 8u;
+    return true;
 }
 
 Result<void> Netchan::create_fragments( FragStream /*stream*/,
@@ -247,6 +262,7 @@ double            Netchan::last_received() const noexcept { return impl_->last_r
 double            Netchan::connect_time()  const noexcept { return impl_->connect_time; }
 double            Netchan::rate()          const noexcept { return impl_->rate; }
 IProtocolDriver  *Netchan::driver()        const noexcept { return impl_->driver; }
+std::size_t       Netchan::reliable_length_bits() const noexcept { return impl_->reliable_length_bits; }
 
 void Netchan::bind_stats( NetworkingStats *stats ) noexcept { impl_->stats = stats; }
 NetworkingStats *Netchan::stats() const noexcept             { return impl_->stats; }

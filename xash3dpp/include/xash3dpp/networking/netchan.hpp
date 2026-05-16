@@ -227,6 +227,11 @@ public:
     [[nodiscard]] double             rate()                const noexcept;
     [[nodiscard]] IProtocolDriver   *driver()              const noexcept;
 
+    // Pending reliable queue size, in bits.  Zero when there is no
+    // reliable payload waiting to be sent.  Mirrors legacy
+    // `chan->reliable_length`.
+    [[nodiscard]] std::size_t        reliable_length_bits() const noexcept;
+
     // Optional Tier-2 instrumentation.  Owned by the parent NetworkContext;
     // bound here at setup() time.  May be nullptr if the parent did not
     // wire stats.

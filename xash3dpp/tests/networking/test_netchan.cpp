@@ -6,10 +6,12 @@
 #include <xash3dpp/networking/netchan.hpp>
 
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/limits.hpp>
 
 #include "../test_helpers.hpp"
 
 #include <array>
+#include <vector>
 
 static int g_pass = 0, g_fail = 0;
 
@@ -172,6 +174,82 @@ static void test_stub_methods_return_not_initialised()
     CHECK( c.can_packet( 0.0, true ) );
 }
 
+static void test_write_reliable_inactive_returns_false()
+{
+    Netchan c;
+    std::array<std::byte, 4> bytes{};
+    CHECK( !c.write_reliable( bytes ) );
+}
+
+static void test_write_reliable_appends_and_tracks_length()
+{
+    Netchan c;
+    StubDriver d;
+    StubBlockSize bs;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ), 0 );
+
+    // Empty write is a no-op success.
+    std::array<std::byte, 0> empty{};
+    CHECK( c.write_reliable( empty ) );
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ), 0 );
+
+    std::array<std::byte, 4> a{ std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4} };
+    CHECK( c.write_reliable( a ) );
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ), 32 );
+
+    // Appends accumulate.
+    std::array<std::byte, 3> b{ std::byte{5}, std::byte{6}, std::byte{7} };
+    CHECK( c.write_reliable( b ) );
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ), 56 );
+
+    // clear() resets the reliable length.
+    c.clear();
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ), 0 );
+}
+
+static void test_write_reliable_rejects_overflow()
+{
+    Netchan c;
+    StubDriver d;
+    StubBlockSize bs;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    // Fill the reliable queue close to its cap and confirm overflow is
+    // rejected without disturbing the accumulated payload.
+    constexpr std::size_t cap = xash::limits::net_max_payload;
+
+    std::vector<std::byte> big( cap - 4u, std::byte{ 0xAB } );
+    CHECK( c.write_reliable( big ) );
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ),
+              static_cast<int>( ( cap - 4u ) * 8u ) );
+
+    // 5-byte append would push us over the cap by one byte → refused.
+    std::array<std::byte, 5> overflow{};
+    CHECK( !c.write_reliable( overflow ) );
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ),
+              static_cast<int>( ( cap - 4u ) * 8u ) );
+
+    // Exactly-fits write still succeeds.
+    std::array<std::byte, 4> just_fits{};
+    CHECK( c.write_reliable( just_fits ) );
+    CHECK_EQ( static_cast<int>( c.reliable_length_bits() ),
+              static_cast<int>( cap * 8u ) );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -200,6 +278,9 @@ int main()
     test_successful_setup_arms_channel();
     test_clear_preserves_identity();
     test_stub_methods_return_not_initialised();
+    test_write_reliable_inactive_returns_false();
+    test_write_reliable_appends_and_tracks_length();
+    test_write_reliable_rejects_overflow();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );
