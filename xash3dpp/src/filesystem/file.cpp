@@ -30,7 +30,7 @@ using ::xash::platform::OsFd;
 
 struct ZlibState {
     mz_stream z   = {};
-    std::array<mz_uint8, 65536> in_buf{};
+    std::array<mz_uint8, xash::limits::filesystem_zlib_inflate_buf> in_buf{};
     bool      done = false;
 
     ZlibState()  { mz_inflateInit2( &z, -MZ_DEFAULT_WINDOW_BITS ); }

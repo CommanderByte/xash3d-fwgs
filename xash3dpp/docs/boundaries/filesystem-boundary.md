@@ -319,3 +319,39 @@ are provided through the injected `fs_interface_t` callbacks.
    inode flags on Linux). A reasonable middle ground: skip the trie on
    case-insensitive volumes detected at mount time; fall back to lazy trie
    otherwise. **Decision needed before implementing the directory backend.**
+
+## Fixed Limits
+
+All filesystem-wide fixed sizes are declared as `inline constexpr` values in
+`xash3dpp/limits.hpp` (sibling `xash::limits` namespace). Each constant is
+guarded by an `XASH_LIMIT_*` macro for downstream overrides.
+
+| Constant | Default | Purpose |
+|----------|---------|---------|
+| `filesystem_file_buffer_size` | 2048 | `OsFile` read-ahead I/O buffer |
+| `filesystem_zlib_inflate_buf` | 65536 | `ZlibState` raw-input chunk buffer |
+| `filesystem_search_path_max` | 256 | Informal upper bound for mounted search paths |
+| `pak_max_files` | 65536 | Maximum entries in a PAK archive |
+| `wad_max_lumps` | 65535 | Maximum lumps in a WAD3 archive |
+| `zip_max_files` | 65535 | Maximum entries in a ZIP archive (uint16 EOCD field) |
+| `zip_filename_max` | 4096 | Maximum bytes in a ZIP central-directory path |
+| `zip_eocd_scan_max` | 65535 | Maximum tail bytes scanned for the ZIP EOCD record |
+
+Hot-path containers (`PakBackend::entries_`, `WadBackend::entries_`,
+`ZipBackend::entries_`) carry `// @pre-reserved:` annotations referring to the
+relevant limit. `Filesystem::Impl::search_paths` is `std::deque` (no `reserve`)
+and is annotated as informally bounded.
+
+## Observability / Stats
+
+`Filesystem` exposes a `FilesystemStats` snapshot via
+`stats() const noexcept`. Fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `game_loaded` | `bool` | `true` after a successful `activate_game()` |
+| `search_path_count` | `std::size_t` | Number of search paths currently mounted |
+
+`stats_` lives in the pimpl and is updated under the same locks that guard the
+state it reflects (`paths_mutex` for `search_path_count`, `game_mutex` for
+`game_loaded`). Always-on; cost is one assignment per mutation.

@@ -2,6 +2,7 @@
 // Legacy reference: filesystem/filesystem.c
 
 #include <xash3dpp/filesystem/filesystem.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/utilities/gameinfo_parser.hpp>
 #include <xash3dpp/private/filesystem/search_path.hpp>
@@ -111,7 +112,7 @@ struct Filesystem::Impl {
     bool                        game_loaded = false;
 
     // search-path list — protected by paths_mutex.
-    std::deque<SearchPath>      search_paths;
+    std::deque<SearchPath>      search_paths;  // @pre-reserved: filesystem_search_path_max (std::deque: reserve N/A; informally bounded)
     mutable std::shared_mutex   paths_mutex;
 
     // Memory pool — created in init(), destroyed in shutdown().
@@ -119,6 +120,9 @@ struct Filesystem::Impl {
 
     // Toggle for absolute/traversal paths — atomic for lock-free access.
     std::atomic<bool>           allow_direct_paths{false};
+
+    // Always-on observability snapshot.
+    FilesystemStats             stats_ {};
 };
 
 // ---------------------------------------------------------------------------
@@ -140,6 +144,7 @@ bool Filesystem::init(std::string_view rootdir,
     impl_->gamedir = gamedir;
     impl_->rodir   = rodir;
     impl_->pool_   = xash::memory::create_pool("filesystem");
+    impl_->stats_  = {};
     return static_cast<bool>(impl_->pool_);
 }
 
@@ -147,11 +152,13 @@ void Filesystem::shutdown() {
     {
         std::unique_lock lock{impl_->paths_mutex};
         impl_->search_paths.clear();
+        impl_->stats_.search_path_count = 0;
     }
     {
         std::unique_lock lock{impl_->game_mutex};
         impl_->active_game = {};
         impl_->game_loaded  = false;
+        impl_->stats_.game_loaded = false;
     }
     if (impl_->pool_) {
         xash::memory::destroy_pool(impl_->pool_);
@@ -171,6 +178,7 @@ bool Filesystem::activate_game(std::string_view gamefolder,
                 impl_->active_game = g;
                 impl_->gamedir     = g.gamefolder;
                 impl_->game_loaded = true;
+                impl_->stats_.game_loaded = true;
             }
             rescan(mount_flags, language);
             return true;
@@ -230,6 +238,7 @@ void Filesystem::rescan(SearchPathFlags mount_flags, std::string_view language) 
     }), paths.end());
     for (auto& sp : new_paths)
         paths.push_back(std::move(sp));
+    impl_->stats_.search_path_count = paths.size();
 }
 
 std::vector<GameInfo> Filesystem::scan_game_directories(std::string_view root) const {
@@ -270,6 +279,7 @@ void Filesystem::add_game_directory(std::string_view dir, SearchPathFlags flags)
     std::unique_lock lock{ impl_->paths_mutex };
     for (auto& sp : new_paths)
         impl_->search_paths.push_back(std::move(sp));
+    impl_->stats_.search_path_count = impl_->search_paths.size();
 }
 
 void Filesystem::add_game_hierarchy(std::string_view dir, SearchPathFlags flags) {
@@ -278,6 +288,7 @@ void Filesystem::add_game_hierarchy(std::string_view dir, SearchPathFlags flags)
     std::unique_lock lock{ impl_->paths_mutex };
     for (auto& sp : new_paths)
         impl_->search_paths.push_back(std::move(sp));
+    impl_->stats_.search_path_count = impl_->search_paths.size();
 }
 
 void Filesystem::clear_paths() {
@@ -286,6 +297,7 @@ void Filesystem::clear_paths() {
     paths.erase(std::remove_if(paths.begin(), paths.end(), [](const SearchPath& sp) {
         return !any(sp.flags & SearchPathFlags::Static);
     }), paths.end());
+    impl_->stats_.search_path_count = paths.size();
 }
 
 void Filesystem::allow_direct_paths(bool enable) {
@@ -303,6 +315,7 @@ bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
         if (!backend) return false;
         std::unique_lock lock{ impl_->paths_mutex };
         impl_->search_paths.push_back({ std::move(backend), std::string{path}, flags });
+        impl_->stats_.search_path_count = impl_->search_paths.size();
         return true;
     }
     return false;
@@ -543,6 +556,10 @@ GameInfo Filesystem::get_game_info() const {
 
 std::string_view Filesystem::get_root_directory() const {
     return impl_->rootdir;
+}
+
+const FilesystemStats& Filesystem::stats() const noexcept {
+    return impl_->stats_;
 }
 
 } // namespace xash::filesystem

@@ -46,7 +46,7 @@ private:
 
     std::string     path_;
     SearchPathFlags flags_;
-    std::vector<Entry> entries_;
+    std::vector<Entry> entries_;  // @pre-reserved: pak_max_files
     std::filesystem::file_time_type file_time_{};
     bool valid_ = false;
 

@@ -164,6 +164,30 @@ inline constexpr std::size_t zip_filename_max = 4096; // max bytes in a ZIP cent
 inline constexpr std::size_t zip_filename_max = XASH_LIMIT_ZIP_FILENAME_MAX;
 #endif
 
+#ifndef XASH_LIMIT_ZIP_MAX_FILES
+inline constexpr std::size_t zip_max_files = 65535; // max entries in a ZIP archive (uint16 total_records)
+#else
+inline constexpr std::size_t zip_max_files = XASH_LIMIT_ZIP_MAX_FILES;
+#endif
+
+#ifndef XASH_LIMIT_ZIP_EOCD_SCAN_MAX
+inline constexpr std::size_t zip_eocd_scan_max = 65535; // max EOCD comment-length scanned at archive tail (uint16 max)
+#else
+inline constexpr std::size_t zip_eocd_scan_max = XASH_LIMIT_ZIP_EOCD_SCAN_MAX;
+#endif
+
+#ifndef XASH_LIMIT_FILESYSTEM_ZLIB_INFLATE_BUF
+inline constexpr std::size_t filesystem_zlib_inflate_buf = 65536; // ZlibState raw-input chunk buffer
+#else
+inline constexpr std::size_t filesystem_zlib_inflate_buf = XASH_LIMIT_FILESYSTEM_ZLIB_INFLATE_BUF;
+#endif
+
+#ifndef XASH_LIMIT_FILESYSTEM_SEARCH_PATH_MAX
+inline constexpr std::size_t filesystem_search_path_max = 256; // informal upper bound for active search paths (std::deque, no reserve)
+#else
+inline constexpr std::size_t filesystem_search_path_max = XASH_LIMIT_FILESYSTEM_SEARCH_PATH_MAX;
+#endif
+
 // clock subsystem
 #ifndef XASH_LIMIT_MIN_FRAMETIME
 inline constexpr double min_frametime = 0.0001;  // 0.1 ms floor — matches legacy MIN_FRAMETIME

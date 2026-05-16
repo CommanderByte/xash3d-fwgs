@@ -116,7 +116,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
     // backwards for "PK\x05\x06".
 
     const std::int64_t scan_len =
-        std::min<std::int64_t>(static_cast<std::int64_t>(sizeof(DiskEocd)) + 65535,
+        std::min<std::int64_t>(static_cast<std::int64_t>(sizeof(DiskEocd)) + xash::limits::zip_eocd_scan_max,
                                file_size);
     const std::int64_t scan_start = file_size - scan_len;
 

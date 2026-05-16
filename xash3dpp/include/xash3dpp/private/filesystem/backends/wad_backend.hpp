@@ -50,7 +50,7 @@ private:
     std::string     path_;
     std::string     stem_;  // lowercase WAD basename without extension
     SearchPathFlags flags_;
-    std::vector<Entry> entries_;
+    std::vector<Entry> entries_;  // @pre-reserved: wad_max_lumps
     std::filesystem::file_time_type file_time_{};
     bool valid_ = false;
 

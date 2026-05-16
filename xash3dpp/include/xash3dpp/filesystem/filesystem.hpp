@@ -31,6 +31,12 @@ struct SearchResult {
     std::vector<std::string> files;
 };
 
+// Observable snapshot of Filesystem runtime state.
+struct FilesystemStats {
+    bool        game_loaded       = false;  // true after a successful activate_game()
+    std::size_t search_path_count = 0;      // current number of mounted search paths
+};
+
 class Filesystem {
 public:
     Filesystem();
@@ -143,6 +149,10 @@ public:
     // ---- Root directory --------------------------------------------------
 
     [[nodiscard]] std::string_view get_root_directory() const;
+
+    // ---- Observability ---------------------------------------------------
+
+    [[nodiscard]] const FilesystemStats& stats() const noexcept;
 
 private:
     struct Impl;
