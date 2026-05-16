@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "xash3dpp (MSVC)",
+            "includePath": [
+                "${workspaceFolder}/xash3dpp/include",
+                "${workspaceFolder}/xash3dpp/src"
+            ],
+            "defines": [],
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-msvc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        },
+        {
+            "name": "xash3dpp (GCC/Clang)",
+            "includePath": [
+                "${workspaceFolder}/xash3dpp/include",
+                "${workspaceFolder}/xash3dpp/src"
+            ],
+            "defines": [],
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

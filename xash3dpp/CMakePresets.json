@@ -1,0 +1,57 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 16, "patch": 0 },
+
+    "configurePresets": [
+        {
+            "name": "debug-msvc",
+            "displayName": "Debug · MSVC x64",
+            "description": "Debug build with tests — Visual Studio 17 2022, x64",
+            "generator": "Visual Studio 17 2022",
+            "architecture": { "value": "x64", "strategy": "set" },
+            "binaryDir": "${sourceDir}/build/Debug",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "XASH3DPP_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "release-msvc",
+            "displayName": "Release · MSVC x64",
+            "description": "Optimised release build — Visual Studio 17 2022, x64",
+            "generator": "Visual Studio 17 2022",
+            "architecture": { "value": "x64", "strategy": "set" },
+            "binaryDir": "${sourceDir}/build/Release",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "XASH3DPP_BUILD_TESTS": "OFF"
+            }
+        }
+    ],
+
+    "buildPresets": [
+        {
+            "name": "debug",
+            "displayName": "Build Debug",
+            "configurePreset": "debug-msvc",
+            "configuration": "Debug"
+        },
+        {
+            "name": "release",
+            "displayName": "Build Release",
+            "configurePreset": "release-msvc",
+            "configuration": "Release"
+        }
+    ],
+
+    "testPresets": [
+        {
+            "name": "debug",
+            "displayName": "Test Debug",
+            "configurePreset": "debug-msvc",
+            "configuration": "Debug",
+            "output": { "outputOnFailure": true },
+            "execution": { "jobs": 1 }
+        }
+    ]
+}

@@ -1,0 +1,38 @@
+{
+    // --- CMake Tools ----------------------------------------------------------
+    // Pin to the xash3dpp sub-project; the repo root uses Waf and must never
+    // be treated as a CMake project.
+    "cmake.sourceDirectory": "${workspaceFolder}/xash3dpp",
+
+    // Fallback build directory used when not in presets mode.
+    // When CMakePresets.json is present this is superseded by the preset's binaryDir.
+    "cmake.buildDirectory": "${workspaceFolder}/xash3dpp/build/${buildType}",
+
+    // Use CMakePresets.json when present — removes the kit/variant system and
+    // makes configure/build/test reproducible from both VS Code and the terminal.
+    "cmake.useCMakePresets": "auto",
+
+    // Configure when the workspace opens, but NOT on every CMakeLists.txt save.
+    // configureOnEdit=true is the main source of phantom "REFACTOR PREVIEW"
+    // diffs and mid-edit build-system regeneration.
+    "cmake.configureOnOpen": true,
+    "cmake.configureOnEdit": false,
+
+    // Never auto-flip the active project based on which file is open in the
+    // editor — without this, opening a legacy engine header can silently
+    // change the active cmake root away from xash3dpp.
+    "cmake.autoSelectActiveFolder": false,
+
+    // --- IntelliSense ---------------------------------------------------------
+    // Drive C/C++ IntelliSense from the compile_commands.json that CMake Tools
+    // produces; the static c_cpp_properties.json entries are a fallback only.
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+
+    // --- Integrated terminal --------------------------------------------------
+    // The VS-bundled cmake is not on the system PATH.  This prepends it so that
+    // cmake/ctest commands work in integrated terminal sessions without a manual
+    // $env:Path prefix each time.
+    "terminal.integrated.env.windows": {
+        "PATH": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin;${env:PATH}"
+    }
+}
