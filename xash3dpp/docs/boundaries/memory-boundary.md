@@ -173,3 +173,15 @@ ______________________________________________________________________
    no pool parameter. The engine side hardcodes allocating from a single fixed
    pool per plugin. The rewrite should decide whether to keep this pattern or
    require plugins to manage their own pools.
+
+______________________________________________________________________
+
+## Fixed Limits (xash3dpp rewrite)
+
+All configurable limits for the rewrite's memory subsystem live in
+`xash3dpp/include/xash3dpp/limits.hpp` under the `// memory subsystem` block.
+
+| Constant | Default | Override macro | Notes |
+|----------|---------|---------------|-------|
+| `memory_pool_max` | `128` | `XASH_LIMIT_MEMORY_POOL_MAX` | Max simultaneously active named pools |
+| `memory_pool_name_len` | `64` | `XASH_LIMIT_MEMORY_POOL_NAME_LEN` | Max bytes in a `PoolBucket::name` buffer (including null terminator) |

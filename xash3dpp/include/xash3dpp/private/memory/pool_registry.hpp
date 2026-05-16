@@ -39,7 +39,7 @@ enum class SlotState : std::uint8_t { Free = 0, Busy = 1, Active = 2 };
 // One accounting bucket per named pool.
 struct PoolBucket
 {
-    char                     name[64]       {};
+    char                     name[::xash::limits::memory_pool_name_len] {};
     std::atomic<std::size_t> live_bytes     { 0 };
     std::atomic<std::size_t> total_allocs   { 0 };
     std::atomic<std::size_t> total_frees    { 0 };

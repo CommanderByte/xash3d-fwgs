@@ -59,6 +59,12 @@ inline constexpr std::size_t memory_pool_max = 128; // max named memory pools
 inline constexpr std::size_t memory_pool_max = XASH_LIMIT_MEMORY_POOL_MAX;
 #endif
 
+#ifndef XASH_LIMIT_MEMORY_POOL_NAME_LEN
+inline constexpr std::size_t memory_pool_name_len = 64; // max bytes in a pool name (including null terminator)
+#else
+inline constexpr std::size_t memory_pool_name_len = XASH_LIMIT_MEMORY_POOL_NAME_LEN;
+#endif
+
 // utilities subsystem
 #ifndef XASH_LIMIT_TOKENIZER_TOKEN_MAX
 inline constexpr std::size_t tokenizer_token_max = 512; // max token bytes in Tokenizer::next()
