@@ -74,6 +74,58 @@ inline constexpr std::size_t atlas_max_size = 1024; // max texture atlas dimensi
 inline constexpr std::size_t atlas_max_size = XASH_LIMIT_ATLAS_MAX_SIZE;
 #endif
 
+// gameinfo subsystem
+// Clamp bounds applied to gameinfo.txt / liblist.gam parsed budgets.
+// Lower bounds keep the engine functional; upper bounds reflect what the
+// legacy engine and SDK arrays can address without overflow.
+#ifndef XASH_LIMIT_GAMEINFO_EDICTS_MIN
+inline constexpr int gameinfo_edicts_min = 64; // min parsed value for GameInfo::max_edicts
+#else
+inline constexpr int gameinfo_edicts_min = XASH_LIMIT_GAMEINFO_EDICTS_MIN;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_EDICTS_MAX
+inline constexpr int gameinfo_edicts_max = 8192; // max parsed value for GameInfo::max_edicts
+#else
+inline constexpr int gameinfo_edicts_max = XASH_LIMIT_GAMEINFO_EDICTS_MAX;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_TENTS_MIN
+inline constexpr int gameinfo_tents_min = 32; // min parsed value for GameInfo::max_tents
+#else
+inline constexpr int gameinfo_tents_min = XASH_LIMIT_GAMEINFO_TENTS_MIN;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_TENTS_MAX
+inline constexpr int gameinfo_tents_max = 4096; // max parsed value for GameInfo::max_tents
+#else
+inline constexpr int gameinfo_tents_max = XASH_LIMIT_GAMEINFO_TENTS_MAX;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_BEAMS_MIN
+inline constexpr int gameinfo_beams_min = 16; // min parsed value for GameInfo::max_beams
+#else
+inline constexpr int gameinfo_beams_min = XASH_LIMIT_GAMEINFO_BEAMS_MIN;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_BEAMS_MAX
+inline constexpr int gameinfo_beams_max = 2048; // max parsed value for GameInfo::max_beams
+#else
+inline constexpr int gameinfo_beams_max = XASH_LIMIT_GAMEINFO_BEAMS_MAX;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_PARTICLES_MIN
+inline constexpr int gameinfo_particles_min = 256; // min parsed value for GameInfo::max_particles
+#else
+inline constexpr int gameinfo_particles_min = XASH_LIMIT_GAMEINFO_PARTICLES_MIN;
+#endif
+
+#ifndef XASH_LIMIT_GAMEINFO_PARTICLES_MAX
+inline constexpr int gameinfo_particles_max = 65536; // max parsed value for GameInfo::max_particles
+#else
+inline constexpr int gameinfo_particles_max = XASH_LIMIT_GAMEINFO_PARTICLES_MAX;
+#endif
+
 // filesystem subsystem
 #ifndef XASH_LIMIT_FILESYSTEM_FILE_BUFFER_SIZE
 inline constexpr std::size_t filesystem_file_buffer_size = 2048; // OsFile read-ahead I/O buffer
