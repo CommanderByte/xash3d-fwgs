@@ -1,6 +1,6 @@
 ---
 name: "Detail audit — structural compliance"
-description: "Deep structural audit of an xash3dpp module for the 'itty bitty' details that sweep-module.prompt.md does not check: limits.hpp magic-number coverage, header placement (public/private/stats split), memory subsystem integration (correct pool, correct lifetime), stats tiering (three-tier model), dependency injection completeness, and compat isolation. Read-only analysis phase produces a violations table; fix phase applies only what the audit identified. Commits when clean."
+description: "Read-only structural audit of an xash3dpp module. Runs six checks (limits.hpp coverage, header placement, memory/pool integration, stats tiering, dependency injection, compat isolation), produces a numbered violations table, and stops. No source files are changed. Use /implement-audit to apply the identified fixes."
 argument-hint: "module name, e.g. 'networking', 'cmd_cvar', 'filesystem'"
 agent: agent
 tools: [read, search, edit, run, terminal]
@@ -15,7 +15,8 @@ This prompt covers checks that `sweep-module` does not perform — specifically:
 limits.hpp coverage, header placement, memory subsystem integration, stats tiering,
 dependency injection completeness, and compat isolation.
 
-Work autonomously from analysis through to commit. Do not ask for confirmation.
+**Analysis only — do not make any changes to source files.**
+Present the violations table and stop.
 
 ---
 
@@ -258,93 +259,8 @@ Record each finding as:
 |---|------|------|-------|----------|-------|
 | 1 | ... | ... | CHECK-LIMITS | WARNING | `net_max_fragments = 506` raw literal; should be `::xash::limits::net_max_fragments` |
 
-Print the complete table before making any changes.
+Print the complete table and stop. Do not proceed to fix anything.
 
----
+If the table is empty (zero violations found), say so explicitly.
 
-## Step 3 — Fix
-
-Apply every fix identified in Step 2. Work through BLOCKERs first, then WARNINGs.
-Batch independent edits with `multi_replace_string_in_file`.
-
-**Fix patterns**:
-
-- **CHECK-LIMITS — add to limits.hpp**:
-  1. Open `xash3dpp/include/xash3dpp/limits.hpp`.
-  2. Find or create the `// $ARGUMENTS subsystem` comment block.
-  3. Add `#ifndef XASH_LIMIT_<NAME>` / `inline constexpr <type> <name> = <value>;` / `#endif`.
-  4. In the original file, replace the literal with `::xash::limits::<name>`.
-
-- **CHECK-HEADERS — move a private header**:
-  1. Move the `.hpp` from `include/xash3dpp/$ARGUMENTS/` to `include/xash3dpp/private/$ARGUMENTS/`.
-  2. Update all `#include` paths in `.cpp` files that include it.
-  3. Verify no public header now transitively exposes the moved header.
-
-- **CHECK-MEMORY — replace forbidden allocation**:
-  - Replace `new T(args)` (non-pimpl) with `memory::pool_new<T>(pool, args)` when the
-    pool handle is available. If the pool handle does not yet exist in `InitParams`,
-    mark the change as `TODO: wire pool` and convert to `std::make_unique<T>` as a
-    temporary measure (record as WARNING in the violations table).
-  - Replace `delete ptr` with `memory::mem_free(ptr)`.
-
-- **CHECK-STATS — add stats struct**:
-  Add a minimal `<Subsystem>Stats` struct to the context header. Start with just the
-  counters that already exist in the code (bytes in/out, packets sent/received, etc.).
-  Do not add counters that do not yet have corresponding code paths — the struct should
-  reflect existing measurements, not aspirational ones.
-
-- **CHECK-DI — fix dependency access**:
-  Add the dependency to `InitParams`. Store it in the pimpl struct. Replace the
-  global/file-scope access with the stored pointer. This may require updating call
-  sites that construct the `InitParams` struct — limit changes to the module under audit.
-
----
-
-## Step 4 — Build and test
-
-```powershell
-cmake -S xash3dpp -B build
-cmake --build build --config Debug 2>&1 | Select-String "error C[0-9]|error:"
-
-ctest --test-dir build -C Debug --output-on-failure -R "$ARGUMENTS" 2>&1 | Select-Object -Last 20
-```
-
-If there are build errors, trace them to the fix that caused them, correct, and rebuild.
-Do not weaken tests.
-
----
-
-## Step 5 — Commit
-
-Stage only `xash3dpp/` changes:
-
-```powershell
-cd "c:\git\xash3d-fwgs"
-git add -A xash3dpp/
-git diff --cached --name-only | Where-Object { $_ -notlike "xash3dpp/*" }
-```
-
-If that second command produces any output, unstage those files.
-
-Commit message format:
-
-```
-refactor($ARGUMENTS): detail audit — limits, headers, memory, stats, DI
-
-- <one line per concrete change, grouped by CHECK-* category>
-```
-
-Verify the commit landed by reading `.git/refs/heads/<branch>` directly.
-
----
-
-## Done Condition
-
-Task is complete when:
-1. All BLOCKER violations are resolved.
-2. All WARNING violations are either fixed or explicitly accepted with a
-   `// detail-audit: accepted — <reason>` comment.
-3. `100% tests passed`.
-4. The commit is on the branch.
-5. A summary is printed listing every check, how many violations were found, and
-   how each was resolved.
+To apply the fixes, run `/implement-audit $ARGUMENTS`.
