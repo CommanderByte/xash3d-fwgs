@@ -72,6 +72,31 @@ you're not ready to start. `assess-impact` produces that list.
 
 ---
 
+## Changing an `I<X>` interface signature
+
+Adding, removing, or reordering parameters on any `I<X>` pure-virtual method is
+a **hand-armed grenade**: it compiles cleanly in each TU touched but silently
+produces ODR mismatches or wrong-stub behaviour if any concrete implementation
+or test stub is missed. See Q-17 in `decisions-architecture.md`.
+
+```text
+assess-impact "change I<X>::method signature"
+    ↓
+Fix in this exact order:
+  1. I<X> interface header (pure-virtual declaration)
+  2. All concrete implementations (class A : public I<X>)
+  3. All test stubs (class StubX : public I<X> in test files)
+  4. All direct call sites of the changed method
+  5. Documentation referencing the signature
+    ↓
+Commit only when build + all tests are green
+```
+
+The blast radius always includes test stubs in files you did not write for this
+change. A grep on the method name is not sufficient — run `assess-impact` first.
+
+---
+
 ## Cleanup / compliance pass on an existing subsystem
 
 ```text
@@ -135,6 +160,8 @@ analyse-modernization      ← optional, after compliance is clean
 |---|---|
 | `PROMPT-GUIDE.md` | Frontmatter spec, tool tiers, and model selection for all `.prompt.md` files |
 | `instructions/xash3dpp.instructions.md` | Mandatory C++ patterns and conventions for `xash3dpp/` |
+| `xash3dpp/docs/design/decisions-architecture.md` | Structural paradigms: ownership, error returns, interfaces (Q-1 through Q-17) |
+| `xash3dpp/docs/design/decisions-style.md` | Naming, `[[nodiscard]]`, logging, test conventions (QA through QM) |
 
 ---
 

@@ -162,19 +162,22 @@ ______________________________________________________________________
 
 **Observation**: there is **no `IFilesystem` C++ interface** in the rewrite —
 the VFileSystem009 shim wraps the concrete `Filesystem` class directly. The only
-formal vtable interfaces in source are four small **internal seams** that exist
-for testability and policy injection, not for crossing a DLL boundary:
+formal vtable interfaces in source are **internal seams** that exist
+for testability, policy injection, or protocol-variant dispatch — never for
+crossing a DLL boundary:
 
 | Interface | Defined in | Role |
 |-----------|-----------|------|
 | `ICvarObserver` | `cmd_cvar/observers.hpp` | Notifies when a cvar value changes (debug tooling, mirror state) |
-| `ITrustOracle` | `cmd_cvar/observers.hpp` | Answers "is this stuffcmd batch from a trusted source?" |
+| `ITrustOracle` | `cmd_cvar/observers.hpp` | Answers “is this stuffcmd batch from a trusted source?” |
 | `ICompatPolicy` | `private/cmd_cvar/compat_policy.hpp` | Routes GoldSrc behavioural quirks (link-time selection via `XASH_GOLDSRC_COMPAT`) |
 | `ISearchBackend` | `private/filesystem/search_backend.hpp` | Pak / WAD / dir backend dispatch — a small internal vtable, never exported |
+| `IProtocolDriver` | `private/networking/protocol_driver.hpp` | Per-protocol wire-format policy (GoldSrc 48, Xash 49); multiple production impls expected |
 
-All four are intra-process seams, Q-7 conformant (small, focused interfaces with
-a single concrete production implementation plus a test fake), and none of them
-cross a DLL boundary.
+These are all intra-process seams. Each has at least one test fake. Seams that
+model protocol or format variants (e.g. `IProtocolDriver`) are expected to have
+multiple production implementations — see the Q-7 addendum and Q-14 for the
+rules governing multi-implementation seams.
 
 ______________________________________________________________________
 
@@ -285,6 +288,15 @@ failure. Private and internal helper functions may propagate failure silently
 upward; requiring them to log at every level produces cascading duplicate messages
 for a single user-visible error. Exception: `optional<T>` returning `nullopt` for
 a "not found" query is always silent by contract.
+
+**Log level at the public boundary** — use the most specific level that fits:
+
+| Condition | Level | Rationale |
+|-----------|-------|-----------|
+| Unexpected failure returned to caller (invalid arg, resource exhausted, I/O error) | `LogLevel::Error` | Caller gets a failure return *and* the log records why |
+| Expected/high-frequency protocol event with no error return (stale sequence, duplicate datagram) | `LogLevel::Verbose` | Would spam logs at higher levels; caller already handles it silently |
+| Recoverable degradation the caller is not told about | `LogLevel::Warning` | Something unexpected happened but the subsystem masked it internally |
+| Internal invariant violation (logic bug — should never happen) | `XASH_FATAL` / `LogLevel::Fatal` | Terminates after logging |
 
 **`std::expected<T, ErrorCode>`**: deferred. Introduced at Chunk 2 (networking)
 as the standard for subsystems where failure reason matters to callers. A central
@@ -631,6 +643,104 @@ the trigger event in a new Q entry when it is met.
 
 ______________________________________________________________________
 
+### PRECONDITION_DOCS (Q-15): Documenting non-trivial API preconditions
+
+> **Status**: ✅ DECIDED
+
+**Context**: `Netchan::process()` requires that the caller has already matched
+the incoming datagram to this specific channel by source address (and, for
+GoldSrc, by qport). This invariant cannot be expressed as a type — violating it
+causes silent sequence-state corruption rather than an obvious crash. A `// Pre:`
+comment was added ad-hoc; the pattern needs to be a named convention.
+
+**Decision**: Any public function with a non-trivial precondition that cannot be
+expressed as a type parameter must carry a `// Pre:` comment immediately before
+(or on) the declaration.
+
+A precondition is **non-trivial** when both:
+- No type-system enforcement is possible (no `std::span`, `gsl::not_null`, etc. can model it), **AND**
+- Violating it causes silent corruption or undefined behaviour rather than an obvious assertion failure.
+
+```cpp
+// Pre: the caller has already identified this channel as the correct
+//      destination for `datagram` by matching the source address.
+//      Routing a datagram to the wrong channel silently corrupts sequence state.
+[[nodiscard]] bool process( MessageBuf& datagram ) noexcept;
+```
+
+`// Post:` may be used symmetrically for guaranteed postconditions.
+
+**Scope**: public API declarations only. Private helper functions document
+invariants with `XASH_ASSERT` rather than `// Pre:` comments.
+
+______________________________________________________________________
+
+### CONST_CAST_ISOLATION (Q-16): `const_cast` must live in a named abstraction
+
+> **Status**: ✅ DECIDED
+
+**Context**: `MessageBuf` supports both read-mode (over `span<const byte>`) and
+write-mode (over `span<byte>`). Its internal representation stores a mutable span;
+constructing the read-mode view requires exactly one `const_cast`. Placing that
+cast inline at every `process()` call site distributes a SAFETY argument that must
+be maintained centrally.
+
+**Decision**: A `const_cast` away from `const` in production code must be wrapped
+in a **named function** with a `// SAFETY:` comment explaining the invariant that
+makes the cast correct.
+
+```cpp
+// SAFETY: rebind_read constructs a read-only view. The span is only ever
+//         passed to read-path functions; no mutation occurs after this call.
+void rebind_read( std::span<const std::byte> buf ) noexcept;
+```
+
+Inline `const_cast` at call sites is **forbidden** — the reasoning is silently
+duplicated or dropped at every copy.
+
+**Exception**: `const_cast` in test files for test-setup purposes is permitted,
+with the same `// SAFETY:` comment.
+
+**Note**: this rule is about *reasoning locality*, not frequency. Even a single
+`const_cast` needs a named home.
+
+______________________________________________________________________
+
+### INTERFACE_SIGNATURE_IMPACT (Q-17): `assess-impact` required for `I<X>` signature changes
+
+> **Status**: ✅ DECIDED
+
+**Context**: Adding `bool is_server_socket` to `IProtocolDriver::read_packet_header()`
+required updating: the interface header, both concrete implementations
+(`GoldSrcProtocolDriver`, `XashProtocolDriver`), the `StubDriver` in
+`test_netchan.cpp`, `Netchan::process()`, and all call sites in
+`test_protocol_driver_registry.cpp`. An informal grep pass could easily miss the
+test stub or a seldom-used call site, producing a build that compiles per-TU but
+links to an ODR-violating stub that silently returns wrong data.
+
+**Decision**: Any change to an `I<X>` interface signature (adding, removing, or
+reordering parameters; changing a parameter type; adding or removing `const` or
+`noexcept`) requires:
+
+1. Running `assess-impact` before touching any implementation file.
+2. Listing in the commit message or PR description: every concrete implementation
+   updated, every test stub updated, and every direct call site updated.
+
+**Blast radius template** for any `I<X>` method change:
+
+| Category | What to search for |
+|----------|--------------------|
+| Interface declaration | `I<X>.hpp` — the pure-virtual declaration |
+| Concrete implementations | `class A : public I<X>` — in any source file, any subsystem |
+| Test stubs | `class StubX : public I<X>` — in test files |
+| Direct call sites | any `.method(` call through an `I<X>*` or `I<X>&` reference |
+| Documentation | boundary spec, design notes, any doc referencing the signature |
+
+**Fix order**: interface header → concrete impls → test stubs → call sites → docs.
+Commit only after all five categories are updated and the build is green.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 All open questions are decided. This section records when each rule applies.
@@ -680,6 +790,10 @@ These rules apply from the first line of any new subsystem:
   subsystem; link-time selected; never exported publicly (Q-12)
 - Hot-path `std::vector` members pre-reserved at init; member marked
   `// @pre-reserved: <LIMIT_NAME>` (Q-13)
+- Non-trivial API preconditions documented with `// Pre:` on the declaration (Q-15)
+- `const_cast` away from `const` wrapped in a named function with `// SAFETY:` (Q-16)
+- `I<X>` interface signature changes require `assess-impact` first; commit message
+  must enumerate all impls, test stubs, and call sites updated (Q-17)
 
 ______________________________________________________________________
 
