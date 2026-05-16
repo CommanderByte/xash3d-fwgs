@@ -221,7 +221,13 @@ ______________________________________________________________________
 
 - **pm_shared float vs. fixed-point** — Must be decided before Chunk 5 (map_loader) ships. Fixed-point eliminates cross-platform FPU divergence (important for netplay) but requires a PM layer rewrite. Float is cheaper upfront but may require reproducible-FP compiler flags.
 
-- **Networking wire-compat target** — If the rewrite must accept connections from vanilla GoldSrc clients during development, the entire netchan framing, delta-encoder table, and game-protocol message IDs must be bit-exact. This is the largest constraint on Chunk 4 design freedom. Decision needed before Chunk 4 starts.
+- **Networking wire-compat target** — **DECIDED**: GoldSrc-compatible
+  protocol is the default and is wire-frozen (netchan framing, delta-encoder
+  field tables, game-protocol message IDs match the legacy bytes exactly).
+  Per-client protocol selection is supported via an `IProtocolDriver` seam in
+  netchan so a newer / experimental driver can be registered without
+  touching the default path. See `boundaries/networking-boundary.md`
+  §"Pluggable game protocol per client".
 
 - **`entvars_t` internal representation** — The server must present `entvars_t` at the exact ABI-specified layout when calling the game DLL. If Chunk 6 uses SoA or any non-literal struct storage internally, it needs a projection/copy step at every DLL call boundary. Raw edict pointers everywhere vs. handle map with shim layer shapes all of Chunk 6 and the save-format chunk.
 
@@ -229,6 +235,16 @@ ______________________________________________________________________
 
 - **Thread model** — The legacy engine is single-threaded. `core::Clock` already uses atomics for renderer-thread reads. A decision on whether networking I/O or rendering move to separate threads is needed before Chunk 12 (client), because it determines whether `cl_parse` and `S_Update` can run concurrently.
 
-- **HTTP downloader + master-server** — These live inside `engine/common/` networking but are relatively self-contained. Should they land in Chunk 4 or be deferred to a dedicated Chunk 4b? The networking boundary spec counts them as satellite subsystems of networking.
+- **HTTP downloader + master-server placement** — **DECIDED** (Q-11
+  satellite-placement test): HTTP is a separate `xash3dpp_http` target with
+  its own boundary spec; master-server list stays in `xash3dpp_networking`.
+  A later grouping pass may move related targets into a shared `src/net/`
+  subdirectory. See `decisions-architecture.md §Q-11`.
 
-- **Legacy survey gaps** — Boundary specs still needed for `networking`, `server`, `client`, `content`, `sound`, `input`, `physics`, and `save`. Each chunk above should start with a `/analyse-subsystem` pass to produce a boundary spec before writing any code.
+- **Platform sockets layer not yet implemented** — Chunk 4 cannot start
+  until `xash3dpp_platform` exposes an `IPlatformSockets` interface and
+  `os_socket` free-function layer. Requirements are drafted in
+  `architecture/platform/sockets.md`; implementation will be picked up in a
+  dedicated session before Chunk 4 begins.
+
+- **Legacy survey gaps** — Boundary specs still needed for `server`, `client`, `content`, `sound`, `input`, `physics`, and `save`. Each chunk above should start with a `/analyse-subsystem` pass to produce a boundary spec before writing any code.

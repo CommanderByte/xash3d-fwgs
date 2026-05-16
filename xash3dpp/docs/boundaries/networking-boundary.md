@@ -372,15 +372,55 @@ built-in delta types. The `bInitialized` flag per table is mutated at
 
 ---
 
-## Open Questions
+## Pluggable game protocol per client
 
-| # | Question | Context |
-|---|---|---|
-| OQ-1 | **Module decomposition**: Should Transport, Netchan, Message Codec, and Delta Encoder be four independent CMake targets, or a single `xash3dpp_networking`? | Codec and Delta have no platform dependencies; separating them would allow unit-testing without sockets. |
-| OQ-2 | **`std::expected<T, NetError>` at Chunk 2**: `decisions-architecture.md §Q-5` defers this to Chunk 2. `NET_GetPacket` / `NET_SendPacket` are the entry points; what set of `NetError` codes is needed? | Candidate codes: `WouldBlock`, `SocketInvalid`, `Overflow`, `SplitTooLarge`, `DnsAgain`, `DnsFailure`. |
-| OQ-3 | **`netadr_t` as a C++ value type**: The ABI layout is fixed, but should the rewrite wrap it in a `NetAddress` type with constructors/comparators, or keep the C struct and adapt at the ABI boundary? | A wrapping type can enforce the `ip6_0` zeroing invariant internally. |
-| OQ-4 | **DNS resolver threading**: Use the xash3dpp worker-thread pool (if one exists) or retain the dedicated-thread-per-query model? | The legacy model fires at most one thread at a time; pooling would allow concurrent multi-server list queries. |
-| OQ-5 | **HTTP downloader placement**: Fold HTTP into the networking module, or treat it as a separate `xash3dpp_http` target with its own boundary spec? | HTTP uses TCP, not UDP; it has its own state machine, rate limits, and compression path (miniz). Separation is cleaner. |
-| OQ-6 | **Master server list placement**: `masterlist.c` depends on netchan and server state (`sv_lan`, `sv_nat`). Should it be part of the server subsystem or the networking module? | Legacy places it in `engine/common`; the server is its only consumer. |
-| OQ-7 | **bzip2 / LZSS in dedicated builds**: The rewrite should decide whether to conditionally compile compression or always include it as a no-op. | Keeping conditional compilation preserves code-size benefit on dedicated servers. |
-| OQ-8 | **Single-threaded constraint on `net_from`**: Future async I/O would require `net_from` to become a per-call output parameter or a thread-local. This should be decided at Chunk 2 design time before any implementation. | A clean API would pass `from` through the call stack rather than storing it globally. |
+The four packet-header magic numbers, the SPLITPACKET / SPLITPACKETGS framing
+formats, the netchan reliability scheme, and the delta-encoder field tables
+are **wire-frozen for the default GoldSrc-compatible protocol** and must match
+the legacy constants byte-for-byte. They are not negotiable for clients that
+identify as vanilla GoldSrc or Xash3D protocol 48/49.
+
+The rewrite must however leave the door open to **per-client protocol
+selection** — newer (or experimental) client builds may negotiate a different
+protocol on connect. This is implemented as a `ProtocolDriver` interface
+selected at `Netchan_Setup` time:
+
+```cpp
+struct IProtocolDriver {
+    virtual void   write_packet_header(MessageBuf& out, const FrameMeta&) noexcept = 0;
+    virtual Result<FrameMeta> read_packet_header(MessageBuf& in) noexcept = 0;
+    virtual SplitFormat split_format() const noexcept = 0;   // Xash | GoldSrc | NewV2
+    virtual DeltaTableSet delta_tables() const noexcept = 0; // identifies field table set
+};
+```
+
+- The default driver (`GoldSrcProtocolDriver`) is always linked and produces
+  bit-exact legacy output.
+- Alternative drivers register a new `connprotocol_t` enumerant and a
+  matching `IProtocolDriver` factory at `Netchan_Init` time.
+- The selection is per-`netchan_t`, not global: a server may speak GoldSrc to
+  one client and a newer protocol to another concurrently.
+- `Netchan_Setup`'s existing `flags` argument is extended with a
+  `protocol_driver` field rather than overloaded with more bit flags.
+
+No alternative driver ships in Chunk 4; the seam exists so that a Chunk 4b
+follow-up (or any later feature work) can add one without touching the core
+netchan or delta code.
+
+---
+
+## Resolved Decisions
+
+| # | Decision | Resolution and rationale |
+|---|----------|--------------------------|
+| OQ-1 | **Module decomposition** | **Single `xash3dpp_networking` target** containing transport, netchan, message codec, and delta encoder; each layer in its own `.cpp` translation unit so layer-level unit tests link against the same archive. Mirrors the single `NetworkContext` slot in `EngineContext` (decisions-architecture §Q-2). |
+| OQ-2 | **`NetError` codes** | Initial enum: `WouldBlock, SocketInvalid, BindFailed, Overflow, SplitTooLarge, DnsAgain, DnsFailure, BadAddress, BufferTooSmall, NotInitialised`. Public APIs that can fail return `std::expected<T, NetError>` per Q-5; the diagnostic message at the public-API boundary names the code by enumerant. New codes are added per-feature, not pre-emptively. |
+| OQ-3 | **`netadr_t` wrapper** | Intra-engine code uses `xash::networking::NetAddress`, a value type that enforces the `ip6_0[0..1] == 0` invariant in its constructors and provides `from_string` / `to_string` / `compare` / `compare_mask`. At every frozen-ABI boundary (game DLL, client DLL `net_api_t`) the wrapper is converted to the packed 20-byte `netadr_t` POD by a small adapter — analogous to the `string_view` rule in Q-8. |
+| OQ-4 | **DNS resolver threading** | Retain the one-thread-at-a-time dedicated-resolver model for now (the worker pool / `JobToken` lands later in the host-side work). The single-in-flight contract is preserved exactly; migration to the worker pool is a follow-up that does not change the public `string_to_adr_nb` API. |
+| OQ-5 | **HTTP downloader placement** | **Separate `xash3dpp_http` target** with its own boundary spec. HTTP is TCP-based, has its own state machine, rate limits, and a gzip path (miniz) that overlaps only at the dependency level — not the protocol level — with netchan compression. `HTTP_Run` is invoked from the host's per-frame tick, not from `NetworkContext::tick`. Note: a later pass will group small same-layer targets into folders (e.g. `xash3dpp/src/net/{networking,http,master_list}`) — see decisions-architecture Q-11. |
+| OQ-6 | **Master server list placement** | **Stays in networking** (`master_list.cpp` inside `xash3dpp_networking`). The list speaks UDP OOB packets that only netchan can frame; the server is its only logical consumer but the I/O lives at the same layer as transport. The networking subsystem exposes a small `IMasterListClient` interface that `server/` configures (`set_lan`, `set_nat`, `heartbeat()`). This follows the satellite-module placement paradigm recorded in decisions-architecture Q-11. |
+| OQ-7 | **bzip2 / LZSS in dedicated builds** | Keep conditional compilation. The `XASH_NET_COMPRESSION` CMake option (default ON for client builds, OFF for `XASH_DEDICATED`) selects `compress_bz2.cpp` + `compress_lzss.cpp` vs `compress_null.cpp` at link time — same link-time-selection paradigm as `XASH_GOLDSRC_COMPAT`, zero `#ifdef` in core. |
+| OQ-8 | **`net_from` re-entrancy** | The file-static `net_from` global is eliminated. `from` is a `NetAddress*` out-parameter on `NET_GetPacket`, `queue_packet`, `lag_packet`, and threaded through to every layer above. This is mandatory: it is the only design change that makes the threading-model `T_NetIO` migration source-compatible later. |
+
+All eight open questions are now decided. Any further design contention belongs
+in a new `OQ-N` entry above this table.

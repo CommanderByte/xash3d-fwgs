@@ -183,6 +183,8 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
+All twelve questions are now decided.
+
 ______________________________________________________________________
 
 ### SUBSYSTEM_CLASS (Q-1): When should a subsystem be a class vs free functions?
@@ -421,6 +423,96 @@ Deferred to Chunk 10. No new plugin types before then.
 
 ______________________________________________________________________
 
+### SATELLITE_PLACEMENT (Q-11): Where do small same-layer satellite features live — separate target, or fold into the parent subsystem?
+
+> **Status**: ✅ DECIDED
+
+**Context**: Several subsystems naturally have small "satellite" features that
+share the parent's layer but not its core concern — e.g. networking has an
+HTTP downloader and a master-server list; filesystem may grow archive-format
+plugins; client may grow demo recording and screenshot capture. Folding
+everything into the parent inflates the target and obscures separation of
+concerns; spinning every feature into its own target multiplies CMake
+boilerplate.
+
+**Decision** — apply the following test:
+
+| Criterion | Same target as parent | Separate target |
+|-----------|----------------------|-----------------|
+| Shares the parent's wire/format protocol (lives or dies with it) | ✓ | |
+| Has its own independent protocol/state machine | | ✓ |
+| Pulls in a different external dependency the parent does not need | | ✓ |
+| Consumer surface fits in a small interface the parent exposes | ✓ | |
+| Useful without the parent at runtime | | ✓ |
+
+A satellite scores **≥ 2 "separate" criteria** → separate target.
+
+When the answer is "separate":
+
+- The new target lives under the parent's logical area (`xash3dpp_<feature>`).
+- A grouping pass at the end of a chunk may move several related satellite
+  targets into a shared subdirectory (e.g. `src/net/{networking,http,master_list}`)
+  — this is a build-system reshuffle, not a code change.
+- The satellite gets its own boundary spec under `docs/boundaries/`.
+
+**Applied to networking** (decided in `boundaries/networking-boundary.md`):
+
+- **HTTP downloader** → separate target `xash3dpp_http`. Distinct state
+  machine, TCP rather than UDP, different host tick entry point (`HTTP_Run`),
+  shares only miniz at the dependency level.
+- **Master-server list** → stays inside `xash3dpp_networking`. Speaks UDP OOB
+  packets that only netchan can frame; consumer surface (server) is small;
+  not useful without the networking transport layer.
+
+Future small features should re-apply this test at their boundary-spec stage.
+
+______________________________________________________________________
+
+### COMPAT_SCOPE (Q-12): Should `ICompatPolicy` be per-subsystem or a single engine-wide compat router?
+
+> **Status**: ✅ DECIDED
+
+**Context**: `cmd_cvar` introduced `ICompatPolicy` for routing GoldSrc
+behavioural quirks. As more subsystems acquire compat surfaces (networking
+SPLITPACKET-vs-SPLITPACKETGS, server-DLL `entvars_t` quirks, save-format
+versioning, content-loader WAD oddities) it would be easy to merge them all
+into one giant `IEngineCompatPolicy` table. That is the wrong direction.
+
+**Decision**: **Per-subsystem `ICompatPolicy`** — each subsystem that has
+behavioural quirks owns its own small policy interface, named for the
+subsystem (e.g. `cmd_cvar::ICompatPolicy`, `networking::IProtocolDriver`,
+`server::ICompatPolicy`). Each is selected at link time by the same
+`XASH_GOLDSRC_COMPAT` CMake option (or feature-specific variant such as
+`XASH_NET_COMPRESSION` for orthogonal toggles).
+
+**Why per-subsystem**:
+
+- Each subsystem's quirk table is small, focused, and individually reviewable.
+- The compat surface is a documented part of that subsystem's boundary spec —
+  hard to lose track of, easy to remove when a quirk is no longer needed.
+- A global table would force every subsystem to depend on every other
+  subsystem's compat header — exactly the kind of cross-dependency the
+  rewrite is removing.
+- Test fakes are trivial — each subsystem ships a `compat_null.cpp` linked
+  when the CMake option is OFF, plus a `MockCompatPolicy` in tests.
+
+**Naming convention**: the interface lives in
+`include/xash3dpp/private/<subsystem>/compat_policy.hpp` (or a more specific
+name where the role is narrower than "all compat", e.g.
+`networking/protocol_driver.hpp`). It is **never** exported in the public
+subsystem header.
+
+**Cross-cutting compat quirks** (e.g. the wire-protocol version implied by
+the connected client) are passed in via the relevant subsystem's `InitParams`
+struct or `setup()` argument, not stored in a shared global. The networking
+`IProtocolDriver` model in `boundaries/networking-boundary.md` is the
+reference example of per-feature compat selection within a subsystem.
+
+Deferred to chunk-by-chunk application: each new subsystem decides its own
+compat scope and documents it in its boundary spec.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 All ten open questions are decided. This section records when each rule applies.
@@ -461,6 +553,9 @@ These rules apply from the first line of any new subsystem:
 - Ownership vocabulary table (Q-9)
 - `std::expected<T, ErrorCode>` for rich failure modes, from Chunk 2 (Q-5)
 - Versioned C plugin descriptor for new plugin types, from Chunk 10 (Q-10)
+- Separate-target test for satellite features at boundary-spec stage (Q-11)
+- Per-subsystem `ICompatPolicy` (or feature-specific variant) named for the
+  subsystem; link-time selected; never exported publicly (Q-12)
 
 ______________________________________________________________________
 
