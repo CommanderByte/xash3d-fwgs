@@ -65,6 +65,13 @@ inline constexpr std::size_t memory_pool_name_len = 64; // max bytes in a pool n
 inline constexpr std::size_t memory_pool_name_len = XASH_LIMIT_MEMORY_POOL_NAME_LEN;
 #endif
 
+// host subsystem
+#ifndef XASH_LIMIT_HOST_FRAME_ABORT_DETAIL_BUF
+inline constexpr std::size_t host_frame_abort_detail_buf = 256; // max bytes for frame-abort detail string (including null terminator)
+#else
+inline constexpr std::size_t host_frame_abort_detail_buf = XASH_LIMIT_HOST_FRAME_ABORT_DETAIL_BUF;
+#endif
+
 // utilities subsystem
 #ifndef XASH_LIMIT_TOKENIZER_TOKEN_MAX
 inline constexpr std::size_t tokenizer_token_max = 512; // max token bytes in Tokenizer::next()

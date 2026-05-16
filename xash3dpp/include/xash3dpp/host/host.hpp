@@ -102,6 +102,14 @@ enum class HostStatus
 };
 
 // ---------------------------------------------------------------------------
+// HostStats — observable snapshot of the Host's runtime state.
+// ---------------------------------------------------------------------------
+struct HostStats
+{
+    HostStatus status = HostStatus::kInit;  // current lifecycle status
+};
+
+// ---------------------------------------------------------------------------
 // Host — engine singleton by convention.
 //
 // Typical usage (from a launcher):
@@ -152,6 +160,7 @@ public:
     [[nodiscard]] double           realtime()           const noexcept;
     [[nodiscard]] bool             frame_abort_pending() const noexcept;
     [[nodiscard]] core::ErrorCode  frame_abort_code()   const noexcept;
+    const HostStats&               stats()              const noexcept;
 
 private:
     struct Impl;

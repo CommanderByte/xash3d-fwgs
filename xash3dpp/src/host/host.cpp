@@ -10,6 +10,7 @@
 //   xash3dpp_platform   — platform::get_time(), platform::console::read_line()
 
 #include <xash3dpp/host/host.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/core/assert.hpp>
 #include <xash3dpp/core/clock.hpp>
 #include <xash3dpp/core/error.hpp>
@@ -42,11 +43,12 @@ struct Host::Impl
     std::uint32_t bugcomp   = 0;
 
     HostStatus  status     = HostStatus::kInit;
+    HostStats   stats_     {};              // always-on snapshot; status field mirrored here
 
     // Frame-abort propagation (Quirk Q-3, OQ-1 hybrid).
     bool                  frame_abort_pending = false;
     core::ErrorCode       frame_abort_code    = core::ErrorCode::Ok;
-    std::array<char, 256> frame_abort_detail  {};
+    std::array<char, ::xash::limits::host_frame_abort_detail_buf> frame_abort_detail {};
 
     // Injected deps — non-owning; null = standalone / test mode.
     // Must outlive this Impl.  Only written in init(); never written again.
@@ -87,7 +89,8 @@ struct Host::Impl
         destroy_pool( pool );
         pool = k_null_pool;
 
-        status = HostStatus::kShutdown;
+        status        = HostStatus::kShutdown;
+        stats_.status = status;
     }
 };
 
@@ -121,7 +124,8 @@ bool Host::init(const HostInitParams& p)
     s.map_loader = p.map_loader;
     s.ext_fs     = p.filesystem;
 
-    s.status = HostStatus::kInit;
+    s.status        = HostStatus::kInit;
+    s.stats_.status = s.status;
 
     // --- Memory ----------------------------------------------------------
     s.pool = create_pool( "host" );
@@ -169,7 +173,8 @@ bool Host::init(const HostInitParams& p)
                     static_cast<int>( s.dedicated ), s.developer );
     }
 
-    s.status = HostStatus::kRunning;
+    s.status        = HostStatus::kRunning;
+    s.stats_.status = s.status;
     return true;
 }
 
@@ -222,7 +227,8 @@ void Host::RunFrame()
 
 void Host::RequestShutdown(const char* /*reason*/) noexcept
 {
-    impl_->status = HostStatus::kShutdown;
+    impl_->status        = HostStatus::kShutdown;
+    impl_->stats_.status = impl_->status;
 }
 
 void Host::shutdown() noexcept
@@ -297,5 +303,6 @@ double          Host::realtime()            const noexcept
 }
 bool            Host::frame_abort_pending() const noexcept { return impl_->frame_abort_pending; }
 core::ErrorCode Host::frame_abort_code()    const noexcept { return impl_->frame_abort_code; }
+const HostStats& Host::stats()              const noexcept { return impl_->stats_; }
 
 } // namespace xash
