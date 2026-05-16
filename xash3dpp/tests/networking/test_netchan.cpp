@@ -170,8 +170,9 @@ static void test_stub_methods_return_not_initialised()
     // Receive side: not ready until process() ingests fragments.
     CHECK( !c.incoming_ready() );
 
-    // can_packet() now takes (now_seconds, choke); stub returns is_active().
-    CHECK( c.can_packet( 0.0, true ) );
+    // can_packet() now takes (now_seconds, choke); fresh channel with
+    // cleartime=0 must allow a send at any positive time.
+    CHECK( c.can_packet( 1.0, true ) );
 }
 
 static void test_write_reliable_inactive_returns_false()
@@ -250,6 +251,92 @@ static void test_write_reliable_rejects_overflow()
               static_cast<int>( cap * 8u ) );
 }
 
+static void test_can_packet_inactive_returns_false()
+{
+    Netchan c;
+    CHECK( !c.can_packet( 0.0, true ) );
+    CHECK( !c.can_packet( 0.0, false ) );
+}
+
+static void test_can_packet_bypasses_choke_for_loopback_and_oob()
+{
+    Netchan c;
+    StubDriver d;
+    StubBlockSize bs;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    cfg.remote_address       = NetAddress::loopback_v4( 27015 );
+    cfg.rate                 = 100.0; // small rate so choke would otherwise matter
+    REQUIRE( c.setup( cfg ) );
+
+    // Burn the choke artificially with a big send.
+    c.update_choke( 0.0, 10000 );
+
+    // Loopback always allowed regardless of choke state.
+    CHECK( c.can_packet( 0.5, true ) );
+
+    // choke=false bypasses too, even for non-loopback peers.
+    NetchanConfig cfg2 = cfg;
+    cfg2.remote_address      = NetAddress::any_v4( 27015 );
+    cfg2.remote_address.addr.v4[0] = 10; // pretend public address
+    Netchan c2;
+    REQUIRE( c2.setup( cfg2 ) );
+    c2.update_choke( 0.0, 10000 );
+    CHECK( c2.can_packet( 0.5, false ) );
+}
+
+static void test_update_choke_advances_cleartime()
+{
+    Netchan c;
+    StubDriver d;
+    StubBlockSize bs;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    cfg.remote_address       = NetAddress::any_v4( 27015 );
+    cfg.remote_address.addr.v4[0] = 10; // non-loopback
+    cfg.rate                 = 1000.0; // 1000 bytes/sec → 1ms per byte
+    REQUIRE( c.setup( cfg ) );
+
+    // Send 100 bytes at t=1.0.  cleartime should advance to
+    // 1.0 + (100 + 28) / 1000 = 1.128.
+    c.update_choke( 1.0, 100 );
+
+    // Just before the cleartime cap, choke blocks.
+    CHECK( !c.can_packet( 1.05, true ) );
+
+    // After the cleartime cap, choke clears.
+    CHECK( c.can_packet( 1.20, true ) );
+}
+
+static void test_update_choke_no_rate_is_noop()
+{
+    Netchan c;
+    StubDriver d;
+    StubBlockSize bs;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    cfg.remote_address       = NetAddress::any_v4( 27015 );
+    cfg.remote_address.addr.v4[0] = 10;
+    cfg.rate                 = 0.0; // disabled
+    REQUIRE( c.setup( cfg ) );
+
+    c.update_choke( 1.0, 100000 );
+    // No rate ⇒ cleartime never advances, so choke always passes.
+    CHECK( c.can_packet( 1.05, true ) );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -281,6 +368,10 @@ int main()
     test_write_reliable_inactive_returns_false();
     test_write_reliable_appends_and_tracks_length();
     test_write_reliable_rejects_overflow();
+    test_can_packet_inactive_returns_false();
+    test_can_packet_bypasses_choke_for_loopback_and_oob();
+    test_update_choke_advances_cleartime();
+    test_update_choke_no_rate_is_noop();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );

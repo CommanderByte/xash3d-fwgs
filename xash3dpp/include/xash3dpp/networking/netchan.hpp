@@ -98,6 +98,9 @@ struct NetchanConfig
         // ^ owned by the parent NetworkContext (PoolHandle("networking")).
         //   Netchan does not create or destroy the pool; setup() rejects
         //   an invalid handle the same way it rejects null callbacks.
+    double                    rate                  { 9999.0 };
+        // ^ bytes/second cap used by can_packet / update_choke.  Matches
+        //   legacy DEFAULT_RATE.  Set <= 0 to disable bandwidth choking.
 };
 
 // ---------------------------------------------------------------------------

@@ -114,6 +114,7 @@ bool Netchan::setup( const NetchanConfig &config ) noexcept
     impl_->driver              = config.driver;
     impl_->block_size_provider = config.block_size_provider;
     impl_->pool                = config.pool;
+    impl_->rate                = config.rate;
     impl_->active              = true;
 
     // TODO(Chunk 7): allocate reliable_buf and per-stream fragment queues
@@ -237,16 +238,46 @@ Result<std::size_t> Netchan::copy_file_fragments( std::span<std::byte> /*out*/,
 // Bandwidth / choke
 // ---------------------------------------------------------------------------
 
-bool Netchan::can_packet( double /*now_seconds*/, bool /*choke*/ ) const noexcept
+namespace {
+
+// IP + UDP header overhead per legacy net_chan.c (UDP_HEADER_SIZE = 28).
+// Counted against the per-channel rate cap when accumulating cleartime.
+constexpr std::size_t k_udp_header_size = 28;
+
+[[nodiscard]] bool is_loopback_address( const NetAddress &addr ) noexcept
 {
-    // TODO(Chunk 9): apply cleartime vs. now_seconds check; bypass when
-    // loopback / OOB or choke=false.
-    return is_active();
+    return addr.family == IpFamily::V4 && addr.addr.v4[0] == 127;
 }
 
-void Netchan::update_choke( double /*now_seconds*/, std::size_t /*bytes_sent*/ ) noexcept
+} // namespace
+
+bool Netchan::can_packet( double now_seconds, bool choke ) const noexcept
 {
-    // TODO(Chunk 9): push cleartime forward by bytes / rate.
+    if( !impl_ || !impl_->active ) return false;
+
+    // Never choke loopback or explicit-bypass packets.  Mutating cleartime
+    // here mirrors legacy Netchan_CanPacket so the next throttled send
+    // doesn't carry over backlog from a quiet period.
+    if( !choke || is_loopback_address( impl_->remote_address ) )
+    {
+        impl_->cleartime = now_seconds;
+        return true;
+    }
+
+    return impl_->cleartime < now_seconds;
+}
+
+void Netchan::update_choke( double now_seconds, std::size_t bytes_sent ) noexcept
+{
+    if( !impl_ || !impl_->active ) return;
+    if( impl_->rate <= 0.0 ) return; // no rate cap configured
+
+    if( impl_->cleartime < now_seconds )
+        impl_->cleartime = now_seconds;
+
+    const double seconds_per_byte = 1.0 / impl_->rate;
+    impl_->cleartime += static_cast<double>( bytes_sent + k_udp_header_size )
+                        * seconds_per_byte;
 }
 
 // ---------------------------------------------------------------------------
