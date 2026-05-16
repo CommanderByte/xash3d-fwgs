@@ -7,3 +7,7 @@ add_test(NAME test_networking_lifecycle COMMAND test_networking_lifecycle)
 add_executable(test_message_buf test_message_buf.cpp)
 target_link_libraries(test_message_buf PRIVATE xash3dpp_networking)
 add_test(NAME test_message_buf COMMAND test_message_buf)
+
+add_executable(test_netadr test_netadr.cpp)
+target_link_libraries(test_netadr PRIVATE xash3dpp_networking)
+add_test(NAME test_netadr COMMAND test_netadr)

@@ -35,6 +35,7 @@ endif()
 
 add_library(xash3dpp_networking STATIC
     context.cpp
+    address.cpp
     message_buf.cpp
     protocol_driver_goldsrc.cpp
     master_list.cpp

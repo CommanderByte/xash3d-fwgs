@@ -17,6 +17,10 @@
 
 #include <cstdint>
 #include <cstring>    // std::memcmp
+#include <span>
+#include <string_view>
+
+#include <xash3dpp/networking/errors.hpp>
 
 namespace xash::networking {
 
@@ -93,5 +97,36 @@ struct NetAddress
         return !( *this == o );
     }
 };
+
+// ---------------------------------------------------------------------------
+// Parsing & formatting
+// Replaces legacy NET_StringToAdr / NET_AdrToString.
+//
+// `from_string` parses numeric IPv4 endpoints only: "a.b.c.d" or
+// "a.b.c.d:port".  IPv6 literals ("[::1]:27015") and hostnames are rejected
+// with NetError::BadAddress; hostname resolution belongs to DnsResolver
+// (platform/async, see Layer 1 item #14).  Octet values must be 0-255 and
+// port (if present) must be 0-65535.
+//
+// `to_string` writes "a.b.c.d:port" into `out` and returns the number of
+// chars written (excluding the NUL terminator).  Returns BufferTooSmall if
+// `out` cannot hold the longest IPv4 form ("255.255.255.255:65535\0" = 22
+// bytes).  IPv6 is not yet supported.
+// ---------------------------------------------------------------------------
+
+[[nodiscard]] Result<NetAddress> from_string( std::string_view text ) noexcept;
+[[nodiscard]] Result<std::size_t> to_string( const NetAddress &a, std::span<char> out ) noexcept;
+
+// Compare two addresses ignoring port.  Equivalent to legacy
+// NET_CompareBaseAdr — useful for ban lists and rate limits where the source
+// port varies per packet.
+[[nodiscard]] bool compare_base( const NetAddress &a, const NetAddress &b ) noexcept;
+
+// Compare the high `mask_bits` of two addresses, ignoring port.  Replaces
+// NET_CompareAdrByMask.  `mask_bits` of 0 matches everything; values
+// exceeding the address width (32 for V4, 128 for V6) are clamped.  Returns
+// false if the address families differ.
+[[nodiscard]] bool mask_compare( const NetAddress &a, const NetAddress &b,
+                                 std::uint8_t mask_bits ) noexcept;
 
 } // namespace xash::networking
