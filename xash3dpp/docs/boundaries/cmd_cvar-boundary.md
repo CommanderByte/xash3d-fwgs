@@ -124,8 +124,8 @@ client headers.
 
 | Name | Type | Purpose |
 |---|---|---|
-| `cmd_text` | `std::deque<std::string>` | Privileged command queue |
-| `filteredcmd_text` | `std::deque<std::string>` | Unprivileged (stuffcmd) command queue |
+| `cmd_text` | `std::deque<std::string>` | Privileged command queue; informally bounded by `limits::cbuf_size` (default 256 entries) |
+| `filteredcmd_text` | `std::deque<std::string>` | Unprivileged (stuffcmd) command queue; same bound as `cmd_text` |
 | `cmd_wait` | `int` | Frame-delay counter for the `wait` command |
 | `cmd_functions` | hash map + linked ABI chain | Registered command functions |
 | `cmd_alias` | hash map + linked ABI chain | Command aliases |
@@ -205,7 +205,7 @@ These decisions were resolved during design review and supersede the original op
 | D3 | **Change side-effects via `ICvarObserver`, injected observers.** Server registers for `FCVAR_SERVER`; client for `FCVAR_USERINFO`; host for `FCVAR_MOVEVARS` / `FCVAR_VIDRESTART`. Dependency arrow goes outward. `FCVAR_CHANGED` bit is still set in the ABI struct for legacy DLLs that poll it; the observer system is the clean internal mechanism. |
 | D4 | **ABI-literal struct layout, two explicit DLL registration paths, safe internal extensions.** `Cvar` starts with the frozen `cvar_t` fields (offset-stable, never modified). Extensions after `next`: `generation` (atomic, lock-free change detection), `type_hint` (scripting/UI), `range_min/max` (validation), `owner_flags` (stable ownership for unlink). Two registration paths: `register_engine_cvar(Cvar &)` and `register_dll_cvar(cvar_t *)`. `next` pointer maintained as ABI list chain only; internal lookup uses a hash map. |
 | D5 | **`std::deque<std::string>` command buffer.** Replaces the fixed 32 KB ring. Append and prepend are O(1) amortised; `wait` is trivial; no fixed upper bound; no memmove on insert. |
-| D6 | **Compile-time limits in `limits.hpp`, CMake-overridable.** All buffer/count constants (`cmd_line_max`, `cmd_tokens_max`, `alias_name_max`, `cvar_hash_buckets`, and later cross-subsystem constants) live in `include/xash3dpp/limits.hpp` as `inline constexpr`. A CMake option generates an override header for specialised builds. |
+| D6 | **Compile-time limits in `limits.hpp`, CMake-overridable.** All buffer/count constants (`cmd_line_max`, `cmd_tokens_max`, `alias_name_max`, `cvar_hash_buckets`, `cbuf_size`, and later cross-subsystem constants) live in `include/xash3dpp/limits.hpp` as `inline constexpr`. A CMake option generates an override header for specialised builds. |
 | D7 | **Lifecycle phases: init → DLL-load → runtime → DLL-unload.** Registry structure is frozen during runtime. Iterators are not valid across phase transitions. `Cvar_Unlink` safe even if DLL freed its structs (via saved metadata). |
 | D8 | **Reads lock-free after init; writes game-thread-only.** `value` stored as `std::atomic<float>`; string values in immutable-on-write pool (pointer atomically updated on write); `FCVAR_CHANGED` bit in `std::atomic<uint32_t>` flags field. Registration and unlink: game thread only. |
 | D9 | **`cmd_scripting` preserved, stays privileged.** `$cvar_name` substitution and `if`/`else` conditionals kept with identical semantics. Privilege guard blocks server-side information extraction via stuffcmd. Future scripting backends are additive; this feature remains as a baseline. |
@@ -257,6 +257,8 @@ const char            *last_write_location{ nullptr }; // __FILE__:__LINE__ stri
 
 ```cpp
 struct CmdCvarStats {
+    // Always-on (≤1 relaxed atomic per event)
+    std::atomic<uint64_t> cvars_written{ 0 };           // total cvar value writes
     // XASH_STATS
     std::atomic<uint64_t> commands_executed{ 0 };       // total commands dispatched
     std::atomic<uint64_t> commands_dropped{ 0 };        // filtered by privilege check

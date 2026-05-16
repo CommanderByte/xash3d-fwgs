@@ -52,6 +52,12 @@ inline constexpr std::size_t cmd_observer_max = 16; // max simultaneous ICvarObs
 inline constexpr std::size_t cmd_observer_max = XASH_LIMIT_CMD_OBSERVER_MAX;
 #endif
 
+#ifndef XASH_LIMIT_CBUF_SIZE
+inline constexpr std::size_t cbuf_size = 256; // max queued command-line entries in the trusted command buffer
+#else
+inline constexpr std::size_t cbuf_size = XASH_LIMIT_CBUF_SIZE;
+#endif
+
 // memory subsystem
 #ifndef XASH_LIMIT_MEMORY_POOL_MAX
 inline constexpr std::size_t memory_pool_max = 128; // max named memory pools

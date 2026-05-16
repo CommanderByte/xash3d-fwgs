@@ -226,9 +226,7 @@ void CmdCvarContext::cvar_set_direct(Cvar           *cv,
             entry.observer->on_cvar_changed(cv, old_value);
     }
 
-#if XASH_STATS
     impl_->stats_block.cvars_written.fetch_add(1u, std::memory_order_relaxed);
-#endif
 }
 
 void CmdCvarContext::cvar_set(std::string_view name,

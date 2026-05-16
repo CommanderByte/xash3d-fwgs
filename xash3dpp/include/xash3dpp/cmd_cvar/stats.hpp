@@ -16,6 +16,7 @@ namespace xash::cmd_cvar {
 // ---------------------------------------------------------------------------
 
 struct CmdCvarStats {
+    std::atomic<std::uint64_t> cvars_written     { 0 };     // total cvar value writes (always-on, ≤1 relaxed atomic/event)
 #if XASH_STATS
     std::atomic<std::uint64_t> commands_executed { 0 };     // total dispatched commands
     std::atomic<std::uint64_t> commands_dropped  { 0 };     // filtered by privilege check
