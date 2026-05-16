@@ -342,6 +342,14 @@ the engine uses the C++ interface internally; a DLL shim translates at the edge.
 Any method on an `I<X>` interface exposed via a DLL shim must be implementable
 with `const char*` on the outer face (no `std::string_view` crossing the DLL edge).
 
+**Addendum (Chunk 2 — networking)**: The "single concrete production
+implementation plus a test fake" observation described the state of the five
+pre-networking subsystems; it is not a rule. Any `I<X>` seam that explicitly
+exists to model **protocol variants** (e.g. `IProtocolDriver`) is expected to
+have multiple production implementations — one per variant. When adding such a
+seam, document the selection axis (e.g. wire-protocol number, capability flag)
+in the boundary spec and ensure every production variant is exercised by tests.
+
 ______________________________________________________________________
 
 ### STRING_VIEW_BOUNDARY (Q-8): How should `std::string_view` cross DLL/ABI boundaries?
@@ -513,6 +521,58 @@ compat scope and documents it in its boundary spec.
 
 ______________________________________________________________________
 
+### DRIVER_INHERITANCE (Q-14): When may a concrete `I<X>` implementation subclass another concrete implementation?
+
+> **Status**: ✅ DECIDED (Chunk 2 — networking)
+
+**Context**: `XashProtocolDriver` was written as a subclass of
+`GoldSrcProtocolDriver` rather than a direct implementation of `IProtocolDriver`.
+The two drivers share all wire-codec logic (w1/w2 encoding, reliable-bit masking,
+overflow handling); they differ only in four metadata methods (`name()`,
+`split_format()`, `delta_tables()`) and the `sends_qport()` policy flag.
+Inheriting from the concrete base eliminates codec duplication and keeps the
+variant focused on the single axis where it diverges.
+
+**Decision**: When two concrete implementations of `I<X>` share **all** algorithm
+logic and differ only in declared metadata or policy flags, one may subclass the
+other via the **template-method pattern**:
+
+- The base class implements all shared codec/algorithm logic. It uses its own
+  overridable virtual methods as policy points (e.g. `sends_qport()`) so that
+  the derived class can change only the policy answers, not the algorithm steps.
+- The derived class overrides only the distinguishing virtuals. Its `final`
+  keyword may be applied to the derived class, but the **base must NOT be
+  `final`** to permit the subclass.
+- Any future implementation that diverges in actual **algorithm steps** (not
+  merely policy flags) must subclass `I<X>` directly, never the concrete base,
+  to avoid coupling to implementation details.
+
+**Decision criterion** — at each new variant, ask: "does this differ in an
+algorithm step, or only in a policy/metadata answer?"
+
+| Difference | Correct form |
+|------------|--------------|
+| Metadata only (name, format id, capability flag) | Subclass the concrete base |
+| One algorithm step changes | Subclass `I<X>` directly |
+| Entirely different algorithm | New independent implementation of `I<X>` |
+
+**Applicability beyond networking**: the same rule applies wherever a seam has
+multiple protocol or format variants:
+
+- **Renderer backends**: two backends (e.g. GL ES 3.0 vs. WebGL) sharing the
+  render-graph algorithm but differing in texture-format capability flags →
+  subclass the concrete base.
+- **Audio codecs**: two codecs sharing the mixing loop but differing in
+  sample-rate policy → subclass the concrete base.
+- **Archive formats**: two backends sharing streaming but differing in
+  compression-table layout → subclass `I<X>` directly (algorithm step differs).
+
+This rule is enforced during code review; the "does it diverge in an algorithm
+step?" question should appear explicitly in the PR description when a new
+variant is added.
+
+______________________________________________________________________
+
 ### ALLOC_POLICY (Q-13): How should `std::vector` and STL containers relate to the framework pool allocator?
 
 > **Status**: ✅ DECIDED
@@ -608,6 +668,10 @@ These rules apply from the first line of any new subsystem:
 - Error return rules: `bool` / `optional<T>` / nullable `T*` / `void` (Q-5)
 - Internal `I<Subsystem>` vtables for injectable seams; C structs at DLL
   boundaries (Q-7, Q-8)
+- Multi-implementation seams: when `I<X>` models protocol variants, one impl
+  per variant is expected — document selection axis in boundary spec (Q-7 addendum)
+- Concrete-subclass (template-method) pattern: subclass a concrete base only
+  when variants differ in policy flags, not algorithm steps (Q-14)
 - Ownership vocabulary table (Q-9)
 - `std::expected<T, ErrorCode>` for rich failure modes, from Chunk 2 (Q-5)
 - Versioned C plugin descriptor for new plugin types, from Chunk 10 (Q-10)

@@ -183,9 +183,15 @@ public:
         std::span<std::byte>       out ) noexcept;
 
     // Demux an incoming wire datagram into `msg` (post-header payload).
-    // Updates incoming/outgoing sequence/ack state, processes reliable
-    // acks, and accumulates any fragment payload.  Returns false on stale,
-    // duplicate, or malformed packets (which are silently dropped).
+    // Updates incoming sequence/ack state, processes reliable acks, and
+    // accumulates any fragment payload.  Returns false on stale, duplicate,
+    // or malformed packets (which are silently dropped).
+    //
+    // Pre: the caller has already identified this channel as the correct
+    // destination for `datagram` by matching the source address (and, for
+    // protocols where sends_qport()==true, the qport word in the header).
+    // process() consumes but does NOT re-validate the qport — misrouting
+    // a datagram to the wrong channel silently corrupts its sequence state.
     [[nodiscard]] bool process( std::span<const std::byte> datagram,
                                 MessageBuf                 &msg ) noexcept;
 

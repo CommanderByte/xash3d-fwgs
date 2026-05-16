@@ -61,7 +61,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] Result<FrameMeta> read_packet_header( MessageBuf &in ) noexcept override
+    [[nodiscard]] Result<FrameMeta> read_packet_header(
+        MessageBuf &in, bool is_server_socket ) noexcept override
     {
         if( in.num_bytes_left() < 8u )
             return std::unexpected( NetError::BufferTooSmall );
@@ -79,7 +80,10 @@ public:
         meta.is_split       = false; // split discriminator lives one layer up
         meta.is_oob         = false;
 
-        if( sends_qport() )
+        // Qport is present only in client→server datagrams.  Consume it
+        // when we are the server reading a client packet; skip on the
+        // client reading a server packet (no qport was written).
+        if( sends_qport() && is_server_socket )
         {
             if( in.num_bytes_left() < 2u )
                 return std::unexpected( NetError::BufferTooSmall );

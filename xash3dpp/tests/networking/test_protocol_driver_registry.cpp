@@ -175,7 +175,9 @@ static void test_goldsrc_read_round_trip()
     // Rewind to bit 0 to start reading.
     REQUIRE( buf.seek_to_bit( 0, SeekOrigin::Begin ) );
 
-    auto meta = drv->read_packet_header( buf );
+    // GoldSrc round-trip: reading back as a server (direction matches the
+    // write side, though GoldSrc has no qport so is_server_socket is moot).
+    auto meta = drv->read_packet_header( buf, /*is_server_socket=*/true );
     REQUIRE( meta.has_value() );
     CHECK( meta->sequence     == 0x0010'0001u );
     CHECK( meta->sequence_ack == 0x0020'0002u );
@@ -191,7 +193,7 @@ static void test_goldsrc_read_rejects_truncated()
 
     std::array<std::byte, 4> tiny {}; // only 4 bytes available
     MessageBuf buf{ tiny, "trunc" };
-    auto meta = drv->read_packet_header( buf );
+    auto meta = drv->read_packet_header( buf, /*is_server_socket=*/true );
     CHECK( !meta.has_value() );
     if( !meta.has_value() )
         CHECK( meta.error() == NetError::BufferTooSmall );
@@ -268,7 +270,9 @@ static void test_xash_read_round_trip_with_qport()
     REQUIRE( drv->write_packet_header( buf, in ).has_value() );
     REQUIRE( buf.seek_to_bit( 0, SeekOrigin::Begin ) );
 
-    auto meta = drv->read_packet_header( buf );
+    // Server reading a client packet: is_server_socket=true so the 2-byte
+    // qport word is consumed from the stream.
+    auto meta = drv->read_packet_header( buf, /*is_server_socket=*/true );
     REQUIRE( meta.has_value() );
     CHECK( meta->sequence     == 42u );
     CHECK( meta->sequence_ack == 17u );
@@ -286,10 +290,42 @@ static void test_xash_read_rejects_truncated_without_qport()
     std::array<std::byte, 8> storage {};
     MessageBuf buf{ storage, "trunc" };
 
-    auto meta = drv->read_packet_header( buf );
+    // Server reading a client packet: driver expects the qport and must
+    // return BufferTooSmall when it is absent.
+    auto meta = drv->read_packet_header( buf, /*is_server_socket=*/true );
     CHECK( !meta.has_value() );
     if( !meta.has_value() )
         CHECK( meta.error() == NetError::BufferTooSmall );
+}
+
+static void test_xash_read_client_side_no_qport()
+{
+    // Client reading a server->client packet: the server never writes a
+    // qport, so is_server_socket=false means the driver must NOT try to
+    // consume one.  An 8-byte buffer (w1+w2 only) must succeed.
+    auto *drv = default_protocol_driver_registry().resolve( 49 );
+    REQUIRE( drv != nullptr );
+
+    // Hand-craft an 8-byte server->client header (sequence=7, ack=3).
+    std::array<std::byte, 8> storage {};
+    auto emit = []( std::array<std::byte, 8> &a, int offset, std::uint32_t v )
+    {
+        a[offset + 0] = static_cast<std::byte>( v & 0xFFu );
+        a[offset + 1] = static_cast<std::byte>( ( v >> 8  ) & 0xFFu );
+        a[offset + 2] = static_cast<std::byte>( ( v >> 16 ) & 0xFFu );
+        a[offset + 3] = static_cast<std::byte>( ( v >> 24 ) & 0xFFu );
+    };
+    emit( storage, 0, 7u );   // w1: sequence=7, no reliable
+    emit( storage, 4, 3u );   // w2: sequence_ack=3
+
+    MessageBuf buf{ storage, "srv-pkt" };
+    auto meta = drv->read_packet_header( buf, /*is_server_socket=*/false );
+    REQUIRE( meta.has_value() );
+    CHECK( meta->sequence     == 7u );
+    CHECK( meta->sequence_ack == 3u );
+    CHECK( meta->is_reliable  == false );
+    // Read cursor must be at exactly 64 bits (8 bytes) — no qport consumed.
+    CHECK( buf.tell_bit() == 64u );
 }
 
 int main()
@@ -311,6 +347,7 @@ int main()
     test_xash_write_no_qport_for_server();
     test_xash_read_round_trip_with_qport();
     test_xash_read_rejects_truncated_without_qport();
+    test_xash_read_client_side_no_qport();
 
     std::printf( "test_protocol_driver_registry: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

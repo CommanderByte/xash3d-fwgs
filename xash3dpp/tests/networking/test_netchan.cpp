@@ -47,7 +47,7 @@ struct StubDriver final : IProtocolDriver
         return {};
     }
 
-    Result<FrameMeta> read_packet_header( MessageBuf & ) noexcept override
+    Result<FrameMeta> read_packet_header( MessageBuf &, bool ) noexcept override
     {
         return FrameMeta{};
     }

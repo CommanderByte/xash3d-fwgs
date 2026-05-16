@@ -453,7 +453,8 @@ bool Netchan::process( std::span<const std::byte> datagram,
 
     msg.rebind_read( datagram, "netchan-recv" );
 
-    auto meta = impl_->driver->read_packet_header( msg );
+    auto meta = impl_->driver->read_packet_header(
+        msg, impl_->sock == SocketKind::Server );
     if( !meta.has_value() )
     {
         core::log( core::LogLevel::Verbose, "netchan",

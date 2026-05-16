@@ -99,10 +99,15 @@ struct IProtocolDriver
 
     // Read the netchan packet header from `in`, advancing its read cursor.
     // Returns the decoded FrameMeta or NetError::BufferTooSmall on truncation.
-    // The qport word (when present per sends_qport()) is consumed but not
-    // returned here — the netchan looks it up via the connection table.
+    //
+    // `is_server_socket` must be true when the *caller* is a server-side
+    // channel reading a client→server datagram (where the client wrote a
+    // qport word), and false when the caller is a client-side channel
+    // reading a server→client datagram (no qport present).  The qport
+    // is consumed but not returned — the caller already identified the
+    // channel via the connection table before calling process().
     [[nodiscard]] virtual Result<FrameMeta> read_packet_header(
-        MessageBuf &in ) noexcept = 0;
+        MessageBuf &in, bool is_server_socket ) noexcept = 0;
 };
 
 // ---------------------------------------------------------------------------
