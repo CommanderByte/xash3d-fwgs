@@ -39,6 +39,17 @@ struct StubDriver final : IProtocolDriver
     const char   *name()        const noexcept override { return "Stub"; }
     SplitFormat   split_format() const noexcept override { return SplitFormat::Xash; }
     DeltaTableSet delta_tables() const noexcept override { return DeltaTableSet::Xash; }
+    bool          sends_qport() const noexcept override { return false; }
+
+    Result<void> write_packet_header( MessageBuf &, const PacketHeaderInput & ) noexcept override
+    {
+        return {};
+    }
+
+    Result<FrameMeta> read_packet_header( MessageBuf & ) noexcept override
+    {
+        return FrameMeta{};
+    }
 };
 
 struct StubBlockSize final : IBlockSizeProvider

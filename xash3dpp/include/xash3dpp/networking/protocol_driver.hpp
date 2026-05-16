@@ -15,6 +15,8 @@
 
 namespace xash::networking {
 
+class MessageBuf; // fwd-decl — full header included by implementers
+
 // ---------------------------------------------------------------------------
 // SplitFormat — which on-wire SPLITPACKET framing a driver uses
 // ---------------------------------------------------------------------------
@@ -49,6 +51,23 @@ struct FrameMeta
 };
 
 // ---------------------------------------------------------------------------
+// PacketHeaderInput — channel-state snapshot handed to the driver when
+// writing a netchan packet header.  Mirrors the fields the legacy engine
+// packed into the w1/w2 sequence words plus the optional qport.
+// ---------------------------------------------------------------------------
+
+struct PacketHeaderInput
+{
+    std::uint32_t outgoing_sequence            { 0 };
+    std::uint32_t incoming_sequence            { 0 };
+    std::uint32_t incoming_reliable_sequence   { 0 }; // 0 or 1 (single-bit flag in legacy)
+    std::uint16_t qport                        { 0 }; // ignored when sends_qport()==false
+    bool          send_reliable                { false };
+    bool          send_reliable_fragment       { false };
+    bool          is_client                    { false }; // qport is written only on client sockets
+};
+
+// ---------------------------------------------------------------------------
 // IProtocolDriver — per-netchan_t game-protocol policy
 // ---------------------------------------------------------------------------
 
@@ -62,8 +81,27 @@ struct IProtocolDriver
     [[nodiscard]] virtual SplitFormat   split_format() const noexcept = 0;
     [[nodiscard]] virtual DeltaTableSet delta_tables() const noexcept = 0;
 
-    // TODO(Chunk 4): write_packet_header / read_packet_header take a
-    // MessageBuf parameter once the codec layer lands.
+    // Whether this protocol includes a qport word in the client→server
+    // header.  Legacy Xash netchan path: true; GoldSrc gs_netchan path: false.
+    [[nodiscard]] virtual bool          sends_qport() const noexcept = 0;
+
+    // Write the netchan packet header (w1, w2, optional qport, optional
+    // reliable-fragment block descriptors).  The driver advances the
+    // MessageBuf write cursor; on overflow the buffer's overflow flag is
+    // set and the driver returns NetError::Overflow.  Reliable-fragment
+    // descriptors are written only when send_reliable_fragment is true;
+    // the netchan must populate the per-stream fragment metadata via a
+    // future write_reliable_fragment_descriptors() call (TODO).
+    [[nodiscard]] virtual Result<void> write_packet_header(
+        MessageBuf &out,
+        const PacketHeaderInput &in ) noexcept = 0;
+
+    // Read the netchan packet header from `in`, advancing its read cursor.
+    // Returns the decoded FrameMeta or NetError::BufferTooSmall on truncation.
+    // The qport word (when present per sends_qport()) is consumed but not
+    // returned here — the netchan looks it up via the connection table.
+    [[nodiscard]] virtual Result<FrameMeta> read_packet_header(
+        MessageBuf &in ) noexcept = 0;
 };
 
 // ---------------------------------------------------------------------------
