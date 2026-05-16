@@ -10,6 +10,7 @@
 
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/limits.hpp>
+#include <xash3dpp/memory/memory.hpp>
 
 #include <array>
 #include <cstring>
@@ -34,6 +35,11 @@ struct Netchan::Impl
     NetchanFlags        flags             {};
     IProtocolDriver    *driver            { nullptr };
     IBlockSizeProvider *block_size_provider { nullptr };
+
+    // Backing pool for fragment buffers + reliable_buf.  Owned by the
+    // parent NetworkContext (PoolHandle("networking")); Netchan never
+    // creates or destroys it.
+    xash::memory::PoolHandle pool {};
 
     // Sequencing
     std::uint32_t       incoming_sequence              { 0 };
@@ -85,9 +91,11 @@ bool Netchan::setup( const NetchanConfig &config ) noexcept
 {
     if( !impl_ ) return false;
     if( config.driver == nullptr || config.block_size_provider == nullptr )
+    if( !config.pool.valid() )
     {
         core::log( core::LogLevel::Error, "netchan",
-                   "setup: driver and block_size_provider are required" );
+                   "setup: pool handle is required (must be the parent "
+                   "NetworkContext's networking pool)" );
         return false;
     }
 
@@ -100,6 +108,7 @@ bool Netchan::setup( const NetchanConfig &config ) noexcept
     impl_->flags               = config.flags;
     impl_->driver              = config.driver;
     impl_->block_size_provider = config.block_size_provider;
+    impl_->pool                = config.pool;
     impl_->active              = true;
 
     // TODO(Chunk 7): allocate reliable_buf and per-stream fragment queues
@@ -208,9 +217,9 @@ Result<std::size_t> Netchan::copy_file_fragments( std::span<std::byte> /*out*/,
 // Bandwidth / choke
 // ---------------------------------------------------------------------------
 
-bool Netchan::can_packet( bool /*choke*/ ) const noexcept
+bool Netchan::can_packet( double /*now_seconds*/, bool /*choke*/ ) const noexcept
 {
-    // TODO(Chunk 9): apply cleartime vs. host.realtime check; bypass when
+    // TODO(Chunk 9): apply cleartime vs. now_seconds check; bypass when
     // loopback / OOB or choke=false.
     return is_active();
 }

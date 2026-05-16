@@ -5,6 +5,8 @@
 
 #include <xash3dpp/networking/netchan.hpp>
 
+#include <xash3dpp/memory/memory.hpp>
+
 #include "../test_helpers.hpp"
 
 #include <array>
@@ -14,6 +16,16 @@ static int g_pass = 0, g_fail = 0;
 using namespace xash::networking;
 
 namespace {
+
+// RAII wrapper so each test can request a fresh pool and have it freed at
+// scope exit, mirroring the parent NetworkContext lifecycle.
+struct ScopedPool
+{
+    xash::memory::PoolHandle handle { xash::memory::create_pool( "test_netchan" ) };
+    ~ScopedPool() { xash::memory::destroy_pool( handle ); }
+    ScopedPool( const ScopedPool & )            = delete;
+    ScopedPool &operator=( const ScopedPool & ) = delete;
+};
 
 // Minimal stub implementations so we can drive setup() through a happy path.
 
@@ -41,10 +53,12 @@ static void test_setup_requires_driver()
 {
     Netchan c;
     StubBlockSize bs;
+    ScopedPool pool;
 
     NetchanConfig cfg;
     cfg.driver               = nullptr;
     cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
     CHECK( !c.setup( cfg ) );
     CHECK( !c.is_active() );
 }
@@ -53,10 +67,26 @@ static void test_setup_requires_block_size_provider()
 {
     Netchan c;
     StubDriver d;
+    ScopedPool pool;
 
     NetchanConfig cfg;
     cfg.driver               = &d;
     cfg.block_size_provider  = nullptr;
+    cfg.pool                 = pool.handle;
+    CHECK( !c.setup( cfg ) );
+    CHECK( !c.is_active() );
+}
+
+static void test_setup_requires_pool()
+{
+    Netchan c;
+    StubDriver d;
+    StubBlockSize bs;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    // cfg.pool intentionally left as k_null_pool.
     CHECK( !c.setup( cfg ) );
     CHECK( !c.is_active() );
 }
@@ -66,12 +96,14 @@ static void test_successful_setup_arms_channel()
     Netchan c;
     StubDriver d;
     StubBlockSize bs;
+    ScopedPool pool;
 
     NetchanConfig cfg;
     cfg.sock                 = SocketKind::Server;
     cfg.qport                = 0x1234;
     cfg.driver               = &d;
     cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
 
     CHECK( c.setup( cfg ) );
     CHECK( c.is_active() );
@@ -89,11 +121,13 @@ static void test_clear_preserves_identity()
     Netchan c;
     StubDriver d;
     StubBlockSize bs;
+    ScopedPool pool;
 
     NetchanConfig cfg;
     cfg.qport                = 7;
     cfg.driver               = &d;
     cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
     REQUIRE( c.setup( cfg ) );
 
     c.clear();
@@ -109,10 +143,12 @@ static void test_stub_methods_return_not_initialised()
     Netchan c;
     StubDriver d;
     StubBlockSize bs;
+    ScopedPool pool;
 
     NetchanConfig cfg;
     cfg.driver               = &d;
     cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
     REQUIRE( c.setup( cfg ) );
 
     std::array<std::byte, 64> out{};
@@ -129,6 +165,9 @@ static void test_stub_methods_return_not_initialised()
 
     // Receive side: not ready until process() ingests fragments.
     CHECK( !c.incoming_ready() );
+
+    // can_packet() now takes (now_seconds, choke); stub returns is_active().
+    CHECK( c.can_packet( 0.0, true ) );
 }
 
 static void test_stats_binding()
@@ -136,11 +175,13 @@ static void test_stats_binding()
     Netchan c;
     StubDriver d;
     StubBlockSize bs;
+    ScopedPool pool;
     NetworkingStats stats;
 
     NetchanConfig cfg;
     cfg.driver               = &d;
     cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
     REQUIRE( c.setup( cfg ) );
 
     CHECK( c.stats() == nullptr );
@@ -153,6 +194,7 @@ int main()
     test_default_construction_is_inactive();
     test_setup_requires_driver();
     test_setup_requires_block_size_provider();
+    test_setup_requires_pool();
     test_successful_setup_arms_channel();
     test_clear_preserves_identity();
     test_stub_methods_return_not_initialised();

@@ -18,6 +18,7 @@
 //   * stats() reports Tier-1 atomics on NetworkingStats owned by the parent
 //     NetworkContext.
 
+#include <xash3dpp/memory/memory.hpp>            // PoolHandle
 #include <xash3dpp/networking/address.hpp>
 #include <xash3dpp/networking/errors.hpp>
 #include <xash3dpp/networking/message_buf.hpp>
@@ -87,12 +88,16 @@ struct NetchanFlags
 
 struct NetchanConfig
 {
-    SocketKind          sock              { SocketKind::Client };
-    NetAddress          remote_address    {};
-    std::uint16_t       qport             { 0 };
-    NetchanFlags        flags             {};
-    IProtocolDriver    *driver            { nullptr }; // required
-    IBlockSizeProvider *block_size_provider { nullptr }; // required
+    SocketKind                sock                  { SocketKind::Client };
+    NetAddress                remote_address        {};
+    std::uint16_t             qport                 { 0 };
+    NetchanFlags              flags                 {};
+    IProtocolDriver          *driver                { nullptr }; // required
+    IBlockSizeProvider       *block_size_provider   { nullptr }; // required
+    xash::memory::PoolHandle  pool                  {};          // required
+        // ^ owned by the parent NetworkContext (PoolHandle("networking")).
+        //   Netchan does not create or destroy the pool; setup() rejects
+        //   an invalid handle the same way it rejects null callbacks.
 };
 
 // ---------------------------------------------------------------------------
@@ -201,8 +206,10 @@ public:
     // ---- Bandwidth / choke -----------------------------------------------
 
     // Returns true if the channel is allowed to send a packet now.  If
-    // `choke` is false the choke is bypassed (loopback / OOB).
-    [[nodiscard]] bool can_packet( bool choke ) const noexcept;
+    // `choke` is false the choke is bypassed (loopback / OOB).  The caller
+    // supplies the current time (same convention as LagQueue and
+    // update_choke) — Netchan never reads a clock itself.
+    [[nodiscard]] bool can_packet( double now_seconds, bool choke ) const noexcept;
 
     // Push the cleartime forward to throttle outgoing bandwidth.  Called by
     // the host frame tick to enforce the per-channel `rate` cap.

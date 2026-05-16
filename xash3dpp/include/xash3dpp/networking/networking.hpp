@@ -6,8 +6,7 @@
 //   xash3dpp_memory     — pool-backed fragment buffers
 //   xash3dpp_utilities  — string/path helpers, hash
 //   xash3dpp_core       — log, assert, thread_role
-//   xash3dpp_platform   — IPlatformSockets (NOT YET IMPLEMENTED — see
-//                         docs/architecture/platform/sockets.md)
+//   xash3dpp_platform   — IPlatformSockets (see platform/platform_sockets.hpp)
 //
 // All public functions are noexcept and main-thread-only unless documented
 // otherwise.  Background DNS thread is internal and uses the resolver mutex.
@@ -23,8 +22,8 @@
 #include <span>
 #include <string_view>
 
-// IPlatformSockets is a not-yet-implemented platform-layer interface; forward
-// declare to avoid a hard include dependency until that header lands.
+// IPlatformSockets lives in xash3dpp_platform; forward-declare to keep this
+// header from pulling in the full platform socket types.
 namespace xash::platform { struct IPlatformSockets; }
 
 namespace xash::networking {
