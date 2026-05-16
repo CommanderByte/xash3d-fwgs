@@ -6,6 +6,7 @@
 > `Documentation/codex/legacy/engine/common-audit.md`.
 >
 > **Skeleton already in place** — do not re-derive:
+>
 > - [xash3dpp/include/xash3dpp/host/host.hpp](../../include/xash3dpp/host/host.hpp) — `Host` pimpl with `HostArgs`, `HostStatus`, `Main / init / RunFrame / RequestShutdown`
 > - [xash3dpp/include/xash3dpp/host/engine_context.hpp](../../include/xash3dpp/host/engine_context.hpp) — `EngineContext` flat owner struct
 > - `decisions-architecture.md` Q-1 / Q-2 / Q-4 / Q-6 are locked (subsystem ownership model, `EngineContext` shape, init-params style, threading model)
@@ -369,20 +370,24 @@ naturally transitions from `HOST_INIT` to `HOST_FRAME`. `Host_Main` forces
 ### Q-7 — `host_framerate` only applies in singleplayer + non-demo
 
 `Host_FilterTime`:
+
 ```c
 if( host_framerate.value > 0.0f && Host_IsSinglePlayerGame() &&
     !CL_IsPlaybackDemo() && !CL_IsRecordDemo( ))
     host.frametime = bound( MIN_FRAMETIME, host_framerate.value * scale, MAX_FRAMETIME );
 ```
+
 This is a debugging knob; preserve the gate exactly.
 
 ### Q-8 — GoldSrc compatibility frame cap
 
 `Host_CalcFPS` returns a hardcoded `31.0` when:
+
 ```c
 !SV_Active() && CL_Protocol() == PROTO_GOLDSRC &&
 cls.state != ca_disconnected && cls.state < ca_validate
 ```
+
 This is the GoldSrc connect-handshake rate-limit; required for joining HL1
 servers without getting kicked.
 
