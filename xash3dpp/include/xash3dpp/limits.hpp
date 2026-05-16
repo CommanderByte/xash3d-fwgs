@@ -99,6 +99,37 @@ inline constexpr std::size_t zip_filename_max = 4096; // max bytes in a ZIP cent
 inline constexpr std::size_t zip_filename_max = XASH_LIMIT_ZIP_FILENAME_MAX;
 #endif
 
+// clock subsystem
+#ifndef XASH_LIMIT_MIN_FRAMETIME
+inline constexpr double min_frametime = 0.0001;  // 0.1 ms floor — matches legacy MIN_FRAMETIME
+#else
+inline constexpr double min_frametime = XASH_LIMIT_MIN_FRAMETIME;
+#endif
+
+#ifndef XASH_LIMIT_MAX_FRAMETIME
+inline constexpr double max_frametime = 0.25;    // 250 ms ceiling — matches legacy MAX_FRAMETIME
+#else
+inline constexpr double max_frametime = XASH_LIMIT_MAX_FRAMETIME;
+#endif
+
+#ifndef XASH_LIMIT_MIN_FPS
+inline constexpr double min_fps = 20.0;          // absolute FPS floor — matches legacy MIN_FPS
+#else
+inline constexpr double min_fps = XASH_LIMIT_MIN_FPS;
+#endif
+
+#ifndef XASH_LIMIT_MAX_FPS_HARD
+inline constexpr double max_fps_hard = 1000.0;   // FPS ceiling with fps_override — matches legacy MAX_FPS_HARD
+#else
+inline constexpr double max_fps_hard = XASH_LIMIT_MAX_FPS_HARD;
+#endif
+
+#ifndef XASH_LIMIT_MAX_FPS_SOFT
+inline constexpr double max_fps_soft = 200.0;    // FPS ceiling without fps_override — matches legacy MAX_FPS_SOFT
+#else
+inline constexpr double max_fps_soft = XASH_LIMIT_MAX_FPS_SOFT;
+#endif
+
 // platform subsystem
 #ifndef XASH_LIMIT_PLATFORM_CONSOLE_BUFFER_SIZE
 inline constexpr std::size_t platform_console_buffer_size = 1024; // console read_line line buffer

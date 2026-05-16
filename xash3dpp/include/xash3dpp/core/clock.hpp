@@ -29,6 +29,11 @@ struct ClockInitParams
     // Required: cvar registry the clock registers its timing cvars on.
     // Non-owning; must outlive the Clock.
     cmd_cvar::CmdCvarContext *cmd_cvar = nullptr;
+
+    // Server mode flag — selects the FPS gate policy used in tick():
+    //   true  → sys_ticrate governs frame rate  (legacy: Host_CalcFPS dedicated branch)
+    //   false → host_maxfps / fps_override used  (legacy: Host_CalcFPS client branch)
+    bool dedicated = false;
 };
 
 class Clock
@@ -57,6 +62,16 @@ public:
     // Returns false if the frame budget (host_maxfps / fps_override) has not
     // yet been reached — caller should sleep and try again next iteration.
     [[nodiscard]] bool tick() noexcept;
+
+    // Inject the singleplayer-no-demo gate used by host_framerate.
+    // Decision ref: host-boundary.md Resolved-decision OQ-11
+    //
+    // Called post-init by Server::init() (Chunk 5) when the server subsystem
+    // becomes available.  Until then the gate is nullptr and host_framerate
+    // has no effect (correct for dedicated-server milestone and all tests).
+    //
+    // |fn| must remain valid for the life of the Clock.
+    void set_frame_rate_gate( bool (*fn)() noexcept ) noexcept;
 
     // ---- Observers --------------------------------------------------------
     // All accessors are noexcept and may be called from any thread.
