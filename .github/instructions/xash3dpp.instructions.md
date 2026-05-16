@@ -23,6 +23,14 @@ These are unanimous across all subsystems — no debate:
 - `noexcept` on all public functions — no exceptions cross subsystem boundaries.
 - Full `std::` qualification everywhere in headers; no `using namespace` or `using std::X` at header scope.
 - `inline constexpr` for all named constants and limits.
+- **Sibling namespace qualification**: inside `xash::X::`, any reference to a sibling
+  namespace must use the absolute form `::xash::Y::Z` (not bare `Y::Z`). C++ unqualified
+  lookup can silently shadow `xash::Y` with a nested name. `std::` is exempt (top-level,
+  never shadowed). See decisions-style.md §NS_QUALIFY (QM).
+- **No oversized `std::array` members**: `std::array<T, N>` where `N * sizeof(T) > 64 KB`
+  is forbidden as a class member or stack local. Use `std::vector<T>` (resize in
+  constructor). Oversized arrays overflow the 1 MB Windows thread stack. See
+  decisions-style.md §ARRAY_SIZE_STACK (QL).
 
 ## Naming Conventions — Mandatory
 

@@ -238,6 +238,29 @@ Rule: every test file must `#include "test_helpers.hpp"` and use `CHECK` /
 Flag any test file that defines its own `CHECK`/`REQUIRE` or does not include
 `test_helpers.hpp`.
 
+#### ARRAY_SIZE_STACK (QL) — No oversized `std::array` in class bodies
+
+Rule: `std::array<T, N>` as a member variable where `N * sizeof(T) > 65536`
+(64 KB) is forbidden. Such members overflow the 1 MB Windows thread stack even
+when the object itself is heap-allocated.
+
+Flag: any `std::array<…, N>` member where the product of element size and N
+plausibly exceeds 64 KB (e.g. element type ≥ 256 bytes, N ≥ 256; or element
+type ≥ 64 bytes and N ≥ 1024; or a known large type like a 16 KB buffer with N ≥ 4).
+When in doubt, compute `N * sizeof(T)` explicitly.
+
+Fix: replace with `std::vector<T>` and `member_.resize(N)` in the constructor.
+
+#### NS_QUALIFY (QM) — Absolute qualification for sibling-namespace references
+
+Rule: inside any `xash::X::` nested namespace, every reference to a sibling
+`xash::Y::` must use the absolute form `::xash::Y::`.
+
+Flag: any unqualified or partially-qualified reference to `limits::`,
+`utilities::`, `memory::`, `platform::`, or `core::` from within code that
+lives inside `xash::<subsystem>::` (i.e., the file declares or is inside a
+`namespace xash::<subsystem>` block, and the sibling name appears without `::xash::` prefix).
+
 #### Forbidden patterns (flag any occurrence in `src/`)
 
 | Forbidden | Use instead |
@@ -352,6 +375,14 @@ the audit identified.
   (adjust relative path depth). Remove old `#define CHECK` / `#define REQUIRE` lines.
 - **Forbidden patterns**: Replace with the approved equivalent. Add an inline comment
   if the substitution is non-obvious.
+- **ARRAY_SIZE_STACK**: Replace `std::array<T, N> member_` with `std::vector<T> member_`.
+  In the constructor (`.cpp`), add `member_.resize(N)` or `member_.assign(N, {})`.
+  Remove any `constexpr` size constant that was only used to size the array member;
+  keep it if it is referenced elsewhere.
+- **NS_QUALIFY**: Prefix every bare `limits::`, `utilities::`, `memory::`, etc. with
+  `::xash::` when the reference appears inside a `namespace xash::<subsystem>` block.
+  Check headers and `.cpp` files. A using-declaration at `.cpp` file scope (outside any
+  namespace) is an acceptable alternative: `using ::xash::limits::net_max_datagram;`.
 
 **Threading fixes:**
 - **TH-Role**: Add `platform::assert_thread_role( platform::ThreadRole::Main );` as

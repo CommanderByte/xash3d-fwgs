@@ -426,6 +426,84 @@ preferred library over GoogleTest (which requires exceptions).
 
 ______________________________________________________________________
 
+### ARRAY_SIZE_STACK (QL): No oversized `std::array` in class bodies
+
+> **Status**: ✅ DECIDED — lesson learned from production segfault in `PacketPool`
+
+**Rule**: Any `std::array<T, N>` **member variable** where `N * sizeof(T) > 65 536` (64 KB)
+is forbidden in class bodies. Such an array would overflow the 1 MB default Windows
+thread stack if the object is ever constructed on the stack, and it bloats the BSS
+segment when it is heap-allocated.
+
+Use `std::vector<T>` (reserve/resize `N` in the constructor) or
+`std::unique_ptr<std::array<T, N>>` instead.
+
+**The bug** (recorded so it is never repeated): `PacketPool` originally declared
+`std::array<Slot, 64> slots_` where each `Slot` held a `std::array<std::byte, 16384>`.
+64 × 16 384 = 1 048 576 bytes — exactly the 1 MB Windows default thread stack.
+The object was heap-allocated, but the BSS reservation still resulted in a
+stack-overflow abort on first access through the VTable. Replacing `slots_` with
+`std::vector<Slot>` (with `slots_.resize(64)` in the constructor) fixed it.
+
+**Safe thresholds** (rule of thumb):
+
+| Aggregate size | In a stack local | In a class member | Verdict |
+|---------------|-----------------|-------------------|---------|
+| ≤ 4 KB | ✅ | ✅ | Always safe |
+| 4 KB – 64 KB | ✅ with care | ✅ (if class is heap-only) | Safe; add comment |
+| > 64 KB | ❌ | ❌ | Use `std::vector` or `unique_ptr` |
+
+**Fix pattern**:
+```cpp
+// ❌ Forbidden for large N:
+std::array<Slot, slot_count> slots_;
+
+// ✅ Correct:
+std::vector<Slot> slots_;   // in .cpp constructor: slots_.resize(slot_count);
+```
+
+______________________________________________________________________
+
+### NS_QUALIFY (QM): Absolute qualification for sibling-namespace references
+
+> **Status**: ✅ DECIDED — lesson learned from compile failure in `xash::networking::`
+
+**Rule**: Inside any nested namespace `xash::X::`, any reference to a **sibling**
+namespace (`xash::Y::`) must use the absolute leading `::`:
+
+```cpp
+// Inside xash::networking::  — WRONG (compiler may find xash::networking::limits):
+auto n = limits::net_max_datagram;           // ❌
+
+// CORRECT — always routes to xash::limits, regardless of nesting:
+auto n = ::xash::limits::net_max_datagram;   // ✅
+```
+
+**Why it matters**: C++ unqualified name lookup walks outward through enclosing
+scopes. Inside `xash::networking::`, `limits` first matches any `limits` declared
+inside `xash::networking::` (or in an inline-namespace layer). The top-level
+`xash::limits` is only reached if nothing shadows it. The bug may compile silently
+in some TUs and fail in others depending on header-include order.
+
+**Applies to all xash sibling namespaces** accessed from within a nested namespace:
+`::xash::limits::`, `::xash::utilities::`, `::xash::memory::`, `::xash::platform::`,
+`::xash::core::`, etc.
+
+**Not required for `std::`** — `std` is a top-level name and is never shadowed by
+anything inside an `xash::X::` scope. The existing rule "full `std::` qualification"
+still applies; `::std::` is not required.
+
+**Using-declarations at `.cpp` file scope are fine**:
+```cpp
+// In a .cpp, outside any namespace — unambiguous:
+using ::xash::limits::net_max_datagram;
+```
+
+**Note for headers**: prefer the full `::xash::Y::Z` form in headers; using-declarations
+at header scope pollute every including TU.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 ### 4.1 Must happen before Chunk 2
