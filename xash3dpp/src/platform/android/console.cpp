@@ -9,6 +9,7 @@
 #endif
 
 #include <xash3dpp/platform/console.hpp>
+#include <xash3dpp/limits.hpp>
 
 #include <android/log.h>
 
@@ -26,7 +27,7 @@ void write( std::string_view text ) noexcept
 
     // __android_log_write requires a null-terminated string.
     // Copy into a static buffer, truncating if necessary.
-    static char buf[1024];
+    static char buf[::xash::limits::platform_console_buffer_size];
     const std::size_t copy_len = text.size() < sizeof( buf ) - 1
                                      ? text.size()
                                      : sizeof( buf ) - 1;

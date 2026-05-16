@@ -10,6 +10,7 @@
 #endif
 
 #include <xash3dpp/platform/platform.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/utilities/path.hpp>
 
 #define WIN32_LEAN_AND_MEAN
@@ -70,7 +71,7 @@ void sleep( unsigned ms ) noexcept
 LibHandle open_library( std::string_view path ) noexcept
 {
     // Convert UTF-8 path to UTF-16 for LoadLibraryW.
-    wchar_t wbuf[1024];
+    wchar_t wbuf[::xash::limits::platform_path_buf_wchars];
     int len = MultiByteToWideChar( CP_UTF8, 0,
                                    path.data(), static_cast<int>( path.size() ),
                                    wbuf, static_cast<int>( std::size( wbuf ) ) - 1 );

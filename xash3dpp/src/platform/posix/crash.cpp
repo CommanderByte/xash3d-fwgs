@@ -10,6 +10,7 @@
 #endif
 
 #include <xash3dpp/platform/crash.hpp>
+#include <xash3dpp/limits.hpp>
 
 #include <xash3dpp/private/core/assert_main.hpp>
 
@@ -92,8 +93,8 @@ void install_handler() noexcept
 
 void print_trace() noexcept
 {
-    static void *frames[64];
-    int n = ::backtrace( frames, 64 );
+    static void *frames[::xash::limits::platform_crash_frames_max];
+    int n = ::backtrace( frames, static_cast<int>( ::xash::limits::platform_crash_frames_max ) );
     ::backtrace_symbols_fd( frames, n, STDERR_FILENO );
 }
 

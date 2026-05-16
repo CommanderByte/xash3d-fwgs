@@ -6,6 +6,7 @@
 #endif
 
 #include <xash3dpp/platform/crash.hpp>
+#include <xash3dpp/limits.hpp>
 
 #include <xash3dpp/private/core/assert_main.hpp>
 
@@ -63,8 +64,8 @@ void install_handler() noexcept
 
 void print_trace() noexcept
 {
-    static void *frames[64];
-    USHORT n = CaptureStackBackTrace( 0, 64, frames, nullptr );
+    static void *frames[::xash::limits::platform_crash_frames_max];
+    USHORT n = CaptureStackBackTrace( 0, static_cast<ULONG>( ::xash::limits::platform_crash_frames_max ), frames, nullptr );
 
     HANDLE h = GetStdHandle( STD_ERROR_HANDLE );
     if( h == INVALID_HANDLE_VALUE || h == nullptr ) return;

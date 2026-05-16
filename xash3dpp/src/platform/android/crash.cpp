@@ -10,6 +10,7 @@
 #endif
 
 #include <xash3dpp/platform/crash.hpp>
+#include <xash3dpp/limits.hpp>
 
 #include <android/log.h>
 #include <signal.h>
@@ -88,8 +89,8 @@ void install_handler() noexcept
 
 void print_trace() noexcept
 {
-    static void *buffer[64];
-    UnwindState state = { buffer, buffer + 64 };
+    static void *buffer[::xash::limits::platform_crash_frames_max];
+    UnwindState state = { buffer, buffer + ::xash::limits::platform_crash_frames_max };
     _Unwind_Backtrace( unwind_callback, &state );
 
     const int count = static_cast<int>( state.current - buffer );

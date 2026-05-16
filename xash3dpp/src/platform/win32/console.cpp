@@ -60,9 +60,9 @@ std::string_view read_line() noexcept
             DWORD n_events;
             if( GetNumberOfConsoleInputEvents( h, &n_events ) && n_events > 0 )
             {
-                static INPUT_RECORD evbuf[64];
+                static INPUT_RECORD evbuf[::xash::limits::platform_console_event_buf];
                 DWORD n_peeked;
-                if( PeekConsoleInputA( h, evbuf, 64, &n_peeked ) )
+                if( PeekConsoleInputA( h, evbuf, static_cast<DWORD>( ::xash::limits::platform_console_event_buf ), &n_peeked ) )
                 {
                     for( DWORD i = 0; i < n_peeked; ++i )
                     {

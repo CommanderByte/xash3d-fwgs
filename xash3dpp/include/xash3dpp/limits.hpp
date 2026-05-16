@@ -195,6 +195,24 @@ inline constexpr std::size_t platform_log_buffer_size = 2048; // stack buffer fo
 inline constexpr std::size_t platform_log_buffer_size = XASH_LIMIT_PLATFORM_LOG_BUFFER_SIZE;
 #endif
 
+#ifndef XASH_LIMIT_PLATFORM_CRASH_FRAMES_MAX
+inline constexpr std::size_t platform_crash_frames_max = 64; // max stack frames captured in crash trace
+#else
+inline constexpr std::size_t platform_crash_frames_max = XASH_LIMIT_PLATFORM_CRASH_FRAMES_MAX;
+#endif
+
+#ifndef XASH_LIMIT_PLATFORM_CONSOLE_EVENT_BUF
+inline constexpr std::size_t platform_console_event_buf = 64; // win32 console event peek buffer depth
+#else
+inline constexpr std::size_t platform_console_event_buf = XASH_LIMIT_PLATFORM_CONSOLE_EVENT_BUF;
+#endif
+
+#ifndef XASH_LIMIT_PLATFORM_PATH_BUF_WCHARS
+inline constexpr std::size_t platform_path_buf_wchars = 1024; // UTF-8→UTF-16 path conversion buffer (wchar_t count)
+#else
+inline constexpr std::size_t platform_path_buf_wchars = XASH_LIMIT_PLATFORM_PATH_BUF_WCHARS;
+#endif
+
 // networking subsystem
 // Legacy reference: engine/common/net_ws.h, netchan.h capacity macros.
 // These values are wire-frozen for GoldSrc/Xash protocol compatibility; do
