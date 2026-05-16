@@ -1,11 +1,11 @@
 # Wire Encoding (Layer 2)
 
-> **Defined in**: `private/networking/split_packet.hpp`, `private/networking/split_reassembler.hpp`,
-> `private/networking/oob_packet.hpp`, `private/networking/compressed_packet.hpp`,
-> `private/networking/compress.hpp`  
-> **Source**: `src/networking/compat_xash.cpp`, `src/networking/compat_goldsrc.cpp`,
-> `src/networking/split_reassembler.cpp`, `src/networking/oob_packet.cpp`,
-> `src/networking/compressed_packet.cpp`, `src/networking/compress_lzss.cpp`  
+> **Defined in**: `private/networking/wire/split_packet.hpp`, `private/networking/transport/split_reassembler.hpp`,
+> `private/networking/wire/oob_packet.hpp`, `private/networking/codec/compressed_packet.hpp`,
+> `private/networking/codec/compress.hpp`  
+> **Source**: `src/networking/wire/compat_xash.cpp`, `src/networking/wire/compat_goldsrc.cpp`,
+> `src/networking/transport/split_reassembler.cpp`, `src/networking/wire/oob_packet.cpp`,
+> `src/networking/codec/compressed_packet.cpp`, `src/networking/codec/compress_lzss.cpp`  
 > **Namespace**: `xash::networking` (split), `xash::networking::oob`, `xash::networking::compressed_packet`, `xash::networking::lzss`
 
 ## Overview
@@ -192,6 +192,55 @@ Neither condition logs anything — callers propagate or handle the error code.
   returns `Discarded` immediately.
 - The `assembled` span from `SplitReassembler::ingest` aliases the internal
   `assembled_` vector; it is invalidated by any subsequent `ingest` or `reset`.
+
+---
+
+## Netchan fragment batching (Layer 3 outgoing)
+
+When `Netchan` needs to transmit a large reliable message it splits the
+payload into one or more `Fragbuf` entries, collected into a `FragbufBatch`.
+
+```
+Fragbuf        — one fragment slot: [ byte_offset, payload, filename? ]
+FragbufBatch   — list of Fragbuf plus precomputed total_size
+```
+
+Key properties:
+- `total_size` is computed **once** when the batch is created and stays
+  constant for the lifetime of the batch. Every fragment packet that is
+  sent includes this value in its descriptor word so the receiver can
+  pre-reserve the reassembly buffer on the very first fragment.
+- The **Normal** stream carries serialised entity/event data; the **File**
+  stream carries a file payload prefixed by a NUL-terminated filename header.
+- Fragment batch creation is the caller's responsibility (driven by the
+  host layer passing data to `Netchan::send_message`).
+
+---
+
+## Netchan fragment accumulation (Layer 3 incoming)
+
+`IncomingStream` accumulates inbound netchan fragments until the complete
+reliable message has been received.
+
+```
+IncomingStream::reserve(total_expected)  — called on first fragment arrival
+IncomingStream::ingest(byte_offset, payload)
+IncomingStream::complete()               — true when all bytes received
+IncomingStream::data()                   — assembled span
+```
+
+Key properties:
+- On the **first** fragment `reserve(total_expected)` pre-allocates the
+  reassembly buffer using the `total_size` field from the wire descriptor.
+  Subsequent fragments write directly into that buffer at their `byte_offset`.
+- The **Normal** and **File** streams are tracked independently; each
+  `Netchan` maintains one `IncomingStream` per `FragStream`.
+- The File stream's first fragment contains a NUL-terminated filename
+  header (legacy `FRAG_FILE_SIZE` constant); the rest is raw payload.
+- Path-traversal safety: the filename is checked for `..` components and
+  absolute path prefixes before any file operation is attempted.
+
+---
 
 ## See also
 

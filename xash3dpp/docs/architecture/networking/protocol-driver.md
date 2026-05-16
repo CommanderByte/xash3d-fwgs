@@ -1,7 +1,7 @@
 # Protocol Driver
 
 > **Defined in**: `networking/protocol_driver.hpp` (public), `private/networking/protocol_driver.hpp` (redirect)  
-> **Source**: `src/networking/protocol_driver_goldsrc.cpp`, `src/networking/compat_goldsrc.cpp`, `src/networking/compat_xash.cpp`  
+> **Source**: `src/networking/wire/protocol_driver_goldsrc.cpp`, `src/networking/wire/compat_goldsrc.cpp`, `src/networking/wire/compat_xash.cpp`  
 > **Namespace**: `xash::networking`
 
 ## Overview
@@ -52,12 +52,13 @@ struct FrameMeta {
     bool          is_reliable   { false };
     bool          is_split      { false };
     bool          is_oob        { false };
+    bool          is_fragment   { false };  // bit-30 set: netchan fragment descriptor block follows
+    bool          reliable_ack  { false };  // high-bit of sequence_ack: peer's reliable toggle
 };
 ```
 
 Decoded packet-header metadata — the result of parsing the netchan sequence
-header before payload dispatch. Populated by `IProtocolDriver::read_packet_header`
-(planned for Chunk 4 when the netchan layer lands).
+header before payload dispatch. Returned by `IProtocolDriver::read_packet_header`.
 
 ---
 
@@ -70,13 +71,32 @@ Pure-virtual interface representing one protocol version's on-wire policy.
 | `name()` | `const char *` | Static string for diagnostics |
 | `split_format()` | `SplitFormat` | Xash or GoldSrc framing |
 | `delta_tables()` | `DeltaTableSet` | GoldSrc or Xash delta tables |
-
-**Planned (Chunk 4)**:
-- `write_packet_header(msg)` — write sequence/ack header into a `MessageBuf`
-- `read_packet_header(msg)` → `FrameMeta` — parse and return header fields
+| `sends_qport()` | `bool` | True if this protocol writes a qport word on client→server packets |
+| `write_packet_header(out, in)` | `Result<void>` | Write netchan sequence/ack/qport/flags header into `out`; `in` is a `PacketHeaderInput` |
+| `read_packet_header(in, is_server_socket)` | `Result<FrameMeta>` | Parse and return header fields; `is_server_socket` controls whether qport is consumed |
 
 Instances are **not owned** by `NetworkContext`; the registry or the caller
 manages their lifetime.
+
+---
+
+## PacketHeaderInput
+
+```cpp
+struct PacketHeaderInput {
+    std::uint32_t outgoing_sequence         { 0 };
+    std::uint32_t incoming_sequence         { 0 };
+    std::uint32_t incoming_reliable_sequence{ 0 };
+    std::uint16_t qport                     { 0 };
+    bool          send_reliable             { false };
+    bool          send_reliable_fragment    { false };
+    bool          is_client                 { false };  // if true and sends_qport(): qport word is written
+};
+```
+
+Input bag passed to `IProtocolDriver::write_packet_header`. Holds all the
+netchan sequence fields and flags that the driver needs to form the on-wire
+header.
 
 ---
 
@@ -108,8 +128,8 @@ delta_tables()  → DeltaTableSet::GoldSrc
 Lives behind `default_protocol_driver_registry()` (declared in
 `include/xash3dpp/private/networking/protocol_driver_default.hpp`), which
 returns a Meyers-singleton `IProtocolDriverRegistry` that resolves wire
-protocols **48** (GoldSrc) and **49** (Xash) to the same `GoldSrcProtocolDriver`
-instance and `nullptr` for anything else.
+protocol **48** to `GoldSrcProtocolDriver` and **49** to `XashProtocolDriver`;
+returns `nullptr` for anything else.
 
 `NetworkContext::init()` falls back to this registry when
 `NetworkInitParams::protocol_registry` is `nullptr`.

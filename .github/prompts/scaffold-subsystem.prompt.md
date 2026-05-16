@@ -229,6 +229,15 @@ Then add to `xash3dpp/CMakeLists.txt` (or the appropriate parent
 add_subdirectory(src/$ARGUMENTS)
 ```
 
+**Plan subfolders now**: If the subsystem has distinct functional sub-layers
+(e.g. codec, wire, transport, encoder), decide the subfolder split **at
+scaffold time** before writing any `.cpp` files. Create the subdirectories
+and add separate `# <sublayer>` comment sections in `CMakeLists.txt` now.
+Retrofitting subfolders after 30+ files are established requires renaming
+both source and private-header paths simultaneously, which is error-prone.
+When in doubt: even 2–3 files warrant a subfolder if they share a clearly
+distinct concern.
+
 **Subsystem limits**: If `$ARGUMENTS` uses any fixed buffer sizes, pool
 capacities, or count limits, add them to
 `xash3dpp/include/xash3dpp/limits.hpp` under a new `// $ARGUMENTS subsystem`

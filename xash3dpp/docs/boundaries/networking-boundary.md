@@ -463,3 +463,23 @@ redirect stubs.
 See [docs/threading-analysis/networking-threading.md](../threading-analysis/networking-threading.md) for the full hazard inventory and caller-contract checklist.
 
 **TL;DR:** the entire transport stack (NetworkContext, Netchan, PacketPool, LagQueue, SplitReassembler, MasterListClient) is confined to the `T_NetIO` thread role. Only `NetworkContext::stats()` Tier-1 atomic counters are safe to read from other threads. There are no internal mutexes; single-thread access is the caller's contract.
+
+## Source folder layout
+
+`src/networking/` is divided into three functional sub-layers. Private headers
+mirror the same structure under `include/xash3dpp/private/networking/`.
+
+| Subfolder | Layer | Contents |
+|-----------|-------|---------|
+| `codec/` | Layer 2 (codec) | `compress_lzss.cpp`, `compress_bz2.cpp`, `compress_null.cpp`, `compressed_packet.cpp` |
+| `wire/` | Layer 2 (wire) | `compat_goldsrc.cpp`, `compat_xash.cpp`, `oob_packet.cpp`, `protocol_driver_goldsrc.cpp` |
+| `transport/` | Layer 1 | `lag_queue.cpp`, `loopback_transport.cpp`, `packet_pool.cpp`, `split_reassembler.cpp` |
+| *(top-level)* | Layer 0 / Layer 3 | `address.cpp`, `message_buf.cpp`, `context.cpp`, `netchan.cpp`, `master_list.cpp` |
+
+Tests mirror the same structure under `tests/networking/{codec,wire,transport}/`.
+
+> **Lesson learned (Chunk 8 retrofit)**: subfolder layout should be planned
+> at subsystem scaffold time (see `scaffold-subsystem.prompt.md` Step 3), before
+> any `.cpp` files are written. Retrofitting subfolders after 40+ files are
+> referenced in CMake is error-prone and requires renaming both source and header
+> paths simultaneously.

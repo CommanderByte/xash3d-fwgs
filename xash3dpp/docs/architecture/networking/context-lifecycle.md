@@ -45,14 +45,16 @@ Must be called before the caller's `IPlatformSockets` is destroyed.
 **`is_active()`** — `true` iff `impl_->initialised`.
 
 **`config(multiplayer, change_port)`** — opens or closes real UDP sockets.
-Currently a TODO stub (Chunk 4): returns `{}` unconditionally when active.
+Calls `IPlatformSockets::open_socket` on `multiplayer=true`; closes them on
+`false`. Safe to call repeatedly; a no-op if `initialised` is false.
 
 **`get_packet(sock, from, data)`** — pulls one packet: consults the loopback
-ring first, then the real socket (Chunk 4+ TODO). Returns `WouldBlock` when no
-packet is ready.
+ring first, then calls `recvfrom` on the real socket. Returns `WouldBlock`
+when no packet is ready.
 
 **`send_packet(sock, data, to)`** — sends one datagram to `to`. Short-circuits
-to loopback for in-process addresses (Chunk 4+ TODO).
+to loopback for in-process addresses; calls `IPlatformSockets::send_packet`
+otherwise.
 
 **`stats()`** — returns a const reference to `impl_->stats`; no lock needed
 (Tier-1 fields are atomics).
@@ -63,7 +65,7 @@ to loopback for in-process addresses (Chunk 4+ TODO).
 [caller]
     │  NetworkContext ctx;          ← default constructor; allocates Impl
     │  ctx.init(params)             ← pool created, dependencies stored
-    │  ctx.config(true, false)      ← sockets opened (Chunk 4)
+    │  ctx.config(true, false)      ← sockets opened via IPlatformSockets
     │  ctx.get_packet(...)          ← I/O loop
     │  ctx.send_packet(...)
     │  ctx.shutdown()               ← pool destroyed, pointers cleared
@@ -103,6 +105,14 @@ on the `Server` ring, matching legacy `loopbacks[sock^1]`.
 single-thread use on `T_NetIO`. `NetworkingStats::packets_sent` and sibling
 Tier-1 counters are `std::atomic`, so they may be read from any thread without
 synchronisation.
+
+## Netchan and pool
+
+Every `Netchan` connected to this `NetworkContext` must be configured with
+`NetchanConfig::pool` pointing to the context's own pool (available via
+`NetworkContext::pool()` after `init()`). Fragment buffers and reliable-buffer
+data are allocated from this pool; using a different pool causes lifetime
+mismatches when the context shuts down.
 
 ## Error handling
 

@@ -16,9 +16,10 @@ encode/decode helpers (split-packet framing, OOB, LZSS compression), and the
 
 It does **not** execute game logic, parse game assets, manage DNS resolution
 at the application layer, or implement the HTTP downloader. The netchan
-reliable-channel layer is **scaffolded as stubs** in `netchan.hpp` /
-`netchan.cpp` — the public surface is frozen but every method body is a
-`// TODO(Chunk N)` placeholder. The delta encoder is not yet stubbed.
+reliable-channel layer is **fully implemented** in `netchan.hpp` /
+`netchan.cpp` — reliable queue, fragment assembly and drain, bandwidth
+choking, and file-transfer support are all complete. The delta encoder is
+not yet implemented.
 
 ## Design goals
 
@@ -76,7 +77,7 @@ reliable-channel layer is **scaffolded as stubs** in `netchan.hpp` /
 | Lag simulation | `net_fakelag` cvar side effects in `NET_GetPacket` | `LagQueue` pure value type, caller controls time |
 | Compression | Codec calls embedded in `net_chan.c` | `xash::networking::lzss` namespace, `compressed_packet` wrapper |
 | Protocol compat | `#ifdef XASH_GOLDSRC` scattered guards | `IProtocolDriver` per-channel injectable |
-| Master-server | Free functions + global state | `IMasterListConfig`/`IMasterListClient` interfaces; implementation is a TODO stub |
+| Master-server | Free functions + global state | `IMasterListConfig`/`IMasterListClient` interfaces; built-in `MasterListClient` sends GoldSrc OOB heartbeat/shutdown |
 | Netchan | `netchan_t` POD + free functions, fragment globals, `pfnBlockSize` callback | `Netchan` value class with pimpl, `NetchanConfig` setup, `IBlockSizeProvider` interface, `IProtocolDriver` chooses framing (no `gs_netchan` bool) |
 
 ## Architecture at a glance
@@ -116,9 +117,10 @@ reliable-channel layer is **scaffolded as stubs** in `netchan.hpp` /
   └──────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────┐
-  │               LAYER 3 — netchan (stubs)              │
+  │               LAYER 3 — netchan                      │
   │  Netchan reliable queue, stream frags, flow ctrl     │
-  │  (public API frozen; bodies are // TODO(Chunk N))    │
+  │  Fragment batching (Fragbuf/IncomingStream)           │
+  │  Bandwidth choking, path-traversal-safe file xfer    │
   └──────────────────────────────────────────────────────┘
 ```
 
