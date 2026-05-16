@@ -11,3 +11,7 @@ add_test(NAME test_message_buf COMMAND test_message_buf)
 add_executable(test_netadr test_netadr.cpp)
 target_link_libraries(test_netadr PRIVATE xash3dpp_networking)
 add_test(NAME test_netadr COMMAND test_netadr)
+
+add_executable(test_split_packet test_split_packet.cpp)
+target_link_libraries(test_split_packet PRIVATE xash3dpp_networking)
+add_test(NAME test_split_packet COMMAND test_split_packet)
