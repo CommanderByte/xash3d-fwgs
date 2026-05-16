@@ -45,9 +45,9 @@ static void test_crc32_incremental()
 
 int main()
 {
-    test_crc32_empty();
-    test_crc32_known();
-    test_crc32_incremental();
+    RUN_TEST( test_crc32_empty );
+    RUN_TEST( test_crc32_known );
+    RUN_TEST( test_crc32_incremental );
 
     std::printf( "hash: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

@@ -688,67 +688,67 @@ int main()
     g_pool = xash::memory::create_pool("test_backends");
 
     // --- DirBackend ---------------------------------------------------------
-    test_dir_backend_create();
-    test_dir_backend_info();
-    test_dir_backend_find_file();
-    test_dir_backend_load_file();
-    test_dir_backend_load_file_missing();
-    test_dir_backend_open_file_read();
-    test_dir_backend_open_file_missing();
-    test_dir_backend_write_creates_file();
-    test_dir_backend_file_time();
-    test_dir_backend_search();
-    test_dir_backend_nested_find();
+    RUN_TEST( test_dir_backend_create );
+    RUN_TEST( test_dir_backend_info );
+    RUN_TEST( test_dir_backend_find_file );
+    RUN_TEST( test_dir_backend_load_file );
+    RUN_TEST( test_dir_backend_load_file_missing );
+    RUN_TEST( test_dir_backend_open_file_read );
+    RUN_TEST( test_dir_backend_open_file_missing );
+    RUN_TEST( test_dir_backend_write_creates_file );
+    RUN_TEST( test_dir_backend_file_time );
+    RUN_TEST( test_dir_backend_search );
+    RUN_TEST( test_dir_backend_nested_find );
 
     // --- PakBackend ---------------------------------------------------------
-    test_pak_backend_create_invalid();
-    test_pak_backend_create_missing();
-    test_pak_backend_create_valid();
-    test_pak_backend_info();
-    test_pak_backend_find_file();
-    test_pak_backend_find_file_case_insensitive();
-    test_pak_backend_load_file();
-    test_pak_backend_load_file_missing();
-    test_pak_backend_open_file();
-    test_pak_backend_open_file_missing();
-    test_pak_backend_write_rejected();
-    test_pak_backend_file_time();
-    test_pak_backend_search();
+    RUN_TEST( test_pak_backend_create_invalid );
+    RUN_TEST( test_pak_backend_create_missing );
+    RUN_TEST( test_pak_backend_create_valid );
+    RUN_TEST( test_pak_backend_info );
+    RUN_TEST( test_pak_backend_find_file );
+    RUN_TEST( test_pak_backend_find_file_case_insensitive );
+    RUN_TEST( test_pak_backend_load_file );
+    RUN_TEST( test_pak_backend_load_file_missing );
+    RUN_TEST( test_pak_backend_open_file );
+    RUN_TEST( test_pak_backend_open_file_missing );
+    RUN_TEST( test_pak_backend_write_rejected );
+    RUN_TEST( test_pak_backend_file_time );
+    RUN_TEST( test_pak_backend_search );
 
     // --- ZipBackend ---------------------------------------------------------
 #ifndef MINIZ_NO_ARCHIVE_APIS
-    test_zip_backend_create_invalid();
-    test_zip_backend_create_missing();
-    test_zip_backend_create_valid();
-    test_zip_backend_info();
-    test_zip_backend_find_file();
-    test_zip_backend_find_file_case_insensitive();
-    test_zip_backend_load_file();
-    test_zip_backend_load_file_missing();
-    test_zip_backend_open_file();
-    test_zip_backend_open_file_missing();
-    test_zip_backend_write_rejected();
-    test_zip_backend_file_time();
-    test_zip_backend_search();
+    RUN_TEST( test_zip_backend_create_invalid );
+    RUN_TEST( test_zip_backend_create_missing );
+    RUN_TEST( test_zip_backend_create_valid );
+    RUN_TEST( test_zip_backend_info );
+    RUN_TEST( test_zip_backend_find_file );
+    RUN_TEST( test_zip_backend_find_file_case_insensitive );
+    RUN_TEST( test_zip_backend_load_file );
+    RUN_TEST( test_zip_backend_load_file_missing );
+    RUN_TEST( test_zip_backend_open_file );
+    RUN_TEST( test_zip_backend_open_file_missing );
+    RUN_TEST( test_zip_backend_write_rejected );
+    RUN_TEST( test_zip_backend_file_time );
+    RUN_TEST( test_zip_backend_search );
 #else
     std::printf( "  ZipBackend tests skipped: legacy miniz has MINIZ_NO_ARCHIVE_APIS\n" );
 #endif // !MINIZ_NO_ARCHIVE_APIS
 
     // --- WadBackend ---------------------------------------------------------
-    test_wad_backend_create_invalid();
-    test_wad_backend_create_missing();
-    test_wad_backend_create_valid();
-    test_wad_backend_info();
-    test_wad_backend_find_file();
-    test_wad_backend_load_file();
-    test_wad_backend_load_file_missing();
-    test_wad_backend_open_file();
-    test_wad_backend_open_file_missing();
-    test_wad_backend_write_rejected();
-    test_wad_backend_file_time();
-    test_wad_backend_search();
-    test_wad_backend_qualifier_match();
-    test_wad_backend_case_insensitive_lookup();
+    RUN_TEST( test_wad_backend_create_invalid );
+    RUN_TEST( test_wad_backend_create_missing );
+    RUN_TEST( test_wad_backend_create_valid );
+    RUN_TEST( test_wad_backend_info );
+    RUN_TEST( test_wad_backend_find_file );
+    RUN_TEST( test_wad_backend_load_file );
+    RUN_TEST( test_wad_backend_load_file_missing );
+    RUN_TEST( test_wad_backend_open_file );
+    RUN_TEST( test_wad_backend_open_file_missing );
+    RUN_TEST( test_wad_backend_write_rejected );
+    RUN_TEST( test_wad_backend_file_time );
+    RUN_TEST( test_wad_backend_search );
+    RUN_TEST( test_wad_backend_qualifier_match );
+    RUN_TEST( test_wad_backend_case_insensitive_lookup );
 
     xash::memory::destroy_pool(g_pool);
     std::printf( "backends: %d passed, %d failed\n", g_pass, g_fail );

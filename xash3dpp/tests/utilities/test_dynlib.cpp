@@ -58,8 +58,8 @@ static void test_validate_exports()
 
 int main()
 {
-    test_clear_exports();
-    test_validate_exports();
+    RUN_TEST( test_clear_exports );
+    RUN_TEST( test_validate_exports );
 
     std::printf( "dynlib: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

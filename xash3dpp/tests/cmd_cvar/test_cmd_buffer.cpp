@@ -88,9 +88,9 @@ static void test_cmd_wait()
 
 int main()
 {
-    test_add_and_execute();
-    test_insert_ordering();
-    test_cmd_wait();
+    RUN_TEST( test_add_and_execute );
+    RUN_TEST( test_insert_ordering );
+    RUN_TEST( test_cmd_wait );
 
     std::printf("cmd_buffer: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;

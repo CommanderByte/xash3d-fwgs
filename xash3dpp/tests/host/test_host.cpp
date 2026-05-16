@@ -77,9 +77,9 @@ static void test_signal_frame_abort()
 
 int main()
 {
-    test_init_shutdown();
-    test_bugcomp_default_zero();
-    test_signal_frame_abort();
+    RUN_TEST( test_init_shutdown );
+    RUN_TEST( test_bugcomp_default_zero );
+    RUN_TEST( test_signal_frame_abort );
 
     std::printf( "host: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

@@ -119,11 +119,11 @@ static void test_unlink()
 
 int main()
 {
-    test_init_shutdown();
-    test_find_unknown();
-    test_create_and_find();
-    test_set_value();
-    test_unlink();
+    RUN_TEST( test_init_shutdown );
+    RUN_TEST( test_find_unknown );
+    RUN_TEST( test_create_and_find );
+    RUN_TEST( test_set_value );
+    RUN_TEST( test_unlink );
 
     std::printf("cvar_registry: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;

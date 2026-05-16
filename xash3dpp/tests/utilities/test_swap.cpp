@@ -60,10 +60,10 @@ static void test_swap_bytes_noop()
 
 int main()
 {
-    test_swap_bytes_2();
-    test_swap_bytes_4();
-    test_swap_bytes_8();
-    test_swap_bytes_noop();
+    RUN_TEST( test_swap_bytes_2 );
+    RUN_TEST( test_swap_bytes_4 );
+    RUN_TEST( test_swap_bytes_8 );
+    RUN_TEST( test_swap_bytes_noop );
 
     std::printf( "swap: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

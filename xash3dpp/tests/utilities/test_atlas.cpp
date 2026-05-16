@@ -145,19 +145,19 @@ static void test_best_fit_scan()
 
 int main()
 {
-    test_constructor();
-    test_alloc_single();
-    test_alloc_adjacent();
-    test_alloc_second_row();
-    test_alloc_exact_fit();
-    test_alloc_too_wide();
-    test_alloc_too_tall();
-    test_alloc_zero_dimensions();
-    test_alloc_full();
-    test_max_height();
-    test_clear();
-    test_best_fit_scan();
+    RUN_TEST( test_constructor );
+    RUN_TEST( test_alloc_single );
+    RUN_TEST( test_alloc_adjacent );
+    RUN_TEST( test_alloc_second_row );
+    RUN_TEST( test_alloc_exact_fit );
+    RUN_TEST( test_alloc_too_wide );
+    RUN_TEST( test_alloc_too_tall );
+    RUN_TEST( test_alloc_zero_dimensions );
+    RUN_TEST( test_alloc_full );
+    RUN_TEST( test_max_height );
+    RUN_TEST( test_clear );
+    RUN_TEST( test_best_fit_scan );
 
-    std::printf( "%d passed, %d failed\n", g_pass, g_fail );
+    std::printf( "atlas: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;
 }

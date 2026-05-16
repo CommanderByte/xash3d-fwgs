@@ -142,9 +142,9 @@ static void test_double_lifecycle()
 
 int main()
 {
-    test_pool_lifecycle();
-    test_allocations_are_tracked();
-    test_double_lifecycle();
+    RUN_TEST( test_pool_lifecycle );
+    RUN_TEST( test_allocations_are_tracked );
+    RUN_TEST( test_double_lifecycle );
 
     std::printf("memory_accounting: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;

@@ -214,21 +214,21 @@ static void test_vector_angles()
 
 int main()
 {
-    test_dot();
-    test_cross();
-    test_normalize();
-    test_rint();
-    test_is_nan();
-    test_matrix3x4_identity();
-    test_from_angles_translation();
-    test_from_angles_yaw();
-    test_concat_identity();
-    test_invert_ortho();
-    test_matrix4x4_identity();
-    test_matrix4x4_concat();
-    test_angle_vectors();
-    test_vec_to_yaw();
-    test_vector_angles();
+    RUN_TEST( test_dot );
+    RUN_TEST( test_cross );
+    RUN_TEST( test_normalize );
+    RUN_TEST( test_rint );
+    RUN_TEST( test_is_nan );
+    RUN_TEST( test_matrix3x4_identity );
+    RUN_TEST( test_from_angles_translation );
+    RUN_TEST( test_from_angles_yaw );
+    RUN_TEST( test_concat_identity );
+    RUN_TEST( test_invert_ortho );
+    RUN_TEST( test_matrix4x4_identity );
+    RUN_TEST( test_matrix4x4_concat );
+    RUN_TEST( test_angle_vectors );
+    RUN_TEST( test_vec_to_yaw );
+    RUN_TEST( test_vector_angles );
 
     std::printf( "matrix: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

@@ -222,14 +222,14 @@ static void test_log_verbose_no_crash()
 
 int main()
 {
-    test_all_levels_no_crash();
-    test_empty_text_no_crash();
-    test_logf_basic();
-    test_callback_tag_and_level();
-    test_long_message_truncated();
-    test_callback_reset();
-    test_callback_replace();
-    test_log_verbose_no_crash();
+    RUN_TEST( test_all_levels_no_crash );
+    RUN_TEST( test_empty_text_no_crash );
+    RUN_TEST( test_logf_basic );
+    RUN_TEST( test_callback_tag_and_level );
+    RUN_TEST( test_long_message_truncated );
+    RUN_TEST( test_callback_reset );
+    RUN_TEST( test_callback_replace );
+    RUN_TEST( test_log_verbose_no_crash );
 
     std::printf( "test_log: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

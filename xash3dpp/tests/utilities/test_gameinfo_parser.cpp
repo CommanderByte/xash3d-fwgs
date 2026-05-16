@@ -126,7 +126,7 @@ static void test_apply_gameinfo_fixups()
 
 int main()
 {
-    test_apply_gameinfo_fixups();
+    RUN_TEST( test_apply_gameinfo_fixups );
 
     std::printf( "gameinfo_parser: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

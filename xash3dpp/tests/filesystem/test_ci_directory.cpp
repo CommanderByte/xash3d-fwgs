@@ -308,17 +308,17 @@ int main()
 {
     setup_testdir();
 
-    test_ci_directory_glob_basic();
-    test_ci_directory_glob_case_insensitive();
-    test_ci_directory_glob_case_sensitive();
-    test_ci_directory_glob_star_all();
-    test_ci_directory_glob_subdir();
-    test_ci_directory_glob_missing_subdir();
+    RUN_TEST( test_ci_directory_glob_basic );
+    RUN_TEST( test_ci_directory_glob_case_insensitive );
+    RUN_TEST( test_ci_directory_glob_case_sensitive );
+    RUN_TEST( test_ci_directory_glob_star_all );
+    RUN_TEST( test_ci_directory_glob_subdir );
+    RUN_TEST( test_ci_directory_glob_missing_subdir );
 
-    test_ci_directory_resolve();
+    RUN_TEST( test_ci_directory_resolve );
 
-    test_ci_directory_invalidate();
-    test_ci_directory_invalidate_selective();
+    RUN_TEST( test_ci_directory_invalidate );
+    RUN_TEST( test_ci_directory_invalidate_selective );
 
     teardown_testdir();
 

@@ -44,6 +44,20 @@ struct SuppressCrtDialogs {
 } // anonymous namespace
 #endif // _MSC_VER
 
+// Runs a named test function, printing its name before execution and a
+// pass/fail result after it returns.
+// Usage: RUN_TEST( test_my_feature );
+#define RUN_TEST( fn ) \
+    do { \
+        std::printf( "  [ run ] " #fn "\n" ); \
+        int const _xtest_fail_before = g_fail; \
+        (fn)(); \
+        if( g_fail == _xtest_fail_before ) \
+            std::printf( "  [ ok  ] " #fn "\n" ); \
+        else \
+            std::printf( "  [FAIL] " #fn "\n" ); \
+    } while( 0 )
+
 // Non-fatal check — records pass/fail, always continues.
 #define CHECK( expr ) \
     do { \

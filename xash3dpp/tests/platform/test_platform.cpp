@@ -112,15 +112,15 @@ static void test_is_debugger_present_no_crash()
 
 int main()
 {
-    test_get_time_monotonic();
-    test_sleep_zero();
-    test_open_library_bad_path();
-    test_open_library_empty_path();
-    test_get_symbol_null_handle();
-    test_close_library_null();
-    test_get_executable_dir();
-    test_get_working_directory();
-    test_is_debugger_present_no_crash();
+    RUN_TEST( test_get_time_monotonic );
+    RUN_TEST( test_sleep_zero );
+    RUN_TEST( test_open_library_bad_path );
+    RUN_TEST( test_open_library_empty_path );
+    RUN_TEST( test_get_symbol_null_handle );
+    RUN_TEST( test_close_library_null );
+    RUN_TEST( test_get_executable_dir );
+    RUN_TEST( test_get_working_directory );
+    RUN_TEST( test_is_debugger_present_no_crash );
 
     std::printf( "platform: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

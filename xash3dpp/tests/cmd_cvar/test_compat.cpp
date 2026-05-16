@@ -49,8 +49,8 @@ static void test_no_redirect_with_null_policy()
 
 int main()
 {
-    test_null_policy();
-    test_no_redirect_with_null_policy();
+    RUN_TEST( test_null_policy );
+    RUN_TEST( test_no_redirect_with_null_policy );
 
     std::printf("compat: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;

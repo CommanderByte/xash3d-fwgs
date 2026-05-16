@@ -210,16 +210,16 @@ static void test_vector_angles()
 
 int main()
 {
-    test_rint();
-    test_is_nan();
-    test_dot();
-    test_cross();
-    test_vec3_operators();
-    test_length();
-    test_normalize();
-    test_angle_vectors();
-    test_vec_to_yaw();
-    test_vector_angles();
+    RUN_TEST( test_rint );
+    RUN_TEST( test_is_nan );
+    RUN_TEST( test_dot );
+    RUN_TEST( test_cross );
+    RUN_TEST( test_vec3_operators );
+    RUN_TEST( test_length );
+    RUN_TEST( test_normalize );
+    RUN_TEST( test_angle_vectors );
+    RUN_TEST( test_vec_to_yaw );
+    RUN_TEST( test_vector_angles );
 
     std::printf( "math: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

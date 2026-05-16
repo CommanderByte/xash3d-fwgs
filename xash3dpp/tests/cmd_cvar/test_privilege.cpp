@@ -82,9 +82,9 @@ static void test_stuffcmd_unprivileged_always_runs()
 
 int main()
 {
-    test_stuffcmd_blocked_when_untrusted();
-    test_stuffcmd_allowed_when_trusted();
-    test_stuffcmd_unprivileged_always_runs();
+    RUN_TEST( test_stuffcmd_blocked_when_untrusted );
+    RUN_TEST( test_stuffcmd_allowed_when_trusted );
+    RUN_TEST( test_stuffcmd_unprivileged_always_runs );
 
     std::printf("privilege: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;

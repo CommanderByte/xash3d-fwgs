@@ -738,37 +738,37 @@ int main()
     setup_testdir();
 
     // Pure tests (no filesystem I/O).
-    test_search_path_flags();
-    test_seek_origin_values();
+    RUN_TEST( test_search_path_flags );
+    RUN_TEST( test_seek_origin_values );
 
     // Filesystem state tests (no file read/write).
-    test_init_gamedir();
-    test_activate_game_not_found();
-    test_allow_direct_paths();
-    test_find_library_no_game();
-    test_mount_archive_bad_ext();
+    RUN_TEST( test_init_gamedir );
+    RUN_TEST( test_activate_game_not_found );
+    RUN_TEST( test_allow_direct_paths );
+    RUN_TEST( test_find_library_no_game );
+    RUN_TEST( test_mount_archive_bad_ext );
 
     // Integration tests (read from and write to the temp directory).
-    test_add_game_directory();
-    test_file_time();
-    test_disk_path();
-    test_add_game_hierarchy();
-    test_write_file();
-    test_delete();
-    test_rename();
-    test_search();
-    test_clear_paths();
-    test_load_direct_file();
-    test_crc32_file();
-    test_md5_file();
-    test_shutdown_resets_state();
-    test_file_seek_tell_eof();
-    test_file_gets_getc();
+    RUN_TEST( test_add_game_directory );
+    RUN_TEST( test_file_time );
+    RUN_TEST( test_disk_path );
+    RUN_TEST( test_add_game_hierarchy );
+    RUN_TEST( test_write_file );
+    RUN_TEST( test_delete );
+    RUN_TEST( test_rename );
+    RUN_TEST( test_search );
+    RUN_TEST( test_clear_paths );
+    RUN_TEST( test_load_direct_file );
+    RUN_TEST( test_crc32_file );
+    RUN_TEST( test_md5_file );
+    RUN_TEST( test_shutdown_resets_state );
+    RUN_TEST( test_file_seek_tell_eof );
+    RUN_TEST( test_file_gets_getc );
 
     // Threading tests.
-    test_concurrent_reads();
-    test_concurrent_read_write_paths();
-    test_concurrent_open_read();
+    RUN_TEST( test_concurrent_reads );
+    RUN_TEST( test_concurrent_read_write_paths );
+    RUN_TEST( test_concurrent_open_read );
 
     teardown_testdir();
 

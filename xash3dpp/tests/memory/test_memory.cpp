@@ -769,53 +769,53 @@ static void test_concurrent_stats_read()
 
 int main()
 {
-    test_create_destroy();
-    test_null_pool_handle();
-    test_pool_count();
-    test_slot_reuse();
+    RUN_TEST( test_create_destroy );
+    RUN_TEST( test_null_pool_handle );
+    RUN_TEST( test_pool_count );
+    RUN_TEST( test_slot_reuse );
 
-    test_alloc_increments_stats();
-    test_multiple_allocs();
-    test_free_nullptr_is_noop();
-    test_alloc_zero_size();
-    test_alloc_null_pool();
+    RUN_TEST( test_alloc_increments_stats );
+    RUN_TEST( test_multiple_allocs );
+    RUN_TEST( test_free_nullptr_is_noop );
+    RUN_TEST( test_alloc_zero_size );
+    RUN_TEST( test_alloc_null_pool );
 
-    test_calloc_zeroes();
+    RUN_TEST( test_calloc_zeroes );
 
-    test_realloc_grow();
-    test_realloc_shrink();
-    test_realloc_nullptr_acts_as_alloc();
-    test_realloc_zero_size_acts_as_free();
-    test_realloc_pool_migration();
-    test_realloc_preserves_data();
+    RUN_TEST( test_realloc_grow );
+    RUN_TEST( test_realloc_shrink );
+    RUN_TEST( test_realloc_nullptr_acts_as_alloc );
+    RUN_TEST( test_realloc_zero_size_acts_as_free );
+    RUN_TEST( test_realloc_pool_migration );
+    RUN_TEST( test_realloc_preserves_data );
 
-    test_for_each_pool();
+    RUN_TEST( test_for_each_pool );
 
-    test_pool_new_delete();
-    test_pool_delete_nullptr();
+    RUN_TEST( test_pool_new_delete );
+    RUN_TEST( test_pool_delete_nullptr );
 
-    test_scoped_pool();
-    test_scoped_pool_handle_usable();
+    RUN_TEST( test_scoped_pool );
+    RUN_TEST( test_scoped_pool_handle_usable );
 
-    test_registry_full();
+    RUN_TEST( test_registry_full );
 
-    test_pool_config_system_explicit();
-    test_pool_config_future_strategies();
+    RUN_TEST( test_pool_config_system_explicit );
+    RUN_TEST( test_pool_config_future_strategies );
 
-    test_oom_handler();
+    RUN_TEST( test_oom_handler );
 
-    test_pool_name_truncation();
-    test_pool_name_null();
+    RUN_TEST( test_pool_name_truncation );
+    RUN_TEST( test_pool_name_null );
 
-    test_alloc_alignment();
-    test_realloc_same_pool_counts();
-    test_alloc_overflow_guard();
+    RUN_TEST( test_alloc_alignment );
+    RUN_TEST( test_realloc_same_pool_counts );
+    RUN_TEST( test_alloc_overflow_guard );
 
-    test_concurrent_create_pool();
-    test_concurrent_alloc_free();
-    test_concurrent_alloc_distinct_pools();
-    test_concurrent_stats_read();
+    RUN_TEST( test_concurrent_create_pool );
+    RUN_TEST( test_concurrent_alloc_free );
+    RUN_TEST( test_concurrent_alloc_distinct_pools );
+    RUN_TEST( test_concurrent_stats_read );
 
-    std::printf("%d passed, %d failed\n", g_pass, g_fail);
+    std::printf( "memory: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;
 }

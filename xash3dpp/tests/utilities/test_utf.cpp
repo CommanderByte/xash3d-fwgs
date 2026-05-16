@@ -257,15 +257,15 @@ static void test_to_cp1252()
 
 int main()
 {
-    test_decode_utf8();
-    test_decode_utf16();
-    test_encode_utf8();
-    test_utf8_decoder();
-    test_utf16_decoder();
-    test_length();
-    test_utf16_to_utf8();
-    test_to_cp1251();
-    test_to_cp1252();
+    RUN_TEST( test_decode_utf8 );
+    RUN_TEST( test_decode_utf16 );
+    RUN_TEST( test_encode_utf8 );
+    RUN_TEST( test_utf8_decoder );
+    RUN_TEST( test_utf16_decoder );
+    RUN_TEST( test_length );
+    RUN_TEST( test_utf16_to_utf8 );
+    RUN_TEST( test_to_cp1251 );
+    RUN_TEST( test_to_cp1252 );
 
     std::printf( "utf: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

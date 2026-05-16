@@ -46,8 +46,8 @@ static void test_compat_number()
 
 int main()
 {
-    test_number_from_date();
-    test_compat_number();
+    RUN_TEST( test_number_from_date );
+    RUN_TEST( test_compat_number );
 
     std::printf( "build: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

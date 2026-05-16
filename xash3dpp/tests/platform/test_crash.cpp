@@ -51,9 +51,9 @@ static void test_print_trace_no_crash()
 
 int main()
 {
-    test_install_handler_no_crash();
-    test_install_handler_idempotent();
-    test_print_trace_no_crash();
+    RUN_TEST( test_install_handler_no_crash );
+    RUN_TEST( test_install_handler_idempotent );
+    RUN_TEST( test_print_trace_no_crash );
 
     std::printf("crash: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;

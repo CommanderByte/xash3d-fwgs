@@ -14,25 +14,18 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace {
+#include "../test_helpers.hpp"
 
-int g_failures = 0;
+static int g_pass = 0, g_fail = 0;
 
-#define CHECK( expr ) do { \
-    if( !( expr ) ) { \
-        std::fprintf( stderr, "FAIL  %s:%d  %s\n", __FILE__, __LINE__, #expr ); \
-        ++g_failures; \
-    } \
-} while( 0 )
-
-void test_default_role_is_unknown()
+static void test_default_role_is_unknown()
 {
     // On the main thread of the test process the role starts as Unknown;
     // we have not called register_thread_role yet.
     CHECK( xash::core::current_thread_role() == xash::core::ThreadRole::Unknown );
 }
 
-void test_register_updates_role()
+static void test_register_updates_role()
 {
     using xash::core::ThreadRole;
     xash::core::register_thread_role( ThreadRole::Main );
@@ -46,7 +39,7 @@ void test_register_updates_role()
     xash::core::register_thread_role( ThreadRole::Main );
 }
 
-void test_thread_local_isolation()
+static void test_thread_local_isolation()
 {
     using xash::core::ThreadRole;
     std::atomic<bool>       saw_unknown_before{ false };
@@ -70,7 +63,7 @@ void test_thread_local_isolation()
     CHECK( xash::core::current_thread_role() == ThreadRole::Main );
 }
 
-void test_role_names()
+static void test_role_names()
 {
     using xash::core::ThreadRole;
     using xash::core::thread_role_name;
@@ -84,28 +77,21 @@ void test_role_names()
     CHECK( std::strcmp( thread_role_name( ThreadRole::NetIO ),         "NetIO"         ) == 0 );
 }
 
-void test_assert_thread_role_matches()
+static void test_assert_thread_role_matches()
 {
     using xash::core::ThreadRole;
     // Currently registered as Main — assert_thread_role(Main) must not abort.
     xash::core::assert_thread_role( ThreadRole::Main );
 }
 
-} // namespace
-
 int main()
 {
-    test_default_role_is_unknown();
-    test_register_updates_role();
-    test_thread_local_isolation();
-    test_role_names();
-    test_assert_thread_role_matches();
+    RUN_TEST( test_default_role_is_unknown );
+    RUN_TEST( test_register_updates_role );
+    RUN_TEST( test_thread_local_isolation );
+    RUN_TEST( test_role_names );
+    RUN_TEST( test_assert_thread_role_matches );
 
-    if( g_failures != 0 )
-    {
-        std::fprintf( stderr, "test_thread_role: %d failure(s)\n", g_failures );
-        return EXIT_FAILURE;
-    }
-    std::fputs( "test_thread_role: OK\n", stderr );
-    return EXIT_SUCCESS;
+    std::printf( "thread_role: %d passed, %d failed\n", g_pass, g_fail );
+    return g_fail == 0 ? 0 : 1;
 }

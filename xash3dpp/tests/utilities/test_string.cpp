@@ -161,18 +161,18 @@ static void test_tokenizer()
 
 int main()
 {
-    test_strncpy();
-    test_stricmp();
-    test_strnicmp();
-    test_snprintf();
-    test_atoi();
-    test_atof();
-    test_atov();
-    test_strip_colors();
-    test_pretify_mem();
-    test_match_pattern();
-    test_parse_token();
-    test_tokenizer();
+    RUN_TEST( test_strncpy );
+    RUN_TEST( test_stricmp );
+    RUN_TEST( test_strnicmp );
+    RUN_TEST( test_snprintf );
+    RUN_TEST( test_atoi );
+    RUN_TEST( test_atof );
+    RUN_TEST( test_atov );
+    RUN_TEST( test_strip_colors );
+    RUN_TEST( test_pretify_mem );
+    RUN_TEST( test_match_pattern );
+    RUN_TEST( test_parse_token );
+    RUN_TEST( test_tokenizer );
 
     std::printf( "string: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

@@ -612,38 +612,38 @@ int main()
 {
     setup_testdir();
 
-    test_file_length();
+    RUN_TEST( test_file_length );
 
-    test_file_read_exact();
-    test_file_read_partial();
-    test_file_read_empty_buf();
-    test_file_tell_advances_on_read();
-    test_file_eof_after_full_read();
-    test_file_eof_empty_file();
+    RUN_TEST( test_file_read_exact );
+    RUN_TEST( test_file_read_partial );
+    RUN_TEST( test_file_read_empty_buf );
+    RUN_TEST( test_file_tell_advances_on_read );
+    RUN_TEST( test_file_eof_after_full_read );
+    RUN_TEST( test_file_eof_empty_file );
 
-    test_file_seek_begin();
-    test_file_seek_current();
-    test_file_seek_end();
-    test_file_seek_out_of_bounds();
-    test_file_seek_followed_by_read();
+    RUN_TEST( test_file_seek_begin );
+    RUN_TEST( test_file_seek_current );
+    RUN_TEST( test_file_seek_end );
+    RUN_TEST( test_file_seek_out_of_bounds );
+    RUN_TEST( test_file_seek_followed_by_read );
 
-    test_file_write();
-    test_file_write_empty();
+    RUN_TEST( test_file_write );
+    RUN_TEST( test_file_write_empty );
 
-    test_file_flush();
+    RUN_TEST( test_file_flush );
 
-    test_file_gets_no_newline();
-    test_file_gets_multiline();
-    test_file_gets_crlf();
-    test_file_gets_empty_line();
-    test_file_gets_eof();
+    RUN_TEST( test_file_gets_no_newline );
+    RUN_TEST( test_file_gets_multiline );
+    RUN_TEST( test_file_gets_crlf );
+    RUN_TEST( test_file_gets_empty_line );
+    RUN_TEST( test_file_gets_eof );
 
-    test_file_getc_sequence();
-    test_file_getc_eof();
+    RUN_TEST( test_file_getc_sequence );
+    RUN_TEST( test_file_getc_eof );
 
-    test_file_ungetc_same_value();
-    test_file_ungetc_different_value();
-    test_file_ungetc_after_gets();
+    RUN_TEST( test_file_ungetc_same_value );
+    RUN_TEST( test_file_ungetc_different_value );
+    RUN_TEST( test_file_ungetc_after_gets );
 
     teardown_testdir();
 

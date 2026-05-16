@@ -233,14 +233,14 @@ int main()
     g_testdir = fs::temp_directory_path() / "xash3dpp_test_os_io";
     fs::create_directories(g_testdir);
 
-    test_write_read_roundtrip();
-    test_seek_tell();
-    test_memfd_roundtrip();
-    test_flush_no_crash();
-    test_file_size();
-    test_file_time();
-    test_directory_ops();
-    test_is_case_insensitive();
+    RUN_TEST( test_write_read_roundtrip );
+    RUN_TEST( test_seek_tell );
+    RUN_TEST( test_memfd_roundtrip );
+    RUN_TEST( test_flush_no_crash );
+    RUN_TEST( test_file_size );
+    RUN_TEST( test_file_time );
+    RUN_TEST( test_directory_ops );
+    RUN_TEST( test_is_case_insensitive );
 
     // Remove all test artefacts.
     std::error_code ec;

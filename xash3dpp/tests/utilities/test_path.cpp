@@ -193,17 +193,17 @@ static void test_path_join()
 
 int main()
 {
-    test_file_extension();
-    test_filename();
-    test_file_base();
-    test_strip_extension();
-    test_fix_slashes();
-    test_extract_dir();
-    test_default_extension();
-    test_replace_extension();
-    test_remove_line_feed();
-    test_trim_space();
-    test_path_join();
+    RUN_TEST( test_file_extension );
+    RUN_TEST( test_filename );
+    RUN_TEST( test_file_base );
+    RUN_TEST( test_strip_extension );
+    RUN_TEST( test_fix_slashes );
+    RUN_TEST( test_extract_dir );
+    RUN_TEST( test_default_extension );
+    RUN_TEST( test_replace_extension );
+    RUN_TEST( test_remove_line_feed );
+    RUN_TEST( test_trim_space );
+    RUN_TEST( test_path_join );
 
     std::printf( "path: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

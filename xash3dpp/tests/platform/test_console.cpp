@@ -78,12 +78,12 @@ static void test_read_line_idempotent()
 
 int main()
 {
-    test_write_empty();
-    test_write_normal();
-    test_write_no_newline();
-    test_write_long();
-    test_read_line_nonblocking();
-    test_read_line_idempotent();
+    RUN_TEST( test_write_empty );
+    RUN_TEST( test_write_normal );
+    RUN_TEST( test_write_no_newline );
+    RUN_TEST( test_write_long );
+    RUN_TEST( test_read_line_nonblocking );
+    RUN_TEST( test_read_line_idempotent );
 
     std::printf("console: %d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;
