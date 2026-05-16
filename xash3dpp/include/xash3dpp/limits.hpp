@@ -338,4 +338,10 @@ inline constexpr std::size_t net_splitpacket_max_fragments = 256; // SplitReasse
 inline constexpr std::size_t net_splitpacket_max_fragments = XASH_LIMIT_NET_SPLITPACKET_MAX_FRAGMENTS;
 #endif
 
+#ifndef XASH_LIMIT_NET_MAX_FILENAME
+inline constexpr std::size_t net_max_filename = 260; // max filename length in file-fragment header (legacy MAX_OSPATH)
+#else
+inline constexpr std::size_t net_max_filename = XASH_LIMIT_NET_MAX_FILENAME;
+#endif
+
 } // namespace xash::limits

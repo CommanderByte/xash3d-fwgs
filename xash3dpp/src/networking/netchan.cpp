@@ -15,6 +15,7 @@
 #include <array>
 #include <cstring>
 #include <deque>
+#include <string>
 #include <vector>
 
 namespace xash::networking {
@@ -36,6 +37,8 @@ struct Fragbuf
 {
     std::uint32_t          bufferid { 0 }; // 1-based within its batch
     std::vector<std::byte> payload;
+    bool                   is_file  { false }; // file-stream marker
+    std::string            filename;           // set only on the first file fragment
 };
 
 // One create_fragments() call produces exactly one FragbufBatch — the legacy
@@ -246,11 +249,79 @@ Result<void> Netchan::create_fragments( FragStream stream,
 }
 
 Result<void> Netchan::create_file_fragments_from_buffer(
-    std::string_view /*filename*/,
-    std::span<const std::byte> /*payload*/ ) noexcept
+    std::string_view filename,
+    std::span<const std::byte> payload ) noexcept
 {
-    // TODO(Chunk 7): file-stream variant; embed filename in first fragbuf header.
-    return std::unexpected( NetError::NotInitialised );
+    if( !impl_ || !impl_->active )
+        return std::unexpected( NetError::NotInitialised );
+    if( payload.empty() )
+        return {};
+    if( filename.empty() )
+    {
+        core::log( core::LogLevel::Warning, "netchan",
+                   "create_file_fragments_from_buffer: empty filename" );
+        return std::unexpected( NetError::InvalidArgument );
+    }
+    if( filename.size() >= ::xash::limits::net_max_filename )
+    {
+        core::log( core::LogLevel::Warning, "netchan",
+                   "create_file_fragments_from_buffer: filename exceeds net_max_filename" );
+        return std::unexpected( NetError::InvalidArgument );
+    }
+    if( payload.size() > ::xash::limits::net_max_payload )
+    {
+        core::log( core::LogLevel::Warning, "netchan",
+                   "create_file_fragments_from_buffer: payload exceeds net_max_payload" );
+        return std::unexpected( NetError::Overflow );
+    }
+
+    const int chunksize_raw = impl_->block_size_provider->block_size( FragSize::Fragment );
+    if( chunksize_raw <= 0 )
+    {
+        core::log( core::LogLevel::Error, "netchan",
+                   "create_file_fragments_from_buffer: block_size_provider returned "
+                   "non-positive size" );
+        return std::unexpected( NetError::InvalidArgument );
+    }
+    const std::size_t chunksize       = static_cast<std::size_t>( chunksize_raw );
+    const std::size_t filename_header = filename.size() + 1u; // legacy MSG_WriteString writes a NUL
+    if( filename_header >= chunksize )
+    {
+        core::log( core::LogLevel::Warning, "netchan",
+                   "create_file_fragments_from_buffer: filename header consumes the "
+                   "entire fragment payload" );
+        return std::unexpected( NetError::InvalidArgument );
+    }
+    const std::size_t first_chunk_max = chunksize - filename_header;
+
+    FragbufBatch batch;
+    const std::size_t total       = payload.size();
+    const std::size_t after_first = ( total > first_chunk_max ) ? total - first_chunk_max : 0u;
+    const std::size_t batch_count = 1u + ( after_first + chunksize - 1u ) / chunksize;
+    batch.bufs.reserve( batch_count );
+
+    std::uint32_t bufferid = 1;
+    std::size_t   pos      = 0;
+    bool          first    = true;
+    while( pos < total )
+    {
+        const std::size_t cap   = first ? first_chunk_max : chunksize;
+        const std::size_t bytes = ( total - pos < cap ) ? total - pos : cap;
+        Fragbuf fb;
+        fb.bufferid = bufferid++;
+        fb.is_file  = true;
+        if( first )
+            fb.filename.assign( filename );
+        fb.payload.assign( payload.begin() + static_cast<std::ptrdiff_t>( pos ),
+                           payload.begin() + static_cast<std::ptrdiff_t>( pos + bytes ) );
+        batch.bufs.emplace_back( std::move( fb ) );
+        pos += bytes;
+        first = false;
+    }
+
+    impl_->outgoing_fragments[ static_cast<std::size_t>( FragStream::File ) ]
+        .emplace_back( std::move( batch ) );
+    return {};
 }
 
 // ---------------------------------------------------------------------------

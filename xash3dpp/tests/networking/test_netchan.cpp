@@ -11,6 +11,7 @@
 #include "../test_helpers.hpp"
 
 #include <array>
+#include <string>
 #include <vector>
 
 static int g_pass = 0, g_fail = 0;
@@ -475,6 +476,125 @@ static void test_create_fragments_rejects_oversize_payload()
     CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 0 );
 }
 
+static void test_create_file_fragments_inactive_rejected()
+{
+    Netchan c;
+    std::array<std::byte, 4> payload{};
+    auto r = c.create_file_fragments_from_buffer( "x.txt", payload );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::NotInitialised );
+}
+
+static void test_create_file_fragments_empty_payload_is_noop()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 256;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    std::array<std::byte, 0> empty{};
+    auto r = c.create_file_fragments_from_buffer( "x.txt", empty );
+    CHECK( r.has_value() );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::File ) ), 0 );
+}
+
+static void test_create_file_fragments_rejects_empty_filename()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 256;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    std::array<std::byte, 4> payload{};
+    auto r = c.create_file_fragments_from_buffer( std::string_view{}, payload );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::InvalidArgument );
+}
+
+static void test_create_file_fragments_rejects_oversize_filename()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 4096;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    std::string too_long( xash::limits::net_max_filename, 'a' );
+    std::array<std::byte, 4> payload{};
+    auto r = c.create_file_fragments_from_buffer( too_long, payload );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::InvalidArgument );
+}
+
+static void test_create_file_fragments_rejects_filename_filling_chunk()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    // chunk so small the filename header alone fills it.
+    bs.fragment_size = 8;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    std::array<std::byte, 4> payload{};
+    // "abcdefgh" + NUL = 9 bytes > chunksize of 8.
+    auto r = c.create_file_fragments_from_buffer( "abcdefgh", payload );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == NetError::InvalidArgument );
+}
+
+static void test_create_file_fragments_splits_with_filename_header()
+{
+    Netchan c;
+    StubDriver d;
+    FixedBlockSize bs;
+    bs.fragment_size = 16;
+    ScopedPool pool;
+
+    NetchanConfig cfg;
+    cfg.driver               = &d;
+    cfg.block_size_provider  = &bs;
+    cfg.pool                 = pool.handle;
+    REQUIRE( c.setup( cfg ) );
+
+    // filename "f.bin" -> header = 6 bytes (5 + NUL)
+    // first chunk payload cap = 16 - 6 = 10
+    // payload = 32 bytes  ->  10 + 16 + 6  ->  3 fragments
+    std::vector<std::byte> payload( 32u, std::byte{ 0xAB } );
+    auto r = c.create_file_fragments_from_buffer( "f.bin", payload );
+    CHECK( r.has_value() );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::File ) ), 3 );
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::Normal ) ), 0 );
+
+    c.clear();
+    CHECK_EQ( static_cast<int>( c.pending_fragments( FragStream::File ) ), 0 );
+}
+
 static void test_stats_binding()
 {
     Netchan c;
@@ -516,6 +636,12 @@ int main()
     test_create_fragments_splits_evenly();
     test_create_fragments_splits_with_remainder();
     test_create_fragments_rejects_oversize_payload();
+    test_create_file_fragments_inactive_rejected();
+    test_create_file_fragments_empty_payload_is_noop();
+    test_create_file_fragments_rejects_empty_filename();
+    test_create_file_fragments_rejects_oversize_filename();
+    test_create_file_fragments_rejects_filename_filling_chunk();
+    test_create_file_fragments_splits_with_filename_header();
     test_stats_binding();
 
     std::printf( "test_netchan: %d passed, %d failed\n", g_pass, g_fail );
