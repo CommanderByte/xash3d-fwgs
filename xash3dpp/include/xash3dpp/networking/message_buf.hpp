@@ -118,6 +118,25 @@ public:
     std::size_t read_string( std::span<char> dst ) noexcept;
     [[nodiscard]] bool read_bytes( std::span<std::byte> dst ) noexcept;
 
+    // ---- Quantised reals (GoldSrc/Xash delta-network conventions) -------
+    //
+    // Coord: legacy uses 1/8-unit fixed-point packed into an int16 (default).
+    //        The `large` overload writes a rounded int16 directly (matches
+    //        the legacy ENGINE_WRITE_LARGE_COORD branch).
+    // BitAngle: quantises an angle in [0,360) to `num_bits` bits.
+
+    void  write_coord     ( float v )                  noexcept;
+    void  write_coord_large( float v )                 noexcept;
+    void  write_bit_angle ( float angle, int num_bits ) noexcept;
+    void  write_vec3_coord( float x, float y, float z ) noexcept;
+    void  write_vec3_angles( float x, float y, float z ) noexcept;
+
+    [[nodiscard]] float read_coord     ()              noexcept;
+    [[nodiscard]] float read_coord_large()             noexcept;
+    [[nodiscard]] float read_bit_angle ( int num_bits ) noexcept;
+    void                read_vec3_coord ( float &x, float &y, float &z ) noexcept;
+    void                read_vec3_angles( float &x, float &y, float &z ) noexcept;
+
 private:
     bool check_overflow( std::size_t additional_bits ) noexcept;
 

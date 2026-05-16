@@ -353,4 +353,117 @@ bool MessageBuf::read_bytes( std::span<std::byte> dst ) noexcept
     return read_bits( dst, dst.size() * 8 );
 }
 
+// ---------------------------------------------------------------------------
+// Quantised reals.  Legacy reference: engine/common/net_buffer.c
+//   MSG_WriteCoord / MSG_ReadCoord (1/8-unit fixed-point int16)
+//   MSG_WriteBitAngle / MSG_ReadBitAngle (numbits-quantised angle in [0,360))
+// ---------------------------------------------------------------------------
+
+namespace
+{
+
+constexpr float coord_scale = 8.0f;
+
+float wrap_angle_0_360( float angle ) noexcept
+{
+    // Match legacy fmod-then-shift behaviour.
+    float wrapped = angle - 360.0f * static_cast<int>( angle / 360.0f );
+    if( wrapped < 0.0f )
+        wrapped += 360.0f;
+    return wrapped;
+}
+
+} // namespace
+
+void MessageBuf::write_coord( float v ) noexcept
+{
+    // Round-toward-zero matches the legacy `(int)( val * 8 )` truncation.
+    write_short( static_cast<std::int16_t>( v * coord_scale ) );
+}
+
+void MessageBuf::write_coord_large( float v ) noexcept
+{
+    // Equivalent of Q_rint: round half-away-from-zero.
+    const float r = v >= 0.0f ? v + 0.5f : v - 0.5f;
+    write_short( static_cast<std::int16_t>( r ) );
+}
+
+void MessageBuf::write_bit_angle( float angle, int num_bits ) noexcept
+{
+    if( num_bits <= 0 || num_bits > 32 )
+    {
+        overflow_ = true;
+        return;
+    }
+    const std::uint32_t shift   = ( num_bits == 32 )
+        ? 0u
+        : ( 1u << num_bits );
+    const std::uint32_t mask    = ( num_bits == 32 )
+        ? 0xFFFFFFFFu
+        : ( shift - 1u );
+    const float         wrapped = wrap_angle_0_360( angle );
+    const std::uint32_t scale   = ( num_bits == 32 )
+        ? 0xFFFFFFFFu
+        : shift;
+    const std::int64_t  d       = static_cast<std::int64_t>(
+        ( static_cast<double>( wrapped ) * scale ) / 360.0 );
+    write_ubit_long( static_cast<std::uint32_t>( d ) & mask, num_bits );
+}
+
+void MessageBuf::write_vec3_coord( float x, float y, float z ) noexcept
+{
+    write_coord( x );
+    write_coord( y );
+    write_coord( z );
+}
+
+void MessageBuf::write_vec3_angles( float x, float y, float z ) noexcept
+{
+    write_bit_angle( x, 16 );
+    write_bit_angle( y, 16 );
+    write_bit_angle( z, 16 );
+}
+
+float MessageBuf::read_coord() noexcept
+{
+    return static_cast<float>( read_short() ) * ( 1.0f / coord_scale );
+}
+
+float MessageBuf::read_coord_large() noexcept
+{
+    return static_cast<float>( read_short() );
+}
+
+float MessageBuf::read_bit_angle( int num_bits ) noexcept
+{
+    if( num_bits <= 0 || num_bits > 32 )
+    {
+        overflow_ = true;
+        return 0.0f;
+    }
+    const std::uint32_t shift = ( num_bits == 32 )
+        ? 0xFFFFFFFFu
+        : ( 1u << num_bits );
+    const std::uint32_t i     = read_ubit_long( num_bits );
+    float               r     = static_cast<float>(
+        ( static_cast<double>( i ) * 360.0 ) / shift );
+    if( r > 180.0f )
+        r -= 360.0f;
+    return r;
+}
+
+void MessageBuf::read_vec3_coord( float &x, float &y, float &z ) noexcept
+{
+    x = read_coord();
+    y = read_coord();
+    z = read_coord();
+}
+
+void MessageBuf::read_vec3_angles( float &x, float &y, float &z ) noexcept
+{
+    x = read_bit_angle( 16 );
+    y = read_bit_angle( 16 );
+    z = read_bit_angle( 16 );
+}
+
 } // namespace xash::networking

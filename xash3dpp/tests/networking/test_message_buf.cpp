@@ -136,6 +136,78 @@ static void test_bytes_roundtrip()
     CHECK_EQ( std::to_integer<int>( out[3] ), 0xEF );
 }
 
+static bool nearly_equal( float a, float b, float tol )
+{
+    const float d = a - b;
+    return ( d < 0 ? -d : d ) <= tol;
+}
+
+static void test_coord_roundtrip()
+{
+    std::array<std::byte, 16> storage{};
+    MessageBuf w( storage );
+    w.write_coord( 0.0f );
+    w.write_coord( 1.0f );
+    w.write_coord( -123.5f );
+    w.write_coord( 4095.875f );        // max representable: 32767/8
+    CHECK( !w.overflowed() );
+
+    MessageBuf r( storage );
+    CHECK( nearly_equal( r.read_coord(),     0.0f,     1.0f / 8.0f ) );
+    CHECK( nearly_equal( r.read_coord(),     1.0f,     1.0f / 8.0f ) );
+    CHECK( nearly_equal( r.read_coord(),  -123.5f,     1.0f / 8.0f ) );
+    CHECK( nearly_equal( r.read_coord(),  4095.875f,   1.0f / 8.0f ) );
+}
+
+static void test_coord_large_roundtrip()
+{
+    std::array<std::byte, 8> storage{};
+    MessageBuf w( storage );
+    w.write_coord_large(  12345.0f );
+    w.write_coord_large( -32000.4f );  // truncates to -32000
+
+    MessageBuf r( storage );
+    CHECK( nearly_equal( r.read_coord_large(),  12345.0f, 1.0f ) );
+    CHECK( nearly_equal( r.read_coord_large(), -32000.0f, 1.0f ) );
+}
+
+static void test_bit_angle_roundtrip()
+{
+    std::array<std::byte, 16> storage{};
+    MessageBuf w( storage );
+    w.write_bit_angle(    0.0f, 8 );
+    w.write_bit_angle(   90.0f, 16 );
+    w.write_bit_angle( -179.0f, 16 );  // wraps to 181
+    w.write_bit_angle(  360.5f, 16 );  // wraps to 0.5
+    CHECK( !w.overflowed() );
+
+    MessageBuf r( storage );
+    // 8-bit quantisation -> ~1.4 deg LSB
+    CHECK( nearly_equal( r.read_bit_angle(  8 ),   0.0f, 2.0f ) );
+    CHECK( nearly_equal( r.read_bit_angle( 16 ),  90.0f, 0.01f ) );
+    CHECK( nearly_equal( r.read_bit_angle( 16 ), -179.0f, 0.01f ) );
+    CHECK( nearly_equal( r.read_bit_angle( 16 ),   0.5f, 0.01f ) );
+}
+
+static void test_vec3()
+{
+    std::array<std::byte, 32> storage{};
+    MessageBuf w( storage );
+    w.write_vec3_coord( 1.0f, -2.5f, 3.125f );
+    w.write_vec3_angles( 10.0f, 90.0f, -170.0f );
+
+    MessageBuf r( storage );
+    float x = 0, y = 0, z = 0;
+    r.read_vec3_coord( x, y, z );
+    CHECK( nearly_equal( x,  1.0f,   1.0f / 8.0f ) );
+    CHECK( nearly_equal( y, -2.5f,   1.0f / 8.0f ) );
+    CHECK( nearly_equal( z,  3.125f, 1.0f / 8.0f ) );
+    r.read_vec3_angles( x, y, z );
+    CHECK( nearly_equal( x,   10.0f, 0.01f ) );
+    CHECK( nearly_equal( y,   90.0f, 0.01f ) );
+    CHECK( nearly_equal( z, -170.0f, 0.01f ) );
+}
+
 int main()
 {
     std::printf( "test_message_buf\n" );
@@ -147,6 +219,10 @@ int main()
     RUN_TEST( test_overflow_read );
     RUN_TEST( test_seek );
     RUN_TEST( test_bytes_roundtrip );
+    RUN_TEST( test_coord_roundtrip );
+    RUN_TEST( test_coord_large_roundtrip );
+    RUN_TEST( test_bit_angle_roundtrip );
+    RUN_TEST( test_vec3 );
     std::printf( "test_message_buf: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;
 }
