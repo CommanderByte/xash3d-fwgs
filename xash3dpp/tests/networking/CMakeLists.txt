@@ -59,3 +59,7 @@ add_test(NAME test_protocol_driver_registry COMMAND test_protocol_driver_registr
 add_executable(test_network_context_sockets test_network_context_sockets.cpp)
 target_link_libraries(test_network_context_sockets PRIVATE xash3dpp_networking xash3dpp_platform)
 add_test(NAME test_network_context_sockets COMMAND test_network_context_sockets)
+
+add_executable(test_master_list test_master_list.cpp)
+target_link_libraries(test_master_list PRIVATE xash3dpp_networking xash3dpp_platform)
+add_test(NAME test_master_list COMMAND test_master_list)

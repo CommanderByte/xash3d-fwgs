@@ -76,14 +76,15 @@ heartbeats are disabled.
 | `lan_only()` | `bool` | If true, skip master-server registration |
 | `nat_bypass()` | `bool` | Enable NAT traversal mode |
 | `heartbeat_interval_seconds()` | `double` | How often to send a heartbeat |
+| `master_addresses()` | `std::span<const NetAddress>` | Configured master-server destinations; empty → satellite skips sending |
 
 ---
 
 ## IMasterListClient
 
 Pure-virtual interface for the master-list satellite's outward-facing actions.
-Not yet used by `NetworkContext`; the implementation stub in `master_list.cpp`
-is a Chunk 6 TODO.
+Constructed via `create_master_list_client(NetworkContext&, IMasterListConfig&)`;
+the returned `unique_ptr` is owned by the caller.
 
 | Method | Notes |
 |--------|-------|
@@ -94,15 +95,18 @@ is a Chunk 6 TODO.
 
 ## master_list.cpp (current state)
 
-`src/networking/master_list.cpp` currently contains only a stub comment:
+`src/networking/master_list.cpp` provides the built-in `MasterListClient`
+implementation.  Each call to `heartbeat()` / `send_shutdown()` iterates
+`IMasterListConfig::master_addresses()` and emits the legacy GoldSrc OOB
+sequences:
 
-```cpp
-// TODO(Chunk 6): implement heartbeat scheduling against IMasterListConfig
-```
+- heartbeat: `FF FF FF FF 'q' '\n'` (6 bytes)
+- shutdown:  `FF FF FF FF 'b' '\n'` (6 bytes)
 
-The actual heartbeat scheduling, UDP I/O, and server-browser query handling
-will be added in Chunk 6 once the transport layer (`IPlatformSockets`) is
-wired in (Chunk 4).
+Send routing goes through `NetworkContext::send_packet(SocketKind::Server, ...)`.
+`lan_only()` short-circuits both calls; an empty `master_addresses()` span
+is a no-op.  Per-master send failures are logged at Warning and do not
+abort the iteration.
 
 ---
 

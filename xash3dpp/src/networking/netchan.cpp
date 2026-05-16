@@ -85,8 +85,6 @@ struct IncomingStream
                                std::uint16_t              frag_offset,
                                std::span<const std::byte> payload ) noexcept
     {
-        std::printf( "INGEST total=%u off=%u psize=%zu data=%zu te=%u\n",
-            total, (unsigned)frag_offset, payload.size(), data.size(), total_expected );
         if( total_expected == 0u )
         {
             total_expected = total;
