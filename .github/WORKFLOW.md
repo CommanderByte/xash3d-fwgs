@@ -75,9 +75,13 @@ you're not ready to start. `assess-impact` produces that list.
 ## Cleanup / compliance pass on an existing subsystem
 
 ```text
-analyse-threading          ← fix concurrency model first
+detail-audit               ← analysis only; read the report before proceeding
     ↓
-sweep-module               ← full compliance pass
+implement-audit            ← applies the fixes from detail-audit
+    ↓
+analyse-threading          ← fix concurrency model
+    ↓
+sweep-module               ← full compliance pass (catches anything remaining)
     ↓
 migrate-to-memory          ← if allocations aren't pool-backed yet
     ↓
@@ -106,12 +110,14 @@ analyse-modernization      ← optional, after compliance is clean
 | `plan-implementation` | After scaffolding | No |
 | `write-unit-tests` | During implementation | Yes |
 | `sweep-module` | After feature-complete | Yes |
+| `detail-audit` | Structural violation scan — read-only, produces report | No |
+| `implement-audit` | Apply fixes from a detail-audit run | Yes |
 | `analyse-threading` | After sweep | No |
 | `document-architecture` | After analyse-threading | Yes |
 | `finish-subsystem` | After document-architecture; done checklist | No |
 | `pre-pr` | After finish-subsystem; final gate before opening PR | No |
 | `analyse-subsystem` | Before rewriting a legacy subsystem | Yes (docs only) |
-| `analyse-modernization` | Optional future cleanup | No |
+| `analyse-modernization` | Optional future cleanup | Yes (docs only) |
 | `analyse-utility-consolidation` | Deduplication planning | No |
 | `migrate-to-memory` | Memory migration pass | Yes |
 | `retriever` | Enforce one rule across the entire codebase until clean | Yes |
@@ -119,3 +125,33 @@ analyse-modernization      ← optional, after compliance is clean
 | `bisect` | Find the commit that introduced a regression | No |
 | `limits-audit` | Check all magic numbers are in limits.hpp | No |
 | `abi-watchdog` | Verify xash3dpp/ does not conflict with frozen ABI surfaces | No |
+
+---
+
+## Edge cases
+
+**Tests fail after `implement-audit`**
+
+Do not push forward. Revert the failing hunk (`git checkout -- <file>`), note the
+violation as `UNRESOLVED` in the audit run, and move on. Never fix a structural
+violation at the cost of breaking a test.
+
+**`detail-audit` flags a WARNING you disagree with**
+
+mark it `DEFERRED` in the report with a one-sentence justification, then add a comment
+in the source at the relevant site: `// @audit-deferred: <reason>`. Record the
+deferral in the subsystem’s boundary doc `## Known Deviations` section.
+
+**Skipping phases**
+
+- Skip `detail-audit` / `implement-audit` for brand-new subsystems — they have no legacy
+  violations. Proceed directly with `sweep-module` after the first working implementation.
+- Skip `migrate-to-memory` if the subsystem was scaffolded with `scaffold-subsystem`
+  (it already uses `create_pool` from day one).
+- Skip `analyse-modernization` unless the subsystem is stable and will not change
+  significantly in the next sprint.
+
+**`assess-impact` returns dozens of files**
+
+Do not proceed with the change in a single session. Break it into per-subsystem
+sub-tasks, each with its own `assess-impact` → implement → commit cycle.
