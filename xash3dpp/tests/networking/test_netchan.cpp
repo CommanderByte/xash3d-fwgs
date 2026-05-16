@@ -21,7 +21,9 @@ namespace {
 // scope exit, mirroring the parent NetworkContext lifecycle.
 struct ScopedPool
 {
-    xash::memory::PoolHandle handle { xash::memory::create_pool( "test_netchan" ) };
+    xash::memory::PoolHandle handle = xash::memory::create_pool( "test_netchan" );
+
+    ScopedPool() noexcept = default;
     ~ScopedPool() { xash::memory::destroy_pool( handle ); }
     ScopedPool( const ScopedPool & )            = delete;
     ScopedPool &operator=( const ScopedPool & ) = delete;

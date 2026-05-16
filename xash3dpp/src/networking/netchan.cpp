@@ -91,6 +91,11 @@ bool Netchan::setup( const NetchanConfig &config ) noexcept
 {
     if( !impl_ ) return false;
     if( config.driver == nullptr || config.block_size_provider == nullptr )
+    {
+        core::log( core::LogLevel::Error, "netchan",
+                   "setup: driver and block_size_provider are required" );
+        return false;
+    }
     if( !config.pool.valid() )
     {
         core::log( core::LogLevel::Error, "netchan",
