@@ -46,6 +46,7 @@ add_library(xash3dpp_networking STATIC
     packet_pool.cpp
     oob_packet.cpp
     split_reassembler.cpp
+    compressed_packet.cpp
     compress_lzss.cpp
     compress_null.cpp
     protocol_driver_goldsrc.cpp

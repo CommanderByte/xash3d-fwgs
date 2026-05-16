@@ -39,3 +39,7 @@ add_test(NAME test_oob_packet COMMAND test_oob_packet)
 add_executable(test_split_reassembler test_split_reassembler.cpp)
 target_link_libraries(test_split_reassembler PRIVATE xash3dpp_networking)
 add_test(NAME test_split_reassembler COMMAND test_split_reassembler)
+
+add_executable(test_compressed_packet test_compressed_packet.cpp)
+target_link_libraries(test_compressed_packet PRIVATE xash3dpp_networking)
+add_test(NAME test_compressed_packet COMMAND test_compressed_packet)
