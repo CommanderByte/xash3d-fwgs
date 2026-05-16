@@ -457,3 +457,9 @@ the public include tree (structural compliance fix, detail-audit):
 Callers implementing these interfaces (e.g. the server layer for `IMasterListConfig`)
 should include from the public path directly. The private-tree headers are now
 redirect stubs.
+
+## Threading
+
+See [docs/threading-analysis/networking-threading.md](../threading-analysis/networking-threading.md) for the full hazard inventory and caller-contract checklist.
+
+**TL;DR:** the entire transport stack (NetworkContext, Netchan, PacketPool, LagQueue, SplitReassembler, MasterListClient) is confined to the `T_NetIO` thread role. Only `NetworkContext::stats()` Tier-1 atomic counters are safe to read from other threads. There are no internal mutexes; single-thread access is the caller's contract.
