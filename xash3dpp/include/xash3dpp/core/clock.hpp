@@ -83,8 +83,12 @@ public:
     [[nodiscard]] double        starttime()     const noexcept;
     [[nodiscard]] std::uint64_t framecount()    const noexcept;
 
-private:
+    // Forward declaration is public so file-scope helpers in clock.cpp may
+    // take `const Impl&` parameters.  The definition stays in clock.cpp so
+    // the pimpl encapsulation is preserved (Impl remains incomplete here).
     struct Impl;
+
+private:
     std::unique_ptr<Impl> impl_;
 };
 
