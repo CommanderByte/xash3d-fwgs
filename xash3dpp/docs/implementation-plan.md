@@ -219,7 +219,15 @@ ______________________________________________________________________
 
 ## Open Questions / Landmines
 
-- **pm_shared float vs. fixed-point** — Must be decided before Chunk 5 (map_loader) ships. Fixed-point eliminates cross-platform FPU divergence (important for netplay) but requires a PM layer rewrite. Float is cheaper upfront but may require reproducible-FP compiler flags.
+- **pm_shared float vs. fixed-point** — **DECIDED** (Q-18 PM_FP_MODEL,
+  2026-07-04): `float` matching the frozen `playermove_t` ABI, with the FP
+  model pinned strict-by-default in CMake (`/fp:precise`,
+  `-ffp-contract=off`; fast-math forbidden for simulation-critical targets).
+  Fixed-point was rejected because mods compile pm_shared into their own
+  DLLs — engine-side fixed-point cannot achieve system determinism and
+  worsens parity. Presentation-side targets may later opt out per target via
+  `xash3dpp_relax_fp()` (`cmake/fp_model.cmake`). Golden trace fixtures gate
+  Chunk 5. See `docs/design/pm-determinism-decision.md`.
 
 - **Networking wire-compat target** — **DECIDED**: GoldSrc-compatible
   protocol is the default and is wire-frozen (netchan framing, delta-encoder

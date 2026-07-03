@@ -741,6 +741,45 @@ Commit only after all five categories are updated and the build is green.
 
 ______________________________________________________________________
 
+### PM_FP_MODEL (Q-18): engine float math is strict-by-default, relaxable per presentation target
+
+> **Status**: ✅ DECIDED (2026-07-04; full analysis in `pm-determinism-decision.md`)
+
+**Context**: The engine does not own player-movement math — mod authors compile
+pm_shared into both their game DLL and client DLL (frozen float `playermove_t`
+ABI, invoked through the `pfnPM_Move` seam), so no engine-side representation
+change can make the *system* deterministic; fixed-point on our side would only
+diverge from the mods' float half and change which jumps are makeable.
+Meanwhile FMA contraction (`-ffp-contract=fast`, the GCC/Clang default at
+`-O2`) lets identical source produce different last-bit results on x64 vs ARM
+— and trace/prediction code is full of knife-edge comparisons that a single
+ULP can flip. Legacy release builds are effectively strict already (`/O2`
+without any fast-math), and residual mod-vs-engine drift is absorbed by the
+proven prediction-reconciliation + wire-quantisation loop.
+
+**Decision**: All engine-side PM/trace/physics math stays `float`, matching
+the frozen ABI. The FP compilation model is **strict by default, globally**:
+`/fp:precise` (MSVC, explicit) and `-ffp-contract=off` (GCC/Clang), set in
+the root `CMakeLists.txt`; fast-math build modes are forbidden for the
+simulation-critical set. Future relaxation is an explicit per-target **option**
+(mirroring the link-time compat-isolation pattern): `xash3dpp_relax_fp(target)`
+in `cmake/fp_model.cmake`.
+
+**Netcode vs. non-netcode implications**:
+
+| Target class | Rule | Rationale |
+|--------------|------|-----------|
+| Simulation-critical: `xash3dpp_networking`, `xash3dpp_map_loader` (world/trace/PVS), future `world`/`physics`/`server`, `utilities` math on their paths | **Never relax.** Strict FP forever; golden trace fixtures gate the map_loader chunk. | Results feed traces, prediction, and the wire; cross-arch bit-reproducibility eliminates a whole class of "works on x86, not on ARM" physics divergences. |
+| Presentation-side: renderer, particles, audio DSP (all future) | May call `xash3dpp_relax_fp()` when profiling justifies it. | Their math never crosses the wire or feeds simulation; FMA/fast-math is a low-single-digit-% FLOP win with zero netcode risk. |
+
+**Costs**: `/fp:precise` is the MSVC default (zero change); `-ffp-contract=off`
+forgoes FMA in trace loops that are memory/branch-bound anyway — unmeasurable
+at frame level. Revisit only if a future non-GoldSrc protocol wants lockstep
+cross-platform simulation; that would be a new opt-in quantised path, not a
+change to the compat engine.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 All open questions are decided. This section records when each rule applies.
@@ -794,6 +833,9 @@ These rules apply from the first line of any new subsystem:
 - `const_cast` away from `const` wrapped in a named function with `// SAFETY:` (Q-16)
 - `I<X>` interface signature changes require `assess-impact` first; commit message
   must enumerate all impls, test stubs, and call sites updated (Q-17)
+- Float math strict-by-default (`/fp:precise`, `-ffp-contract=off`); relaxation
+  is a per-presentation-target option via `xash3dpp_relax_fp()`, never for
+  simulation-critical targets (Q-18)
 
 ______________________________________________________________________
 

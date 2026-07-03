@@ -1,7 +1,16 @@
 # PM Determinism: Float vs. Fixed-Point — Decision Brief
 
-*Drafted 2026-07-04. Status: awaiting sign-off. Gates Chunk 5 (map_loader)
-per implementation-plan.md ("must be decided before this chunk ships").*
+*Drafted 2026-07-04. Status: **ACCEPTED 2026-07-04** — recorded as
+decisions-architecture.md §Q-18 PM_FP_MODEL. Chunk 5 (map_loader) is ungated.*
+
+Sign-off refinements: keep legacy behaviour (Option A); the netcode vs.
+non-netcode target split and its implications are recorded in Q-18; future
+relaxation is structured as a per-target **option** in the style of the
+project's modularity patterns — `xash3dpp_relax_fp(target)` in
+`cmake/fp_model.cmake`, allowed only for presentation-side targets, with the
+simulation-critical set (networking, map_loader/world, physics, server)
+pinned strict permanently. The strict default is applied globally in the root
+`CMakeLists.txt`.
 
 ## The question, corrected
 
@@ -104,7 +113,7 @@ error asymmetries. Rejected.
    not a change to the compat engine (record as a deferred note, not a
    blocker).
 
-## Proposed decision-table row (for decisions-architecture.md on sign-off)
+## Decision-table row (grafted into decisions-architecture.md §Q-18 at sign-off)
 
 | ID | Decision | Verdict |
 |----|----------|---------|

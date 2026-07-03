@@ -18,6 +18,18 @@ else()
     add_compile_options(-fno-exceptions -fno-rtti)
 endif()
 
+# Floating-point model (Q-18 PM_FP_MODEL): strict by default so simulation
+# math is bit-reproducible across compilers/architectures (no FMA
+# contraction; matches the legacy engine's effective /O2-without-fast-math
+# posture).  Presentation-side targets may opt out per target via
+# xash3dpp_relax_fp() — see cmake/fp_model.cmake for the rules.
+include(cmake/fp_model.cmake)
+if(MSVC)
+    add_compile_options(/fp:precise)
+else()
+    add_compile_options(-ffp-contract=off)
+endif()
+
 add_subdirectory(src/utilities)
 add_subdirectory(src/memory)
 add_subdirectory(src/platform)
