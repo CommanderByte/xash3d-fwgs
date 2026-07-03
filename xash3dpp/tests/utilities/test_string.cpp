@@ -24,6 +24,19 @@ static void test_strncpy()
     CHECK( tight[3] == '\0' );
 }
 
+static void test_strcmp()
+{
+    CHECK( xash::utilities::strcmp( "abc", "abc" ) == 0 );
+    CHECK( xash::utilities::strcmp( "abc", "abd" ) < 0 );
+    CHECK( xash::utilities::strcmp( "abd", "abc" ) > 0 );
+    CHECK( xash::utilities::strcmp( "ABC", "abc" ) != 0 ); // case-sensitive
+    CHECK( xash::utilities::strcmp( "ab", "abc" ) < 0 );
+    CHECK( xash::utilities::strcmp( "", "" ) == 0 );
+    CHECK( xash::utilities::strcmp( nullptr, nullptr ) == 0 );
+    CHECK( xash::utilities::strcmp( nullptr, "a" ) < 0 );
+    CHECK( xash::utilities::strcmp( "a", nullptr ) > 0 );
+}
+
 static void test_stricmp()
 {
     CHECK( xash::utilities::stricmp( "ABC", "abc" ) == 0 );
@@ -162,6 +175,7 @@ static void test_tokenizer()
 int main()
 {
     RUN_TEST( test_strncpy );
+    RUN_TEST( test_strcmp );
     RUN_TEST( test_stricmp );
     RUN_TEST( test_strnicmp );
     RUN_TEST( test_snprintf );

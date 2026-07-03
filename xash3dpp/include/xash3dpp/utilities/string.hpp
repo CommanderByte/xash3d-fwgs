@@ -32,6 +32,10 @@ char *strncpy( char *dst, const char *src, std::size_t size ) noexcept;
     return n;
 }
 
+// Case-sensitive comparison; null-safe (nullptr orders before any string).
+// Legacy: Q_strcmp
+[[nodiscard]] int strcmp( const char *a, const char *b ) noexcept;
+
 // Case-insensitive comparison.
 // Legacy: Q_stricmp / Q_strnicmp
 [[nodiscard]] int stricmp( const char *a, const char *b ) noexcept;

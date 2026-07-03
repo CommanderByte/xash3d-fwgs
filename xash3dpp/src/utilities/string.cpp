@@ -41,8 +41,23 @@ char *strncpy( char *dst, const char *src, std::size_t size ) noexcept
 }
 
 // ---------------------------------------------------------------------------
-// stricmp / strnicmp
+// strcmp / stricmp / strnicmp
 // ---------------------------------------------------------------------------
+
+int strcmp( const char *a, const char *b ) noexcept
+{
+    if( a == b ) return 0;
+    if( !a )     return -1;
+    if( !b )     return  1;
+
+    for( ;; )
+    {
+        const int ca = static_cast<unsigned char>( *a++ );
+        const int cb = static_cast<unsigned char>( *b++ );
+        if( ca != cb ) return ca - cb;
+        if( ca == 0  ) return 0;
+    }
+}
 
 int stricmp( const char *a, const char *b ) noexcept
 {
