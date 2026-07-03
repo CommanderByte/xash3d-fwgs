@@ -73,12 +73,13 @@ struct GoldSrcDeltaWireFormat final : IDeltaWireFormat
         return num_changes;
     }
 
-    void read_fields(
+    std::size_t read_fields(
         MessageBuf &msg, std::span<const DeltaField> fields,
         const void *from, void *to, double timebase ) const noexcept override
     {
         constexpr std::size_t k_mask_bytes = ::xash::limits::net_delta_gs_mask_bytes;
         std::uint8_t bits[ k_mask_bytes ] = {};
+        std::size_t  num_changes = 0;
 
         XASH_ASSERT( fields.size() <= ( k_mask_bytes - 1 ) * 8 );
 
@@ -94,11 +95,18 @@ struct GoldSrcDeltaWireFormat final : IDeltaWireFormat
             const bool changed = ( i >> 3 ) < k_mask_bytes
                                  && ( bits[ i >> 3 ] & ( 1u << ( i & 7 )));
             if( changed )
+            {
                 read_field_payload( msg, fields[ i ], to, timebase,
                                     SignEncoding::SignMagnitude );
+                ++num_changes;
+            }
             else
+            {
                 copy_field( fields[ i ], from, to );
+            }
         }
+
+        return num_changes;
     }
 };
 

@@ -53,6 +53,28 @@ void normalize_angles( ::xash::abi::vec3_t angles ) noexcept
     return { dt.fields.data(), dt.fields.size() };
 }
 
+// Tier-2 stats: measure always (the count is a wire-format return value),
+// gate only the counter's existence on XASH_STATS.
+void count_fields_written( DeltaStats &stats, std::size_t n ) noexcept
+{
+#if XASH_STATS
+    stats.fields_changed_written.fetch_add( n, std::memory_order_relaxed );
+#else
+    (void)stats;
+    (void)n;
+#endif
+}
+
+void count_fields_read( DeltaStats &stats, std::size_t n ) noexcept
+{
+#if XASH_STATS
+    stats.fields_changed_read.fetch_add( n, std::memory_order_relaxed );
+#else
+    (void)stats;
+    (void)n;
+#endif
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -67,8 +89,9 @@ void DeltaTables::write_delta_usercmd( MessageBuf &msg,
     XASH_ASSERT( dt.initialized );
 
     impl_->custom_encode( dt, from, to );
-    (void)delta::xash_delta_wire_format().write_fields( msg, fields_of( dt ),
-                                                        from, to, 0.0 );
+    count_fields_written( impl_->stats,
+        delta::xash_delta_wire_format().write_fields( msg, fields_of( dt ),
+                                                      from, to, 0.0 ));
     impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -80,8 +103,9 @@ void DeltaTables::read_delta_usercmd( MessageBuf &msg,
     XASH_ASSERT( dt.initialized );
 
     *to = *from;
-    delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                 from, to, 0.0 );
+    count_fields_read( impl_->stats,
+        delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                     from, to, 0.0 ));
     normalize_angles( to->viewangles );
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 }
@@ -98,8 +122,9 @@ void DeltaTables::write_delta_event( MessageBuf &msg,
     XASH_ASSERT( dt.initialized );
 
     impl_->custom_encode( dt, from, to );
-    (void)delta::xash_delta_wire_format().write_fields( msg, fields_of( dt ),
-                                                        from, to, 0.0 );
+    count_fields_written( impl_->stats,
+        delta::xash_delta_wire_format().write_fields( msg, fields_of( dt ),
+                                                      from, to, 0.0 ));
     impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -111,8 +136,9 @@ void DeltaTables::read_delta_event( MessageBuf &msg,
     XASH_ASSERT( dt.initialized );
 
     *to = *from;
-    delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                 from, to, 0.0 );
+    count_fields_read( impl_->stats,
+        delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                     from, to, 0.0 ));
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -148,6 +174,7 @@ bool DeltaTables::write_delta_movevars( MessageBuf &msg,
         return false;
     }
 
+    count_fields_written( impl_->stats, num_changes );
     impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
     return true;
 }
@@ -160,8 +187,9 @@ void DeltaTables::read_delta_movevars( MessageBuf &msg,
     XASH_ASSERT( dt.initialized );
 
     *to = *from;
-    delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                 from, to, 0.0 );
+    count_fields_read( impl_->stats,
+        delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                     from, to, 0.0 ));
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -188,6 +216,7 @@ void DeltaTables::write_clientdata( MessageBuf &msg,
 
     if( num_changes != 0 )
     {
+        count_fields_written( impl_->stats, num_changes );
         impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
         return; // we have updates
     }
@@ -218,8 +247,9 @@ void DeltaTables::read_clientdata( MessageBuf &msg,
         return;
     }
 
-    delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                 from, to, timebase );
+    count_fields_read( impl_->stats,
+        delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                     from, to, timebase ));
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -256,6 +286,7 @@ void DeltaTables::write_weapon_data( MessageBuf &msg,
         return;
     }
 
+    count_fields_written( impl_->stats, num_changes );
     impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -267,8 +298,9 @@ void DeltaTables::read_weapon_data( MessageBuf &msg,
     DeltaTable &dt = impl_->table( DeltaStructId::WeaponData );
     XASH_ASSERT( dt.initialized );
 
-    delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                 from, to, timebase );
+    count_fields_read( impl_->stats,
+        delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                     from, to, timebase ));
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -360,8 +392,9 @@ bool DeltaTables::write_delta_entity( MessageBuf &msg,
         impl_->custom_encode( dt, from, to );
     }
 
-    num_changes += delta::xash_delta_wire_format().write_fields(
+    const std::size_t field_changes = delta::xash_delta_wire_format().write_fields(
         msg, fields_of( dt ), from, to, params.timebase );
+    num_changes += field_changes;
 
     // if we have no changes — kill the message
     if( num_changes == 0 && !params.force )
@@ -374,6 +407,7 @@ bool DeltaTables::write_delta_entity( MessageBuf &msg,
         return true;
     }
 
+    count_fields_written( impl_->stats, field_changes );
     impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
     return true;
 }
@@ -440,8 +474,9 @@ bool DeltaTables::read_delta_entity( MessageBuf &msg,
         return true; // message parsed, like legacy
     }
 
-    delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                 from, to, params.timebase );
+    count_fields_read( impl_->stats,
+        delta::xash_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                     from, to, params.timebase ));
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 
     return true; // message parsed
@@ -501,8 +536,9 @@ void DeltaTables::write_gs_fields( MessageBuf &msg, DeltaStructId id,
     DeltaTable &dt = impl_->table( id );
 
     impl_->custom_encode( dt, from, to );
-    (void)delta::goldsrc_delta_wire_format().write_fields( msg, fields_of( dt ),
-                                                           from, to, timebase );
+    count_fields_written( impl_->stats,
+        delta::goldsrc_delta_wire_format().write_fields( msg, fields_of( dt ),
+                                                         from, to, timebase ));
     impl_->stats.structs_encoded.fetch_add( 1, std::memory_order_relaxed );
 }
 
@@ -512,8 +548,9 @@ void DeltaTables::read_gs_fields( MessageBuf &msg, DeltaStructId id,
 {
     DeltaTable &dt = impl_->table( id );
 
-    delta::goldsrc_delta_wire_format().read_fields( msg, fields_of( dt ),
-                                                    from, to, timebase );
+    count_fields_read( impl_->stats,
+        delta::goldsrc_delta_wire_format().read_fields( msg, fields_of( dt ),
+                                                        from, to, timebase ));
     impl_->stats.structs_decoded.fetch_add( 1, std::memory_order_relaxed );
 }
 

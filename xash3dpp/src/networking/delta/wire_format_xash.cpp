@@ -41,17 +41,26 @@ struct XashDeltaWireFormat final : IDeltaWireFormat
         return num_changes;
     }
 
-    void read_fields(
+    std::size_t read_fields(
         MessageBuf &msg, std::span<const DeltaField> fields,
         const void *from, void *to, double timebase ) const noexcept override
     {
+        std::size_t num_changes = 0;
+
         for( const DeltaField &field : fields )
         {
             if( msg.read_one_bit())
+            {
                 read_field_payload( msg, field, to, timebase );
+                ++num_changes;
+            }
             else
+            {
                 copy_field( field, from, to );
+            }
         }
+
+        return num_changes;
     }
 };
 

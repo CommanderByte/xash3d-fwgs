@@ -13,7 +13,6 @@
 #include <xash3dpp/private/networking/delta/lst_parser.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
-#include <cstring>
 
 namespace xash::networking {
 
@@ -94,7 +93,7 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
     // check for coexisting field — update in place
     for( auto &field : dt.fields )
     {
-        if( std::strcmp( field.name, name ) == 0 )
+        if( utilities::strcmp( field.name, name ) == 0 )
         {
             field.flags           = flags;
             field.bits            = bits;
@@ -108,7 +107,7 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
     const delta::DeltaFieldInfo *info = nullptr;
     for( const auto &fi : dt.info )
     {
-        if( std::strcmp( fi.name, name ) == 0 )
+        if( utilities::strcmp( fi.name, name ) == 0 )
         {
             info = &fi;
             break;
@@ -321,7 +320,7 @@ int DeltaTables::find_field( const DeltaField *fields, const char *fieldname ) c
 
     for( std::size_t i = 0; i < dt->fields.size(); ++i )
     {
-        if( std::strcmp( dt->fields[ i ].name, fieldname ) == 0 )
+        if( utilities::strcmp( dt->fields[ i ].name, fieldname ) == 0 )
             return static_cast<int>( i );
     }
     return -1;
@@ -335,7 +334,7 @@ void DeltaTables::set_field( DeltaField *fields, const char *fieldname ) noexcep
 
     for( auto &field : dt->fields )
     {
-        if( std::strcmp( field.name, fieldname ) == 0 )
+        if( utilities::strcmp( field.name, fieldname ) == 0 )
         {
             field.inactive = false;
             return;
@@ -351,7 +350,7 @@ void DeltaTables::unset_field( DeltaField *fields, const char *fieldname ) noexc
 
     for( auto &field : dt->fields )
     {
-        if( std::strcmp( field.name, fieldname ) == 0 )
+        if( utilities::strcmp( field.name, fieldname ) == 0 )
         {
             field.inactive = true;
             return;

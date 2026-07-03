@@ -22,8 +22,7 @@
 #include <xash3dpp/private/networking/delta/delta_tables_impl.hpp>
 #include <xash3dpp/private/networking/delta/field_defs.hpp>
 #include <xash3dpp/private/networking/delta/wire_format.hpp>
-
-#include <cstring>
+#include <xash3dpp/utilities/string.hpp>
 
 namespace xash::networking {
 
@@ -31,6 +30,10 @@ namespace core = ::xash::core;
 using delta::DeltaTable;
 
 namespace {
+
+// GS description struct-name read buffer; longest real name is
+// "custom_entity_state_t" (21 chars).
+constexpr std::size_t k_gs_struct_name_max = 64;
 
 // Legacy Delta_WriteTableField.
 void write_table_field( MessageBuf &msg, std::uint32_t svc_deltatable_cmd,
@@ -46,7 +49,7 @@ void write_table_field( MessageBuf &msg, std::uint32_t svc_deltatable_cmd,
     int name_index = -1;
     for( std::size_t i = 0; i < dt.info.size(); ++i )
     {
-        if( std::strcmp( dt.info[ i ].name, field.name ) == 0 )
+        if( ::xash::utilities::strcmp( dt.info[ i ].name, field.name ) == 0 )
         {
             name_index = static_cast<int>( i );
             break;
@@ -174,7 +177,7 @@ bool DeltaTables::parse_table_field( MessageBuf &msg ) noexcept
 
 bool DeltaTables::parse_table_gs( MessageBuf &msg ) noexcept
 {
-    char name[ 64 ] = {};
+    char name[ k_gs_struct_name_max ] = {};
     (void)msg.read_string({ name, sizeof( name ) });
 
     DeltaTable *dt = impl_->find_struct( name );

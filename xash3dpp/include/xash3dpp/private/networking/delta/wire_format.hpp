@@ -41,8 +41,9 @@ struct IDeltaWireFormat
         const void *from, const void *to, double timebase ) const noexcept = 0;
 
     // Deserialise one struct: changed fields from the stream, unchanged
-    // fields copied over from `from`.
-    virtual void read_fields(
+    // fields copied over from `from`.  Returns the number of changed fields
+    // read (stats; discardable at call sites that don't track it).
+    virtual std::size_t read_fields(
         MessageBuf &msg, std::span<const DeltaField> fields,
         const void *from, void *to, double timebase ) const noexcept = 0;
 };

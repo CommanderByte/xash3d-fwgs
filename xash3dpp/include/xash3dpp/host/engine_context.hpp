@@ -67,6 +67,14 @@ struct EngineContextInitParams {
 // ---------------------------------------------------------------------------
 
 struct EngineContext {
+    // COPY_MOVE (QJ): the engine context is pinned — neither copyable nor
+    // movable (the ABI accessor may hold its address for the process life).
+    EngineContext() = default;
+    EngineContext( const EngineContext & )            = delete;
+    EngineContext &operator=( const EngineContext & ) = delete;
+    EngineContext( EngineContext && )                 = delete;
+    EngineContext &operator=( EngineContext && )      = delete;
+
     filesystem::Filesystem      filesystem;
     cmd_cvar::CmdCvarContext    cmd_cvar;
     core::Clock                 clock;

@@ -13,7 +13,6 @@
 #include <xash3dpp/private/networking/delta/delta_tables_impl.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
-#include <cstring>
 #include <string>
 
 namespace xash::networking::delta {
@@ -39,21 +38,21 @@ struct Cursor
 
     [[nodiscard]] bool token_is( const char *s ) const noexcept
     {
-        return std::strcmp( token, s ) == 0;
+        return utilities::strcmp( token, s ) == 0;
     }
 };
 
 [[nodiscard]] std::uint32_t flag_for_name( const char *name ) noexcept
 {
-    if( std::strcmp( name, "DT_BYTE" ) == 0 )           return k_dt_byte;
-    if( std::strcmp( name, "DT_SHORT" ) == 0 )          return k_dt_short;
-    if( std::strcmp( name, "DT_FLOAT" ) == 0 )          return k_dt_float;
-    if( std::strcmp( name, "DT_INTEGER" ) == 0 )        return k_dt_integer;
-    if( std::strcmp( name, "DT_ANGLE" ) == 0 )          return k_dt_angle;
-    if( std::strcmp( name, "DT_TIMEWINDOW_8" ) == 0 )   return k_dt_timewindow_8;
-    if( std::strcmp( name, "DT_TIMEWINDOW_BIG" ) == 0 ) return k_dt_timewindow_big;
-    if( std::strcmp( name, "DT_STRING" ) == 0 )         return k_dt_string;
-    if( std::strcmp( name, "DT_SIGNED" ) == 0 )         return k_dt_signed;
+    if( utilities::strcmp( name, "DT_BYTE" ) == 0 )           return k_dt_byte;
+    if( utilities::strcmp( name, "DT_SHORT" ) == 0 )          return k_dt_short;
+    if( utilities::strcmp( name, "DT_FLOAT" ) == 0 )          return k_dt_float;
+    if( utilities::strcmp( name, "DT_INTEGER" ) == 0 )        return k_dt_integer;
+    if( utilities::strcmp( name, "DT_ANGLE" ) == 0 )          return k_dt_angle;
+    if( utilities::strcmp( name, "DT_TIMEWINDOW_8" ) == 0 )   return k_dt_timewindow_8;
+    if( utilities::strcmp( name, "DT_TIMEWINDOW_BIG" ) == 0 ) return k_dt_timewindow_big;
+    if( utilities::strcmp( name, "DT_STRING" ) == 0 )         return k_dt_string;
+    if( utilities::strcmp( name, "DT_SIGNED" ) == 0 )         return k_dt_signed;
     return 0; // unknown flags are ignored, like legacy
 }
 
@@ -79,7 +78,7 @@ struct Cursor
     const DeltaFieldInfo *info = nullptr;
     for( const auto &fi : dt.info )
     {
-        if( std::strcmp( fi.name, c.token ) == 0 )
+        if( utilities::strcmp( fi.name, c.token ) == 0 )
         {
             info = &fi;
             break;

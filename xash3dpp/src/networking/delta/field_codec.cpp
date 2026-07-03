@@ -21,14 +21,6 @@ namespace xash::networking::delta {
 
 namespace {
 
-// Byte-wise C-string equality (legacy call site: `Q_strcmp( s1, s2 )` used
-// purely as an equality test).  utilities:: has no case-sensitive compare.
-[[nodiscard]] bool strings_equal( const char *a, const char *b ) noexcept
-{
-    while( *a && *a == *b ) { ++a; ++b; }
-    return *a == *b;
-}
-
 // Field-relative typed loads.  Sign-extended loads are deliberately
 // assigned into wider signed/unsigned ints exactly like the legacy casts.
 template <typename T>
@@ -205,7 +197,7 @@ bool compare_field( const DeltaField &field, const void *from, const void *to ) 
     {
         const char *s1 = static_cast<const char *>( from ) + field.offset;
         const char *s2 = static_cast<const char *>( to ) + field.offset;
-        toF = strings_equal( s1, s2 ) ? 0 : 1; // 0 == equal, like Q_strcmp use
+        toF = ::xash::utilities::strcmp( s1, s2 ); // 0 == equal, like legacy
     }
 
     return fromF == toF;
