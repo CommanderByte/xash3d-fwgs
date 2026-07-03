@@ -72,6 +72,14 @@ inline constexpr float k_equal_epsilon = 0.001f; // legacy EQUAL_EPSILON
     return x < 0.0 ? static_cast<int>( x - 0.5 ) : static_cast<int>( x + 0.5 );
 }
 
+// float overload: legacy Q_rint is a macro, so float call sites round in
+// float precision (TIMEWINDOW_BIG compare path computes `val * multiplier`
+// in float).  Keeping both widths preserves that behaviour exactly.
+[[nodiscard]] constexpr int q_rint( float x ) noexcept
+{
+    return x < 0.0f ? static_cast<int>( x - 0.5f ) : static_cast<int>( x + 0.5f );
+}
+
 // ---------------------------------------------------------------------------
 // CustomEncodeKind — who owns a table's conditional-encode callback
 // (legacy CUSTOM_NONE / CUSTOM_SERVER_ENCODE / CUSTOM_CLIENT_ENCODE)

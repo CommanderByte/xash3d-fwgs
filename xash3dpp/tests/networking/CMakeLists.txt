@@ -67,3 +67,8 @@ add_test(NAME test_network_context_sockets COMMAND test_network_context_sockets)
 add_executable(test_master_list test_master_list.cpp)
 target_link_libraries(test_master_list PRIVATE xash3dpp_networking xash3dpp_platform)
 add_test(NAME test_master_list COMMAND test_master_list)
+
+# delta
+add_executable(test_delta_field_codec delta/test_delta_field_codec.cpp)
+target_link_libraries(test_delta_field_codec PRIVATE xash3dpp_networking)
+add_test(NAME test_delta_field_codec COMMAND test_delta_field_codec)

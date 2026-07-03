@@ -54,6 +54,8 @@ add_library(xash3dpp_networking STATIC
     transport/loopback_transport.cpp
     transport/packet_pool.cpp
     transport/split_reassembler.cpp
+    # delta — Layer 4 (field tables + struct codecs)
+    delta/field_codec.cpp
 )
 
 target_include_directories(xash3dpp_networking
