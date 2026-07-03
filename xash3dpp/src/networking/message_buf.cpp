@@ -340,9 +340,14 @@ std::size_t MessageBuf::read_string( std::span<char> dst ) noexcept
     std::size_t written = 0;
     while( true )
     {
-        const std::uint8_t c = read_byte();
+        std::uint8_t c = read_byte();
         if( overflow_ || c == 0 )
             break;
+        // Legacy MSG_ReadStringExt format-specifier defense: every '%' in a
+        // wire string decodes as '.' (net_buffer.c).  Wire-parity relies on
+        // this (delta DT_STRING fields, netchan filenames).
+        if( c == '%' )
+            c = '.';
         if( written + 1 < dst.size() )
             dst[ written++ ] = static_cast<char>( c );
         else

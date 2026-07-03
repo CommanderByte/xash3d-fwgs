@@ -87,6 +87,21 @@ static void test_string()
     CHECK( std::strcmp( out, "hello" ) == 0 );
 }
 
+// Legacy MSG_ReadStringExt translates '%' to '.' on every read (format-
+// specifier defense); the write side stays verbatim.
+static void test_string_percent_sanitized()
+{
+    std::array<std::byte, 32> storage{};
+    MessageBuf w( storage );
+    CHECK( w.write_string( "100%skill%" ) );
+
+    MessageBuf r( storage );
+    char out[32];
+    const std::size_t n = r.read_string( out );
+    CHECK_EQ( static_cast<int>( n ), 10 );
+    CHECK( std::strcmp( out, "100.skill." ) == 0 );
+}
+
 static void test_overflow_write()
 {
     std::array<std::byte, 2> storage{};
@@ -215,6 +230,7 @@ int main()
     RUN_TEST( test_bit_packing );
     RUN_TEST( test_signed_bit_packing );
     RUN_TEST( test_string );
+    RUN_TEST( test_string_percent_sanitized );
     RUN_TEST( test_overflow_write );
     RUN_TEST( test_overflow_read );
     RUN_TEST( test_seek );
