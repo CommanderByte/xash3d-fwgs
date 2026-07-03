@@ -66,7 +66,8 @@ struct GoldSrcDeltaWireFormat final : IDeltaWireFormat
         for( std::size_t i = 0; i < fields.size() && ( i >> 3 ) < k_mask_bytes; ++i )
         {
             if( bits[ i >> 3 ] & ( 1u << ( i & 7 )))
-                write_field_payload( msg, fields[ i ], to, timebase );
+                write_field_payload( msg, fields[ i ], to, timebase,
+                                     SignEncoding::SignMagnitude );
         }
 
         return num_changes;
@@ -93,7 +94,8 @@ struct GoldSrcDeltaWireFormat final : IDeltaWireFormat
             const bool changed = ( i >> 3 ) < k_mask_bytes
                                  && ( bits[ i >> 3 ] & ( 1u << ( i & 7 )));
             if( changed )
-                read_field_payload( msg, fields[ i ], to, timebase );
+                read_field_payload( msg, fields[ i ], to, timebase,
+                                    SignEncoding::SignMagnitude );
             else
                 copy_field( fields[ i ], from, to );
         }

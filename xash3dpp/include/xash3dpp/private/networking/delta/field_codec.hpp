@@ -18,6 +18,17 @@ namespace xash::networking { class MessageBuf; }
 
 namespace xash::networking::delta {
 
+// How signed payloads hit the bit stream.  Legacy MSG_Write/ReadSBitLong
+// switches on sizebuf_t::iAlternateSign: GoldSrc message parsing brackets
+// delta payloads in MSG_StartBitWriting/MSG_EndBitWriting, flipping signed
+// fields to sign-bit-first + magnitude ("GoldSrc broken signed integers").
+// The Xash path uses plain two's complement.
+enum class SignEncoding : std::uint8_t
+{
+    TwosComplement, // Xash native (MessageBuf::write_sbit_long layout)
+    SignMagnitude,  // GoldSrc alternate-sign mode: 1 sign bit, |value| in bits-1
+};
+
 // Clamp an integer payload into `numbits` (signed range when signbit != 0).
 // No-op for numbits >= 32.  Legacy: Delta_ClampIntegerField.
 [[nodiscard]] int clamp_integer_field( int value, int signbit, int numbits ) noexcept;
@@ -31,13 +42,16 @@ namespace xash::networking::delta {
 
 // Serialise the field payload from `to` (legacy Delta_WriteField_; the
 // legacy `from` parameter was unused).  `timebase` feeds the TIMEWINDOW
-// encodings.
+// encodings; `sign` selects the signed-payload bit layout (GoldSrc framing
+// passes SignMagnitude).
 void write_field_payload( MessageBuf &msg, const DeltaField &field,
-                          const void *to, double timebase ) noexcept;
+                          const void *to, double timebase,
+                          SignEncoding sign = SignEncoding::TwosComplement ) noexcept;
 
 // Deserialise one field payload into `to`.  Legacy: Delta_ReadField_.
 void read_field_payload( MessageBuf &msg, const DeltaField &field,
-                         void *to, double timebase ) noexcept;
+                         void *to, double timebase,
+                         SignEncoding sign = SignEncoding::TwosComplement ) noexcept;
 
 // Copy the field value from `from` into `to` (receiver path for unchanged
 // fields).  Legacy: Delta_CopyField (its timebase parameter was unused).

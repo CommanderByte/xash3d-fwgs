@@ -45,6 +45,34 @@ void store_as( void *base, int offset, T v ) noexcept
     std::memcpy( static_cast<std::uint8_t *>( base ) + offset, &v, sizeof( T ));
 }
 
+// Signed-payload serialisation switch (legacy MSG_Write/ReadSBitLong with
+// iAlternateSign).  Sign-magnitude mirrors the GoldSrc branch exactly:
+// 1 sign bit first, then |value| in bits-1 (legacy uses abs()).
+void write_sbits( MessageBuf &msg, int value, int bits, SignEncoding sign ) noexcept
+{
+    if( sign == SignEncoding::SignMagnitude )
+    {
+        msg.write_one_bit( value < 0 ? 1 : 0 );
+        msg.write_ubit_long(
+            static_cast<std::uint32_t>( value < 0 ? -value : value ), bits - 1 );
+    }
+    else
+    {
+        msg.write_sbit_long( value, bits );
+    }
+}
+
+[[nodiscard]] int read_sbits( MessageBuf &msg, int bits, SignEncoding sign ) noexcept
+{
+    if( sign == SignEncoding::SignMagnitude )
+    {
+        const int negative = msg.read_one_bit();
+        const int r = static_cast<int>( msg.read_ubit_long( bits - 1 ));
+        return negative ? -r : r;
+    }
+    return msg.read_sbit_long( bits );
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -188,7 +216,8 @@ bool compare_field( const DeltaField &field, const void *from, const void *to ) 
 // ---------------------------------------------------------------------------
 
 void write_field_payload( MessageBuf &msg, const DeltaField &field,
-                          const void *to, double timebase ) noexcept
+                          const void *to, double timebase,
+                          SignEncoding sign ) noexcept
 {
     const int signbit = ( field.flags & k_dt_signed ) ? 1 : 0;
 
@@ -220,7 +249,7 @@ void write_field_payload( MessageBuf &msg, const DeltaField &field,
             static_cast<int>( iValue ), signbit, field.bits ));
 
         if( signbit )
-            msg.write_sbit_long( static_cast<std::int32_t>( iValue ), field.bits );
+            write_sbits( msg, static_cast<std::int32_t>( iValue ), field.bits, sign );
         else
             msg.write_ubit_long( iValue, field.bits );
     }
@@ -233,7 +262,7 @@ void write_field_payload( MessageBuf &msg, const DeltaField &field,
         iValue = clamp_integer_field( iValue, signbit, field.bits );
 
         if( signbit )
-            msg.write_sbit_long( iValue, field.bits );
+            write_sbits( msg, iValue, field.bits, sign );
         else
             msg.write_ubit_long( static_cast<std::uint32_t>( iValue ), field.bits );
     }
@@ -248,14 +277,14 @@ void write_field_payload( MessageBuf &msg, const DeltaField &field,
         const float flValue = load_as<float>( to, field.offset );
         int dt = q_rint(( timebase - flValue ) * 100.0 );
         dt = clamp_integer_field( dt, 1, field.bits ); // always signed
-        msg.write_sbit_long( dt, field.bits );
+        write_sbits( msg, dt, field.bits, sign );
     }
     else if( field.flags & k_dt_timewindow_big )
     {
         const float flValue = load_as<float>( to, field.offset );
         int dt = q_rint(( timebase - flValue ) * field.multiplier );
         dt = clamp_integer_field( dt, 1, field.bits ); // always signed
-        msg.write_sbit_long( dt, field.bits );
+        write_sbits( msg, dt, field.bits, sign );
     }
     else if( field.flags & k_dt_string )
     {
@@ -269,7 +298,8 @@ void write_field_payload( MessageBuf &msg, const DeltaField &field,
 // ---------------------------------------------------------------------------
 
 void read_field_payload( MessageBuf &msg, const DeltaField &field,
-                         void *to, double timebase ) noexcept
+                         void *to, double timebase,
+                         SignEncoding sign ) noexcept
 {
     const bool bSigned = ( field.flags & k_dt_signed ) != 0;
 
@@ -278,7 +308,7 @@ void read_field_payload( MessageBuf &msg, const DeltaField &field,
     if( field.flags & ( k_dt_byte | k_dt_short | k_dt_integer ))
     {
         std::uint32_t iValue = bSigned
-            ? static_cast<std::uint32_t>( msg.read_sbit_long( field.bits ))
+            ? static_cast<std::uint32_t>( read_sbits( msg, field.bits, sign ))
             : msg.read_ubit_long( field.bits );
 
         if( !q_equal( field.multiplier, 1.0f ))
@@ -315,7 +345,7 @@ void read_field_payload( MessageBuf &msg, const DeltaField &field,
     else if( field.flags & k_dt_float )
     {
         const std::uint32_t iValue = bSigned
-            ? static_cast<std::uint32_t>( msg.read_sbit_long( field.bits ))
+            ? static_cast<std::uint32_t>( read_sbits( msg, field.bits, sign ))
             : msg.read_ubit_long( field.bits );
 
         float flValue = bSigned
@@ -336,14 +366,14 @@ void read_field_payload( MessageBuf &msg, const DeltaField &field,
     }
     else if( field.flags & k_dt_timewindow_8 )
     {
-        const int iValue = msg.read_sbit_long( field.bits );
+        const int iValue = read_sbits( msg, field.bits, sign );
         const float flTime = static_cast<float>(
             ( timebase * 100.0 - iValue ) / 100.0 );
         store_as<float>( to, field.offset, flTime );
     }
     else if( field.flags & k_dt_timewindow_big )
     {
-        const int iValue = msg.read_sbit_long( field.bits );
+        const int iValue = read_sbits( msg, field.bits, sign );
         const float flTime = static_cast<float>(
             ( timebase * field.multiplier - iValue ) / field.multiplier );
         store_as<float>( to, field.offset, flTime );

@@ -201,6 +201,58 @@ static void test_inactive_masked_in_both_formats()
     }
 }
 
+// -- GoldSrc signed payloads use sign-magnitude, Xash uses two's complement -----
+// One DT_INTEGER|DT_SIGNED field, bits=8, value -5, from=0.
+//
+// GoldSrc (legacy iAlternateSign mode: sign bit FIRST, |value| in bits-1):
+//   stream: c=1 (3 bits: 1,0,0), mask 0x01 (8), sign=1 (1), mag=5 (7 bits: 1,0,1,0,0,0,0)
+//   byte0: bit0=1 (c), bit3=1 (mask bit0) -> 0x09
+//   byte1: bits8-10 = mask tail (0,0,0), bit11=sign=1, bits12-18 = mag
+//          -> bit11 + bit12 + bit14 = 0x08 + 0x10 + 0x40 = 0x58
+//   byte2: bits16.. mag tail zeros -> 0x00     (19 bits total)
+//
+// Xash (two's complement over 8 bits: -5 = 0xFB):
+//   stream: mark=1 (1), 0xFB (8)
+//   byte0 = 1 | (0xFB & 0x7F) << 1 = 0xF7 ; byte1 = 0xFB >> 7 = 0x01   (9 bits)
+
+static void test_signed_payload_encodings_differ()
+{
+    DeltaField fld{};
+    fld.name = "s"; fld.offset = 0; fld.size = 4;
+    fld.flags = k_dt_integer | k_dt_signed;
+    fld.multiplier = 1.0f; fld.post_multiplier = 1.0f; fld.bits = 8;
+    const std::span<const DeltaField> fields{ &fld, 1 };
+
+    std::int32_t from = 0, to = -5, decoded = 0;
+
+    {
+        std::array<std::byte, 8> buf{};
+        MessageBuf msg{ buf };
+        CHECK_EQ( goldsrc_delta_wire_format().write_fields( msg, fields, &from, &to, 0.0 ), 1u );
+        CHECK_EQ( msg.num_bits_written(), 3u + 8u + 8u );
+        CHECK_EQ( byte_at( msg, 0 ), 0x09u );
+        CHECK_EQ( byte_at( msg, 1 ), 0x58u );
+        CHECK_EQ( byte_at( msg, 2 ), 0x00u );
+
+        msg.reset();
+        goldsrc_delta_wire_format().read_fields( msg, fields, &from, &decoded, 0.0 );
+        CHECK_EQ( decoded, -5 );
+    }
+    {
+        std::array<std::byte, 8> buf{};
+        MessageBuf msg{ buf };
+        CHECK_EQ( xash_delta_wire_format().write_fields( msg, fields, &from, &to, 0.0 ), 1u );
+        CHECK_EQ( msg.num_bits_written(), 1u + 8u );
+        CHECK_EQ( byte_at( msg, 0 ), 0xF7u );
+        CHECK_EQ( byte_at( msg, 1 ), 0x01u );
+
+        decoded = 0;
+        msg.reset();
+        xash_delta_wire_format().read_fields( msg, fields, &from, &decoded, 0.0 );
+        CHECK_EQ( decoded, -5 );
+    }
+}
+
 // -- factory dispatch ---------------------------------------------------------------
 
 static void test_factory_dispatch()
@@ -225,6 +277,7 @@ int main()
     RUN_TEST( test_goldsrc_group_mask_golden );
     RUN_TEST( test_goldsrc_zero_change );
     RUN_TEST( test_inactive_masked_in_both_formats );
+    RUN_TEST( test_signed_payload_encodings_differ );
     RUN_TEST( test_factory_dispatch );
 
     std::printf( "delta_wire_formats: %d passed, %d failed\n", g_pass, g_fail );
