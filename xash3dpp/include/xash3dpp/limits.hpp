@@ -344,4 +344,28 @@ inline constexpr std::size_t net_max_filename = 260; // max filename length in f
 inline constexpr std::size_t net_max_filename = XASH_LIMIT_NET_MAX_FILENAME;
 #endif
 
+#ifndef XASH_LIMIT_NET_DELTA_MAX_TABLES
+inline constexpr std::size_t net_delta_max_tables = 16; // delta description tables (4-bit wire tableIndex)
+#else
+inline constexpr std::size_t net_delta_max_tables = XASH_LIMIT_NET_DELTA_MAX_TABLES;
+#endif
+
+#ifndef XASH_LIMIT_NET_DELTA_MAX_FIELDS
+inline constexpr std::size_t net_delta_max_fields = 256; // fields per delta table (8-bit wire nameIndex)
+#else
+inline constexpr std::size_t net_delta_max_fields = XASH_LIMIT_NET_DELTA_MAX_FIELDS;
+#endif
+
+#ifndef XASH_LIMIT_NET_DELTA_ENCODER_NAME
+inline constexpr std::size_t net_delta_encoder_name = 32; // custom-encoder function name buffer (legacy funcName[32])
+#else
+inline constexpr std::size_t net_delta_encoder_name = XASH_LIMIT_NET_DELTA_ENCODER_NAME;
+#endif
+
+#ifndef XASH_LIMIT_NET_DELTA_GS_MASK_BYTES
+inline constexpr std::size_t net_delta_gs_mask_bytes = 8; // GoldSrc changed-field mask byte groups (3-bit count caps writes at 7)
+#else
+inline constexpr std::size_t net_delta_gs_mask_bytes = XASH_LIMIT_NET_DELTA_GS_MASK_BYTES;
+#endif
+
 } // namespace xash::limits
