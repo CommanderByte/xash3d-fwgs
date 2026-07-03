@@ -20,6 +20,15 @@
 
 namespace xash::filesystem { class Filesystem; }
 
+namespace xash::abi {
+struct entity_state_t;
+struct clientdata_t;
+struct usercmd_t;
+struct weapon_data_t;
+struct event_args_t;
+struct movevars_t;
+} // namespace xash::abi
+
 namespace xash::networking {
 
 class MessageBuf;
@@ -89,6 +98,46 @@ struct DeltaField
 using DeltaEncodeFn = void ( * )( DeltaField *fields,
                                   const std::uint8_t *from,
                                   const std::uint8_t *to );
+
+// ---------------------------------------------------------------------------
+// IBaselineResolver — client-side baseline lookup for read_delta_entity.
+// Parameterises the legacy clgame.static_entities / cls.packet_entities /
+// cl.instanced_baseline global reads: the wire carries a signed 7-bit
+// baseline offset; the client subsystem resolves it to an entity state.
+// Return nullptr to keep the caller-supplied `from` (legacy out-of-range
+// behaviour).
+// ---------------------------------------------------------------------------
+
+struct IBaselineResolver
+{
+    virtual ~IBaselineResolver() = default;
+
+    // @lifetime: engine — returned state must outlive the read call.
+    [[nodiscard]] virtual const ::xash::abi::entity_state_t *
+    resolve( std::int32_t baseline_offset, DeltaEntityKind kind ) noexcept = 0;
+};
+
+// ---------------------------------------------------------------------------
+// Entity codec parameter structs (Q-4 named-params pattern)
+// ---------------------------------------------------------------------------
+
+struct WriteDeltaEntityParams
+{
+    bool            force      { false };            // baseline/forced full update
+    DeltaEntityKind kind       { DeltaEntityKind::Entity };
+    double          timebase   { 0.0 };
+    int             baseline   { 0 };                // signed instanced-baseline index
+    int             max_edicts { 0 };                // legacy GI->max_edicts bound
+};
+
+struct ReadDeltaEntityParams
+{
+    int               number    { 0 };               // already read by the dispatcher
+    DeltaEntityKind   kind      { DeltaEntityKind::Entity };
+    double            timebase  { 0.0 };
+    int               max_entities { 0 };            // legacy clgame.maxEntities bound
+    IBaselineResolver *baselines { nullptr };        // optional; @lifetime: engine
+};
 
 // ---------------------------------------------------------------------------
 // DeltaStats — three-tier observability (see debug-stats-design.md).
@@ -195,6 +244,78 @@ public:
     // through the immutable meta-table, DT_SIGNED_GS remapped).  Byte-aligns
     // the read cursor afterwards like legacy MSG_EndBitWriting.
     [[nodiscard]] bool parse_table_gs( MessageBuf &msg ) noexcept;
+
+    // ---- Struct codecs (Xash mark-bit framing) ------------------------------
+    //
+    // Each mirrors its legacy MSG_* function including the no-change
+    // rollback behaviours.  Command bytes are caller-supplied (see the
+    // descriptor-wire note above).  All are caller-synchronised.
+
+    // usercmd_t — client writes, server reads (legacy reversed direction).
+    // Read normalises viewangles to [-180, 180] like COM_NormalizeAngles.
+    void write_delta_usercmd( MessageBuf &msg, const ::xash::abi::usercmd_t *from,
+                              const ::xash::abi::usercmd_t *to ) noexcept;
+    void read_delta_usercmd( MessageBuf &msg, const ::xash::abi::usercmd_t *from,
+                             ::xash::abi::usercmd_t *to ) noexcept;
+
+    void write_delta_event( MessageBuf &msg, const ::xash::abi::event_args_t *from,
+                            const ::xash::abi::event_args_t *to ) noexcept;
+    void read_delta_event( MessageBuf &msg, const ::xash::abi::event_args_t *from,
+                           ::xash::abi::event_args_t *to ) noexcept;
+
+    // Writes the caller-supplied command byte first; on zero changes the
+    // whole message (command byte included) is rolled back and false is
+    // returned (legacy MSG_WriteDeltaMovevars).
+    [[nodiscard]] bool write_delta_movevars(
+        MessageBuf &msg, const ::xash::abi::movevars_t *from,
+        const ::xash::abi::movevars_t *to,
+        std::uint32_t svc_deltamovevars_cmd ) noexcept;
+    void read_delta_movevars( MessageBuf &msg, const ::xash::abi::movevars_t *from,
+                              ::xash::abi::movevars_t *to ) noexcept;
+
+    // 1 "have clientdata" bit; zero changes rewrite it to a single 0 bit.
+    void write_clientdata( MessageBuf &msg, const ::xash::abi::clientdata_t *from,
+                           const ::xash::abi::clientdata_t *to,
+                           double timebase ) noexcept;
+    void read_clientdata( MessageBuf &msg, const ::xash::abi::clientdata_t *from,
+                          ::xash::abi::clientdata_t *to, double timebase ) noexcept;
+
+    // 1 bit + 6-bit weapon index; fully rolled back on zero changes.
+    void write_weapon_data( MessageBuf &msg, const ::xash::abi::weapon_data_t *from,
+                            const ::xash::abi::weapon_data_t *to,
+                            double timebase, int index ) noexcept;
+    void read_weapon_data( MessageBuf &msg, const ::xash::abi::weapon_data_t *from,
+                           ::xash::abi::weapon_data_t *to, double timebase ) noexcept;
+
+    // Entity states.  write: `to == nullptr` emits a remove message
+    // (force selects removeType 2); returns false on a bad entity number
+    // (legacy Host_Error).  read: returns false when the entity was
+    // removed (to->number == -1 for a full server remove), true when a
+    // state was parsed.
+    [[nodiscard]] bool write_delta_entity(
+        MessageBuf &msg, const ::xash::abi::entity_state_t *from,
+        const ::xash::abi::entity_state_t *to,
+        const WriteDeltaEntityParams &params ) noexcept;
+    [[nodiscard]] bool read_delta_entity(
+        MessageBuf &msg, const ::xash::abi::entity_state_t *from,
+        ::xash::abi::entity_state_t *to,
+        const ReadDeltaEntityParams &params ) noexcept;
+
+    // Bit-count estimate for baseline selection (legacy Delta_TestBaseline).
+    [[nodiscard]] int test_baseline( const ::xash::abi::entity_state_t *from,
+                                     const ::xash::abi::entity_state_t *to,
+                                     bool player, double timebase ) noexcept;
+
+    // ---- GoldSrc batch codec (group-mask framing) ---------------------------
+    //
+    // Legacy Delta_Write/ReadGSFields.  Signed payloads use the GoldSrc
+    // sign-magnitude layout; the caller owns message-level byte alignment
+    // (legacy MSG_Start/EndBitWriting brackets).
+    void write_gs_fields( MessageBuf &msg, DeltaStructId id,
+                          const void *from, const void *to,
+                          double timebase ) noexcept;
+    void read_gs_fields( MessageBuf &msg, DeltaStructId id,
+                         const void *from, void *to, double timebase ) noexcept;
 
     // ---- Introspection (engine-internal; used by codecs and tests) --------
 

@@ -88,3 +88,7 @@ add_test(NAME test_delta_tables COMMAND test_delta_tables)
 add_executable(test_delta_table_wire delta/test_delta_table_wire.cpp)
 target_link_libraries(test_delta_table_wire PRIVATE xash3dpp_networking)
 add_test(NAME test_delta_table_wire COMMAND test_delta_table_wire)
+
+add_executable(test_delta_codec delta/test_delta_codec.cpp)
+target_link_libraries(test_delta_codec PRIVATE xash3dpp_networking)
+add_test(NAME test_delta_codec COMMAND test_delta_codec)
