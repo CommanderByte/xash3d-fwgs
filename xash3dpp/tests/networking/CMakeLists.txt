@@ -76,3 +76,11 @@ add_test(NAME test_delta_field_codec COMMAND test_delta_field_codec)
 add_executable(test_delta_wire_formats delta/test_delta_wire_formats.cpp)
 target_link_libraries(test_delta_wire_formats PRIVATE xash3dpp_networking)
 add_test(NAME test_delta_wire_formats COMMAND test_delta_wire_formats)
+
+add_executable(test_delta_lst_parser delta/test_delta_lst_parser.cpp)
+target_link_libraries(test_delta_lst_parser PRIVATE xash3dpp_networking)
+add_test(NAME test_delta_lst_parser COMMAND test_delta_lst_parser)
+
+add_executable(test_delta_tables delta/test_delta_tables.cpp)
+target_link_libraries(test_delta_tables PRIVATE xash3dpp_networking)
+add_test(NAME test_delta_tables COMMAND test_delta_tables)

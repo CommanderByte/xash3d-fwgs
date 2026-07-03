@@ -58,6 +58,8 @@ add_library(xash3dpp_networking STATIC
     delta/field_codec.cpp
     delta/wire_format_xash.cpp
     delta/wire_format_goldsrc.cpp
+    delta/delta_tables.cpp
+    delta/lst_parser.cpp
 )
 
 target_include_directories(xash3dpp_networking
@@ -71,6 +73,7 @@ target_link_libraries(xash3dpp_networking
     PUBLIC  xash3dpp_memory
     PRIVATE xash3dpp_core
     PRIVATE xash3dpp_platform
+    PRIVATE xash3dpp_filesystem # DeltaTables::init loads delta.lst
 )
 
 if(XASH_NET_COMPRESSION)
