@@ -18,8 +18,13 @@ It does **not** execute game logic, parse game assets, manage DNS resolution
 at the application layer, or implement the HTTP downloader. The netchan
 reliable-channel layer is **fully implemented** in `netchan.hpp` /
 `netchan.cpp` — reliable queue, fragment assembly and drain, bandwidth
-choking, and file-transfer support are all complete. The delta encoder is
-not yet implemented.
+choking, and file-transfer support are all complete. The delta encoder
+(Layer 4, `delta/`) is implemented: `DeltaTables` lifecycle + delta.lst
+parser, per-field codec, Xash mark-bit and GoldSrc group-mask wire formats
+behind the private `IDeltaWireFormat` seam, table-descriptor sync, struct
+codecs, and the game-DLL custom-encode hook. See
+`docs/boundaries/networking-boundary.md` §"Delta encoder — implementation
+notes" for the seam shifts vs. legacy.
 
 ## Design goals
 

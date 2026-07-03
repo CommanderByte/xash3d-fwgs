@@ -38,8 +38,10 @@ enum class DeltaTableSet : std::uint8_t { GoldSrc, Xash };
 ```
 
 Identifies which set of entity-state delta field tables the driver expects.
-Used by the delta encoder (Layer 4, not yet implemented) to select the
-appropriate table layout.
+Used by the delta encoder (Layer 4) as the selection input for both the
+field-table layout and the wire framing: `delta_wire_format_for(DeltaTableSet)`
+(`private/networking/delta/wire_format.hpp`) maps it to the Xash mark-bit or
+GoldSrc group-mask `IDeltaWireFormat` sibling.
 
 ---
 

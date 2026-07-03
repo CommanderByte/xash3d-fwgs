@@ -371,6 +371,62 @@ built-in delta types. The `bInitialized` flag per table is mutated at
     Player entities are encoded with extra fields. The `type` argument to
     `MSG_WriteDeltaEntity` / `MSG_ReadDeltaEntity` selects which table to use.
 
+### Delta encoder — implementation notes (2026-07-04)
+
+The rewrite (`src/networking/delta/`, public API `networking/delta.hpp`)
+reproduces `net_encode.c` byte-for-byte on the wire.  Deliberate seam shifts
+and hardenings, each behaviour-neutral for well-formed traffic:
+
+- **Command bytes are caller-supplied.** Legacy wrote `svc_deltatable` /
+  `svc_deltamovevars` internally via `MSG_BeginServerCmd`; `DeltaTables::
+  write_description` / `write_delta_movevars` take the raw command value as a
+  parameter (wire-identical; xash3dpp has no `svc_*` enum yet — it arrives
+  with the game-protocol layer).
+- **`IBaselineResolver`** replaces `MSG_ReadDeltaEntity`'s direct reads of
+  `clgame.static_entities` / `cls.packet_entities` / `cl.instanced_baseline`.
+  The client subsystem (Chunk 9+) implements the three lookup branches; the
+  codec only hands over the signed 7-bit offset and the entity kind.
+- **`IDeltaWireFormat` selection axis (Q-14 documentation requirement):** the
+  Xash per-field-mark-bit format and the GoldSrc byte-group-mask format are
+  sibling implementations behind one private seam, selected by
+  `IProtocolDriver::delta_tables()` (`DeltaTableSet`).  A future wire format
+  is one new sibling TU plus one factory case in
+  `private/networking/delta/wire_format.hpp`; table management and the struct
+  codec call sites are untouched by construction.
+- **Signed payload encodings differ by wire format** (`SignEncoding` in the
+  field codec): GoldSrc message parsing brackets delta payloads in
+  `MSG_StartBitWriting`/`MSG_EndBitWriting`, flipping `MSG_Write/ReadSBitLong`
+  to sign-bit-first + magnitude; the Xash path is plain two's complement.
+  `parse_table_gs` also byte-aligns the cursor afterwards like
+  `MSG_EndBitWriting`; alignment for the general GS batch codec is the
+  message-parser's responsibility (the legacy brackets live in the caller).
+- **`DeltaField*` is the game-DLL token** where legacy passed `delta_s*`.
+  HLSDK-conformant DLLs treat it as opaque and mutate only through the
+  engine's find/set/unset helpers; a DLL that dereferences `delta_s*`
+  directly would misread the layout.  Revisited by the Chunk 6 ABI-shim
+  audit before `pfnDeltaAddEncoder` is exported.
+- **Wire-reachable hardenings (legacy UB removed, behaviour preserved):**
+  `parse_table_field` bounds-checks the 4-bit tableIndex (legacy blind-indexed
+  `dt_info[]`); the GS mask loops bound `bits[i>>3]` (legacy indexed a fixed
+  `bits[8]` unchecked); `Sys_Error`/`Host_Error` sites return `false` after a
+  `core::log` Error per Q-5 (`init` on missing delta.lst, unknown struct,
+  missing `{`, bad table index, GS `numFields > maxFields`, bad entity
+  numbers).
+- **Stats:** `DeltaTables::stats()` exposes Tier-1 `tables_parsed` /
+  `structs_encoded` / `structs_decoded` atomics, plus `XASH_STATS`-gated
+  changed-field and rollback counters.
+
+## Known Deviations
+
+- `register_encoder` (legacy `Delta_AddEncoder`) returns `bool` instead of
+  silently logging; the future `enginefuncs_t` shim discards the result to
+  preserve the void ABI signature.
+- The movevars fallback re-assertion `numFields = ARRAYSIZE(pm_fields) - 4`
+  is an `XASH_ASSERT` consistency check rather than a truncating assignment
+  (the rewrite appends exactly 27 fields).
+- `write_delta_entity` refuses to write on a bad entity number and returns
+  `false` where legacy raised `Host_Error` mid-frame.
+
 ---
 
 ## Pluggable game protocol per client
