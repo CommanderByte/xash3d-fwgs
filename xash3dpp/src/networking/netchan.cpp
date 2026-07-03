@@ -1,10 +1,12 @@
-// xash3dpp — Netchan implementation stub (Layer 3)
+// xash3dpp — Netchan implementation (Layer 3)
 // Legacy reference: engine/common/net_chan.c
 //
-// All method bodies below are TODO stubs.  The Chunk plan in
-// docs/architecture/networking/README.md (Layer 3 section) and the output
-// of `/plan-implementation networking` will drive the order in which
-// these are filled in.
+// Fully implemented: setup/clear, write_reliable, can_packet/update_choke,
+// create_fragments / create_file_fragments_from_buffer, transmit/transmit_bits,
+// process with reliable-ack tracking and incoming fragment reassembly.
+// Tracked deferrals (see TODO markers below): pool-migration of fragment and
+// reliable buffers, flow_t bandwidth telemetry, and sub-16-byte nop padding
+// (blocked on layer-4 message IDs).
 
 #include <xash3dpp/networking/netchan.hpp>
 

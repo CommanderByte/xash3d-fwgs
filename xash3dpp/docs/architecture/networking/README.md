@@ -37,8 +37,11 @@ not yet implemented.
   are public injectable interfaces so different protocol versions can coexist
   without `#ifdef`. The default GoldSrc driver is always linked.
 - **Pool-backed allocations**: `NetworkContext::init()` creates a
-  `PoolHandle("networking")` that backs all fragment buffers. No `std::make_unique`
-  after init except the single pimpl struct itself.
+  `PoolHandle("networking")` intended to back all fragment buffers. Netchan's
+  fragment payloads and reliable buffer currently still use `std::vector`
+  pending a pool-backed byte-vector adapter — tracked as `TODO(pool-migration)`
+  in `netchan.cpp`. No `std::make_unique` after init except the single pimpl
+  struct itself.
 - **No exceptions, no RTTI**: compiled with `/EHs-c- /GR-`. Errors propagate
   through `Result<T>` (`std::expected<T, NetError>`), nullptr returns, or
   sticky overflow flags on `MessageBuf`.

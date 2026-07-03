@@ -1,6 +1,6 @@
 # xash3dpp — Implementation Status and Work Plan
 
-*Generated: 2026-05-15 — Updated: 2026-05-16*
+*Generated: 2026-05-15 — Updated: 2026-07-03*
 
 ______________________________________________________________________
 
@@ -11,14 +11,14 @@ ______________________________________________________________________
 | utilities | 9 | ✓ | ✓ | **Complete** |
 | memory | 1 | ✓ | ✓ | **Complete** |
 | filesystem | 10 | ✓ | ✓ | **Complete** |
-| platform | 11 | ✓ | ✓ | **Complete** |
+| platform | 14 | ✓ | ✓ | **Complete** (incl. os_socket + IPlatformSockets) |
 | core | 4 | ✓ | ✓ | **Complete** |
 | cmd_cvar | 11 | ✓ | ✓ | **Complete** |
-| host | 2 | ✓ | ✓ | **Complete** (Chunk 3 ✅) |
+| host | 2 | ✓ | ✓ | **Complete** (Chunk 3 ✅; EngineContext owns networking) |
 | abi | 1 | ✓ | ✗ | **Partial** (`Host_Error` shim + accessor only) |
 | map_loader | 1 | ✓ | ✗ | **Partial** (FSM scaffold; no BSP parsing yet) |
 | launcher | 1 | ✗ | ✗ | **Partial** (thin argv bootstrap, no tests) |
-| networking | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
+| networking | 17 | ✓ | ✓ | **Partial** (Layers 0–3 + satellites complete, wired into EngineContext; delta encoder in progress; DNS/bz2 deferred) |
 | server | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
 | client | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
 | content | 0 | ✗ | ✗ | **Skeleton** |
@@ -35,7 +35,7 @@ ______________________________________________________________________
 
 ## Dependency Graph Summary
 
-The legacy DAG flows: **launcher → host → (cmd_cvar + networking + filesystem) → server ↔ client → plugins (renderer, filesystem)**. The entire foundation tier is now complete: `utilities`, `memory`, `filesystem`, `platform`, `core`, `cmd_cvar`, `host`/`engine_context` — **Chunks 1 and 3 are done**. Chunk 2 (networking) was deferred to keep the dedicated-server host scaffold unblocked; it is the next piece. `map_loader` has an FSM scaffold but no BSP parsing; it must be promoted before server can load maps. The server path (Chunks 2, 4, 5) is significantly more isolated than the client path because it only needs the Game DLL ABI; client adds sound, input, content, rendering, and UI on top.
+The legacy DAG flows: **launcher → host → (cmd_cvar + networking + filesystem) → server ↔ client → plugins (renderer, filesystem)**. The entire foundation tier is now complete: `utilities`, `memory`, `filesystem`, `platform`, `core`, `cmd_cvar`, `host`/`engine_context` — **Chunks 1 and 3 are done**. Chunk 2/4 (networking) shipped as a standalone library in May 2026 (address/MessageBuf, transport, wire codecs, netchan, GoldSrc protocol driver, master list) and was wired into `EngineContext` on 2026-07-03; the **delta encoder (Layer 4) is the remaining networking piece and is in progress**. `map_loader` has an FSM scaffold but no BSP parsing; it must be promoted before server can load maps (gated on the pm_shared float-vs-fixed decision). The server path (Chunks 5, 6) is significantly more isolated than the client path because it only needs the Game DLL ABI; client adds sound, input, content, rendering, and UI on top.
 
 ______________________________________________________________________
 
