@@ -56,6 +56,8 @@ add_library(xash3dpp_networking STATIC
     transport/split_reassembler.cpp
     # delta — Layer 4 (field tables + struct codecs)
     delta/field_codec.cpp
+    delta/wire_format_xash.cpp
+    delta/wire_format_goldsrc.cpp
 )
 
 target_include_directories(xash3dpp_networking
