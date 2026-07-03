@@ -49,6 +49,12 @@ read concurrently from any thread** because every Tier-1 counter is
 | `Netchan::Impl::*` | `src/networking/netchan.cpp` | Race-shared | Outgoing sequence, reliable buffer, `outgoing_fragments[2]`, `incoming_streams[2]`, `frag_offset[2]`. No lock — every method requires single-thread access. |
 | `NetworkContext::Impl::os_sockets[2]` | `src/networking/context_impl.hpp` | Lifecycle-race | Opened/closed by `config()` / `shutdown()`; data-race with any concurrent `get_packet`/`send_packet` not explicitly prevented (caller-synchronised by convention). |
 | `MasterListClient::{ctx_, cfg_}` | `src/networking/master_list.cpp` | Race-shared | Reference holders only; `heartbeat()` / `send_shutdown()` route through `NetworkContext::send_packet`, inheriting its T_NetIO confinement requirement. |
+| `DeltaTables::Impl::tables[8]` | `src/networking/delta/delta_tables.cpp` | Race-shared | Field vectors, encoder callbacks, `initialized` flags; no lock. Every `DeltaTables` method except `stats()` is caller-synchronised — the owning subsystem (server per game instance, client per session) serialises init/parse/encode/decode. Custom-encode callbacks additionally mutate `DeltaField::inactive` in place during writes. |
+| `DeltaTables::Impl::stats` | `src/networking/delta/delta_tables.cpp` | Safe-RO | `DeltaStats` Tier-1 relaxed atomics (`tables_parsed`, `structs_encoded/decoded`); `stats()` is the only delta observation point that may be read from any thread. |
+
+The `IDeltaWireFormat` siblings (`wire_format_xash.cpp` /
+`wire_format_goldsrc.cpp`) are stateless const singletons — Safe-RO by
+construction; all mutable state they touch is passed in by the caller.
 
 No `Race-static-buf`, `Race-lazy-init` (unsafe), or `Signal-unsafe` items
 were found. There are no internal mutexes, condition variables, or
@@ -61,9 +67,10 @@ hand-rolled double-checked-locking patterns anywhere in
    get_packet, send_packet}` calls must come from the same logical thread
    (`T_NetIO`). The same applies to every method of a `Netchan` instance
    and to `MasterListClient::heartbeat` / `send_shutdown`.
-2. **`NetworkContext::stats()` is the only thread-safe observation point**.
-   Callers running on other threads must not poke `Impl` state directly;
-   they may only read Tier-1 atomic counters.
+2. **`NetworkContext::stats()` and `DeltaTables::stats()` are the only
+   thread-safe observation points**. Callers running on other threads must
+   not poke `Impl` state directly; they may only read Tier-1 atomic
+   counters.
 3. **Lifecycle is caller-sequenced**: `init` → `config(true)` →
    (loop: `get_packet`/`send_packet`) → `config(false)` → `shutdown`. No
    two of these calls may overlap on different threads. There is no

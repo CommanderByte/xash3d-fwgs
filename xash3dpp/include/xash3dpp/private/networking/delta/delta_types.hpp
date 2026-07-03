@@ -9,6 +9,7 @@
 // the Xash delta protocol.  None of these are tunable capacities — they do
 // NOT belong in limits.hpp (same rule as wire/wire_format.hpp magics).
 
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/networking/delta.hpp>
 
 #include <cstddef>
@@ -136,9 +137,16 @@ struct DeltaTable
     std::span<const DeltaFieldInfo> info           {};          // compile-time identities
     std::vector<DeltaField>        fields          {};          // @pre-reserved: info.size() at init
     CustomEncodeKind               custom_encode   { CustomEncodeKind::None };
-    char                           func_name[32]   {};          // delta.lst encoder name
+    // delta.lst encoder name (legacy funcName[32])
+    char                           func_name[ ::xash::limits::net_delta_encoder_name ] {};
     DeltaEncodeFn                  user_callback   { nullptr };
     bool                           initialized     { false };
 };
+
+// The wire widths bound the table/field counts these limits document.
+static_assert( static_cast<std::size_t>( DeltaStructId::Count )
+               <= ::xash::limits::net_delta_max_tables );
+static_assert( ::xash::limits::net_delta_max_tables <= ( 1u << k_table_index_bits ));
+static_assert( ::xash::limits::net_delta_max_fields <= ( 1u << k_name_index_bits ));
 
 } // namespace xash::networking::delta
