@@ -60,6 +60,7 @@ add_library(xash3dpp_networking STATIC
     delta/wire_format_goldsrc.cpp
     delta/delta_tables.cpp
     delta/lst_parser.cpp
+    delta/table_wire.cpp
 )
 
 target_include_directories(xash3dpp_networking

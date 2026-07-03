@@ -22,6 +22,8 @@ namespace xash::filesystem { class Filesystem; }
 
 namespace xash::networking {
 
+class MessageBuf;
+
 // ---------------------------------------------------------------------------
 // DeltaStructId — identity of one delta description table.
 // Wire-frozen: the enumerator order IS the legacy DT_* table index sent in
@@ -168,6 +170,31 @@ public:
     void unset_field( DeltaField *fields, const char *fieldname ) noexcept;
     void set_field_by_index( DeltaField *fields, int field_number ) noexcept;
     void unset_field_by_index( DeltaField *fields, int field_number ) noexcept;
+
+    // ---- Table-descriptor wire (table sync at connect) ---------------------
+    //
+    // Seam shift vs. legacy: net_encode.c wrote the svc_deltatable command
+    // byte internally via MSG_BeginServerCmd; here the caller supplies the
+    // raw command value (wire-identical, message-ID-agnostic — xash3dpp has
+    // no svc_* enum yet).  See networking-boundary.md, Delta encoder section.
+
+    // Legacy Delta_WriteDescriptionToClient: emits one descriptor message
+    // (command byte + tableIndex/nameIndex/flags/bits/multipliers) per field
+    // of every table.
+    void write_description( MessageBuf &msg,
+                            std::uint32_t svc_deltatable_cmd ) noexcept;
+
+    // Legacy Delta_ParseTableField (Xash path; command byte already consumed
+    // by the caller's dispatcher).  Applies one field descriptor; wipes all
+    // local tables first when arriving over a live local-game setup (legacy
+    // quirk).  Returns false only on a malformed/unknown table index.
+    [[nodiscard]] bool parse_table_field( MessageBuf &msg ) noexcept;
+
+    // Legacy Delta_ParseTableField_GS: one whole GoldSrc table description
+    // (struct name string + field count + GS-framed goldsrc_delta_t records
+    // through the immutable meta-table, DT_SIGNED_GS remapped).  Byte-aligns
+    // the read cursor afterwards like legacy MSG_EndBitWriting.
+    [[nodiscard]] bool parse_table_gs( MessageBuf &msg ) noexcept;
 
     // ---- Introspection (engine-internal; used by codecs and tests) --------
 
