@@ -76,7 +76,7 @@ struct Host::Impl
 
         // TODO Chunk 5: Server::shutdown()
         // TODO Chunk 9: Client::shutdown()
-        // TODO Chunk 2: Networking::shutdown()
+        // Networking is owned by EngineContext, not Host — see engine_context.cpp.
 
         if ( map_loader ) { map_loader->shutdown(); map_loader = nullptr; }
         if ( clock )      { clock->shutdown();      clock      = nullptr; }
@@ -162,7 +162,19 @@ bool Host::init(const HostInitParams& p)
         }
     }
 
-    // --- Cmd / Cvar commands & cvars -------------------------------------\n    // When cmd_cvar is null (standalone / test mode) registration is skipped.\n    // TODO Chunk 3: register host lifecycle cvars (host_developer, host_gameloaded,\n    //   host_clientloaded, host_limitlocal, con_gamemaps, host_allow_materials, ...)\n    //   and commands (quit, exit, memlist, host_error, sys_error, crash).\n\n    // --- Networking (Chunk 2) --------------------------------------------\n    // TODO Chunk 2: Networking::init()\n\n    // --- Server (Chunk 5) ------------------------------------------------\n    // TODO Chunk 5: Server::init()\n\n    // --- Client (Chunk 9, non-dedicated only) ----------------------------\n    // TODO Chunk 9: if (!s.dedicated) Client::init()
+    // --- Cmd / Cvar commands & cvars -------------------------------------
+    // When cmd_cvar is null (standalone / test mode) registration is skipped.
+    // TODO Chunk 3: register host lifecycle cvars (host_developer, host_gameloaded,
+    //   host_clientloaded, host_limitlocal, con_gamemaps, host_allow_materials, ...)
+    //   and commands (quit, exit, memlist, host_error, sys_error, crash).
+
+    // Networking is owned and initialised by EngineContext — see engine_context.cpp.
+
+    // --- Server (Chunk 5) ------------------------------------------------
+    // TODO Chunk 5: Server::init()
+
+    // --- Client (Chunk 9, non-dedicated only) ----------------------------
+    // TODO Chunk 9: if (!s.dedicated) Client::init()
 
     if ( s.developer > 0 )
     {

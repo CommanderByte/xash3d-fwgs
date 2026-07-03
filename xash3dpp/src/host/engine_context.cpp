@@ -20,6 +20,9 @@
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
+#include <xash3dpp/networking/networking.hpp>
+#include <xash3dpp/platform/os_socket.hpp>
+#include <xash3dpp/platform/platform_sockets.hpp>
 
 namespace xash {
 
@@ -59,10 +62,32 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
         }
     }
 
+    // --- Networking ---------------------------------------------------------
+    {
+        // Winsock lifetime is bracketed by EngineContext, not NetworkContext:
+        // socket_init() is ref-counted and must precede any socket creation
+        // (NetworkContext::init only creates its pool; config() opens sockets).
+        platform::socket_init();
+        networking::NetworkInitParams np;
+        np.sockets   = p.sockets ? p.sockets : &platform::default_platform_sockets();
+        np.dedicated = p.dedicated;
+        if ( !networking.init( np ) )
+        {
+            core::log( core::LogLevel::Error, "engine_context", "NetworkContext::init failed" );
+            platform::socket_shutdown();
+            clock.shutdown();
+            cmd_cvar.shutdown();
+            filesystem.shutdown();
+            return false;
+        }
+    }
+
     // --- MapLoader --------------------------------------------------------
     if ( !map_loader.init( MapLoaderInitParams{} ) )
     {
         core::log( core::LogLevel::Error, "engine_context", "MapLoader::init failed" );
+        networking.shutdown();
+        platform::socket_shutdown();
         clock.shutdown();
         cmd_cvar.shutdown();
         filesystem.shutdown();
@@ -87,6 +112,8 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
         {
             core::log( core::LogLevel::Error, "engine_context", "Host::init failed" );
             map_loader.shutdown();
+            networking.shutdown();
+            platform::socket_shutdown();
             clock.shutdown();
             cmd_cvar.shutdown();
             filesystem.shutdown();
@@ -105,9 +132,12 @@ void EngineContext::shutdown() noexcept
     // Nullify the accessor FIRST so C-ABI callers cannot reach us mid-teardown.
     xash::abi::set_current_engine_context( nullptr );
 
-    // Reverse declaration order: host → map_loader → clock → cmd_cvar → filesystem.
+    // Reverse declaration order:
+    // host → map_loader → networking → clock → cmd_cvar → filesystem.
     host.shutdown();
     map_loader.shutdown();
+    networking.shutdown();
+    platform::socket_shutdown();
     clock.shutdown();
     cmd_cvar.shutdown();
     filesystem.shutdown();

@@ -17,6 +17,7 @@
 #include <xash3dpp/core/clock.hpp>
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
+#include <xash3dpp/networking/networking.hpp>
 
 #include <cstdint>
 #include <string_view>
@@ -43,6 +44,11 @@ struct EngineContextInitParams {
     cmd_cvar::ITrustOracle  *trust_oracle  = nullptr;
     cmd_cvar::ICompatPolicy *compat_policy = nullptr;
 
+    // Networking injected dependency (non-owning; must outlive EngineContext).
+    // nullptr → platform::default_platform_sockets() (production singleton).
+    // Tests inject a FakePlatformSockets here.
+    platform::IPlatformSockets *sockets = nullptr;
+
     // Mode flags — propagated into HostInitParams at init() time.
     bool dedicated = false;  // true when -dedicated was passed
     int  developer = 0;      // verbosity: 0 = normal, 1 = verbose, 2 = extended
@@ -56,18 +62,17 @@ struct EngineContextInitParams {
 // EngineContext — flat struct owning all stateful subsystems in construction
 // (= dependency) order.
 //
-// Chunk 2 adds:  networking::NetworkContext  networking;
 // Chunk 5 adds:  server::Server              server;
 // Chunk 9 adds:  client::Client              client;   (non-dedicated only)
 // ---------------------------------------------------------------------------
 
 struct EngineContext {
-    filesystem::Filesystem    filesystem;
-    cmd_cvar::CmdCvarContext  cmd_cvar;
-    core::Clock               clock;
-    // Chunk 2: networking::NetworkContext  networking;
-    MapLoader                 map_loader;
-    Host                      host;
+    filesystem::Filesystem      filesystem;
+    cmd_cvar::CmdCvarContext    cmd_cvar;
+    core::Clock                 clock;
+    networking::NetworkContext  networking;
+    MapLoader                   map_loader;
+    Host                        host;
     // Chunk 5: server::Server              server;
     // Chunk 9: client::Client              client;
 
