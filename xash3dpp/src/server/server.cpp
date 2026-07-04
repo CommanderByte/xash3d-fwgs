@@ -1,17 +1,39 @@
-// xash3dpp — server subsystem implementation (Chunk 6 scaffold)
-// Legacy reference: engine/server/sv_main.c (SV_Init/SV_Shutdown shell)
+// xash3dpp — server subsystem implementation (Chunk 6)
+// Legacy reference: engine/server/sv_main.c (SV_Init/SV_Shutdown shell) +
+// engine/common/host_state.c (COM_LoadLevel/COM_LoadGame/COM_ChangeLevel
+// dispatch, which the MapLoader FSM now routes through ILevelChangeExecutor).
+//
+// The Server owns the ServerRuntime aggregate (Q-2: the legacy sv/svs/svgame
+// file-scope triple) and drives the lifecycle free functions over it.  It is
+// the MapLoader's level-change executor: exec_load_level is the full
+// SV_SpawnServer → spawn_entities → SV_ActivateServer chain.
 //
 // Existing subsystems used:
-//   xash3dpp_memory     — pool-backed allocations (server pool)
-//   xash3dpp_utilities  — (from S4 on: MD5/CRC32, Info strings, Matrix4x4)
-//   xash3dpp_core       — logging, assertions, thread roles (from S6 on)
+//   xash3dpp_map_loader — world ownership (Q-6) + the FSM that drives us
+//   xash3dpp_core       — logging, thread-role asserts
 
 #include <xash3dpp/server/server.hpp>
 
 #include <xash3dpp/core/thread_role.hpp>
-#include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/map_loader/world.hpp>
+#include <xash3dpp/private/server/lifecycle.hpp>
+
+#include <cstddef>
 
 namespace xash::server {
+
+namespace {
+
+// Copy a (non-terminated) string_view into a MAX_QPATH-ish fixed buffer.
+void copy_name( char *dst, std::size_t cap, std::string_view src ) noexcept
+{
+    const std::size_t n = src.size() < cap - 1 ? src.size() : cap - 1;
+    for ( std::size_t i = 0; i < n; ++i )
+        dst[i] = src[i];
+    dst[n] = '\0';
+}
+
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Pimpl body
@@ -19,27 +41,8 @@ namespace xash::server {
 
 struct Server::Impl
 {
-    xash::memory::PoolHandle pool_;
-    ServerStats              stats_;
-
-    bool active_      = false;
-    bool initialized_ = false;
-
-    // TODO(chunk6-S4): EdictArena (free-list, serialnumbers, freetime grace,
-    //                  stale-field reuse) + string pool (heap arena +
-    //                  SV_MakeString INT-range fallback, OQ-6 baseline) +
-    //                  vendored ABI structs behind the Q-20 accessor seam.
-    // TODO(chunk6-S5): world-interaction state — sv_areanodes[32], box-hull
-    //                  scratch, touch-links semaphore, lightstyles.
-    // TODO(chunk6-S6): svgame binding — DLL handle, the three function
-    //                  tables, globalvars_t (pStringBase), LINK_ENTITY
-    //                  dispatch, pfnGetHullBounds ×4 → hull_bounds flow.
-    // TODO(chunk6-S7): sv (per-level) / svs (persistent) state split per
-    //                  the boundary Owned-state section; lifecycle FSM.
-    // TODO(chunk6-S8): frame timing state — sv.time (epoch 1.0), frametime,
-    //                  time_residual, pushed[256] stack, pmove bridge.
-    // TODO(chunk6-S9): client array, snapshot ring, challenges, filters,
-    //                  server log, query responders.
+    ServerRuntime rt;
+    ServerStats   stats_;
 };
 
 Server::Server() : impl_{ std::make_unique<Impl>() } {}
@@ -48,40 +51,101 @@ Server::~Server() = default;
 Server::Server( Server && ) noexcept            = default;
 Server &Server::operator=( Server && ) noexcept = default;
 
-bool Server::init( const ServerInitParams & /*params*/ )
+bool Server::init( const ServerInitParams &params )
 {
     // OQ-9 threading posture: every server entry point is main-thread.
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
-    impl_->pool_ = xash::memory::create_pool( "server" );
-    return static_cast<bool>( impl_->pool_ );
+
+    ServerRuntime &rt = impl_->rt;
+
+    rt.cfg.game_dir     = params.game_dir;
+    rt.cfg.game_dll     = params.game_dll;
+    rt.cfg.dedicated    = params.dedicated;
+    rt.cfg.developer    = params.developer;
+    rt.cfg.peoei_broken = params.peoei_broken;
+    if ( params.max_edicts != 0 )
+        rt.cfg.max_edicts = params.max_edicts;
+    rt.cfg.host_error     = params.host_error;
+    rt.cfg.host_error_ctx = params.host_error_ctx;
+
+    rt.cvars = params.cvars;
+    rt.fs    = params.fs;
+    rt.maps  = params.maps;
+
+    // The game DLL loads lazily at the first SV_SpawnServer (legacy
+    // SV_InitGame) — init only wires the dependencies.
+    return true;
 }
 
 void Server::shutdown()
 {
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
-    // TODO(chunk6-S7): SV_Shutdown semantics — final message ×2, master
-    // shutdown, deactivate, free clients/ring/testpacket, close log.
-    if( impl_->pool_ ) {
-        xash::memory::destroy_pool( impl_->pool_ );
-        impl_->pool_ = {};
-    }
-    impl_->active_      = false;
-    impl_->initialized_ = false;
+
+    // SV_Shutdown → SV_UnloadProgs runs the full unwind: deactivate the live
+    // server (if any), then release the game binding.  Idempotent — a never-
+    // loaded server early-returns.
+    unload_progs( impl_->rt );
+
+    // XASH3DPP-STUB(chunk6-S9): SV_Shutdown's final message ×2 / master
+    // heartbeat shutdown / client-ring + testpacket free / log close land with
+    // the client machinery.
 }
 
 bool Server::active() const noexcept
 {
-    return impl_->active_;
+    return impl_->rt.level.state == ServerState::Active;
 }
 
 bool Server::initialized() const noexcept
 {
-    return impl_->initialized_;
+    return impl_->rt.persistent.initialized;
 }
 
 const ServerStats &Server::stats() const noexcept
 {
     return impl_->stats_;
+}
+
+bool Server::exec_load_level( std::string_view map, bool background ) noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+
+    ServerRuntime &rt = impl_->rt;
+
+    char name[64]; // MAX_QPATH-class stripped map name
+    copy_name( name, sizeof( name ), map );
+
+    if ( !spawn_server( rt, name, nullptr, background ) )
+        return false;
+
+    const ::xash::map_loader::WorldData *world = rt.maps->world();
+    if ( world == nullptr )
+        return false;
+
+    spawn_entities( rt, *world );
+    activate_server( rt, /*run_physics=*/true );
+
+    impl_->stats_.frames_run.fetch_add( 1, std::memory_order_relaxed );
+    return active();
+}
+
+bool Server::exec_load_game( std::string_view /*map*/ ) noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+    // XASH3DPP-STUB(chunk8): savegame restore (SV_LoadGame staging + the
+    // spawn/activate(false) settle-frame path) lands with the save/restore
+    // chunk behind this executor seam.
+    return false;
+}
+
+bool Server::exec_change_level( std::string_view /*map*/,
+                                std::string_view /*landmark*/,
+                                bool /*background*/ ) noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+    // XASH3DPP-STUB(chunk8): landmark transition (adjacent-level save staging,
+    // CHANGE_LEVEL fixups) lands with the save/restore chunk.
+    return false;
 }
 
 } // namespace xash::server

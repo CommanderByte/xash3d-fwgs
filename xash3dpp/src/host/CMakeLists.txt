@@ -16,6 +16,7 @@ target_link_libraries(xash3dpp_host
         xash3dpp_core
         xash3dpp_map_loader
         xash3dpp_networking
+        xash3dpp_server        # EngineContext embeds server::Server (Chunk 6)
     PRIVATE
         xash3dpp_platform
         xash3dpp_cmd_cvar

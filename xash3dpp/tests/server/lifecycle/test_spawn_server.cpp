@@ -15,6 +15,7 @@
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
+#include <xash3dpp/server/server.hpp>
 
 #include "../abi/fake_dll_state.hpp"
 #include "../../map_loader/bsp/test_bsp_builder.hpp"
@@ -240,6 +241,88 @@ static void test_activate_no_physics()
     CHECK_EQ( fx.rt.level.frametime, 0.001f );
 }
 
+// ---------------------------------------------------------------------------
+// Server as the MapLoader level-change executor: `map` drives the FSM, which
+// delegates to exec_load_level → full spawn/activate.
+// ---------------------------------------------------------------------------
+
+static void test_level_executor()
+{
+    xash::filesystem::Filesystem fs;
+    REQUIRE( fs.init( g_root.string(), "valve", "game" ));
+    fs.add_game_directory(( g_root / "game" ).string(),
+                          xash::filesystem::SearchPathFlags::GameDir );
+
+    cc::test::TrustedOracle oracle;
+    cc::test::NullPolicy    policy;
+    cc::CmdCvarContext      ctx = cc::test::make_test_context( oracle, policy );
+    (void)ctx.cvar_get_or_create( "sv_maxclients", "1", 0 );
+
+    xash::MapLoader           maps;
+    xash::MapLoaderInitParams mp;
+    mp.filesystem = &fs;
+    REQUIRE( maps.init( mp ));
+
+    sv::Server            server;
+    sv::ServerInitParams  sp;
+    sp.cvars      = &ctx;
+    sp.fs         = &fs;
+    sp.maps       = &maps;
+    sp.game_dll   = FAKE_DLL_FULL;
+    sp.game_dir   = "game";
+    sp.dedicated  = false;
+    sp.max_edicts = 64;
+    sp.host_error = err_hook;
+    REQUIRE( server.init( sp ));
+
+    maps.set_level_executor( &server );
+    g_err_calls = 0;
+
+    CHECK( !server.active() );
+    CHECK( !server.initialized() );
+
+    // Drive the FSM: request the level, then step it once.
+    maps.load_level( "parsetest", false );
+    maps.run_frame_step();
+
+    CHECK( server.active() );
+    CHECK( server.initialized() );
+    CHECK( maps.world() != nullptr );
+    CHECK( maps.state() == xash::MapLoadState::RunFrame );
+    CHECK_EQ( g_err_calls, 0 );
+
+    server.shutdown();
+    CHECK( !server.active() );
+
+    maps.set_level_executor( nullptr );
+    maps.shutdown();
+    fs.shutdown();
+}
+
+// No executor registered → the FSM keeps its inline Chunk-5 world load (the
+// client background-map path + map_loader's own tests stay green).
+static void test_no_executor_fallback()
+{
+    xash::filesystem::Filesystem fs;
+    REQUIRE( fs.init( g_root.string(), "valve", "game" ));
+    fs.add_game_directory(( g_root / "game" ).string(),
+                          xash::filesystem::SearchPathFlags::GameDir );
+
+    xash::MapLoader           maps;
+    xash::MapLoaderInitParams mp;
+    mp.filesystem = &fs;
+    REQUIRE( maps.init( mp ));
+
+    maps.load_level( "parsetest", false );
+    maps.run_frame_step();
+
+    CHECK( maps.world() != nullptr ); // inline load_world ran
+    CHECK( maps.state() == xash::MapLoadState::RunFrame );
+
+    maps.shutdown();
+    fs.shutdown();
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -249,6 +332,8 @@ int main()
     RUN_TEST( test_dedicated_clamp );
     RUN_TEST( test_spawn_activate_deactivate );
     RUN_TEST( test_activate_no_physics );
+    RUN_TEST( test_level_executor );
+    RUN_TEST( test_no_executor_fallback );
 
     std::filesystem::remove_all( g_root );
 

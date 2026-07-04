@@ -121,6 +121,34 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
         }
     }
 
+    // --- Server -----------------------------------------------------------
+    {
+        server::ServerInitParams sp;
+        sp.cvars        = &cmd_cvar;
+        sp.fs           = &filesystem;
+        sp.maps         = &map_loader;
+        sp.dedicated    = p.dedicated;
+        sp.developer    = p.developer;
+        // game_dll / game_dir + the Q-5 host_error hook are resolved by the
+        // host at spawn time (COM_GetCommonLibraryPath, LIBRARY_SERVER — the
+        // real DLL smoke test is S15); an empty path keeps init inert.
+        if ( !server.init( sp ) )
+        {
+            core::log( core::LogLevel::Error, "engine_context", "Server::init failed" );
+            host.shutdown();
+            map_loader.shutdown();
+            networking.shutdown();
+            platform::socket_shutdown();
+            clock.shutdown();
+            cmd_cvar.shutdown();
+            filesystem.shutdown();
+            return false;
+        }
+        // The server becomes the MapLoader's level-change executor: `map` /
+        // `changelevel` / `load` now bring up a real server (COM_LoadLevel).
+        map_loader.set_level_executor( &server );
+    }
+
     // All subsystems up — expose the accessor.
     bugcomp = p.bugcomp;
     xash::abi::set_current_engine_context( this );
@@ -133,7 +161,9 @@ void EngineContext::shutdown() noexcept
     xash::abi::set_current_engine_context( nullptr );
 
     // Reverse declaration order:
-    // host → map_loader → networking → clock → cmd_cvar → filesystem.
+    // server → host → map_loader → networking → clock → cmd_cvar → filesystem.
+    map_loader.set_level_executor( nullptr ); // drop the dangling seam first
+    server.shutdown();
     host.shutdown();
     map_loader.shutdown();
     networking.shutdown();

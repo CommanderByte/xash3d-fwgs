@@ -48,6 +48,29 @@ struct IMapLoaderObserver
     virtual void on_load_end  ( std::string_view map, bool success ) noexcept       = 0;
 };
 
+// Level-change executor: the server registers one so the FSM can delegate the
+// actual bring-up (SV_SpawnServer → entity spawn → SV_ActivateServer) instead
+// of loading a bare world.  When ABSENT (client background-map path, the
+// map_loader's own tests) the FSM falls back to the inline load_world — so
+// map_loader keeps running standalone.  Legacy: host_state.c COM_LoadLevel /
+// COM_LoadGame / COM_ChangeLevel dispatch into the server.
+struct ILevelChangeExecutor
+{
+    virtual ~ILevelChangeExecutor() = default;
+
+    // COM_LoadLevel: full spawn → entities → activate.  Returns success.
+    [[nodiscard]] virtual bool exec_load_level( std::string_view map,
+                                                bool background ) noexcept = 0;
+
+    // COM_LoadGame: savegame restore (Chunk 8 save body behind this seam).
+    [[nodiscard]] virtual bool exec_load_game( std::string_view map ) noexcept = 0;
+
+    // COM_ChangeLevel: landmark transition (Chunk 8 save staging).
+    [[nodiscard]] virtual bool exec_change_level( std::string_view map,
+                                                  std::string_view landmark,
+                                                  bool background ) noexcept = 0;
+};
+
 // ---------------------------------------------------------------------------
 // MapLoaderInitParams
 // ---------------------------------------------------------------------------
@@ -97,6 +120,10 @@ public:
     // Observer lifetime is the caller's responsibility.
     void attach_observer( IMapLoaderObserver *obs ) noexcept;
     void detach_observer( IMapLoaderObserver *obs ) noexcept;
+
+    // ---- Level-change executor (the server) -------------------------------
+    // At most one; nullptr → the inline load_world fallback.  @lifetime: engine
+    void set_level_executor( ILevelChangeExecutor *exec ) noexcept;
 
     [[nodiscard]] MapLoadState     state() const noexcept;
     [[nodiscard]] std::string_view current_map() const noexcept;

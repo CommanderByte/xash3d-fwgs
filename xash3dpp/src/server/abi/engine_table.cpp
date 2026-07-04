@@ -450,8 +450,13 @@ void pfn_set_size( abi::edict_t *e, const float *rgflMin, const float *rgflMax )
 
 void pfn_change_level( const char *, const char * )
 {
-    // XASH3DPP-STUB(chunk6): changelevel orchestration lands in S7
-    // (spawncount guard, landmark-space bugcomp, COM_ChangeLevel).
+    // XASH3DPP-STUB(chunk6-S9): the game calls pfnChangeLevel to request a
+    // landmark transition; legacy SV_ChangeLevel stages the save then queues
+    // a "changelevel" console command that the host dispatches into
+    // MapLoader::change_level → ILevelChangeExecutor::exec_change_level (the
+    // executor seam is in place; the save body is Chunk 8).  The ABI→command
+    // dispatch needs the server command surface (Cbuf), which rides with the
+    // operator-command machinery in S9 — the bridge has no Cbuf seam yet.
 }
 
 void pfn_get_spawn_parms( abi::edict_t * )

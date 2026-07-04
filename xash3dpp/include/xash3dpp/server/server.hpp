@@ -14,9 +14,16 @@
 //     entvars_t access is confined to src/server/abi/, the pmove bridge,
 //     and the Chunk 8 save serializer.
 
+#include <xash3dpp/map_loader/map_loader.hpp> // ILevelChangeExecutor base
+
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string_view>
+
+namespace xash::cmd_cvar { class CmdCvarContext; }
+namespace xash::filesystem { class Filesystem; }
 
 namespace xash::server {
 
@@ -45,23 +52,41 @@ struct ServerStats
 
 struct ServerInitParams
 {
-    // Injected dependencies (Q-4).  Wired when the server joins
-    // EngineContext (ladder S7); until then the scaffold runs standalone.
-    // TODO(chunk6-S7): cmd_cvar context (+ ITrustOracle seam per cmd_cvar
-    // D2), networking, map_loader (WorldData + GameState FSM observer),
-    // filesystem, host services (feature flags, ICompatPolicy per Q-12,
-    // frame-rate gate per host OQ-11).
+    // Injected dependencies (Q-4) — non-owning, must outlive the Server.
+    // A default-constructed params (all null) yields an inert server: init()
+    // succeeds but no spawn is possible until the deps are wired (the scaffold
+    // lifecycle test relies on this).
+    ::xash::cmd_cvar::CmdCvarContext *cvars = nullptr; // @lifetime: engine
+    ::xash::filesystem::Filesystem   *fs    = nullptr; // @lifetime: engine
+    ::xash::MapLoader                *maps  = nullptr; // @lifetime: engine
+
+    // SV_InitGame → SV_LoadProgs dll path + the active game folder.
+    const char *game_dll = "";  // @lifetime: engine
+    const char *game_dir = "";  // @lifetime: engine
+
+    std::size_t max_edicts = 0; // 0 → the ServerConfig gameinfo default
+    bool        dedicated  = true;
+    int         developer  = 0;
+    bool        peoei_broken = false; // BUGCOMP_PENTITYOFENTINDEX
+
+    // Q-5 host error surface (installed by the host layer; nullptr →
+    // core::log_error fallback).  Same signature as the private HostErrorHook.
+    void ( *host_error )( void *ctx, const char *msg ) = nullptr;
+    void  *host_error_ctx                              = nullptr;
+
+    // TODO(chunk6-S9): ITrustOracle seam (cmd_cvar D2), networking, host
+    // feature flags + ICompatPolicy (Q-12), the frame-rate gate (host OQ-11).
 };
 
 // ---------------------------------------------------------------------------
 // Server (pimpl)
 // ---------------------------------------------------------------------------
 
-class Server
+class Server final : public ::xash::ILevelChangeExecutor
 {
 public:
     Server();
-    ~Server();
+    ~Server() override;
 
     Server( const Server & )            = delete;
     Server &operator=( const Server & ) = delete;
@@ -72,21 +97,27 @@ public:
     [[nodiscard]] bool init( const ServerInitParams &params );
     void               shutdown();
 
-    // `active` = a map is loaded; `initialized` = a server session has
-    // begun (SV_SpawnServer sets it early — see the boundary Interface
-    // table for the exact timing quirk).
-    // TODO(chunk6-S7): drive these from the real lifecycle FSM.
+    // `active` = a map is loaded and activated (ss_active); `initialized` = a
+    // server session has begun (SV_SpawnServer sets svs.initialized early —
+    // the boundary Interface-table timing quirk).
     [[nodiscard]] bool active() const noexcept;
     [[nodiscard]] bool initialized() const noexcept;
 
     [[nodiscard]] const ServerStats &stats() const noexcept;
 
-    // TODO(chunk6-S7): exec_load_level / exec_load_game / exec_change_level
-    //                  (MapLoader GameState FSM entry points), shutdown_game.
+    // ILevelChangeExecutor — the MapLoader FSM drives these (registered via
+    // MapLoader::set_level_executor).  exec_load_level runs the full
+    // SV_SpawnServer → spawn_entities → SV_ActivateServer chain; the save
+    // paths are Chunk 8 stubs behind the seam.
+    [[nodiscard]] bool exec_load_level( std::string_view map,
+                                        bool background ) noexcept override;
+    [[nodiscard]] bool exec_load_game( std::string_view map ) noexcept override;
+    [[nodiscard]] bool exec_change_level( std::string_view map,
+                                          std::string_view landmark,
+                                          bool background ) noexcept override;
+
     // TODO(chunk6-S8): frame() — Host_ServerFrame order incl. the
     //                  zero-physics-frames early-return quirk.
-    // TODO(chunk6-S5): engine-internal trace/query surface (SV_Move,
-    //                  SV_PointContents, SV_LinkEdict, lightstyles).
 
 private:
     struct Impl;

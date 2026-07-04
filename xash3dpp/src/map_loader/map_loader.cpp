@@ -8,6 +8,7 @@
 
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/world.hpp>
@@ -49,6 +50,9 @@ struct MapLoader::Impl
     // Observers — fixed-size slot table to avoid heap during attach/detach.
     static constexpr std::size_t k_max_observers = 4;
     std::array<IMapLoaderObserver *, k_max_observers> observers{};
+
+    // Server-registered level-change executor (nullptr → inline load_world).
+    ILevelChangeExecutor *executor = nullptr;
 
     void copy_name( std::array<char, ::xash::limits::map_qpath_max> &dst,
                     std::string_view src ) noexcept
@@ -151,15 +155,59 @@ void MapLoader::run_frame_step() noexcept
     {
     case MapLoadState::LoadLevel:
     {
-        // Synchronous world load (Chunk 5 scope): observers see the real
-        // outcome and the FSM returns to frame processing in one step.
+        // With a server executor: full SV_SpawnServer → entity spawn →
+        // SV_ActivateServer.  Without one (client background map, map_loader's
+        // own tests): the inline Chunk-5 world load.  Either way the outcome
+        // reaches observers and the FSM returns to frame processing in a step.
         s.notify_begin( map, pending );
-        const bool ok = load_world( map, ::xash::map_loader::WorldLoadOptions{} );
+        const bool ok = s.executor
+            ? s.executor->exec_load_level( map, s.background )
+            : load_world( map, ::xash::map_loader::WorldLoadOptions{} );
         s.state = MapLoadState::RunFrame;
         s.next  = MapLoadState::RunFrame;
         s.notify_end( map, ok );
         break;
     }
+
+    case MapLoadState::LoadGame:
+        // With a server: savegame restore (Chunk 8 body behind the seam),
+        // then back to frame processing.  Without one: the scaffold parks at
+        // the transition state (no world to load standalone).
+        s.notify_begin( map, pending );
+        if ( s.executor )
+        {
+            const bool ok = s.executor->exec_load_game( map );
+            s.state = MapLoadState::RunFrame;
+            s.next  = MapLoadState::RunFrame;
+            s.notify_end( map, ok );
+        }
+        else
+        {
+            s.state = pending;
+            s.next  = MapLoadState::RunFrame;
+            s.notify_end( map, /*success=*/true );
+        }
+        break;
+
+    case MapLoadState::ChangeLevel:
+        // Landmark transition through the executor (Chunk 8 save staging);
+        // without a server the scaffold parks at the transition state.
+        s.notify_begin( map, pending );
+        if ( s.executor )
+        {
+            const bool ok = s.executor->exec_change_level(
+                map, std::string_view{ s.landmark_name.data() }, s.background );
+            s.state = MapLoadState::RunFrame;
+            s.next  = MapLoadState::RunFrame;
+            s.notify_end( map, ok );
+        }
+        else
+        {
+            s.state = pending;
+            s.next  = MapLoadState::RunFrame;
+            s.notify_end( map, /*success=*/true );
+        }
+        break;
 
     case MapLoadState::GameShutdown:
         s.notify_begin( map, pending );
@@ -170,14 +218,20 @@ void MapLoader::run_frame_step() noexcept
         break;
 
     default:
-        // LoadGame (Chunk 8 save/restore) and ChangeLevel (Chunk 6 server
-        // landmark handling) keep the scaffold transition-only behaviour.
         s.notify_begin( map, pending );
         s.state = pending;
         s.next  = MapLoadState::RunFrame;
         s.notify_end( map, /*success=*/true );
         break;
     }
+}
+
+void MapLoader::set_level_executor( ILevelChangeExecutor *exec ) noexcept
+{
+    // Main-thread mutator (OQ-9/TH-Role): the executor pointer is read by
+    // run_frame_step on the main thread, so its write must be main-thread too.
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+    impl_->executor = exec;
 }
 
 void MapLoader::attach_observer( IMapLoaderObserver *obs ) noexcept

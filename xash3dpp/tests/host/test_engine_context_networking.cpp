@@ -9,6 +9,7 @@
 // slot as open; ~OsSocket's closesocket(0x42) fails silently on every platform.
 
 #include <xash3dpp/host/engine_context.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/networking/errors.hpp>
 #include <xash3dpp/networking/networking.hpp>
 #include <xash3dpp/platform/os_socket.hpp>
@@ -152,6 +153,10 @@ static void test_reinit_cycle()
 
 int main()
 {
+    // EngineContext now brings up the server (main-thread only, OQ-9), so the
+    // test presents as the engine's main thread — as the launcher does.
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     RUN_TEST( test_init_activates_networking );
     RUN_TEST( test_default_sockets_fallback );
     RUN_TEST( test_reinit_cycle );

@@ -18,6 +18,7 @@
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/networking/networking.hpp>
+#include <xash3dpp/server/server.hpp>
 
 #include <cstdint>
 #include <string_view>
@@ -84,7 +85,7 @@ struct EngineContext {
     networking::NetworkContext  networking;
     MapLoader                   map_loader;
     Host                        host;
-    // Chunk 6:  server::Server              server;
+    server::Server              server;
     // Chunk 12: client::Client              client;
 
     // Resolved-decision OQ-7: centralised parse, distributed consumption.
