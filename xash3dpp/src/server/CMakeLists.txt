@@ -34,7 +34,7 @@ add_library(xash3dpp_server STATIC
     lifecycle/model_resolver.cpp
     lifecycle/world_hooks.cpp
     lifecycle/entity_parse.cpp
-    # lifecycle/ spawn/activate/exec orchestration lands in S7c
+    lifecycle/spawn.cpp
     # physics/  sources land in S8
     # clients/  sources land in S9
 )

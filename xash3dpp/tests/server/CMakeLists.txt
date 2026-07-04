@@ -87,3 +87,14 @@ target_compile_definitions(test_entity_parse PRIVATE
     FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
 )
 add_dependencies(test_entity_parse fake_game_dll_full)
+
+# S7c — level orchestration (SV_SetupClients/SpawnServer/ActivateServer +
+# the deactivate live path) driven end-to-end through MapLoader (real BSP on
+# disk) + the fake DLL to ss_active and back to ss_dead.
+xash3dpp_add_test(test_spawn_server SOURCE lifecycle/test_spawn_server.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem
+         xash3dpp_map_loader xash3dpp_utilities cmd_cvar_test_stubs)
+target_compile_definitions(test_spawn_server PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_spawn_server fake_game_dll_full)

@@ -131,6 +131,20 @@ static void fake_touch( abi::edict_t *, abi::edict_t * )
     ++g_state.touch_calls;
 }
 
+// pfnServerActivate: the game DLL's per-map activation hook — records the
+// edict/client counts the engine hands it (SV_ActivateServer).
+static void fake_server_activate( abi::edict_t *, int edictCount, int clientMax )
+{
+    ++g_state.server_activate_calls;
+    g_state.activate_edict_count = edictCount;
+    g_state.activate_client_max  = clientMax;
+}
+
+static void fake_server_deactivate( void )
+{
+    ++g_state.server_deactivate_calls;
+}
+
 static const char *fake_game_description( void )
 {
     return "Fake HL";
@@ -172,6 +186,8 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnKeyValue           = fake_key_value;
     table->pfnSetAbsBox          = fake_set_abs_box;
     table->pfnTouch              = fake_touch;
+    table->pfnServerActivate     = fake_server_activate;
+    table->pfnServerDeactivate   = fake_server_deactivate;
     table->pfnGetGameDescription = fake_game_description;
     table->pfnGetHullBounds      = fake_get_hull_bounds;
     table->pfnRegisterEncoders   = fake_register_encoders;

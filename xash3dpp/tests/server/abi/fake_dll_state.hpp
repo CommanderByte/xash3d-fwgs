@@ -37,6 +37,12 @@ struct State
     int touch_calls;        // pfnTouch invocations
     int custom_link_calls;  // "custom" LINK export invocations (custom-entity)
 
+    // S7c level-orchestration probes.
+    int server_activate_calls;   // pfnServerActivate invocations
+    int server_deactivate_calls; // pfnServerDeactivate invocations
+    int activate_edict_count;    // edictCount handed to the last ServerActivate
+    int activate_client_max;     // clientMax handed to the last ServerActivate
+
     // Every pfnKeyValue the double receives (class/key/value snapshot) — the
     // parse test reads these back to pin the quirk transforms.
     struct KvdRecord

@@ -18,6 +18,8 @@
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
+#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/private/server/world_links.hpp>
 
 #include <cstdio>
 
@@ -309,10 +311,54 @@ void deactivate_server( ServerRuntime &rt ) noexcept
     if ( !rt.persistent.initialized || rt.level.state == ServerState::Dead )
         return;
 
-    // XASH3DPP-STUB(chunk6): S7b completes the live-server path —
-    // SV_InactivateClients, globals->time = sv.time, pfnServerDeactivate,
-    // state → Dead, SV_FreeEdicts, PM_ClearPhysEnts, string-pool empty,
-    // per-client frame release, globals reset (sv_init.c:696-722).
+    // SV_InactivateClients — XASH3DPP-STUB(chunk6-S9): drops connected
+    // clients back to a reconnect state; no client array until S9.
+
+    rt.globals.time = static_cast<float>( rt.level.time );
+    if ( rt.game.funcs().pfnServerDeactivate != nullptr )
+        rt.game.funcs().pfnServerDeactivate();
+
+    set_server_state( rt, ServerState::Dead );
+
+    // SV_FreeEdicts: release every live edict — free_edict fires the private-
+    // data releaser (pfnOnFreeEntPrivateData) while the DLL is still loaded.
+    for ( std::size_t i = 0; i < rt.arena.num_entities(); ++i )
+    {
+        ::xash::abi::edict_t *ed = rt.arena.edict_num( i );
+        if ( ed == nullptr || EntityView( ed ).freed() )
+            continue;
+        WorldLinks::unlink_edict( ed );
+        rt.arena.free_edict( ed, rt.level.time );
+    }
+
+    // PM_ClearPhysEnts( svgame.pmove ) — XASH3DPP-STUB(chunk6-S8): pmove
+    // bridge lands in S8.
+
+    // SV_EmptyStringPool( true ) + Mem_EmptyPool( svgame.stringspool ): the
+    // per-level dynamic arena is reset; the static arena survives.
+    rt.strings.empty_pool( true );
+
+    // per-client frame release — XASH3DPP-STUB(chunk6-S9).
+
+    rt.globals.maxEntities = static_cast<int>( rt.cfg.max_edicts );
+    rt.globals.maxClients  = rt.persistent.maxclients;
+    rt.arena.set_num_entities(
+        static_cast<std::size_t>( rt.persistent.maxclients ) + 1 );
+
+    // Null the world globals — the stale-world guard so a game DLL that peeks
+    // at globals->mapname after deactivate sees "no world" (sv_init.c:720-721).
+    rt.globals.startspot = 0;
+    rt.globals.mapname   = 0;
+
+    // Unbind the world-interaction env so nothing refines against a world
+    // MapLoader may free before the next spawn.
+    rt.models.bind( nullptr, nullptr );
+    rt.move_env = MoveEnv{};
+    rt.link_env = LinkEnv{};
+    rt.hooks.bind( &rt.game, nullptr );
+    rt.bridge.move_env = nullptr;
+    rt.bridge.links    = nullptr;
+    rt.bridge.link_env = nullptr;
 }
 
 } // namespace xash::server

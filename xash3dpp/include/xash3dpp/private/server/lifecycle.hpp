@@ -21,8 +21,10 @@
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
 #include <xash3dpp/private/server/game_dll.hpp>
+#include <xash3dpp/private/server/model_resolver.hpp>
 #include <xash3dpp/private/server/precache.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
+#include <xash3dpp/private/server/world_hooks.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -53,6 +55,10 @@ struct ServerConfig
     bool dedicated    = true;
     int  developer    = 0;
     bool peoei_broken = false;          // BUGCOMP_PENTITYOFENTINDEX
+
+    // SV_InitGame → SV_LoadProgs dll path (COM_GetCommonLibraryPath); the
+    // spawn path loads it lazily on the first SV_SpawnServer.  @lifetime: caller
+    const char *game_dll = "";
 
     // Q-5 host error surface (see engine_bridge.hpp).
     HostErrorHook host_error     = nullptr;
@@ -126,6 +132,16 @@ struct ServerRuntime
     EngineBridge   bridge;
     PrecacheTables precache;  // per-level content; cleared each spawn
 
+    // World-interaction instances rebound every SV_SpawnServer (install_world_
+    // bridge) and unbound on deactivate.  The world itself is owned by
+    // MapLoader (Q-6); these hold borrowed pointers into it + the areanode
+    // tree the clip/link walks traverse.
+    ModelResolver  models;
+    WorldLinks     links;
+    GameWorldHooks hooks;
+    MoveEnv        move_env;
+    LinkEnv        link_env;
+
     LevelState      level;
     PersistentState persistent;
 
@@ -184,5 +200,29 @@ void load_from_file( ServerRuntime &rt,
 // startspot/time), then SV_LoadFromFile over the world's entity lump.
 void spawn_entities( ServerRuntime &rt,
                      const ::xash::map_loader::WorldData &world ) noexcept;
+
+// --- level orchestration (sv_init.c) ----------------------------------------
+
+// SV_SetupClients (sv_init.c:790-834): latch svs.maxclients from the
+// sv_maxclients cvar (act only on a real change), clamp (dedicated
+// bound(4,·,MAX_CLIENTS) / listen bound(1,·,MAX_CLIENTS)), deathmatch/coop
+// consistency, the maxplayers FCVAR_LATCH feedback, and the arena reserved/
+// num_entities floor (maxclients + 1).
+void setup_clients( ServerRuntime &rt ) noexcept;
+
+// SV_SpawnServer (sv_init.c:935-1078): setup_clients → ensure progs loaded →
+// reset the per-level state → ss_loading → world load through MapLoader +
+// submodel precache → client-slot SV_InitEdict → install the world-interaction
+// bridge (SV_ClearWorld).  Does NOT run the entity lump — the caller drives
+// spawn_entities next (exec_load_level).  Returns false on a load failure
+// (routed through the host-error hook, Q-5).
+[[nodiscard]] bool spawn_server( ServerRuntime &rt, const char *mapname,
+                                 const char *startspot, bool background ) noexcept;
+
+// SV_ActivateServer (sv_init.c:579-673): SV_FreeOldEntities, pfnServerActivate,
+// string pool → dynamic (AFTER activate), the settle frames (SP 2 / MP 8 @
+// SV_SPAWN_TIME; the restore path is a single 0.001 frame), ss_active.
+// run_physics=false is the save-restore path.
+void activate_server( ServerRuntime &rt, bool run_physics ) noexcept;
 
 } // namespace xash::server
