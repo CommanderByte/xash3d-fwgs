@@ -38,14 +38,6 @@ namespace {
     return s.empty() ? '\0' : s[0];
 }
 
-template <typename T>
-[[nodiscard]] T read_record( std::span<const std::byte> bytes, std::size_t index ) noexcept
-{
-    T out;
-    std::memcpy( &out, bytes.data() + index * sizeof( T ), sizeof( T ));
-    return out;
-}
-
 } // namespace
 
 // ---------------------------------------------------------------------------

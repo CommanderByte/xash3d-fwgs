@@ -39,14 +39,6 @@ using ::xash::core::LogLevel;
 
 namespace {
 
-template <typename T>
-[[nodiscard]] T read_record( std::span<const std::byte> bytes, std::size_t index ) noexcept
-{
-    T out;
-    std::memcpy( &out, bytes.data() + index * sizeof( T ), sizeof( T ));
-    return out;
-}
-
 [[nodiscard]] bool vec_is_null( const ::xash::utilities::Vec3 &v ) noexcept
 {
     return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
@@ -233,17 +225,9 @@ find_model_origin( const std::string &entities, const char *modelname,
 
             if ( ::xash::utilities::stricmp( keyname.c_str(), "origin" ) == 0 )
             {
-                // Legacy Q_atov( origin, token, 3 ): whitespace-separated floats.
+                // Legacy Q_atov( origin, token, 3 ).
                 float v[3] = { 0.0f, 0.0f, 0.0f };
-                const char *s = value.c_str();
-                for ( int i = 0; i < 3; ++i )
-                {
-                    char *next_num = nullptr;
-                    v[i] = std::strtof( s, &next_num );
-                    if ( next_num == s )
-                        break;
-                    s = next_num;
-                }
+                ::xash::utilities::atov( std::span<float>( v, 3 ), value );
                 candidate = { v[0], v[1], v[2] };
             }
         }
@@ -465,7 +449,7 @@ WorldDataFill::Result WorldDataFill::setup_submodels( const LoadContext &ctx, Wo
         if ( i != 0 )
         {
             char modelname[16];
-            std::snprintf( modelname, sizeof modelname, "*%zu", i );
+            ::xash::utilities::snprintf( modelname, sizeof modelname, "*%zu", i );
 
             const auto r = find_model_origin( w.entities_, modelname, bm.origin );
             if ( !r )

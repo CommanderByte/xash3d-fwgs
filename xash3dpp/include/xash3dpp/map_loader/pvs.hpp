@@ -15,6 +15,7 @@
 // while the clip-hull walkers (trace.hpp) send it to the FRONT child
 // (PlaneDiff < 0).
 
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/utilities/math.hpp>
 
@@ -23,7 +24,8 @@
 
 namespace xash::map_loader {
 
-inline constexpr std::size_t k_max_box_leafs = 256;  // legacy MAX_BOX_LEAFS
+// Buffer cap routed through limits.hpp (override: XASH_LIMIT_MAP_BOX_LEAFS_MAX).
+inline constexpr std::size_t k_max_box_leafs = ::xash::limits::map_box_leafs_max;
 inline constexpr float       k_fatpvs_radius = 8.0f; // legacy FATPVS_RADIUS
 inline constexpr float       k_fatphs_radius = 8.0f; // legacy FATPHS_RADIUS
 
@@ -89,8 +91,9 @@ leaf_compressed_pvs( const WorldData &w, int leaf ) noexcept;
 // visibility (0xFF) when `fullvis` is set, the map has no visdata, or the
 // point sits in a clusterless leaf.  `merge` accumulates into the existing
 // buffer contents instead of clearing first.
-std::size_t fat_pvs( const WorldData &w, const ::xash::utilities::Vec3 &org,
-                     float radius, std::span<std::byte> visbuffer,
-                     bool merge, bool fullvis ) noexcept;
+[[nodiscard]] std::size_t fat_pvs( const WorldData &w,
+                                   const ::xash::utilities::Vec3 &org,
+                                   float radius, std::span<std::byte> visbuffer,
+                                   bool merge, bool fullvis ) noexcept;
 
 } // namespace xash::map_loader

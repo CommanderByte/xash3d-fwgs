@@ -65,6 +65,8 @@ struct MapLoaderInitParams
 
 class MapLoader
 {
+    // Stats: no hot path — stats exempt (map loads are cold; revisit when
+    // the server chunk adds per-frame query volume worth counting).
 public:
     MapLoader() noexcept;
     ~MapLoader();

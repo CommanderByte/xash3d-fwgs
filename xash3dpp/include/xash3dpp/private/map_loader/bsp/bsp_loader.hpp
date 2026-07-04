@@ -19,12 +19,38 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <expected>
 #include <span>
 #include <string_view>
 #include <vector>
 
 namespace xash::map_loader::bsp {
+
+// memcpy readers for on-disk records (single definition for all loader TUs;
+// note the deliberate naming split so index- and offset-addressing cannot be
+// confused):
+//   read_record<T>( bytes, index )      — index * sizeof(T) stride
+//   read_record_at<T>( bytes, offset )  — raw byte offset (variable-stride
+//                                          payloads, e.g. the miptex directory)
+// Pre: the addressed range lies inside `bytes` (resolve_lump/callers check).
+template <typename T>
+[[nodiscard]] inline T read_record( std::span<const std::byte> bytes,
+                                    std::size_t index ) noexcept
+{
+    T out;
+    std::memcpy( &out, bytes.data() + index * sizeof( T ), sizeof( T ));
+    return out;
+}
+
+template <typename T>
+[[nodiscard]] inline T read_record_at( std::span<const std::byte> bytes,
+                                       std::size_t byte_offset ) noexcept
+{
+    T out;
+    std::memcpy( &out, bytes.data() + byte_offset, sizeof( T ));
+    return out;
+}
 
 // ---------------------------------------------------------------------------
 // Per-lump validation metadata — legacy srclumps[] (mod_bmodel.c:350-510).
@@ -136,29 +162,29 @@ struct WorldDataFill
 
     static void begin( const LoadContext &ctx, World &w );     // version/name stamp
 
-    static Result entities    ( const LoadContext &ctx, World &w ); // Mod_LoadEntities (+worldspawn scan)
-    static Result planes      ( const LoadContext &ctx, World &w ); // Mod_LoadPlanes (signbits)
-    static Result submodels   ( const LoadContext &ctx, World &w ); // Mod_LoadSubmodels (bounds spread)
-    static Result visibility  ( const LoadContext &ctx, World &w ); // Mod_LoadVisibility (raw copy)
-    static Result marksurfaces( const LoadContext &ctx, World &w ); // Mod_LoadMarkSurfaces (fix-ups)
-    static Result leafs       ( const LoadContext &ctx, World &w ); // Mod_LoadLeafs (clusters, leaf-0 check,
-                                                                    //   water-alpha probe)
-    static Result nodes       ( const LoadContext &ctx, World &w ); // Mod_LoadNodes (no parent links)
+    [[nodiscard]] static Result entities    ( const LoadContext &ctx, World &w ); // Mod_LoadEntities (+worldspawn scan)
+    [[nodiscard]] static Result planes      ( const LoadContext &ctx, World &w ); // Mod_LoadPlanes (signbits)
+    [[nodiscard]] static Result submodels   ( const LoadContext &ctx, World &w ); // Mod_LoadSubmodels (bounds spread)
+    [[nodiscard]] static Result visibility  ( const LoadContext &ctx, World &w ); // Mod_LoadVisibility (raw copy)
+    [[nodiscard]] static Result marksurfaces( const LoadContext &ctx, World &w ); // Mod_LoadMarkSurfaces (fix-ups)
+    [[nodiscard]] static Result leafs       ( const LoadContext &ctx, World &w ); // Mod_LoadLeafs (clusters, leaf-0 check,
+                                                                                  //   water-alpha probe)
+    [[nodiscard]] static Result nodes       ( const LoadContext &ctx, World &w ); // Mod_LoadNodes (no parent links)
 
     // bsp_flags.cpp — name/flag subset of the texture pipeline
-    static Result textures    ( const LoadContext &ctx, World &w ); // Mod_LoadTextures (names only)
-    static Result texinfo     ( const LoadContext &ctx, World &w ); // Mod_LoadTexInfo (miptex clamp + flags)
-    static Result surfaces    ( const LoadContext &ctx, World &w ); // Mod_LoadSurfaces (SURF_* flags only)
+    [[nodiscard]] static Result textures    ( const LoadContext &ctx, World &w ); // Mod_LoadTextures (names only)
+    [[nodiscard]] static Result texinfo     ( const LoadContext &ctx, World &w ); // Mod_LoadTexInfo (miptex clamp + flags)
+    [[nodiscard]] static Result surfaces    ( const LoadContext &ctx, World &w ); // Mod_LoadSurfaces (SURF_* flags only)
 
     // map_crc.cpp
-    static Result checksum    ( const LoadContext &ctx, World &w ); // CRC32_MapFile
+    [[nodiscard]] static Result checksum    ( const LoadContext &ctx, World &w ); // CRC32_MapFile
 
     // bsp_hulls.cpp
-    static Result clipnodes       ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_LoadClipnodes (widen + aguirRe fix)
-    static Result make_hull0      ( const LoadContext &ctx, World &w );                 // Mod_MakeHull0
-    static Result setup_submodels ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_SetupSubmodels + Mod_SetupHull
+    [[nodiscard]] static Result clipnodes       ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_LoadClipnodes (widen + aguirRe fix)
+    [[nodiscard]] static Result make_hull0      ( const LoadContext &ctx, World &w );                 // Mod_MakeHull0
+    [[nodiscard]] static Result setup_submodels ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_SetupSubmodels + Mod_SetupHull
 
-    static Result finalize    ( const LoadContext &ctx, World &w ); // required-lump presence checks
+    [[nodiscard]] static Result finalize    ( const LoadContext &ctx, World &w ); // required-lump presence checks
 };
 
 } // namespace xash::map_loader::bsp

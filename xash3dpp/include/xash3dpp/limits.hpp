@@ -85,6 +85,12 @@ inline constexpr std::size_t map_qpath_max = 64; // max bytes in a map/landmark 
 inline constexpr std::size_t map_qpath_max = XASH_LIMIT_MAP_QPATH_MAX;
 #endif
 
+#ifndef XASH_LIMIT_MAP_BOX_LEAFS_MAX
+inline constexpr std::size_t map_box_leafs_max = 256; // box_visible cluster-list capacity; matches legacy MAX_BOX_LEAFS (com_model.h)
+#else
+inline constexpr std::size_t map_box_leafs_max = XASH_LIMIT_MAP_BOX_LEAFS_MAX;
+#endif
+
 // utilities subsystem
 #ifndef XASH_LIMIT_TOKENIZER_TOKEN_MAX
 inline constexpr std::size_t tokenizer_token_max = 512; // max token bytes in Tokenizer::next()

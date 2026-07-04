@@ -34,14 +34,6 @@ using ::xash::core::LogLevel;
 
 namespace {
 
-template <typename T>
-[[nodiscard]] T read_record( std::span<const std::byte> bytes, std::size_t offset ) noexcept
-{
-    T out;
-    std::memcpy( &out, bytes.data() + offset, sizeof( T ));
-    return out;
-}
-
 [[nodiscard]] std::string lowercase( std::string_view s )
 {
     std::string out( s );
@@ -79,7 +71,7 @@ WorldDataFill::Result WorldDataFill::textures( const LoadContext &ctx, World &w 
     if ( !lv->present || lv->bytes.size() < sizeof( std::int32_t ))
         return {};
 
-    const auto nummiptex = read_record<std::int32_t>( lv->bytes, 0 );
+    const auto nummiptex = read_record_at<std::int32_t>( lv->bytes, 0 );
     if ( nummiptex < 1 )
         return {};
 
@@ -96,7 +88,7 @@ WorldDataFill::Result WorldDataFill::textures( const LoadContext &ctx, World &w 
     w.texture_names_.resize( static_cast<std::size_t>( nummiptex ));
     for ( std::int32_t i = 0; i < nummiptex; ++i )
     {
-        const auto dataofs = read_record<std::int32_t>(
+        const auto dataofs = read_record_at<std::int32_t>(
             lv->bytes, sizeof( std::int32_t ) * ( 1 + static_cast<std::size_t>( i )));
 
         // Missing data → default texture (legacy Mod_CreateDefaultTexture).
@@ -111,7 +103,7 @@ WorldDataFill::Result WorldDataFill::textures( const LoadContext &ctx, World &w 
             continue;
         }
 
-        const auto mip = read_record<mip_t>( lv->bytes, static_cast<std::size_t>( dataofs ));
+        const auto mip = read_record_at<mip_t>( lv->bytes, static_cast<std::size_t>( dataofs ));
         char name[17];
         std::memcpy( name, mip.name, 16 );
         name[16] = '\0';
@@ -119,7 +111,7 @@ WorldDataFill::Result WorldDataFill::textures( const LoadContext &ctx, World &w 
         if ( name[0] == '\0' )
         {
             // legacy: unnamed miptex → "miptex_%i"
-            std::snprintf( name, sizeof name, "miptex_%d", i );
+            ::xash::utilities::snprintf( name, sizeof name, "miptex_%d", i );
         }
 
         w.texture_names_[static_cast<std::size_t>( i )] = lowercase( name );
@@ -145,7 +137,7 @@ WorldDataFill::Result WorldDataFill::texinfo( const LoadContext &ctx, World &w )
     w.texinfos_.resize( lv->count );
     for ( std::size_t i = 0; i < lv->count; ++i )
     {
-        const auto in = read_record<dtexinfo_t>( lv->bytes, i * sizeof( dtexinfo_t ));
+        const auto in = read_record<dtexinfo_t>( lv->bytes, i );
         int miptex = in.miptex;
         if ( miptex < 0 || miptex >= numtextures )
             miptex = 0; // legacy clamp ("this is possible?")
@@ -186,7 +178,7 @@ WorldDataFill::Result WorldDataFill::surfaces( const LoadContext &ctx, World &w 
         int planenum, side, texinfo_index, firstedge, numedges;
         if ( wide )
         {
-            const auto in = read_record<dface32_t>( lv->bytes, i * sizeof( dface32_t ));
+            const auto in = read_record<dface32_t>( lv->bytes, i );
             planenum      = in.planenum;
             side          = in.side;
             texinfo_index = in.texinfo;
@@ -195,7 +187,7 @@ WorldDataFill::Result WorldDataFill::surfaces( const LoadContext &ctx, World &w 
         }
         else
         {
-            const auto in = read_record<dface_t>( lv->bytes, i * sizeof( dface_t ));
+            const auto in = read_record<dface_t>( lv->bytes, i );
             planenum      = in.planenum;
             side          = in.side;
             texinfo_index = in.texinfo;
@@ -204,7 +196,9 @@ WorldDataFill::Result WorldDataFill::surfaces( const LoadContext &ctx, World &w 
         }
 
         // Legacy corrupt-face guard: fields stay zeroed, no flags derived.
-        if ( firstedge + numedges > numsurfedges )
+        // Widened addition — a crafted firstedge near INT_MAX must trip the
+        // guard, not overflow (legacy adds raw ints, UB on such input).
+        if ( static_cast<long long>( firstedge ) + numedges > numsurfedges )
         {
             ::xash::core::logf( LogLevel::Error, "map_loader",
                                 "surfaces: bad surface %zu of %zu", i, lv->count );

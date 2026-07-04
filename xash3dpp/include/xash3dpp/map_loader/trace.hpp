@@ -126,7 +126,17 @@ class BoxHull
 public:
     BoxHull() noexcept;
 
+    // Self-referential: hull_ holds spans over the member arrays, so
+    // compiler-generated copies/moves would alias the SOURCE object (QJ
+    // RAII/self-referential rule).  One BoxHull per callsite.
+    BoxHull( const BoxHull & )            = delete;
+    BoxHull &operator=( const BoxHull & ) = delete;
+    BoxHull( BoxHull && )                 = delete;
+    BoxHull &operator=( BoxHull && )      = delete;
+
     // Updates the six plane distances and returns the hull view.
+    // [[nodiscard]] deliberately omitted: mutating the bounds and later
+    // reading hull() is a legitimate call pattern.
     const TraceHull &set_bounds( const ::xash::utilities::Vec3 &mins,
                                  const ::xash::utilities::Vec3 &maxs ) noexcept;
 

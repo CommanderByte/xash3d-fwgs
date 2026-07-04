@@ -47,6 +47,31 @@ in through `WorldLoadOptions::hull_bounds`. PHS (Mod_CalcPHS + the phs path
 of Mod_FatPVS), `pfnCheckVisibility`/`Mod_HeadnodeVisible` and entity leaf
 caching are Chunk 6.
 
+## 2a. Dependencies
+
+Links `xash3dpp_memory` (pool for the FSM), `xash3dpp_filesystem`
+(`load_file`/`file_time` for the path overload + `.ent` probe),
+`xash3dpp_utilities` (Vec3 math, string/Tokenizer), `xash3dpp_core`
+(logging, ErrorCode). Injected at init per Q-4:
+`MapLoaderInitParams{Filesystem*}`. No platform/networking dependency.
+
+## 2b. Owned state
+
+- `MapLoader::Impl`: FSM state/next, level/landmark name buffers
+  (`limits::map_qpath_max`), 4-slot observer table, memory pool, borrowed
+  `Filesystem*`, and the active `std::optional<WorldData>`.
+- `WorldData`: all loaded arrays as `std::vector` members (QL — BSP lumps
+  exceed the 64 KB array cap), plus the raw entity/wadlist/message strings
+  and visdata. Immutable after load; exposed only through const spans/views.
+- Queries own nothing: caller buffers + function locals only (the legacy
+  `g_visdata`/`pm_boxhull` shared statics have no equivalent; `BoxHull` is a
+  per-callsite value type).
+
+Sub-feature bundling (Q-11): bsp/pvs/trace subfolders score <2 "separate"
+criteria (shared WorldData, no extra deps, no independent state machine, not
+useful standalone) → single `xash3dpp_map_loader` target, satellite-style
+folder layout only (networking/delta precedent).
+
 ## 3. Invariants
 
 - **`WorldData` is immutable after `load_world_data` returns** (Q-6): every
@@ -104,10 +129,17 @@ aborts the trace instead of killing the process.
 **Input hardening (corrupt files only; valid maps byte-identical).** Lump
 ranges bounds-checked against the file image; node/clipnode/surface/
 marksurface indices validated at load (the kernel then trusts them — its
-documented precondition); miptex directory bounds-checked; PVS reads that
-legacy performs out of bounds (unclamped visofs, exhausted RLE stream,
-water-alpha `cluster == -1` bit test) get defined results (missing-vis ⇒
-full visibility; exhausted stream ⇒ zero fill; negative cluster ⇒ false).
+documented precondition); miptex directory bounds-checked; the corrupt-face
+guard uses widened addition (legacy overflows signed ints on a crafted
+`firstedge`); PVS reads that legacy performs out of bounds (unclamped
+visofs, exhausted RLE stream, water-alpha `cluster == -1` bit test) get
+defined results (missing-vis ⇒ full visibility; exhausted stream ⇒ zero
+fill; negative cluster ⇒ false). **Residual risk (legacy-equivalent, not a
+regression):** node-tree TRAVERSAL is not cycle-guarded — a maliciously
+self-referencing node tree can loop `point_leaf`/`fat_pvs` or overflow
+`box_leafnums`' recursion, exactly as legacy; clipnode count/remap got the
+iterative hardening because it runs at load time. Tracked as a Chunk 6
+hardening follow-up (visited-budget on traversal).
 
 **Representation.** Clipnodes stay 32-bit in memory permanently (legacy
 narrows back to 16-bit inside `model_t`; no xash3dpp consumer needs that —
