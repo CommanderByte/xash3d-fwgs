@@ -42,6 +42,7 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 ## Where the truth lives
 
 <!-- SYNC-CORE:BEGIN where-truth-lives -->
+
 - `.github/instructions/xash3dpp.instructions.md` — binding C++ conventions.
 - `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-18 register;
   §3a is the boundary-spec OQ crosswalk (blocks-scaffold rows gate work);
@@ -63,6 +64,7 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 - Setup matrix (all frameworks + humans): `.github/AGENT-SETUP.md`.
 - After ANY edit to the workflow surface, run
   `xash3dpp/tools/workflow_sync.py`.
+
 <!-- SYNC-CORE:END where-truth-lives -->
 
 ## Doc-trust warnings
