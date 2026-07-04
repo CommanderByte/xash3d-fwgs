@@ -51,6 +51,10 @@ public:
         return e_ != nullptr && !e_->free;
     }
 
+    // edict_t::free query through the facade (edict metadata, not entvars —
+    // keeps the raw ->free access out of engine-internal server code).
+    [[nodiscard]] bool freed() const noexcept { return e_->free != 0; }
+
     // --- vectors --------------------------------------------------------
     [[nodiscard]] Vec3 origin() const noexcept { return to_vec3( e_->v.origin ); }
     [[nodiscard]] Vec3 angles() const noexcept { return to_vec3( e_->v.angles ); }
@@ -62,6 +66,8 @@ public:
 
     void set_absmin( const Vec3 &v ) noexcept { store_vec3( e_->v.absmin, v ); }
     void set_absmax( const Vec3 &v ) noexcept { store_vec3( e_->v.absmax, v ); }
+    void set_origin( const Vec3 &v ) noexcept { store_vec3( e_->v.origin, v ); }
+    void set_angles( const Vec3 &v ) noexcept { store_vec3( e_->v.angles, v ); }
 
     // --- scalars ---------------------------------------------------------
     [[nodiscard]] int solid() const noexcept { return e_->v.solid; }
@@ -73,6 +79,18 @@ public:
     [[nodiscard]] int effects() const noexcept { return e_->v.effects; }
     [[nodiscard]] int rendermode() const noexcept { return e_->v.rendermode; }
     [[nodiscard]] int light_level() const noexcept { return e_->v.light_level; }
+
+    void set_solid( int v ) noexcept { e_->v.solid = v; }
+    void set_movetype( int v ) noexcept { e_->v.movetype = v; }
+    void set_modelindex( int v ) noexcept { e_->v.modelindex = v; }
+
+    // --- string_t fields (offsets into the server string pool) -----------
+    [[nodiscard]] ::xash::abi::string_t classname() const noexcept
+    {
+        return e_->v.classname;
+    }
+    void set_classname( ::xash::abi::string_t s ) noexcept { e_->v.classname = s; }
+    void set_model( ::xash::abi::string_t s ) noexcept { e_->v.model = s; }
 
     // --- entity cross-links ----------------------------------------------
     [[nodiscard]] ::xash::abi::edict_t *aiment() const noexcept { return e_->v.aiment; }

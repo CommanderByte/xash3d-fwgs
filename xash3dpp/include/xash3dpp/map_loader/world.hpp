@@ -123,7 +123,8 @@ inline constexpr std::uint32_t k_surf_conveyor    = 1u << 6;
 inline constexpr std::uint32_t k_surf_underwater  = 1u << 7;
 inline constexpr std::uint32_t k_surf_transparent = 1u << 8;
 
-// WorldData::flags() bits — legacy world.flags (engine/ref_api.h:109).
+// WorldData::flags() bits — legacy world.flags (engine/ref_api.h:107-109).
+inline constexpr std::uint32_t k_fworld_skysphere  = 1u << 0;
 inline constexpr std::uint32_t k_fworld_wateralpha = 1u << 2;
 
 // Minimal texinfo subset: the texture reference + TEX_* flags that feed

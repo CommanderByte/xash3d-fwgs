@@ -63,6 +63,8 @@ struct EngineBridge
     double      sv_time     = 0.0;  // sv.time (edict freetime/reuse)
     int         max_clients = 0;    // svs.maxclients
     int         developer   = 0;    // host_developer (AlertMessage gates)
+    int         server_state = 0;   // sv.state mirror (ServerState int) — the
+                                    // SV_SetModel ss_active guard reads it
     bool        dedicated   = true;
     bool        merge_visibility = false; // SVF_MERGE_VISIBILITY (portal pass)
     bool        novis       = false;      // sv_novis
@@ -108,6 +110,16 @@ void install_engine_bridge( EngineBridge *bridge ) noexcept;
 // milestone slots are XASH3DPP-STUB(chunk6)-marked no-ops.
 [[nodiscard]] ::xash::abi::enginefuncs_t
 build_engine_table( bool peoei_broken ) noexcept;
+
+// SV_AllocPrivateData (sv_game.c:1092): re-init/alloc the edict, stamp its
+// classname, resolve the LINK_ENTITY spawn export by raw name and run it.
+// When `customentity` is non-null it is set true if the classname had no
+// export and the "custom" fallback export was used instead (the Xash
+// extension parse path relies on this out-param).  Exposed from the ABI
+// shim so the lifecycle entity-parse path reuses the one LINK dispatch.
+[[nodiscard]] ::xash::abi::edict_t *
+alloc_private_data( ::xash::abi::edict_t *ent, ::xash::abi::string_t className,
+                    bool *customentity ) noexcept;
 
 // SV_UnloadProgs counterpart for the cvar chain: unlink the game's
 // cvar_t structs and free every engine-owned replacement string (their

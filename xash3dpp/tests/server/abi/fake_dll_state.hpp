@@ -31,6 +31,23 @@ struct State
     int on_free_calls;
     int link_calls; // fake_item LINK_ENTITY export invocations
 
+    // S7b entity-parse probes.
+    int spawn_calls;        // pfnSpawn invocations
+    int set_abs_box_calls;  // pfnSetAbsBox invocations
+    int touch_calls;        // pfnTouch invocations
+    int custom_link_calls;  // "custom" LINK export invocations (custom-entity)
+
+    // Every pfnKeyValue the double receives (class/key/value snapshot) — the
+    // parse test reads these back to pin the quirk transforms.
+    struct KvdRecord
+    {
+        char cls[64];
+        char key[64];
+        char val[160];
+    };
+    KvdRecord kvds[32];
+    int       kvd_len;
+
     // When set by the test, pfnOnFreeEntPrivateData also increments the
     // pointee — TEST-owned memory, so the S7 unload test can observe the
     // release sweep after the DLL itself is gone.

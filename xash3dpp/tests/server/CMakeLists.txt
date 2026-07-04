@@ -77,3 +77,13 @@ target_compile_definitions(test_game_lifecycle PRIVATE
     FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
 )
 add_dependencies(test_game_lifecycle fake_game_dll_full)
+
+# S7b — entity-string parse (SV_SpawnEntities/LoadFromFile/ParseEdict),
+# model resolver + SV_SetModel, over the real fake DLL + a minimal world.
+xash3dpp_add_test(test_entity_parse SOURCE lifecycle/test_entity_parse.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem
+         xash3dpp_map_loader xash3dpp_utilities cmd_cvar_test_stubs)
+target_compile_definitions(test_entity_parse PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_entity_parse fake_game_dll_full)

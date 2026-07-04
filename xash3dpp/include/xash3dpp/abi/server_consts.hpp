@@ -32,6 +32,10 @@ inline constexpr int k_fl_fakeclient   = 1 << 13;
 inline constexpr int k_fl_monsterclip  = 1 << 23;
 inline constexpr int k_fl_worldbrush   = 1 << 25;
 inline constexpr int k_fl_customentity = 1 << 29; // beam entities
+inline constexpr int k_fl_killme       = 1 << 30; // const.h:56 — marked for death
+
+// common/mod_local.h :34 — the world model always lives at precache slot 1.
+inline constexpr int k_world_index = 1;
 
 // common/const.h :133 — entvars_t.takedamage (DAMAGE_AIM; float field)
 inline constexpr float k_damage_aim = 2.0f;

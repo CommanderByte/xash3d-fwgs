@@ -156,4 +156,33 @@ void deactivate_server( ServerRuntime &rt ) noexcept;
 // `host_serverstate` and updates the precache loading gate.
 void set_server_state( ServerRuntime &rt, ServerState state ) noexcept;
 
+// --- entity-string parse (sv_game.c:4885-5169) ------------------------------
+// SpawnServer (S7c) seeds the world model + precache and installs the world
+// interaction bridge; these three drive the entity lump through the game DLL.
+// They are free functions over ServerRuntime + the loaded world (so the
+// parse path is exercised without the full SpawnServer orchestration).
+
+// SV_ParseEdict: pull one { ... } dictionary from `cursor` (advanced in
+// place) into `ent`, applying the classname-first / angle→angles / custom-
+// entity / trailing-space quirks.  false = inhibited (no classname, or
+// AllocPrivateData rejected the edict); true = spawned private data live.
+[[nodiscard]] bool parse_edict( ServerRuntime &rt,
+                                const ::xash::map_loader::WorldData &world,
+                                const char *&cursor,
+                                ::xash::abi::edict_t *ent ) noexcept;
+
+// SV_LoadFromFile: the '{'-delimited entity loop — world edict is slot 0
+// (already initialised), the rest are SV_AllocEdict; pfnSpawn == -1 without
+// FL_KILLME frees + counts the entity as inhibited; world origin/angles are
+// cleared afterwards.
+void load_from_file( ServerRuntime &rt,
+                     const ::xash::map_loader::WorldData &world,
+                     const char *entities ) noexcept;
+
+// SV_SpawnEntities: reset sky/water cvars, stamp the world edict
+// (model/modelindex/solid/movetype) + globals (maxEntities/mapname/
+// startspot/time), then SV_LoadFromFile over the world's entity lump.
+void spawn_entities( ServerRuntime &rt,
+                     const ::xash::map_loader::WorldData &world ) noexcept;
+
 } // namespace xash::server

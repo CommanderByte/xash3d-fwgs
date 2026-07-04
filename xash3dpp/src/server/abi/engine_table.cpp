@@ -306,8 +306,10 @@ int pfn_precache_model( const char *s )
     if ( i == 0 )
         return 0;
 
-    // XASH3DPP-STUB(chunk6): sv.models[i] = Mod_ForName(...) — the model
-    // cache / IModelResolver wiring lands with the S7b spawn path.
+    // Legacy fills sv.models[i] = Mod_ForName here; xash3dpp resolves brush
+    // models lazily through IModelResolver (model_resolver.hpp) from this
+    // same precache name, so there is no cache array to populate.
+    // TODO(chunk7): studio/sprite loading (Mod_ForName for non-brush models).
 
     if ( !optional )
         g_bridge->precache->set_model_flags(
@@ -324,10 +326,75 @@ int pfn_precache_sound( const char *s )
     return g_bridge->precache->sound_index( s );
 }
 
-void pfn_set_model( abi::edict_t *, const char * )
+// ServerState::Active mirror value (lifecycle.hpp) — kept as a local
+// numeral so the ABI shim does not include the lifecycle header.
+constexpr int k_ss_active = 2;
+
+// Defined below; SV_SetModel needs it before the definition point.
+void set_min_max_size( abi::edict_t *e, const float *mins, const float *maxs,
+                       bool relink );
+
+// SV_SetModel (sv_game.c:218-267): register the name, stamp model/modelindex,
+// then set bounds from the model.  Legacy gives every NON-studio model its
+// real mins/maxs — brush AND sprite — and only mod_studio zero bounds
+// (sv_game.c:264-266).  xash3dpp can resolve brush submodels today; sprites
+// and studio models are unloadable until the Chunk 7 content pipeline, so
+// both take zero bounds for now.  TODO(chunk7): sprites need real bounds.
+void pfn_set_model( abi::edict_t *ent, const char *modelname )
 {
-    // XASH3DPP-STUB(chunk6): SV_SetModel needs the model cache (S7b);
-    // bounds/link flow is ready in SV_SetMinMaxSize.
+    if ( !valid_edict( ent ))
+    {
+        ::xash::core::log_warning( "server", "SetModel: invalid entity" );
+        return;
+    }
+
+    if ( modelname == nullptr ||
+         static_cast<unsigned char>( modelname[0] ) <= ' ' )
+    {
+        ::xash::core::log_warning( "server", "SetModel: null name" );
+        return;
+    }
+
+    if ( *modelname == '\\' || *modelname == '/' )
+        ++modelname; // strip ONE leading slash (SV_ModelIndex strips again)
+
+    if ( g_bridge->precache == nullptr )
+        return;
+
+    const int i = g_bridge->precache->model_index( modelname );
+    if ( i == 0 )
+    {
+        if ( g_bridge->server_state == k_ss_active )
+            ::xash::core::log_error(
+                "server", "SetModel: world model cannot be changed" );
+        return;
+    }
+
+    ent->v.model =
+        g_bridge->strings->make_string( g_bridge->precache->model_name( i ));
+    ent->v.modelindex = i;
+
+    // Bounds: brush submodel extents; zero for studio/sprite/unknown until
+    // the Chunk 7 content pipeline can load them (see the header comment).
+    float mn[3] = { 0.0f, 0.0f, 0.0f };
+    float mx[3] = { 0.0f, 0.0f, 0.0f };
+    const MoveEnv *env = g_bridge->move_env;
+    if ( env != nullptr && env->models != nullptr && env->world != nullptr )
+    {
+        const std::optional<BrushModel> bm = env->models->brush_model( i );
+        if ( bm.has_value() )
+        {
+            const auto subs = env->world->submodels();
+            if ( bm->submodel < subs.size() )
+            {
+                const ml::SubModel &sm = subs[bm->submodel];
+                mn[0] = sm.mins.x; mn[1] = sm.mins.y; mn[2] = sm.mins.z;
+                mx[0] = sm.maxs.x; mx[1] = sm.maxs.y; mx[2] = sm.maxs.z;
+            }
+        }
+    }
+
+    set_min_max_size( ent, mn, mx, true );
 }
 
 // pfnModelIndex (sv_game.c:1315): lookup only, never registers.
@@ -645,43 +712,13 @@ void pfn_remove_entity( abi::edict_t *e )
     bridge_free_edict( e );
 }
 
-// SV_CreateNamedEntity → SV_AllocPrivateData( NULL, className, NULL )
-// (sv_game.c:1092-1156): with a null customentity out-param the "custom"
-// fallback is NOT attempted.
+// SV_CreateNamedEntity (sv_game.c:1153) = SV_AllocPrivateData( NULL,
+// className, NULL ): a fresh edict, no "custom" fallback (null out-param).
 abi::edict_t *pfn_create_named_entity( int className )
 {
-    EdictArena *arena = g_bridge->arena;
-    StringPool *pool  = g_bridge->strings;
-
-    if ( arena == nullptr || pool == nullptr )
-        return nullptr;
-
-    const char *classname = pool->get_string( className );
-
-    abi::edict_t *ent = pfn_create_entity();
-    if ( ent == nullptr )
-        return nullptr;
-
-    ent->v.classname         = className;
-    ent->v.pContainingEntity = ent; // re-link
-
-    abi::LINK_ENTITY_FUNC spawn =
-        g_bridge->game != nullptr ? g_bridge->game->entity_link( classname )
-                                  : nullptr;
-
-    // TODO(chunk6-S8): physFuncs.SV_CreateEntity custom-entity hook joins
-    // with the physics interface.
-
-    if ( spawn == nullptr )
-    {
-        ::xash::core::logf( ::xash::core::LogLevel::Error, "server",
-                            "No spawn function for \"%s\"", classname );
-        bridge_free_edict( ent );
-        return nullptr;
-    }
-
-    spawn( &ent->v );
-    return ent;
+    return alloc_private_data( nullptr,
+                               static_cast<abi::string_t>( className ),
+                               nullptr );
 }
 
 void pfn_make_static( abi::edict_t * )
@@ -2018,6 +2055,69 @@ void reset_external_cvars( EngineBridge &bridge ) noexcept
 EngineBridge *engine_bridge() noexcept
 {
     return g_bridge;
+}
+
+// SV_AllocPrivateData (sv_game.c:1092): the one LINK_ENTITY dispatch, shared
+// by pfnCreateNamedEntity and the lifecycle entity-parse path.
+::xash::abi::edict_t *alloc_private_data( ::xash::abi::edict_t *ent,
+                                          ::xash::abi::string_t className,
+                                          bool *customentity ) noexcept
+{
+    if ( g_bridge == nullptr || g_bridge->arena == nullptr ||
+         g_bridge->strings == nullptr )
+        return nullptr;
+
+    const char *classname = g_bridge->strings->get_string( className );
+
+    if ( customentity != nullptr )
+        *customentity = false;
+
+    if ( ent == nullptr )
+    {
+        ent = g_bridge->arena->alloc_edict( g_bridge->sv_time );
+        if ( ent == nullptr )
+        {
+            host_error( "ED_AllocEdict: no free edicts\n" ); // sv_game.c:1076
+            return nullptr;
+        }
+    }
+    else if ( ent->free )
+    {
+        g_bridge->arena->init_edict( ent ); // SV_InitEdict — re-init
+    }
+
+    ent->v.classname         = className;
+    ent->v.pContainingEntity = ent; // re-link
+
+    abi::LINK_ENTITY_FUNC spawn =
+        g_bridge->game != nullptr ? g_bridge->game->entity_link( classname )
+                                  : nullptr;
+
+    if ( spawn == nullptr )
+    {
+        // TODO(chunk6-S8): physFuncs.SV_CreateEntity custom-entity hook
+        // (Xash extension) joins with the physics interface.
+
+        // Fall back to the "custom" export when the caller opted in.
+        if ( customentity != nullptr )
+        {
+            spawn = g_bridge->game != nullptr
+                        ? g_bridge->game->entity_link( "custom" )
+                        : nullptr;
+            *customentity = ( spawn != nullptr );
+        }
+
+        if ( spawn == nullptr )
+        {
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "server",
+                                "No spawn function for \"%s\"", classname );
+            bridge_free_edict( ent );
+            return nullptr;
+        }
+    }
+
+    spawn( &ent->v );
+    return ent;
 }
 
 ::xash::abi::enginefuncs_t build_engine_table( bool peoei_broken ) noexcept

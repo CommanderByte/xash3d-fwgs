@@ -17,6 +17,7 @@
 
 #include "fake_dll_state.hpp"
 
+#include <cstdio>
 #include <cstring>
 
 #if defined( _WIN32 )
@@ -49,9 +50,85 @@ static void fake_game_init( void )
     ++g_state.game_init_calls;
 }
 
-static int fake_spawn( abi::edict_t * )
+static void fake_copy( char *dst, std::size_t n, const char *src )
 {
+    if ( src == nullptr || n == 0 )
+    {
+        if ( n != 0 )
+            dst[0] = '\0';
+        return;
+    }
+    std::size_t i = 0;
+    for ( ; src[i] != '\0' && i + 1 < n; ++i )
+        dst[i] = src[i];
+    dst[i] = '\0';
+}
+
+// Records every keyvalue and mimics a real game's KeyValue handler: the
+// engine demands the game claim "classname" (fHandled), and stores angles/
+// origin into the entvars the parse quirks read back.
+static void fake_key_value( abi::edict_t *e, abi::KeyValueData *kvd )
+{
+    if ( g_state.kvd_len < 32 )
+    {
+        fake_dll::State::KvdRecord &r = g_state.kvds[g_state.kvd_len++];
+        fake_copy( r.cls, sizeof( r.cls ), kvd->szClassName );
+        fake_copy( r.key, sizeof( r.key ), kvd->szKeyName );
+        fake_copy( r.val, sizeof( r.val ), kvd->szValue );
+    }
+
+    if ( std::strcmp( kvd->szKeyName, "classname" ) == 0 )
+    {
+        if ( g_state.engfuncs != nullptr &&
+             g_state.engfuncs->pfnAllocString != nullptr )
+            e->v.classname = g_state.engfuncs->pfnAllocString( kvd->szValue );
+        kvd->fHandled = 1;
+        return;
+    }
+
+    if ( std::strcmp( kvd->szKeyName, "angles" ) == 0 )
+    {
+        float a = 0.0f, b = 0.0f, c = 0.0f;
+        std::sscanf( kvd->szValue, "%f %f %f", &a, &b, &c );
+        e->v.angles[0] = a;
+        e->v.angles[1] = b;
+        e->v.angles[2] = c;
+        kvd->fHandled = 1;
+        return;
+    }
+
+    kvd->fHandled = 1;
+}
+
+static int fake_spawn( abi::edict_t *e )
+{
+    ++g_state.spawn_calls;
+
+    // "trigger_reject" asks the engine to inhibit it (pfnSpawn == -1).
+    if ( e != nullptr && g_state.engfuncs != nullptr &&
+         g_state.engfuncs->pfnSzFromIndex != nullptr )
+    {
+        const char *cn = g_state.engfuncs->pfnSzFromIndex( e->v.classname );
+        if ( cn != nullptr && std::strcmp( cn, "trigger_reject" ) == 0 )
+            return -1;
+    }
     return 0;
+}
+
+// pfnSetAbsBox (SetObjectCollisionBox): the standard origin ± bbox expansion.
+static void fake_set_abs_box( abi::edict_t *e )
+{
+    ++g_state.set_abs_box_calls;
+    for ( int i = 0; i < 3; ++i )
+    {
+        e->v.absmin[i] = e->v.origin[i] + e->v.mins[i];
+        e->v.absmax[i] = e->v.origin[i] + e->v.maxs[i];
+    }
+}
+
+static void fake_touch( abi::edict_t *, abi::edict_t * )
+{
+    ++g_state.touch_calls;
 }
 
 static const char *fake_game_description( void )
@@ -92,6 +169,9 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     std::memset( table, 0, sizeof( *table ));
     table->pfnGameInit           = fake_game_init;
     table->pfnSpawn              = fake_spawn;
+    table->pfnKeyValue           = fake_key_value;
+    table->pfnSetAbsBox          = fake_set_abs_box;
+    table->pfnTouch              = fake_touch;
     table->pfnGetGameDescription = fake_game_description;
     table->pfnGetHullBounds      = fake_get_hull_bounds;
     table->pfnRegisterEncoders   = fake_register_encoders;
@@ -137,6 +217,18 @@ FAKE_EXPORT void FAKE_CDECL fake_item( abi::entvars_t *pev )
 {
     ++g_state.link_calls;
     pev->health = 123.0f;
+}
+
+// Entity-parse LINK exports (resolved by raw classname, like real DLLs).
+FAKE_EXPORT void FAKE_CDECL worldspawn( abi::entvars_t * ) {}
+FAKE_EXPORT void FAKE_CDECL info_player_start( abi::entvars_t * ) {}
+FAKE_EXPORT void FAKE_CDECL trigger_reject( abi::entvars_t * ) {}
+
+// The "custom" fallback export SV_AllocPrivateData resolves when a
+// classname has no export of its own (custom-entity path).
+FAKE_EXPORT void FAKE_CDECL custom( abi::entvars_t * )
+{
+    ++g_state.custom_link_calls;
 }
 
 // Drive the engine through the table received in GiveFnptrsToDll — the

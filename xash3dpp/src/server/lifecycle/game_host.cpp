@@ -65,6 +65,10 @@ void set_server_state( ServerRuntime &rt, ServerState state ) noexcept
     }
     rt.level.state = state;
 
+    // Mirror into the bridge so the SV_SetModel ss_active guard can read it
+    // (the ABI shim never includes lifecycle.hpp).
+    rt.bridge.server_state = static_cast<int>( state );
+
     // Precache index registration is load-time only during ss_loading
     // (sv_init.c:131-137 et al.).
     rt.precache.set_loading( state == ServerState::Loading );

@@ -31,7 +31,10 @@ add_library(xash3dpp_server STATIC
     world/light.cpp
     lifecycle/precache.cpp
     lifecycle/game_host.cpp
-    # lifecycle/ spawn/activate/exec sources land in S7b
+    lifecycle/model_resolver.cpp
+    lifecycle/world_hooks.cpp
+    lifecycle/entity_parse.cpp
+    # lifecycle/ spawn/activate/exec orchestration lands in S7c
     # physics/  sources land in S8
     # clients/  sources land in S9
 )
