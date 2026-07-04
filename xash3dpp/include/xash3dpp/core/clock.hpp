@@ -77,7 +77,7 @@ public:
     // Inject the singleplayer-no-demo gate used by host_framerate.
     // Decision ref: host-boundary.md Resolved-decision OQ-11
     //
-    // Called post-init by Server::init() (Chunk 5) when the server subsystem
+    // Called post-init by Server::init() (Chunk 6) when the server subsystem
     // becomes available.  Until then the gate is nullptr and host_framerate
     // has no effect (correct for dedicated-server milestone and all tests).
     //

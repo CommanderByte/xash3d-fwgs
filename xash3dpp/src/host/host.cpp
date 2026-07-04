@@ -74,8 +74,8 @@ struct Host::Impl
     {
         if ( !pool ) return;  // already shut down or never initialised
 
-        // TODO Chunk 5: Server::shutdown()
-        // TODO Chunk 9: Client::shutdown()
+        // TODO Chunk 6: Server::shutdown()
+        // TODO Chunk 12: Client::shutdown()
         // Networking is owned by EngineContext, not Host — see engine_context.cpp.
 
         if ( map_loader ) { map_loader->shutdown(); map_loader = nullptr; }
@@ -170,11 +170,11 @@ bool Host::init(const HostInitParams& p)
 
     // Networking is owned and initialised by EngineContext — see engine_context.cpp.
 
-    // --- Server (Chunk 5) ------------------------------------------------
-    // TODO Chunk 5: Server::init()
+    // --- Server (Chunk 6) ------------------------------------------------
+    // TODO Chunk 6: Server::init()
 
-    // --- Client (Chunk 9, non-dedicated only) ----------------------------
-    // TODO Chunk 9: if (!s.dedicated) Client::init()
+    // --- Client (Chunk 12, non-dedicated only) ----------------------------
+    // TODO Chunk 12: if (!s.dedicated) Client::init()
 
     if ( s.developer > 0 )
     {
@@ -205,14 +205,14 @@ void Host::RunFrame()
     {
         core::log( core::LogLevel::Warning, "host",
                    "frame abort recovered; subsystem cleanup pending" );
-        // TODO Chunk 5/9: SV_Shutdown(), CL_Drop(), CL_ClearEdicts(), Mod_FreeAll().
+        // TODO Chunk 6/12: SV_Shutdown(), CL_Drop(), CL_ClearEdicts(), Mod_FreeAll().
         s.frame_abort_pending   = false;
         s.frame_abort_code      = core::ErrorCode::Ok;
         s.frame_abort_detail[0] = '\0';
     }
 
     // --- Platform event pump -------------------------------------------
-    // TODO Chunk 9: Platform::PollEvents() (client-side input / window events)
+    // TODO Chunk 12: Platform::PollEvents() (client-side input / window events)
 
     // --- Command buffer -------------------------------------------------
     // cbuf_execute MUST run before map_loader::run_frame_step so that commands
@@ -227,10 +227,10 @@ void Host::RunFrame()
     // TODO: platform::console::read_line() + cbuf_add_text + cbuf_execute
 
     // --- Server frame ---------------------------------------------------
-    // TODO Chunk 5: Server::RunFrame()
+    // TODO Chunk 6: Server::RunFrame()
 
     // --- Client frame (non-dedicated) -----------------------------------
-    // TODO Chunk 9: Client::RunFrame()
+    // TODO Chunk 12: Client::RunFrame()
 }
 
 // ---------------------------------------------------------------------------

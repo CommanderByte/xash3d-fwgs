@@ -4,7 +4,10 @@
 (map_loader). Scope: everything needed to load a BSP into an in-memory world
 model usable for **PVS + hull traces**, with byte-exact parity. Render-only
 data is identified and deferred. Line numbers are against the working tree on
-that date; behaviour references, not design constraints.*
+that date; behaviour references, not design constraints. (Historical note:
+the stale "Chunk 5 = server" comments this brief's sibling flagged in
+host-boundary.md / engine_context.hpp were renumbered to the
+implementation-plan scheme later the same day.)*
 
 Primary sources:
 

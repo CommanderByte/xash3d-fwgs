@@ -9,8 +9,8 @@
 >
 > - **IMPLEMENTED today:** filesystem locking under `shared_mutex` (both hazards in §10 are RESOLVED — see [filesystem.cpp L162-183](../../src/filesystem/filesystem.cpp) and [filesystem.cpp L497-520](../../src/filesystem/filesystem.cpp)); `assert_main_thread()` debug helper at [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp) (internal-only, 4 call sites).
 > - **BEING INTRODUCED with this doc:** public `ThreadRole` API at `xash3dpp/include/xash3dpp/core/thread_role.hpp` — `register_thread_role`, `current_thread_role`, `assert_thread_role`. `assert_main_thread()` becomes a thin wrapper over `assert_thread_role(ThreadRole::Main)`; new code uses `assert_thread_role` directly.
-> - **PLANNED:** `JobToken` worker-pool API (Chunk 4), `dev_worker_threads` cvar (Chunk 4), render thread + `RenderFrame` (Chunk 10), `T_NetIO` thread (deferred), audio threads (Chunk 6), `// @thread-safety:` annotation rollout (Appendix A).
-> - **Chunk ordering:** Chunk 1 = cmd_cvar (**DONE**); Chunk 2 = networking; Chunk 3 = host. JobToken/worker jobs land in Chunk 4 (world/content).
+> - **PLANNED:** `JobToken` worker-pool API (deferred — unscheduled), `dev_worker_threads` cvar (with the pool), render thread + `RenderFrame` (Chunk 13), `T_NetIO` thread (deferred), audio threads (Chunk 9), `// @thread-safety:` annotation rollout (Appendix A).
+> - **Chunk ordering (renumbered 2026-07-04 to `implementation-plan.md`):** 1 = cmd_cvar (**DONE**); 2/4 = networking (**DONE**); 3 = host (**DONE**); 5 = map_loader/world (**DONE**); 6 = server; 7 = content; 9 = sound; 10 = input; 11 = physics; 12 = client; 13 = renderer. The worker pool + `JobToken` (this doc's original "Chunk 4") is now unscheduled — it lands with the first subsystem that needs it (content, Chunk 7, most likely).
 
 ______________________________________________________________________
 
@@ -41,8 +41,8 @@ never perform work reserved for a different role.
 | `Main` | `ThreadRole::Main` | OS | Process start | The game loop thread. Only thread that calls into game DLLs. |
 | `AudioCallback` | `ThreadRole::AudioCallback` | OS audio driver | `Sound::init()` | OS-managed; real-time or high priority. Must never allocate or block. |
 | `AudioDecoder` | `ThreadRole::AudioDecoder` | Sound subsystem | `Sound::init()` | Decodes OGG/Opus into PCM ring; feeds `AudioCallback`. |
-| `Worker` | `ThreadRole::Worker` | Platform subsystem | `Host::init()` | General job pool — asset loading, PVS, packet delta encoding, HTTP I/O. *(pool itself is PLANNED — Chunk 4.)* |
-| `Render` | `ThreadRole::Render` | Engine (optional) | `Renderer::init()` | **PLANNED — Chunk 10.** See §6. |
+| `Worker` | `ThreadRole::Worker` | Platform subsystem | `Host::init()` | General job pool — asset loading, PVS, packet delta encoding, HTTP I/O. *(pool itself is PLANNED — unscheduled.)* |
+| `Render` | `ThreadRole::Render` | Engine (optional) | `Renderer::init()` | **PLANNED — Chunk 13.** See §6. |
 | `NetIO` | `ThreadRole::NetIO` | Engine (optional) | `NET::init_thread()` | **PLANNED — Deferred.** See §7. |
 
 The `ThreadRole` enum and its supporting API live in the public header
@@ -89,18 +89,18 @@ ______________________________________________________________________
 The model is introduced incrementally. Each chunk may add threads; it must not
 break the invariants of the threads already running.
 
-### 3.1 Chunks 1–3 (cmd_cvar [DONE], networking, host) — Model A
+### 3.1 Chunks 1–5 (cmd_cvar, networking, host, map_loader — all DONE) — Model A
 
-Single-threaded game loop. The worker pool is **not yet present** — it lands in
-Chunk 4 alongside the `JobToken` API. Audio threads do not exist (Sound
-subsystem not yet implemented).
+Single-threaded game loop. The worker pool is **not yet present** — it lands
+with the first subsystem that needs it (content, Chunk 7, most likely)
+alongside the `JobToken` API. Audio threads do not exist (Sound subsystem,
+Chunk 9, not yet implemented). map_loader (Chunk 5) shipped WITHOUT a worker
+pool: loads are synchronous on `T_Main` and world queries are
+concurrent-read-safe over `const WorldData&` (Q-6) — see
+`docs/threading-analysis/map_loader-threading.md`.
 
-Chunk numbering for the remainder of this doc:
-
-- Chunk 1 = cmd_cvar (**complete**)
-- Chunk 2 = networking
-- Chunk 3 = host
-- Chunk 4 = world/content (introduces worker pool + `JobToken`)
+Chunk numbering for the remainder of this doc follows
+`implementation-plan.md` (see the status snapshot above).
 
 ```text
 T_MAIN ─────────────────────────────────────────── (all work)
@@ -110,10 +110,9 @@ T_MAIN ────────────────────────�
 **Filesystem threading hazards (RESOLVED — see §10).** The two race conditions
 on `active_game` / `game_loaded` / `gamedir` in `activate_game()` and
 `find_library()` are already fixed in [filesystem.cpp](../../src/filesystem/filesystem.cpp).
-The filesystem is safe for the moment a worker thread first calls into it in
-Chunk 4.
+The filesystem is safe for the moment a worker thread first calls into it.
 
-### 3.2 Chunk 4 (world / content) — Model B-partial
+### 3.2 Content pipeline (Chunk 7) — Model B-partial, first worker-pool user
 
 The worker pool begins receiving real jobs: asynchronous asset loads (BSP, studio
 models, sprites, textures). The `LoadHandle` / `JobToken` pattern (§4) is
@@ -124,10 +123,11 @@ T_MAIN ─── game loop, consumes completed load results
 T_WORKER[0..N] ─── file I/O + BSP/model/texture parse
 ```
 
-After this chunk, `WorldData` is immutable once activated. All BSP trace, PVS,
-and model query functions take `const WorldData&` — never a mutable global.
+`WorldData` immutability landed early, with map_loader (Chunk 5): all BSP
+trace, PVS, and model query functions already take `const WorldData&` —
+never a mutable global. This chunk adds the async ASSET side only.
 
-### 3.3 Chunk 5 (server) — Model B-partial, dedicated server milestone
+### 3.3 Chunk 6 (server) — Model B-partial, dedicated server milestone
 
 No new threads. The server tick runs on `T_MAIN`. Entity thinks (`pfnThink`) are
 called sequentially on the main thread — this is a hard constraint from the
@@ -135,10 +135,10 @@ GoldSrc game DLL ABI and will not change for the GoldSrc milestone (see §8.1).
 
 Entity state for connected clients can be snapshotted at the start of the server
 frame and PVS computation dispatched as worker jobs (one per client) if profiling
-shows this is worthwhile. The worker pool is already running; this is an
+shows this is worthwhile — once the worker pool exists; this is an
 optimisation, not an architectural change.
 
-### 3.4 Chunk 6 (sound) — Model B (full)
+### 3.4 Chunk 9 (sound) — Model B (full)
 
 `T_AudioCallback` and `T_AudioDecoder` are introduced by the Sound subsystem.
 This is the first chunk where real-time threading constraints apply:
@@ -154,11 +154,11 @@ The only shared state between `T_AudioDecoder` and `T_AudioCallback` is the
 PCM ring buffer — a lock-free SPSC (single-producer, single-consumer) ring of
 pre-decoded 32-bit float frames (see §5.2).
 
-### 3.5 Chunks 7–9 (input, physics, client) — Model B unchanged
+### 3.5 Chunks 8/10/11/12 (save, input, physics, client) — Model B unchanged
 
 No new threads. All subsystems run on `T_MAIN`.
 
-### 3.6 Chunk 10 (renderer) — Model C (optional render thread)
+### 3.6 Chunk 13 (renderer) — Model C (optional render thread)
 
 `T_Render` may be added depending on the renderer plugin. See §6.
 
@@ -168,9 +168,10 @@ No new threads. All subsystems run on `T_MAIN`.
 
 ______________________________________________________________________
 
-## 4. Async Work: JobToken Pattern (PLANNED — Chunk 4)
+## 4. Async Work: JobToken Pattern (PLANNED — with the worker pool)
 
-> Not present in source today. Lands with the worker pool in Chunk 4.
+> Not present in source today. Lands with the worker pool (first likely
+> user: content, Chunk 7).
 
 ### 4.1 The problem
 
@@ -279,7 +280,7 @@ ring is empty (decoder fell behind), the callback outputs silence and increments
 an underrun counter. This counter is always-on (no `XASH_STATS` guard) because
 audio underruns are always a bug.
 
-### 5.3 Job queue (MAIN → WORKER pool) (PLANNED — Chunk 4)
+### 5.3 Job queue (MAIN → WORKER pool) (PLANNED — with the worker pool)
 
 The job queue is a `std::deque<std::function<void()>>` protected by a single
 `std::mutex` and a `std::condition_variable`. Worker threads sleep on the
@@ -289,11 +290,11 @@ simplicity is preferable.
 
 The pool size is `min(4, std::thread::hardware_concurrency() - 2)`, clamped to
 at least 1. A `dev_worker_threads` cvar (**PLANNED — registered when the pool
-lands in Chunk 4**) overrides this at startup for profiling.
+lands**) overrides this at startup for profiling.
 
 ______________________________________________________________________
 
-## 6. Render Thread (T_Render) — PLANNED — Chunk 10
+## 6. Render Thread (T_Render) — PLANNED — Chunk 13
 
 ### 6.1 Motivation
 
@@ -351,10 +352,10 @@ completion, the main thread appends a texture-upload command to the next
 `RenderFrame`. The render thread executes the GPU upload via the transfer queue.
 The main thread never touches the GPU context.
 
-### 6.5 Building toward the render thread at Chunk 10
+### 6.5 Building toward the render thread at Chunk 13
 
 The `RenderFrame` struct should be designed before the render thread is started.
-Chunk 10 can begin as a direct call from the main thread with the struct already
+Chunk 13 can begin as a direct call from the main thread with the struct already
 in place, then move to `T_Render` once the data boundary is verified correct.
 This matches the async-loading pattern: design the ownership boundary first;
 threading is mechanical once the boundary is clean.
@@ -431,7 +432,7 @@ sequentially. Making this parallel requires one `pmove_t` per player and breakin
 the global-state dependency — this restructures a frozen ABI surface. Deferred
 past the GoldSrc milestone.
 
-If the physics subsystem (Chunk 8) is designed with a per-body `PhysicsContext`
+If the physics subsystem (Chunk 11) is designed with a per-body `PhysicsContext`
 struct, the pm_shared path can be wrapped inside it and the global replaced when
 the time comes. The chunk design should not introduce new global physics state.
 
@@ -442,7 +443,7 @@ the time comes. The chunk design should not introduce new global physics state.
 `decisions-architecture.md` §2.5 for the established model. All command
 dispatch, all cvar reads, and all cvar writes happen on `T_Main`.
 
-**Future (when Chunk 2 networking or Chunk 4 workers first need cvar reads
+**Future (when networking or the worker pool first needs cvar reads
 from another thread):** a `shared_mutex` will be added to permit concurrent
 readers. Writes will remain main-thread-only. Until that need is concrete, the
 lock is not added — adding it speculatively would impose cost without value.
@@ -543,7 +544,7 @@ function, and walks the search-path list under a `std::shared_lock` on
 `rescan()`, `gamedir()`, and `get_game_info()` follow the same pattern.
 
 No `// THREADING HAZARD` comments remain in the source. The filesystem is safe
-for a worker thread to call into the moment the worker pool lands in Chunk 4.
+for a worker thread to call into the moment the worker pool lands.
 
 ______________________________________________________________________
 
@@ -556,21 +557,21 @@ ______________________________________________________________________
 | filesystem | `T_Main` for writes; any for reads after lock | **Today** — see §10 RESOLVED | [filesystem.cpp L106-115](../../src/filesystem/filesystem.cpp) |
 | memory — allocate | Any (pool spinlock) | **Today** | Documented in memory subsystem |
 | platform | Any | **Today** | Pure functions or internally synchronised |
-| host loop | `T_Main` | **Planned — Chunk 3** | Drives the frame |
-| server tick, entity thinks | `T_Main` | Planned (post-Chunk 5) | GoldSrc game DLL ABI (§8.1) |
-| client tick | `T_Main` | Planned (Chunk 9) | Client DLL ABI (§8.4) |
-| physics (pm_shared) | `T_Main` | Planned (Chunk 8) | Global pmove state (§8.2) |
-| input (SDL event pump) | `T_Main` | Planned (Chunk 7) | SDL2 event API is not thread-safe |
-| world queries (after load) | Any | Planned (Chunk 4) | `const WorldData&` — immutable after activate |
-| asset loading | `T_Worker` | **Planned — Chunk 4** | Worker job via `JobToken` |
-| PVS per client (optional) | `T_Worker` | Planned (Chunk 5+) | Entity state snapshot taken on main first |
-| packet delta encoding | `T_Worker` | Planned (Chunk 5+) | Per-client, independent |
+| host loop | `T_Main` | **Today** (Chunk 3 done) | Drives the frame |
+| server tick, entity thinks | `T_Main` | Planned (Chunk 6) | GoldSrc game DLL ABI (§8.1) |
+| client tick | `T_Main` | Planned (Chunk 12) | Client DLL ABI (§8.4) |
+| physics (pm_shared) | `T_Main` | Planned (Chunk 11) | Global pmove state (§8.2) |
+| input (SDL event pump) | `T_Main` | Planned (Chunk 10) | SDL2 event API is not thread-safe |
+| world queries (after load) | Any | **Today** (Chunk 5 done) | `const WorldData&` — immutable after activate |
+| asset loading | `T_Worker` | Planned (worker pool; likely Chunk 7) | Worker job via `JobToken` |
+| PVS per client (optional) | `T_Worker` | Planned (Chunk 6+) | Entity state snapshot taken on main first |
+| packet delta encoding | `T_Worker` | Planned (Chunk 6+) | Per-client, independent |
 | HTTP I/O | `T_Worker` → `T_NetIO` | Planned | Worker now; migrate to NetIO thread later |
-| sound command queue write | `T_Main` | Planned (Chunk 6) | MPSC enqueue |
-| sound decoding | `T_AudioDecoder` | Planned (Chunk 6) | |
-| sound playback | `T_AudioCallback` | Planned (Chunk 6) | OS real-time callback |
-| GPU submission | `T_Render` (if enabled) | Planned (Chunk 10) | Renderer plugin called from render thread |
-| GPU upload | `T_Render` | Planned (Chunk 10) | Via `RenderFrame` texture upload commands |
+| sound command queue write | `T_Main` | Planned (Chunk 9) | MPSC enqueue |
+| sound decoding | `T_AudioDecoder` | Planned (Chunk 9) | |
+| sound playback | `T_AudioCallback` | Planned (Chunk 9) | OS real-time callback |
+| GPU submission | `T_Render` (if enabled) | Planned (Chunk 13) | Renderer plugin called from render thread |
+| GPU upload | `T_Render` | Planned (Chunk 13) | Via `RenderFrame` texture upload commands |
 | save / demo / UI | `T_Main` | Planned | No parallelism benefit; state is sequential |
 
 ______________________________________________________________________

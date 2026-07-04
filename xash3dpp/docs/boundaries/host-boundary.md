@@ -1,5 +1,11 @@
 # Host Boundary Spec
 
+> **Chunk numbering note (2026-07-04):** this spec predates the map_loader
+> renumbering; its chunk references have been updated to the authoritative
+> `implementation-plan.md` scheme (5 = map_loader, 6 = server, 7 = content,
+> 12 = client, 13 = renderer). Roadmap-position statements remain a Chunk-3
+> snapshot otherwise.
+>
 > Legacy sources surveyed:
 > `engine/common/host.c` (~1370 lines), `engine/common/host_state.c` (~240 lines),
 > `engine/common/common.h` (host structs), `game_launch/game.cpp` (legacy launcher),
@@ -152,9 +158,9 @@ point. Layered downward:
 | `core::Clock` *(new, Chunk 3)* | frame timing, per-frame `tick()`, owns the timing cvars (`host_maxfps`, `fps_override`, `host_framerate`, `host_sleeptime`, `host_sleeptime_debug`, `sys_timescale`, `sys_ticrate`) |
 | `MapLoader` *(new, Chunk 3)* | game-state FSM; `MapLoader::run_frame_step()` called from `Host::RunFrame` |
 | `networking` *(Chunk 2)* | `NET_Init`, `Netchan_Init`, `HTTP_Init`, `HTTP_Run` (per-frame), `NET_InitMasters` |
-| `server` *(Chunk 5)* | `SV_Init`, `SV_ExecLoadLevel`, `SV_ExecLoadGame`, `SV_ExecChangeLevel`, `SV_ShutdownGame`, `SV_Shutdown`, `SV_Active`, `SV_GetPlayerCount`, `Host_ServerFrame` |
-| `client` *(Chunk 9, non-dedicated only)* | `CL_Init`, `Host_InputFrame`, `Host_ClientBegin`, `Host_ClientFrame`, `CL_Disconnect`, `CL_Drop`, `CL_ClearEdicts`, `CL_IsPlaybackDemo`, `CL_IsRecordDemo`, `CL_IsInGame`, demo framerate, `SCR_BeginLoadingPlaque`, `SCR_CheckStartupVids`, `UI_CreditsActive`, `UI_SetActiveMenu`, `Key_SetKeyDest`, `IN_Init`, `Key_Init`, `IN_GyroCheckAvailability` |
-| Content / world *(Chunk 4)* | `Mod_Init`, `Mod_FreeAll`, `Image_Init`, `Sound_Init`, `Image_Shutdown`, `Sound_Shutdown`, `HPAK_Init`, `HPAK_CheckIntegrity`, `HPAK_FlushHostQueue`, `Host_InitDecals` |
+| `server` *(Chunk 6)* | `SV_Init`, `SV_ExecLoadLevel`, `SV_ExecLoadGame`, `SV_ExecChangeLevel`, `SV_ShutdownGame`, `SV_Shutdown`, `SV_Active`, `SV_GetPlayerCount`, `Host_ServerFrame` |
+| `client` *(Chunk 12, non-dedicated only)* | `CL_Init`, `Host_InputFrame`, `Host_ClientBegin`, `Host_ClientFrame`, `CL_Disconnect`, `CL_Drop`, `CL_ClearEdicts`, `CL_IsPlaybackDemo`, `CL_IsRecordDemo`, `CL_IsInGame`, demo framerate, `SCR_BeginLoadingPlaque`, `SCR_CheckStartupVids`, `UI_CreditsActive`, `UI_SetActiveMenu`, `Key_SetKeyDest`, `IN_Init`, `Key_Init`, `IN_GyroCheckAvailability` |
+| Content / world *(Chunks 5/7)* | `Mod_Init`, `Mod_FreeAll`, `Image_Init`, `Sound_Init`, `Image_Shutdown`, `Sound_Shutdown`, `HPAK_Init`, `HPAK_CheckIntegrity`, `HPAK_FlushHostQueue`, `Host_InitDecals` |
 
 ### `EngineContext` member order (Chunk 3 snapshot)
 
@@ -170,8 +176,8 @@ struct EngineContext {
     // NetworkContext networking;   // Chunk 2
     MapLoader       map_loader;     // Chunk 3 (new)
     Host            host;           // Chunk 3 (new)
-    // ServerContext  server;       // Chunk 5
-    // ClientContext  client;       // Chunk 9
+    // ServerContext  server;       // Chunk 6
+    // ClientContext  client;       // Chunk 12
     uint32_t        bugcomp = 0;    // OQ-7: parsed once from HostArgs; read by subsystems at point of behaviour divergence
 };
 ```
@@ -468,12 +474,12 @@ follow-up design session. Outcomes:
 | OQ-3 | **New `core::Clock`** pimpl class owns `realtime / frametime / realframetime / framecount / starttime / pureframetime` and the timing cvars (`host_maxfps`, `fps_override`, `host_framerate`, `host_sleeptime`, `host_sleeptime_debug`, `sys_timescale`, `sys_ticrate`). `Host::realtime()` forwards to `engine_ctx.clock.realtime()`. Atomics on the doubles for renderer-thread reads. | Interface § Frame loop and timing; Owned state § Timing; Cvars owned |
 | OQ-4 | **`host_parm_t` ABI** — confirmed only the renderer reads `host_parm_t` fields directly (via `ref_host_t` / `PARM_GET_HOST_PTR`, fields `realtime / frametime / features`). Game/client DLLs go through `enginefuncs_t` exclusively. No further audit needed. | (resolved) |
 | OQ-5 | **`allow_console` stays in host.** `core/` is namespace-only-no-state by design; promoting one bool to a stateful `CoreContext` is over-decomposition. `key_overstrike` and `rd` (`host_redirect_t`) likewise stay in host until a dedicated console subsystem lands. | Owned state § Console / cheats / input flags |
-| OQ-6 | **`ref_host_t` preserved exactly** until Chunk 10. Renderer-ABI shim (Chunk 10 stub) holds a `static ref_host_t s_ref_host;` updated once per frame from `core::Clock` + `EngineContext::features`. Renderer plugin reads pointer once during init. New fields, if any, go to a v2 struct accessed via a new `PARM_GET_HOST_PTR_V2`. | (resolved) |
+| OQ-6 | **`ref_host_t` preserved exactly** until Chunk 13. Renderer-ABI shim (Chunk 13 stub) holds a `static ref_host_t s_ref_host;` updated once per frame from `core::Clock` + `EngineContext::features`. Renderer plugin reads pointer once during init. New fields, if any, go to a v2 struct accessed via a new `PARM_GET_HOST_PTR_V2`. | (resolved) |
 | OQ-7 | **Centralised parse, distributed consumption.** `HostArgs::bugcomp` (`uint32_t`) parsed by launcher; copied to `EngineContext::bugcomp` at init. Each `BUGCOMP_*` bit is consumed in exactly one subsystem at the point of behaviour divergence. No `host_bugcomp` cvar. | Quirk Q-11; `EngineContext` member-order block |
 | OQ-8 | **Deferred.** `Sys_NewInstance` exec-style restart vs hot-reload mechanism is unspecified. Constraint: user-facing `game <dir>` command must continue to work. Re-evaluate after server / client chunks complete. | (deferred) |
 | OQ-9 | **`platform::console::poll_line() -> std::optional<std::string_view>`** is added to platform. `Host::Impl::poll_dedicated_input()` is a 5-line wrapper that forwards each line to `cmd_cvar::cbuf_add_text` + `cbuf_execute`. Stays on the main thread; no dedicated stdin worker pending profiling evidence. | Interface § Console commands; Dependencies § platform |
 | OQ-10 | **`xash3dpp/src/abi/engine_funcs.cpp`** houses `extern "C"` direct-symbol exports the game DLL needs (`Host_Error`, ...). Reaches the live context via `xash::abi::current_engine_context()` — documented exception to Q-2 "no global accessor," justified because game DLLs cross a C ABI boundary. Same file will host every other `GAME_EXPORT` symbol discovered during the server/client chunks. | Quirk Q-14 |
-| OQ-11 | **`Clock::set_frame_rate_gate(bool(*fn)()noexcept)`** post-init setter. When set, `host_framerate` override in `Clock::tick()` activates only when `fn()` returns true (i.e., a single-player map is running). Until Chunk 5 `Server::init()` wires the real predicate, the gate is `nullptr` = always false — `host_framerate` has no effect in Chunk 3. | `core/clock.hpp`; `clock.cpp` tick(); Chunk 5 Server::init() |
+| OQ-11 | **`Clock::set_frame_rate_gate(bool(*fn)()noexcept)`** post-init setter. When set, `host_framerate` override in `Clock::tick()` activates only when `fn()` returns true (i.e., a single-player map is running). Until Chunk 6 `Server::init()` wires the real predicate, the gate is `nullptr` = always false — `host_framerate` has no effect in Chunk 3. | `core/clock.hpp`; `clock.cpp` tick(); Chunk 6 Server::init() |
 
 ---
 

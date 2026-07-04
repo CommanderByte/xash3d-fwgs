@@ -39,7 +39,8 @@ struct EngineContextInitParams {
     std::string_view rodir;      // read-only content mirror; empty = disabled
 
     // CmdCvar injected dependencies (non-owning; must outlive EngineContext).
-    // trust_oracle:  provided by the host at init; replaced by Server at Chunk 5.
+    // trust_oracle:  provided by the host at init; replaced by Server at
+    //                Chunk 6 (server — implementation-plan numbering).
     // compat_policy: provided by get_compat_policy() (link-time selection).
     cmd_cvar::ITrustOracle  *trust_oracle  = nullptr;
     cmd_cvar::ICompatPolicy *compat_policy = nullptr;
@@ -62,8 +63,10 @@ struct EngineContextInitParams {
 // EngineContext — flat struct owning all stateful subsystems in construction
 // (= dependency) order.
 //
-// Chunk 5 adds:  server::Server              server;
-// Chunk 9 adds:  client::Client              client;   (non-dedicated only)
+// Chunk 6 adds:  server::Server              server;
+// Chunk 12 adds: client::Client              client;   (non-dedicated only)
+// (implementation-plan.md numbering; earlier comments here used a stale
+//  pre-map_loader scheme)
 // ---------------------------------------------------------------------------
 
 struct EngineContext {
@@ -81,8 +84,8 @@ struct EngineContext {
     networking::NetworkContext  networking;
     MapLoader                   map_loader;
     Host                        host;
-    // Chunk 5: server::Server              server;
-    // Chunk 9: client::Client              client;
+    // Chunk 6:  server::Server              server;
+    // Chunk 12: client::Client              client;
 
     // Resolved-decision OQ-7: centralised parse, distributed consumption.
     // Subsystems read `engine_ctx.bugcomp & BUGCOMP_X` at the point of

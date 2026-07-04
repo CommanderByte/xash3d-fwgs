@@ -420,8 +420,8 @@ ______________________________________________________________________
 | Item | Chunk | Recommendation |
 |------|-------|----------------|
 | `core::logf` truncation indicator | Pre-Chunk 2 | Add `...` suffix and optional truncation counter |
-| `dev_worker_threads` latch semantics | Chunk 4 | Document as read-once or implement `FCVAR_LATCH` |
-| `T_AudioCallback` must not call `core::log` | Chunk 6 | Add to threading model §3.4 constraints |
+| `dev_worker_threads` latch semantics | worker pool (unscheduled) | Document as read-once or implement `FCVAR_LATCH` |
+| `T_AudioCallback` must not call `core::log` | Chunk 9 (sound) | Add to threading model §3.4 constraints |
 
 ### Recommended (when next touched)
 

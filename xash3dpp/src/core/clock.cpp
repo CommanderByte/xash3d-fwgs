@@ -41,7 +41,7 @@ struct Clock::Impl
     cmd_cvar::Cvar *cv_ticrate       = nullptr;  // sys_ticrate
 
     // OQ-11: singleplayer-no-demo gate for host_framerate.
-    // Injected by Server::init() in Chunk 5; nullptr = gate always false.
+    // Injected by Server::init() in Chunk 6; nullptr = gate always false.
     // @lifetime: fn must remain valid for the life of the Clock.
     bool (*gate_fn)() noexcept = nullptr;
 
@@ -136,7 +136,7 @@ void Clock::set_frame_rate_gate( bool (*fn)() noexcept ) noexcept
 
 // Returns the target FPS for the current session mode.
 // Dedicated: sys_ticrate.  Client: host_maxfps with fps_override policy.
-// Chunk 9 will refine the client branch with gl_vsync / demo-playback checks.
+// Chunk 12 (client) will refine that branch with gl_vsync / demo-playback checks.
 static double calc_fps( const Clock::Impl &s ) noexcept
 {
     if ( s.dedicated )

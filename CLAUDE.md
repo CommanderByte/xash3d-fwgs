@@ -24,10 +24,10 @@ If configure fails with a generator/platform mismatch, delete the stale
 ## Where the truth lives
 
 - `xash3dpp/docs/implementation-plan.md` — **authoritative** chunk plan and
-  status. Chunk numbering caveat: some older docs
-  (`docs/boundaries/host-boundary.md`, `engine_context.hpp` comments) say
-  "Chunk 5 = server" — that is **stale**; per the implementation plan,
-  Chunk 5 = map_loader, Chunk 6 = server.
+  status (5 = map_loader ✅, 6 = server, 7 = content, 9 = sound, 12 =
+  client, 13 = renderer). Older docs/comments that used a pre-map_loader
+  numbering were renumbered to this scheme on 2026-07-04 — if you spot a
+  chunk reference that contradicts the plan, the plan wins.
 - `.github/instructions/xash3dpp.instructions.md` — binding conventions
   (naming, error handling, memory, limits, tests). Follow exactly.
 - `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-18 decision
