@@ -76,10 +76,12 @@ load_world_data( std::span<const std::byte> file, std::string_view name,
 
     const bsp::LoadContext ctx{ file, *hi, opts, name };
 
-    WorldData w;
+    WorldData        w;
+    bsp::LoadScratch scratch;
     Fill::begin( ctx, w );
 
-    // Legacy heap-builder order (subset; see file header).
+    // Legacy heap-builder order (subset; see file header), then the
+    // post-init hull construction (MakeHull0 + SetupSubmodels).
     Fill::Result r;
     if ( !( r = Fill::entities( ctx, w )) ||
          !( r = Fill::planes( ctx, w )) ||
@@ -88,6 +90,9 @@ load_world_data( std::span<const std::byte> file, std::string_view name,
          !( r = Fill::marksurfaces( ctx, w )) ||
          !( r = Fill::leafs( ctx, w )) ||
          !( r = Fill::nodes( ctx, w )) ||
+         !( r = Fill::clipnodes( ctx, w, scratch )) ||
+         !( r = Fill::make_hull0( ctx, w )) ||
+         !( r = Fill::setup_submodels( ctx, w, scratch )) ||
          !( r = Fill::finalize( ctx, w )))
     {
         ::xash::core::logf( ::xash::core::LogLevel::Error, "map_loader",

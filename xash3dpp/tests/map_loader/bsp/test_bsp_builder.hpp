@@ -206,11 +206,30 @@ inline TestBspBuilder make_minimal_world( bool bsp2 = false )
         b.set_lump_records( bsp::k_lump_nodes, nodes );
     }
 
+    // Clipnode chain for hulls 1-3: node0 { plane0, { EMPTY, 1 } },
+    // node1 { plane1, { SOLID, EMPTY } }.
+    if ( bsp2 )
+    {
+        const std::vector<bsp::dclipnode32_t> clips = {
+            { 0, { -1, 1 } },
+            { 1, { -2, -1 } },
+        };
+        b.set_lump_records( bsp::k_lump_clipnodes, clips );
+    }
+    else
+    {
+        const std::vector<bsp::dclipnode_t> clips = {
+            { 0, { -1, 1 } },
+            { 1, { -2, -1 } },
+        };
+        b.set_lump_records( bsp::k_lump_clipnodes, clips );
+    }
+
     std::vector<bsp::dmodel_t> models( 1 );
     models[0] = { { -64.0f, -64.0f, -64.0f },
                   {  64.0f,  64.0f,  64.0f },
                   {   0.0f,   0.0f,   0.0f },
-                  { 0, -1, -1, -1 },
+                  { 0, 0, -1, -1 },   // hull0 at node 0, hull1 at clipnode 0
                   /*visleafs=*/2, /*firstface=*/0, /*numfaces=*/2 };
     b.set_lump_records( bsp::k_lump_models, models );
 

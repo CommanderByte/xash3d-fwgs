@@ -94,16 +94,28 @@ struct Leaf
 };
 
 // Per-hull clipnode span + Minkowski padding, wired by Mod_SetupHull /
-// Mod_MakeHull0 equivalents (C5).
+// Mod_MakeHull0 equivalents.  `present == false` is the legacy
+// "hull->planes == NULL" marker: point-contents answers CONTENTS_NONE and
+// traces treat the hull as open.  Hull index 0 walks hull0_nodes();
+// hulls 1-3 walk clipnodes().
 struct HullDescriptor
 {
     int                     firstclipnode = 0;
     int                     lastclipnode  = 0;
     ::xash::utilities::Vec3 clip_mins{}, clip_maxs{};
+    bool                    present = false;
 };
 
+// SubModel::flags bits — ABI values from engine/ref_api.h:97-100 (the
+// legacy model_t.flags the server/renderer read).
+inline constexpr std::uint32_t k_model_conveyor    = 1u << 0;
+inline constexpr std::uint32_t k_model_has_origin  = 1u << 1;
+inline constexpr std::uint32_t k_model_liquid      = 1u << 2;
+inline constexpr std::uint32_t k_model_transparent = 1u << 3;
+
 // Legacy dmodel_t / "*N" inline brush model.  Bounds are spread by one unit
-// at load (legacy Mod_LoadSubmodels).  MODEL_* flags land in C5/C6.
+// at load (legacy Mod_LoadSubmodels).  k_model_* flag bits: origin detection
+// in C5, surface-derived conveyor/transparent/liquid in C6.
 struct SubModel
 {
     ::xash::utilities::Vec3       mins{}, maxs{}, origin{};

@@ -22,6 +22,7 @@
 #include <expected>
 #include <span>
 #include <string_view>
+#include <vector>
 
 namespace xash::map_loader::bsp {
 
@@ -119,6 +120,15 @@ struct LoadContext
     std::string_view                           name; // diagnostics only
 };
 
+// Cross-stage scratch state that does not survive into WorldData.
+struct LoadScratch
+{
+    // Mod_LoadClipnodes output: every source variant widened to 32-bit.
+    // Consumed by setup_submodels (shared directly for non-BSP30ext maps;
+    // per-hull remap source for BSP30ext), then discarded.
+    std::vector<::xash::map_loader::ClipNode32> clipnodes_widened;
+};
+
 struct WorldDataFill
 {
     using Result = std::expected<void, ::xash::core::ErrorCode>;
@@ -133,6 +143,11 @@ struct WorldDataFill
     static Result marksurfaces( const LoadContext &ctx, World &w ); // Mod_LoadMarkSurfaces (fix-ups)
     static Result leafs       ( const LoadContext &ctx, World &w ); // Mod_LoadLeafs (clusters, leaf-0 check)
     static Result nodes       ( const LoadContext &ctx, World &w ); // Mod_LoadNodes (no parent links)
+
+    // bsp_hulls.cpp
+    static Result clipnodes       ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_LoadClipnodes (widen + aguirRe fix)
+    static Result make_hull0      ( const LoadContext &ctx, World &w );                 // Mod_MakeHull0
+    static Result setup_submodels ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_SetupSubmodels + Mod_SetupHull
 
     static Result finalize    ( const LoadContext &ctx, World &w ); // required-lump presence checks
 };

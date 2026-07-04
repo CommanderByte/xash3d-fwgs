@@ -75,7 +75,8 @@ static void test_submodel_bounds_spread()
         CHECK( m.mins.x == -65.0f && m.maxs.x == 65.0f ); // ±1 spread
         CHECK_EQ( m.visleafs, 2 );
         CHECK_EQ( m.headnode[0], 0 );
-        CHECK_EQ( m.headnode[1], -1 );
+        CHECK_EQ( m.headnode[1], 0 );
+        CHECK_EQ( m.headnode[2], -1 );
         CHECK_EQ( m.numfaces, 2 );
     }
     // Empty-bounds reset: 999999/-999999 → 0, then spread.

@@ -18,3 +18,7 @@ add_test(NAME test_bsp_header COMMAND test_bsp_header)
 add_executable(test_bsp_lumps bsp/test_bsp_lumps.cpp)
 target_link_libraries(test_bsp_lumps PRIVATE xash3dpp_map_loader)
 add_test(NAME test_bsp_lumps COMMAND test_bsp_lumps)
+
+add_executable(test_bsp_hulls bsp/test_bsp_hulls.cpp)
+target_link_libraries(test_bsp_hulls PRIVATE xash3dpp_map_loader)
+add_test(NAME test_bsp_hulls COMMAND test_bsp_hulls)
