@@ -277,7 +277,8 @@ bool handle_connectionless( ServerRuntime &rt,
 // SV_ConnectClient core (sv_client.c:295) after tokenizing: validate protocol
 // + challenge, find/reuse a slot, init it, run pfnClientConnect, reply
 // client_connect.  Returns the slot index, or -1 on rejection.
-int connect_client( ServerRuntime &rt, ::xash::networking::NetAddress from,
+[[nodiscard]] int connect_client( ServerRuntime &rt,
+                    ::xash::networking::NetAddress from,
                     int protocol, std::int32_t challenge, const char *protinfo,
                     const char *userinfo, IOobSink &sink ) noexcept;
 

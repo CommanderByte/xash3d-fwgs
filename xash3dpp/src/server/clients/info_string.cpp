@@ -195,8 +195,15 @@ void info_set_value_for_key( char *s, const char *key, const char *value,
     char newpair[1024];
     ut::snprintf( newpair, sizeof( newpair ), "\\%s\\%s", key, value );
 
-    if ( ut::strlen( newpair ) + ut::strlen( s ) > max_size )
-        return; // no room (largest-key eviction is a follow-up; drop instead)
+    // Reject when append + existing content would fill or exceed the buffer.
+    // Legacy Info_SetValueForKey uses '>' (infostring.c:445), which writes the
+    // terminating NUL one byte past a max_size-sized buffer at the exact-fill
+    // boundary (a latent 1-byte OOB — undefined). We use '>=' so the NUL always
+    // lands in bounds: identical to legacy for every well-defined input, and
+    // differing only where legacy invokes UB. (Largest-key eviction for
+    // "important" keys is a follow-up; we drop instead.)
+    if ( ut::strlen( newpair ) + ut::strlen( s ) >= max_size )
+        return;
 
     // append, filtering control chars; lowercase the "team" value (quirk)
     const bool team = ut::stricmp( key, "team" ) == 0;

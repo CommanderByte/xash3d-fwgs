@@ -3,6 +3,8 @@
 
 #include <xash3dpp/private/server/clients.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
+
 #include "../../test_helpers.hpp"
 
 #include <cstring>
@@ -28,6 +30,8 @@ static void test_line_format()
 
 int main()
 {
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     RUN_TEST( test_line_format );
     std::printf( "server_log: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

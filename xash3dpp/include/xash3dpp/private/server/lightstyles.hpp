@@ -38,7 +38,7 @@ public:
     // SV_SetLightStyle storage half: pattern copy + 'a'-relative map.
     // Returns false on an out-of-range style index (legacy indexes
     // unchecked — hardening).
-    bool set( int style, const char *pattern, float time ) noexcept;
+    [[nodiscard]] bool set( int style, const char *pattern, float time ) noexcept;
 
     // SV_RunLightStyles (sv_phys.c:1784): advance every style's clock by
     // `frametime` and resolve its animated value (used by GetEntityIllum).

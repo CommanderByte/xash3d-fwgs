@@ -12,6 +12,7 @@
 
 #include <xash3dpp/private/server/clients.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
 #include <ctime>
@@ -21,6 +22,8 @@ namespace xash::server {
 void log_printf( ClientMachinery &cm, const char *text, char *out,
                  std::size_t out_size ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     ( void )cm; // net_log UDP dispatch is a host seam (see header)
 
     if ( out == nullptr || out_size == 0 )

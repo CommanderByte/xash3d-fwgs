@@ -16,6 +16,7 @@
 #include <xash3dpp/private/server/clients.hpp>
 
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -53,6 +54,8 @@ void stage_append( std::byte *buf, std::size_t cap_bytes, std::size_t &cursor_bi
 
 void clients_init( ClientMachinery &cm ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     cm.multicast.rebind( { cm.multicast_buf, k_max_multicast }, "multicast" );
     cm.multicast.reset();
     for ( ServerClient &cl : cm.clients )
@@ -105,6 +108,8 @@ int UserMessageRegistry::slot_for_number( int number ) const noexcept
 
 int reg_user_msg( EngineBridge &bridge, const char *name, int size ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( bridge.clients == nullptr )
         return k_svc_bad;
 
@@ -123,6 +128,8 @@ int reg_user_msg( EngineBridge &bridge, const char *name, int size ) noexcept
 void message_begin( EngineBridge &bridge, int dest, int num,
                     const float *origin, ::xash::abi::edict_t *ent ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( bridge.clients == nullptr )
         return;
     ClientMachinery &cm = *bridge.clients;
@@ -195,6 +202,8 @@ void message_begin( EngineBridge &bridge, int dest, int num,
 
 void message_end( EngineBridge &bridge ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( bridge.clients == nullptr )
         return;
     ClientMachinery &cm = *bridge.clients;
@@ -337,6 +346,8 @@ int sv_multicast( EngineBridge &bridge, int dest, const float *origin,
                   ::xash::abi::edict_t *ent, bool usermessage,
                   bool /*filter*/ ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( bridge.clients == nullptr )
         return 0;
     ClientMachinery &cm = *bridge.clients;

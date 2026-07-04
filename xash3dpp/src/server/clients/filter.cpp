@@ -14,6 +14,7 @@
 
 #include <xash3dpp/private/server/clients.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/networking/address.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
@@ -37,6 +38,8 @@ namespace net = ::xash::networking;
 
 bool filter_check_id( ClientMachinery &cm, const char *id ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( id == nullptr || id[0] == '\0' )
         return false;
 
@@ -64,6 +67,8 @@ bool filter_check_id( ClientMachinery &cm, const char *id ) noexcept
 
 void filter_add_id( ClientMachinery &cm, float minutes, const char *id ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( id == nullptr || id[0] == '\0' )
         return;
 
@@ -94,6 +99,8 @@ void filter_add_id( ClientMachinery &cm, float minutes, const char *id ) noexcep
 
 void filter_remove_id( ClientMachinery &cm, const char *id ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( id == nullptr )
         return;
     for ( IdBan &f : cm.filters.id_bans )
@@ -110,6 +117,8 @@ void filter_remove_id( ClientMachinery &cm, const char *id ) noexcept
 
 bool filter_check_ip( ClientMachinery &cm, net::NetAddress adr ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     for ( IpBan &f : cm.filters.ip_bans )
     {
         if ( !f.used )
@@ -128,6 +137,8 @@ bool filter_check_ip( ClientMachinery &cm, net::NetAddress adr ) noexcept
 void filter_add_ip( ClientMachinery &cm, float minutes, net::NetAddress adr,
                     std::uint8_t cidr ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( cidr == 0 )
         cidr = adr.family == net::IpFamily::V6 ? 128 : 32;
 
@@ -164,6 +175,8 @@ void filter_add_ip( ClientMachinery &cm, float minutes, net::NetAddress adr,
 void filter_remove_ip( ClientMachinery &cm, net::NetAddress adr,
                        std::uint8_t cidr ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( cidr == 0 )
         cidr = adr.family == net::IpFamily::V6 ? 128 : 32;
 

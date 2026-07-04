@@ -23,6 +23,8 @@ inline constexpr float k_lightstyle_full_value = 256.0f;
 
 void LightStyles::reset() noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     for ( LightStyle &s : styles_ )
     {
         s        = LightStyle{};

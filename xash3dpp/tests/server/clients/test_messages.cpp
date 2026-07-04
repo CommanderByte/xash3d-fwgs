@@ -6,6 +6,7 @@
 #include <xash3dpp/private/server/clients.hpp>
 
 #include <xash3dpp/abi/eiface.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/networking/message_buf.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
 
@@ -112,6 +113,8 @@ static void test_multicast_skips_fake_and_unspawned()
 
 int main()
 {
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     RUN_TEST( test_registry_index_and_dedup );
     RUN_TEST( test_variable_message_roundtrip );
     RUN_TEST( test_fixed_size_mismatch_drops );

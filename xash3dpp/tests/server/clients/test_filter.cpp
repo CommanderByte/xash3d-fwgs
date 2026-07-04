@@ -4,6 +4,7 @@
 
 #include <xash3dpp/private/server/clients.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/networking/address.hpp>
 
 #include "../../test_helpers.hpp"
@@ -84,6 +85,8 @@ static void test_ip_host_ban()
 
 int main()
 {
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     RUN_TEST( test_id_prefix_match );
     RUN_TEST( test_id_expiry );
     RUN_TEST( test_ip_cidr );

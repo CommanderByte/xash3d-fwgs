@@ -15,6 +15,7 @@
 #include <xash3dpp/private/server/clients.hpp>
 
 #include <xash3dpp/cmd_cvar/context.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -44,6 +45,8 @@ const char *cvar_string_or( const ServerRuntime &rt, const char *name,
 std::size_t query_info( ServerRuntime &rt, int protocol, char *out,
                         std::size_t out_size ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( out == nullptr || out_size == 0 )
         return 0;
 

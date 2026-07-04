@@ -19,6 +19,7 @@
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
@@ -27,6 +28,7 @@
 #include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
@@ -143,6 +145,8 @@ bool check_challenge( const ServerRuntime &rt, net::NetAddress from,
 bool handle_connectionless( ServerRuntime &rt, net::NetAddress from,
                             const char *text, IOobSink &sink ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( text == nullptr )
         return false;
 
@@ -227,6 +231,8 @@ int connect_client( ServerRuntime &rt, net::NetAddress from, int protocol,
                     std::int32_t challenge, const char *protinfo,
                     const char *userinfo, IOobSink &sink ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     ClientMachinery &cm = rt.clients;
 
     if ( protocol != k_protocol_version )
@@ -349,6 +355,8 @@ int connect_client( ServerRuntime &rt, net::NetAddress from, int protocol,
 
 void userinfo_changed( ServerRuntime &rt, ServerClient &cl ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     ClientMachinery &cm = rt.clients;
 
     if ( !info_is_valid( cl.userinfo ) )
@@ -368,7 +376,7 @@ void userinfo_changed( ServerRuntime &rt, ServerClient &cl ) noexcept
     if ( name_in_use( cm, cl, name ) )
     {
         char deduped[32];
-        for ( unsigned n = 1; n < 1000; ++n )
+        for ( std::uint32_t n = 1; n < 1000; ++n )
         {
             ut::snprintf( deduped, sizeof( deduped ), "%s (%u)", name, n );
             if ( !name_in_use( cm, cl, deduped ) )
@@ -475,6 +483,8 @@ void client_begin( ServerRuntime &rt, ServerClient &cl ) noexcept
 void execute_client_command( ServerRuntime &rt, ServerClient &cl,
                              const char *cmd, IOobSink &sink ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( cmd == nullptr )
         return;
 
@@ -523,6 +533,8 @@ void execute_client_command( ServerRuntime &rt, ServerClient &cl,
 
 void drop_client( ServerRuntime &rt, ServerClient &cl, bool crash ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( cl.state == ClientState::Zombie )
         return;
 
@@ -549,6 +561,8 @@ void drop_client( ServerRuntime &rt, ServerClient &cl, bool crash ) noexcept
 
 void check_timeouts( ServerRuntime &rt ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     ClientMachinery &cm = rt.clients;
 
     for ( int i = 0; i < cm.maxclients; ++i )
@@ -590,6 +604,8 @@ void check_timeouts( ServerRuntime &rt ) noexcept
 ::xash::abi::edict_t *fake_connect( ServerRuntime &rt,
                                     const char *netname ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     ClientMachinery &cm = rt.clients;
 
     ServerClient *cl = find_empty_slot( cm );
