@@ -4,8 +4,8 @@
 Thin wrappers over the same xtools functions the CLI scripts use, so
 MCP-capable agent frameworks (Claude Code, VS Code Copilot, opencode) get
 the deterministic workflow tooling without shell round-trips. Registered in
-.mcp.json, .vscode/mcp.json, and opencode.json; Codex users add the
-user-global config.toml snippet from tools/README.md.
+.mcp.json, .vscode/mcp.json, opencode.json, and .codex/config.toml (trusted
+projects); see .github/AGENT-SETUP.md.
 
 Requires the `mcp` package (see root requirements.txt); everything else in
 tools/ is stdlib-only.

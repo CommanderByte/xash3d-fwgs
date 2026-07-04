@@ -1,0 +1,20 @@
+# Codex CLI project config (NOT related to Documentation/codex, which is an
+# abandoned earlier rewrite effort).
+#
+# This file activates only after the project is trusted in your user-global
+# ~/.codex/config.toml:
+#
+#   [projects."c:\\git\\xash3d-fwgs"]
+#   trust_level = "trusted"
+#
+# Commands below are repo-relative; if your Codex build does not resolve
+# them against the project root, use the absolute-path user-global snippet
+# in .github/AGENT-SETUP.md instead.
+
+[mcp_servers.xash-tools]
+command = ".venv/Scripts/python.exe"
+args = ["xash3dpp/tools/mcp_server.py"]
+
+[mcp_servers.cpp-lsp]
+command = ".venv/Scripts/python.exe"
+args = ["xash3dpp/tools/cpp_lsp_launcher.py"]

@@ -34,5 +34,14 @@
     // $env:Path prefix each time.
     "terminal.integrated.env.windows": {
         "PATH": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin;${env:PATH}"
-    }
+    },
+
+    // --- Copilot / agent files --------------------------------------------------
+    // Discovery of prompt/instruction/AGENTS.md files is version- and
+    // toggle-gated across VS Code releases; set explicitly so the .github/
+    // workflow surface and the root AGENTS.md are always active.
+    "chat.promptFiles": true,
+    "chat.useAgentsMdFile": true,
+    "chat.useNestedAgentsMdFiles": true,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true
 }

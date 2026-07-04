@@ -71,9 +71,17 @@ PATH. Overrides: `XASH_CMAKE`, `XASH_CTEST`, `XASH_VSDEVCMD`, `XASH_CLANGD`,
 
 ## Codex CLI note
 
-Codex reads the root `AGENTS.md`. To give Codex the `xash-tools` MCP server,
-add to your **user-global** `~/.codex/config.toml` (not committed — Codex
-has no in-repo config):
+Codex reads the root `AGENTS.md` natively, and the committed
+`.codex/config.toml` registers both MCP servers once you trust the project
+in your user-global `~/.codex/config.toml`:
+
+```toml
+[projects."c:\\git\\xash3d-fwgs"]
+trust_level = "trusted"
+```
+
+Fallback (if your Codex build does not resolve the committed repo-relative
+commands): add the servers to `~/.codex/config.toml` with absolute paths:
 
 ```toml
 [mcp_servers.xash-tools]
