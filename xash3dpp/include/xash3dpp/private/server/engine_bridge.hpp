@@ -30,6 +30,8 @@
 
 namespace xash::server {
 
+struct ClientMachinery; // S9 — svs.clients + svgame.msg + sv.multicast (clients.hpp)
+
 // Q-5: the legacy Host_Error surface — installed by the host layer;
 // slots that legacy hard-errors from (edict exhaustion, bad WriteEntity)
 // route here.  The hook may not return control flow guarantees; slot
@@ -54,6 +56,10 @@ struct EngineBridge
     // S7 lifecycle (null in pre-lifecycle fixtures: the precache slots
     // then return 0, the legacy no-server answer)
     PrecacheTables *precache = nullptr;             // @lifetime: engine
+
+    // S9 clients/messaging (null in pre-S9 fixtures: RegUserMsg / MessageBegin
+    // / Write* / GetPlayerUserId then degrade to their legacy no-server value)
+    ClientMachinery *clients = nullptr;             // @lifetime: engine
 
     // Misc allocations the ABI forces on the engine (cvar string
     // replacements); typically the svgame mempool equivalent.

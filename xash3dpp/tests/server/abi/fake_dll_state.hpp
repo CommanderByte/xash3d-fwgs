@@ -43,6 +43,14 @@ struct State
     int activate_edict_count;    // edictCount handed to the last ServerActivate
     int activate_client_max;     // clientMax handed to the last ServerActivate
 
+    // S9 client-lifecycle probes.
+    int client_connect_calls;        // pfnClientConnect invocations
+    int client_put_in_server_calls;  // pfnClientPutInServer invocations
+    int client_command_calls;        // pfnClientCommand invocations
+    int client_userinfo_calls;       // pfnClientUserInfoChanged invocations
+    int client_disconnect_calls;     // pfnClientDisconnect invocations
+    int client_connect_should_reject; // when set, pfnClientConnect returns 0
+
     // Every pfnKeyValue the double receives (class/key/value snapshot) — the
     // parse test reads these back to pin the quirk transforms.
     struct KvdRecord

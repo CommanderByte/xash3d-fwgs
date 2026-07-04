@@ -40,8 +40,8 @@ namespace {
 
 namespace ml = ::xash::map_loader;
 
-// protocol.h:104 — MAX_CLIENTS = 1 << MAX_CLIENT_BITS (5 bits → 32).
-constexpr int k_max_clients = 32;
+// MAX_CLIENTS (protocol.h:104, 1 << MAX_CLIENT_BITS = 32) is provided by
+// clients.hpp as xash::server::k_max_clients (pulled in via lifecycle.hpp).
 
 // server.h:50 — SV_SPAWN_TIME (the settle-frame frametime).
 constexpr float k_sv_spawn_time = 0.1f;
@@ -182,6 +182,7 @@ void setup_clients( ServerRuntime &rt ) noexcept
     rt.arena.set_num_entities( floor );  // svgame.numEntities = maxclients + 1
     rt.bridge.max_clients = mc;
     rt.globals.maxClients = mc;
+    rt.clients.maxclients = mc; // S9 — svs.clients active range / SV_Multicast
 }
 
 bool spawn_server( ServerRuntime &rt, const char *mapname,

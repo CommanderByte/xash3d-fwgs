@@ -18,6 +18,7 @@
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/networking/delta.hpp>
+#include <xash3dpp/private/server/clients.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
 #include <xash3dpp/private/server/game_dll.hpp>
@@ -144,6 +145,11 @@ struct ServerRuntime
 
     LevelState      level;
     PersistentState persistent;
+
+    // S9 — svs.clients array, svgame.msg[] registry, sv.multicast scratch,
+    // ban filters, server log.  One aggregate keeps the S9 surface out of
+    // LevelState/PersistentState (clean merge boundary with the S8 slice).
+    ClientMachinery clients;
 
     bool game_loaded = false;
 

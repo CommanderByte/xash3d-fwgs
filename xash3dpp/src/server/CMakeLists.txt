@@ -36,7 +36,12 @@ add_library(xash3dpp_server STATIC
     lifecycle/entity_parse.cpp
     lifecycle/spawn.cpp
     # physics/  sources land in S8
-    # clients/  sources land in S9
+    clients/info_string.cpp
+    clients/filter.cpp
+    clients/log.cpp
+    clients/messages.cpp
+    clients/client_state.cpp
+    clients/query.cpp
 )
 
 target_include_directories(xash3dpp_server
