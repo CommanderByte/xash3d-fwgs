@@ -27,14 +27,12 @@ Extract from `$ARGUMENTS`:
 First verify the failure is real and reproducible:
 
 ```powershell
-# Build
-cd "c:\git\xash3d-fwgs\xash3dpp\build\Debug"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build . 2>&1 | Select-String "error C[0-9]|error:"
-
-# Test
-cd "c:\git\xash3d-fwgs\xash3dpp\build"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" -C Debug --output-on-failure 2>&1 | Select-Object -Last 20
+& .venv\Scripts\python.exe xash3dpp\tools\build.py --json
+& .venv\Scripts\python.exe xash3dpp\tools\test.py --json
 ```
+
+(Manual fallback: the VS2022-bundled `cmake --build --preset debug` and
+`ctest --preset debug` run from `xash3dpp/`.)
 
 If the failure does NOT reproduce on HEAD, report: "Failure not reproducible on
 HEAD — may already be fixed. Last passing state is current." and stop.

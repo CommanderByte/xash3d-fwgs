@@ -2,7 +2,7 @@
 name: "Implementation status and next steps"
 description: "Scan the xash3dpp/ tree, determine what is implemented vs. stub-only, and print a prioritised 'what to do next' plan to chat based on the legacy engine dependency structure. No files are written."
 agent: agent
-tools: [read, search]
+tools: [read, search, execute]
 model: claude-haiku-4-5-20251001
 ---
 
@@ -15,28 +15,24 @@ Analyse the current state of the rewrite and recommend what to tackle next.
 
 ## Step 1 — Determine what is implemented
 
-For each directory under `xash3dpp/src/`, count the non-stub source files
-(anything except `CMakeLists.txt` and `.gitkeep`).
+Generate the status table (`python` = the repo venv,
+`.venv\Scripts\python.exe`):
 
-Classify each directory as one of:
-
-| Status | Meaning |
-|--------|---------|
-| **Complete** | Has `.cpp` implementation files and a corresponding test target |
-| **Partial** | Has `.cpp` files but incomplete API surface or no tests |
-| **Skeleton** | Only a `CMakeLists.txt` (no implementation yet) |
-
-Also check `xash3dpp/include/xash3dpp/` and `xash3dpp/tests/` to confirm header
-and test presence for each subsystem.
-
-Output a status table:
-
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\status_table.py --markdown
+& .venv\Scripts\python.exe xash3dpp\tools\status_table.py --check --json
 ```
-| Subsystem     | src/ files | include/ | tests/ | Status   |
-|---------------|------------|----------|--------|----------|
-| utilities     | ...        | ✓        | ✓      | Complete |
-| ...
-```
+
+The table classifies each `xash3dpp/src/` directory as **Complete** (has
+`.cpp` files and tests), **Partial** (`.cpp` but no tests), or **Skeleton**
+(CMakeLists only). `--check` diffs against the status table maintained in
+`xash3dpp/docs/implementation-plan.md` — report any drift it finds. For
+Partial subsystems, `stub_scan.py <subsystem> --json` gives the TODO/test
+detail. The "Complete" label is structural — cross-check the
+implementation-plan chunk status before treating a subsystem as done.
+
+Manual fallback: count `.cpp` files per `src/` directory and check
+`include/xash3dpp/<sub>/` + `tests/<sub>/` presence by hand.
 
 ---
 

@@ -117,11 +117,12 @@ If the boundary doc does not exist, skip this step entirely.
 ## Step 4 — Build and test
 
 ```powershell
-cmake -S xash3dpp -B build
-cmake --build build --config Debug 2>&1 | Select-String "error C[0-9]|error:"
-
-ctest --test-dir build -C Debug --output-on-failure -R "$ARGUMENTS" 2>&1 | Select-Object -Last 20
+& .venv\Scripts\python.exe xash3dpp\tools\build.py --json
+& .venv\Scripts\python.exe xash3dpp\tools\test.py -R "$ARGUMENTS" --json
 ```
+
+(Manual fallback: the VS2022-bundled `cmake --build --preset debug` and
+`ctest --preset debug -R "$ARGUMENTS"` run from `xash3dpp/`.)
 
 If there are build errors, trace them to the fix that caused them, correct the fix,
 and rebuild. Do not weaken or delete tests. Do not add new tests in this prompt —

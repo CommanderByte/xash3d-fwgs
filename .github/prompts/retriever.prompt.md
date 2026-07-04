@@ -108,12 +108,12 @@ After fixing each file, record the row as `DONE`.
 ## Phase 4 — Build and test
 
 ```powershell
-cd "c:\git\xash3d-fwgs\xash3dpp\build\Debug"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build . 2>&1 | Select-String "error C[0-9]|error:"
-
-cd "c:\git\xash3d-fwgs\xash3dpp\build"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" -C Debug --output-on-failure -j1 2>&1 | Select-Object -Last 20
+& .venv\Scripts\python.exe xash3dpp\tools\build.py --json
+& .venv\Scripts\python.exe xash3dpp\tools\test.py --json
 ```
+
+(Manual fallback: the VS2022-bundled `cmake --build --preset debug` and
+`ctest --preset debug` run from `xash3dpp/`.)
 
 If the build fails, trace the error to the fix that caused it, revert that fix,
 mark the row `UNRESOLVED (build break)`, and continue with the remaining rows.

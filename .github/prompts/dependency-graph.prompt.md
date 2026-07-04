@@ -2,7 +2,7 @@
 name: "Dependency graph — EngineContext init order audit"
 description: "Read all InitParams structs and EngineContext member declarations to build the subsystem dependency graph, check for cycles, and verify that member init order in EngineContext is consistent with the dependency direction. Read-only."
 agent: agent
-tools: [read, search, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]
+tools: [read, search, execute, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]
 model: claude-haiku-4-5-20251001
 ---
 
@@ -15,11 +15,15 @@ initialisation order is consistent. **Read-only — no files are modified.**
 
 ## Step 1 — Collect all InitParams structs
 
-Search `xash3dpp/include/xash3dpp/` for every `*InitParams` struct:
+Run the edge scanner (`python` = the repo venv, `.venv\Scripts\python.exe`):
 
 ```powershell
-Select-String -Path "c:\git\xash3d-fwgs\xash3dpp\include\**\*.hpp" -Pattern "struct \w+InitParams" -Recurse
+& .venv\Scripts\python.exe xash3dpp\tools\dep_scan.py --json
 ```
+
+It returns the `*InitParams` inventory, cross-namespace dependency edges,
+and any mutual-reference cycles. (Manual fallback: grep
+`struct \w+InitParams` over `xash3dpp/include/**/*.hpp`.)
 
 For each struct, read its definition and record:
 

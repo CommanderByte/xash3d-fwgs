@@ -34,6 +34,9 @@ State the category and in one sentence explain what is changing and why.
 Search `xash3dpp/` for every location the change will touch:
 
 - Use grep and search to find all instances of the pattern being changed.
+  For symbol-level blast radius (a renamed type, a changed signature), prefer
+  the `cpp-lsp` MCP server's `references`/`definition` tools over raw grep
+  dumps — compile-accurate and far fewer tokens to interpret.
 - For each match, record: file path, line range, and which subsystem it belongs to.
 - Classify each match as one of:
   - **Must change** — directly implements the thing being changed

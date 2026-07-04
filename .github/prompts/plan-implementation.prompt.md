@@ -3,7 +3,7 @@ name: "Plan implementation order for scaffolded subsystem"
 description: "Scan all TODO stubs in a scaffolded xash3dpp subsystem, infer the internal dependency graph, and emit a prioritised implementation plan with a live todo list. Run after scaffold-subsystem and before writing any real code."
 argument-hint: "subsystem name, e.g. 'cmd_cvar', 'sound', 'host'"
 agent: agent
-tools: [read, search, todo]
+tools: [read, search, execute, todo]
 model: claude-sonnet-4-6
 ---
 
@@ -31,12 +31,21 @@ Read every file in full.  Produce a brief one-line summary per file.
 
 ## Step 2 — Classify what is done vs. stubbed
 
-Search every source (`.cpp`) file for the pattern `// TODO`.  For each
-occurrence, record the enclosing function/method name, file, and line number.
+Run the stub scanner (`python` = the repo venv, `.venv\Scripts\python.exe`):
 
-Also examine each test function:
-- **Live** — has at least one `CHECK(...)` call with a real expression
-- **Stub** — body is empty, or contains only `// TODO` comments
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\stub_scan.py $ARGUMENTS --json
+```
+
+It returns every `// TODO`/`// STUB` marker with its enclosing symbol,
+file, and line, plus the live-vs-stub test-file tally (live = at least one
+real `CHECK(...)`). Verify the enclosing-symbol attribution for any entry
+you will build the dependency graph on (the attribution is heuristic), and
+classify per-function liveness yourself where a single test file mixes live
+and stubbed test functions.
+
+Manual fallback: search every `.cpp` for `// TODO`, recording enclosing
+function/file/line, and read each test function to classify Live vs Stub.
 
 Build two tables:
 

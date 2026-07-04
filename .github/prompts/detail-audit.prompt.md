@@ -3,7 +3,7 @@ name: "Detail audit — structural compliance"
 description: "Read-only structural audit of an xash3dpp module. Runs six checks (limits.hpp coverage, header placement, memory/pool integration, stats tiering, dependency injection, compat isolation), produces a numbered violations table, and stops. No source files are changed. Use /implement-audit to apply the identified fixes."
 argument-hint: "module name, e.g. 'networking', 'cmd_cvar', 'filesystem'"
 agent: agent
-tools: [read, search, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]
+tools: [read, search, execute, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]
 model: claude-sonnet-4-6
 ---
 
@@ -59,9 +59,23 @@ Also note the limits block for this module in `xash3dpp/include/xash3dpp/limits.
 
 ## Step 2 — Audit
 
-Work through every check below. For each violation, record a row in the violations
-table (format at end of this section). Record every violation before making any
-changes.
+Start with the mechanical pre-pass (`python` = the repo venv,
+`.venv\Scripts\python.exe`):
+
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --checks detail --json
+& .venv\Scripts\python.exe xash3dpp\tools\limits_scan.py $ARGUMENTS --json
+```
+
+`compliance_scan --checks detail` pre-populates the pattern-matchable rows
+(allocation, compat-ifdef, header placement, global refs — each finding
+cites its CHECK-*); `limits_scan` pre-populates CHECK-LIMITS (parsed
+`limits.hpp` table, magic/shadow/dead candidates). Confirm each finding
+against the source and discard false positives (`candidate-*` findings are
+heuristics). Then work through every check below for the judgment calls the
+scanners cannot make (hot-path vs cold-path, stats tiering, public/private
+header placement, DI completeness). Record every violation before making
+any changes.
 
 ---
 

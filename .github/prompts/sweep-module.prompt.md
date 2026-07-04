@@ -79,8 +79,23 @@ List every file in the module:
 
 ## Step 2 — Compliance Audit
 
-Read each file in the module and record every violation under the rules below.
-Work through all categories before making any changes.
+Start with the mechanical pre-pass (`python` = the repo venv,
+`.venv\Scripts\python.exe`):
+
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --json
+```
+
+This covers the pattern-matchable subset of the rules below (each finding
+cites its rule). Confirm each finding against the source, discard false
+positives (`candidate-*` findings are heuristics), then read each file for
+the judgment rules the scanner cannot do — ERROR_RETURN boundary logging,
+STATS_TIERS classification, TH-Const, DI_PARAMS init-params shape,
+ARRAY_SIZE_STACK size math (the tool's `judgment_checks_not_run` list names
+them). Record every violation before making any changes.
+
+The rule definitions below remain the authority for what a violation *is*
+and how to fix it.
 
 ---
 
@@ -433,14 +448,14 @@ the audit identified.
 ## Step 4 — Build and Test
 
 ```powershell
-# cmake --build runs from the Visual Studio build output directory
-cd "c:\git\xash3d-fwgs\xash3dpp\build\Debug"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build . 2>&1 | Select-String "error C[0-9]|error:"
-
-# CTest must run from the CMake build root (one level up), not the config subdirectory
-cd "c:\git\xash3d-fwgs\xash3dpp\build"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" -C Debug --output-on-failure -j1 2>&1 | Select-Object -Last 20
+& .venv\Scripts\python.exe xash3dpp\tools\build.py --json
+& .venv\Scripts\python.exe xash3dpp\tools\test.py --json
 ```
+
+(`build.py` returns the parsed `error C…` list; `test.py` returns the
+pass/fail breakdown with failed-test tails. Manual fallback: the
+VS2022-bundled `cmake --build --preset debug` and `ctest --preset debug`
+run from `xash3dpp/`.)
 
 If there are build errors, read the error output, trace the root cause, fix it,
 and rebuild. Repeat until the build is clean.
@@ -495,9 +510,9 @@ refactor($ARGUMENTS): apply architecture, style, and threading compliance
 
 Only list rules that actually had violations. Omit rules where no changes were needed.
 
-**After committing, verify the commit actually landed** — execution_subagent
-fabricates git output. Read `.git/refs/heads/<branch>` directly and confirm
-the hash changed from what it was before the commit.
+**After committing, verify the commit actually landed**: run
+`git log -1 --oneline` and confirm the new hash/subject (capture the hash
+before committing so you can compare; do not trust remembered output).
 
 ---
 

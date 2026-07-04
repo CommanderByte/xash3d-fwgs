@@ -84,6 +84,44 @@ files must not include `edit` in their tools list.
 
 ---
 
+## Adapters and tool invocation
+
+### Adapters (other agent frameworks)
+
+The `.github/` files are the single source of truth. Other frameworks get
+**thin delegator adapters** that must never restate the workflow logic:
+
+- `.claude/commands/<stem>.md` — Claude Code slash commands: frontmatter is a
+  single `description:` (copied **verbatim** from the origin prompt's
+  `description`), body is the standard "Read `.github/prompts/<stem>.prompt.md`
+  and execute it exactly as written" delegation with `$ARGUMENTS` pass-through.
+- `.opencode/command/<stem>.md` — opencode commands: same shape.
+- `.claude/agents/<stem>.md` — Claude subagents: Claude dialect frontmatter
+  (`tools: Read, Grep, Glob`; `model:` alias per the MODEL-GUIDE canonical
+  table) + a body that defers to the `.github/agents/` charter.
+
+Edit the `.github/` originals, never the adapters; `xash3dpp/tools/
+workflow_sync.py` enforces existence, origin-path pointers, description
+parity, and model-tier parity across dialects.
+
+### Tool invocation from prompts
+
+Mechanical work (grep sweeps, checklists, build/test, limits parsing) is
+done by the `xash3dpp/tools/` scripts — prompts invoke them and interpret
+the JSON instead of embedding recipes:
+
+- Invocation line: `& .venv\Scripts\python.exe xash3dpp\tools\<script>.py … --json`
+  (`python` = the repo venv; scripts are stdlib-only).
+- A prompt that invokes a tool needs `execute` in its `tools:` list.
+- Keep a short `### Manual fallback (no Python available)` appendix with the
+  condensed recipe whenever the tool replaces one.
+- Findings marked `candidate-*` are heuristics: the prompt must tell the
+  agent to confirm or discard them, never to relay them blindly.
+- Never re-embed a recipe a tool covers — extend the tool
+  (`xash3dpp/tools/xtools/`) instead, and keep `tools/README.md` in sync.
+
+---
+
 ## Required sections by prompt type
 
 | Section | Analysis prompt | Implementation prompt | Scaffolding prompt |
