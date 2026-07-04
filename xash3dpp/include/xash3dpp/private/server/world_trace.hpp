@@ -37,7 +37,8 @@ namespace xash::server {
 // submodel indices into the world's WorldData.
 struct BrushModel
 {
-    std::size_t submodel = 0;
+    std::size_t submodel   = 0;
+    bool        has_origin = false; // legacy MODEL_HAS_ORIGIN (rotation support)
 };
 
 struct IModelResolver
@@ -111,6 +112,7 @@ struct MoveEnv
     ::xash::abi::edict_t *worldspawn = nullptr;           // @lifetime: engine
     IClipHooks     *hooks      = nullptr;                 // @lifetime: engine (null = defaults)
     GroupOp         group_op   = GroupOp::And;
+    int             group_mask = 0; // legacy svs.groupmask (pfnSetGroupMask)
     bool quake_hull_select = false; // world FWORLD_SKYSPHERE (quake maps)
     bool quake_compat      = false; // host ENGINE_QUAKE_COMPATIBLE
     bool pusher_ext        = false; // host ENGINE_PHYSICS_PUSHER_EXT
@@ -195,5 +197,30 @@ move_no_ents( const MoveEnv &env, const ::xash::utilities::Vec3 &start,
               const ::xash::utilities::Vec3 &maxs,
               const ::xash::utilities::Vec3 &end, int type,
               ::xash::abi::edict_t *passedict ) noexcept;
+
+// ---------------------------------------------------------------------------
+// Point contents (world/contents.cpp)
+// ---------------------------------------------------------------------------
+
+// world.h RankForContents priority table (water < slime < lava < ... ).
+[[nodiscard]] int rank_for_contents( int contents ) noexcept;
+
+// SV_TruePointContents: world hull-0 contents merged with SOLID_NOT water
+// bmodels from the areanode solid lists (highest rank wins; rotational
+// water supported).
+[[nodiscard]] int true_point_contents( const MoveEnv &env,
+                                       const ::xash::utilities::Vec3 &p ) noexcept;
+
+// SV_PointContents: CURRENT_* fold to CONTENTS_WATER.
+[[nodiscard]] int point_contents( const MoveEnv &env,
+                                  const ::xash::utilities::Vec3 &p ) noexcept;
+
+// SV_TouchLinks' exact brush-trigger refinement (BSP hull forced at the
+// TOUCHER's size, rotated triggers via MODEL_HAS_ORIGIN): true when the
+// toucher's origin sits in the trigger's solid hull.  Lifecycle's
+// IWorldLinkHooks implementation calls this (S7 wiring).
+[[nodiscard]] bool brush_trigger_intersects( const MoveEnv &env,
+                                             ::xash::abi::edict_t *trigger,
+                                             ::xash::abi::edict_t *ent ) noexcept;
 
 } // namespace xash::server

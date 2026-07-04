@@ -32,6 +32,10 @@ inline constexpr int k_fl_worldbrush  = 1 << 25;
 // common/const.h :689 — rendermode (kRenderNormal)
 inline constexpr int k_render_normal = 0;
 
+// common/const.h :112/:118 — entvars_t.effects bits
+inline constexpr int k_ef_invlight   = 16;      // get lighting from ceiling
+inline constexpr int k_ef_fullbright = 1 << 27; // just get fullbright
+
 // HLSDK trace type (low byte of the pfnTraceLine/SV_Move `type` argument;
 // the high byte is the ignore-transparent flag)
 inline constexpr int k_move_normal     = 0; // dont_ignore_monsters

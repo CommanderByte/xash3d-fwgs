@@ -397,6 +397,18 @@ inline constexpr std::size_t server_area_depth = 4; // areanode subdivision dept
 inline constexpr std::size_t server_area_depth = XASH_LIMIT_SERVER_AREA_DEPTH;
 #endif
 
+#ifndef XASH_LIMIT_SERVER_LIGHTSTYLES
+inline constexpr std::size_t server_lightstyles = 256; // MAX_LIGHTSTYLES (protocol limit, FWGS raised from 64)
+#else
+inline constexpr std::size_t server_lightstyles = XASH_LIMIT_SERVER_LIGHTSTYLES;
+#endif
+
+#ifndef XASH_LIMIT_SERVER_LIGHTSTYLE_PATTERN
+inline constexpr std::size_t server_lightstyle_pattern = 256; // lightstyle_t pattern/map buffer
+#else
+inline constexpr std::size_t server_lightstyle_pattern = XASH_LIMIT_SERVER_LIGHTSTYLE_PATTERN;
+#endif
+
 #ifndef XASH_LIMIT_SERVER_STRING_BLOCK
 inline constexpr std::size_t server_string_block = 65536; // string arena bytes per edict quantum
 #else

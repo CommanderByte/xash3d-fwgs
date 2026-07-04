@@ -25,8 +25,9 @@ add_library(xash3dpp_server STATIC
     world/links.cpp
     world/hulls.cpp
     world/clip.cpp
+    world/contents.cpp
+    world/light.cpp
     # abi/      bridge sources land in S6
-    # world/    contents/light sources land in S5c
     # physics/  sources land in S8
     # clients/  sources land in S9
 )

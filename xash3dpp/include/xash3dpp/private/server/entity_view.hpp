@@ -72,6 +72,7 @@ public:
     [[nodiscard]] int flags() const noexcept { return e_->v.flags; }
     [[nodiscard]] int effects() const noexcept { return e_->v.effects; }
     [[nodiscard]] int rendermode() const noexcept { return e_->v.rendermode; }
+    [[nodiscard]] int light_level() const noexcept { return e_->v.light_level; }
 
     // --- entity cross-links ----------------------------------------------
     [[nodiscard]] ::xash::abi::edict_t *aiment() const noexcept { return e_->v.aiment; }

@@ -75,10 +75,10 @@ struct IWorldLinkHooks
 
     // Exact brush-trigger refinement after the AABB pass (legacy: force
     // BSP hull + PM_HullPointContents, with rotated-trigger support,
-    // sv_world.c:546-567).
-    // TODO(chunk6-S5b): install the real hull test; until then the
-    // default accepts the AABB hit (fires brush triggers generously —
-    // tracked, not shippable).
+    // sv_world.c:546-567).  The real test is
+    // server::brush_trigger_intersects (world_trace.hpp).
+    // TODO(chunk6-S7): lifecycle's hooks implementation wires it (needs
+    // the MoveEnv it owns); this default accepts the AABB hit.
     [[nodiscard]] virtual bool
     brush_trigger_intersects( ::xash::abi::edict_t * /*trigger*/,
                               ::xash::abi::edict_t * /*ent*/ ) noexcept
