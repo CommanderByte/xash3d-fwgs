@@ -22,12 +22,13 @@ add_library(xash3dpp_server STATIC
     server.cpp
     abi/edict_arena.cpp
     abi/string_pool.cpp
+    abi/game_dll.cpp
     world/links.cpp
     world/hulls.cpp
     world/clip.cpp
     world/contents.cpp
     world/light.cpp
-    # abi/      bridge sources land in S6
+    # abi/engine_table.cpp lands in S6b (enginefuncs_t population)
     # physics/  sources land in S8
     # clients/  sources land in S9
 )
@@ -43,8 +44,8 @@ target_link_libraries(xash3dpp_server
     PUBLIC  xash3dpp_memory
     PUBLIC  xash3dpp_map_loader
     PRIVATE xash3dpp_core
+    PRIVATE xash3dpp_platform      # S6 — dynlib load, time
     # Added as the slices land (see server-boundary.md Dependencies):
     # PUBLIC  xash3dpp_networking   # S9 — netchan, delta codec, master_list
-    # PUBLIC  xash3dpp_filesystem   # S6+ — game DLL path, resource lists, logs
-    # PRIVATE xash3dpp_platform     # S6 — dynlib load, time
+    # PUBLIC  xash3dpp_filesystem   # S7+ — game DLL path, resource lists, logs
 )
