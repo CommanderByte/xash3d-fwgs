@@ -18,6 +18,18 @@ behavioural reference, not a design constraint for the rewrite.
 - [public-common-sdk.md](public-common-sdk.md) — `public/`, `common/`, `pm_shared/` utilities and SDK headers
 - [launcher-and-android.md](launcher-and-android.md) — `game_launch/` and `android/` wrappers
 
+## Deep dives
+
+Where the 1-page summaries above are wide-and-shallow, deep dives are
+narrow-and-exact: per-topic briefs with struct layouts, algorithms, exact
+constants, and quirk catalogues, produced by recon agents immediately before
+a chunk is implemented. **Convention:** recon agents targeting a chunk write
+their brief here before implementation starts, so future agents (and future
+sessions) read instead of re-deriving.
+
+- [deep-dive-bsp-loader.md](deep-dive-bsp-loader.md) — BSP v29/v30/BSP2 on-disk format, `mod_bmodel.c` load path, hull construction, map CRC, 18-item quirk list (Chunk 5 recon, 2026-07-04)
+- [deep-dive-trace-pvs.md](deep-dive-trace-pvs.md) — `pm_trace.c` hull-trace kernel (exact pseudocode + epsilons), contents/PVS query surface, map_loader-vs-server split, fixture guidance (Chunk 5 recon, 2026-07-04)
+
 ## Top-level reference
 
 - [overview.md](overview.md) — cross-cutting map: how the subsystems plug together at the engine level
