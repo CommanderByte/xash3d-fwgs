@@ -15,6 +15,7 @@ source, shared with pre-pr Phase 1):
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\finish_check.py $ARGUMENTS --run-tests --json
 ```
+*(MCP: xash-tools tool `finish_check` — same data.)*
 
 Your job is interpretation, not re-derivation:
 
@@ -46,6 +47,10 @@ Verdict: SHIP-READY | NEEDS-WORK
 ```
 
 `SHIP-READY` requires all 9 sections fully `[x]`.
+
+Then record a checkpoint (`checkpoint` MCP tool or
+`xash3dpp\tools\checkpoint.py`): `step="finish-subsystem"`, note =
+`"<N>/9 — <verdict>"`.
 
 ---
 

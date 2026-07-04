@@ -24,6 +24,7 @@ apply judgment where an item says `needs-judgment` or a finding is marked
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\finish_check.py $ARGUMENTS --run-tests --json
 ```
+*(MCP: xash-tools tool `finish_check` — same data.)*
 
 This emits the canonical 9-section done checklist (boundary spec, limits,
 stats, nodiscard, naming, tests + macros, architecture docs + threading,
@@ -41,6 +42,7 @@ same checklist the `finish-subsystem` prompt reports, from one source.
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --checks prepr --json
 ```
+*(MCP: xash-tools tool `compliance_scan` — same data.)*
 
 Classify the findings:
 
@@ -89,6 +91,10 @@ Verdict: SHIP | HOLD
 
 **SHIP** requires: all 9 checklist items `[x]`, zero BLOCKERs, tests passing.
 WARNINGs do not block shipping but should be recorded as follow-up issues.
+
+Then record a checkpoint (`checkpoint` MCP tool or
+`xash3dpp\tools\checkpoint.py`): `step="pre-pr"`, note includes the
+SHIP/HOLD verdict.
 
 ---
 

@@ -104,3 +104,8 @@ Six subsystems are complete and tested.
 
 **Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++23;
 no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.
+
+**Environment/framework setup** lives in `.github/AGENT-SETUP.md`. For the
+current-state brief (git, chunk status, gates, blocking OQs, last
+checkpoint, suggested next action) run `whereami` — the `xash-tools` MCP
+tool or `& .venv\Scripts\python.exe xash3dpp\tools\whereami.py --json`.

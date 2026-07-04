@@ -85,6 +85,7 @@ Start with the mechanical pre-pass (`python` = the repo venv,
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --json
 ```
+*(MCP: xash-tools tool `compliance_scan` — same data.)*
 
 This covers the pattern-matchable subset of the rules below (each finding
 cites its rule). Confirm each finding against the source, discard false
@@ -451,6 +452,7 @@ the audit identified.
 & .venv\Scripts\python.exe xash3dpp\tools\build.py --json
 & .venv\Scripts\python.exe xash3dpp\tools\test.py --json
 ```
+*(MCP: xash-tools tools `build` / `test` — same data.)*
 
 (`build.py` returns the parsed `error C…` list; `test.py` returns the
 pass/fail breakdown with failed-test tails. Manual fallback: the
@@ -523,3 +525,6 @@ The task is complete when:
 2. The commit is made with only `xash3dpp/` files staged.
 3. No violations from Step 2 remain in the module.
 4. The boundary spec (if it exists) reflects any renamed symbols or changed signatures.
+5. A checkpoint is recorded (`checkpoint` MCP tool or
+   `xash3dpp\tools\checkpoint.py` — `step="sweep-module"`, note = commit
+   hash + rules fixed).

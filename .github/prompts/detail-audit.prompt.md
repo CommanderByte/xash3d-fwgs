@@ -66,6 +66,7 @@ Start with the mechanical pre-pass (`python` = the repo venv,
 & .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --checks detail --json
 & .venv\Scripts\python.exe xash3dpp\tools\limits_scan.py $ARGUMENTS --json
 ```
+*(MCP: xash-tools tools `compliance_scan` / `limits_scan` — same data.)*
 
 `compliance_scan --checks detail` pre-populates the pattern-matchable rows
 (allocation, compat-ifdef, header placement, global refs — each finding

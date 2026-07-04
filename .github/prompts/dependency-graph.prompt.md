@@ -20,6 +20,7 @@ Run the edge scanner (`python` = the repo venv, `.venv\Scripts\python.exe`):
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\dep_scan.py --json
 ```
+*(dep_scan is CLI-only by design — no MCP twin.)*
 
 It returns the `*InitParams` inventory, cross-namespace dependency edges,
 and any mutual-reference cycles. (Manual fallback: grep

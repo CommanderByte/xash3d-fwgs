@@ -36,6 +36,7 @@ Run the stub scanner (`python` = the repo venv, `.venv\Scripts\python.exe`):
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\stub_scan.py $ARGUMENTS --json
 ```
+*(MCP: xash-tools tool `stub_scan` — same data.)*
 
 It returns every `// TODO`/`// STUB` marker with its enclosing symbol,
 file, and line, plus the live-vs-stub test-file tally (live = at least one

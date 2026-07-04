@@ -13,6 +13,17 @@ Analyse the current state of the rewrite and recommend what to tackle next.
 
 ---
 
+## Step 0 — Ground truth (whereami)
+
+Run `whereami` first (the `xash-tools` MCP tool, or
+`& .venv\Scripts\python.exe xash3dpp\tools\whereami.py --json`). If this is
+a fresh or dormant session (no checkpoints, or the last checkpoint is
+flagged stale), follow its `suggested_next` and `doc_pointers` before
+continuing — the full analysis below may be unnecessary if the router
+already names the next action.
+
+---
+
 ## Step 1 — Determine what is implemented
 
 Generate the status table (`python` = the repo venv,
@@ -22,6 +33,7 @@ Generate the status table (`python` = the repo venv,
 & .venv\Scripts\python.exe xash3dpp\tools\status_table.py --markdown
 & .venv\Scripts\python.exe xash3dpp\tools\status_table.py --check --json
 ```
+*(MCP: xash-tools tool `status` — same data; pass `check=true` for the `--check` diff.)*
 
 The table classifies each `xash3dpp/src/` directory as **Complete** (has
 `.cpp` files and tests), **Partial** (`.cpp` but no tests), or **Skeleton**

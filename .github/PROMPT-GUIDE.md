@@ -117,6 +117,12 @@ the JSON instead of embedding recipes:
 
 - Invocation line: `& .venv\Scripts\python.exe xash3dpp\tools\<script>.py … --json`
   (`python` = the repo venv; scripts are stdlib-only).
+- **MCP preference**: when the host exposes the `xash-tools` MCP server,
+  call the MCP tool of the same name instead of shelling out; the CLI is
+  the fallback and returns identical JSON `data`. Exposed tools: build,
+  test, refresh_compile_db, compliance_scan, status (= status_table),
+  finish_check, stub_scan, limits_scan, markdown_lint, workflow_sync,
+  whereami, checkpoint. Exception: `dep_scan` is CLI-only by design.
 - A prompt that invokes a tool needs `execute` in its `tools:` list.
 - Keep a short `### Manual fallback (no Python available)` appendix with the
   condensed recipe whenever the tool replaces one.

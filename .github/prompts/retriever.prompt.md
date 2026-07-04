@@ -111,6 +111,7 @@ After fixing each file, record the row as `DONE`.
 & .venv\Scripts\python.exe xash3dpp\tools\build.py --json
 & .venv\Scripts\python.exe xash3dpp\tools\test.py --json
 ```
+*(MCP: xash-tools tools `build` / `test` — same data.)*
 
 (Manual fallback: the VS2022-bundled `cmake --build --preset debug` and
 `ctest --preset debug` run from `xash3dpp/`.)

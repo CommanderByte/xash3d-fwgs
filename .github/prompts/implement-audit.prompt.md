@@ -120,6 +120,7 @@ If the boundary doc does not exist, skip this step entirely.
 & .venv\Scripts\python.exe xash3dpp\tools\build.py --json
 & .venv\Scripts\python.exe xash3dpp\tools\test.py -R "$ARGUMENTS" --json
 ```
+*(MCP: xash-tools tools `build` / `test` — same data.)*
 
 (Manual fallback: the VS2022-bundled `cmake --build --preset debug` and
 `ctest --preset debug -R "$ARGUMENTS"` run from `xash3dpp/`.)

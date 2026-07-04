@@ -23,6 +23,7 @@ Scope: `xash3dpp/src/$ARGUMENTS/` and `xash3dpp/include/xash3dpp/$ARGUMENTS/`
 ```powershell
 & .venv\Scripts\python.exe xash3dpp\tools\limits_scan.py $ARGUMENTS --json
 ```
+*(MCP: xash-tools tool `limits_scan` — same data.)*
 
 (`python` = the repo venv, `.venv\Scripts\python.exe`; omit the subsystem
 argument to scan all of `xash3dpp/`.) The tool parses every
