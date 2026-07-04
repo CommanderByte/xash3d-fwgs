@@ -24,6 +24,8 @@ endif()
 # posture).  Presentation-side targets may opt out per target via
 # xash3dpp_relax_fp() — see cmake/fp_model.cmake for the rules.
 include(cmake/fp_model.cmake)
+# xash3dpp_add_test() — test registration helper, cmake/test_helpers.cmake.
+include(cmake/test_helpers.cmake)
 if(MSVC)
     add_compile_options(/fp:precise)
 else()

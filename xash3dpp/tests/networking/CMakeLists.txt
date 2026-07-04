@@ -1,94 +1,34 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_executable(test_networking_lifecycle test_networking_lifecycle.cpp)
-target_link_libraries(test_networking_lifecycle PRIVATE xash3dpp_networking)
-add_test(NAME test_networking_lifecycle COMMAND test_networking_lifecycle)
-
-add_executable(test_message_buf test_message_buf.cpp)
-target_link_libraries(test_message_buf PRIVATE xash3dpp_networking)
-add_test(NAME test_message_buf COMMAND test_message_buf)
-
-add_executable(test_netadr test_netadr.cpp)
-target_link_libraries(test_netadr PRIVATE xash3dpp_networking)
-add_test(NAME test_netadr COMMAND test_netadr)
+xash3dpp_add_test(test_networking_lifecycle LIBS xash3dpp_networking)
+xash3dpp_add_test(test_message_buf LIBS xash3dpp_networking)
+xash3dpp_add_test(test_netadr LIBS xash3dpp_networking)
 
 # codec
-add_executable(test_compress_lzss codec/test_compress_lzss.cpp)
-target_link_libraries(test_compress_lzss PRIVATE xash3dpp_networking)
-add_test(NAME test_compress_lzss COMMAND test_compress_lzss)
-
-add_executable(test_compress_bz2 codec/test_compress_bz2.cpp)
-target_link_libraries(test_compress_bz2 PRIVATE xash3dpp_networking)
-add_test(NAME test_compress_bz2 COMMAND test_compress_bz2)
-
-add_executable(test_compressed_packet codec/test_compressed_packet.cpp)
-target_link_libraries(test_compressed_packet PRIVATE xash3dpp_networking)
-add_test(NAME test_compressed_packet COMMAND test_compressed_packet)
+xash3dpp_add_test(test_compress_lzss SOURCE codec/test_compress_lzss.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_compress_bz2 SOURCE codec/test_compress_bz2.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_compressed_packet SOURCE codec/test_compressed_packet.cpp LIBS xash3dpp_networking)
 
 # wire
-add_executable(test_split_packet wire/test_split_packet.cpp)
-target_link_libraries(test_split_packet PRIVATE xash3dpp_networking)
-add_test(NAME test_split_packet COMMAND test_split_packet)
-
-add_executable(test_oob_packet wire/test_oob_packet.cpp)
-target_link_libraries(test_oob_packet PRIVATE xash3dpp_networking)
-add_test(NAME test_oob_packet COMMAND test_oob_packet)
-
-add_executable(test_protocol_driver_registry wire/test_protocol_driver_registry.cpp)
-target_link_libraries(test_protocol_driver_registry PRIVATE xash3dpp_networking)
-add_test(NAME test_protocol_driver_registry COMMAND test_protocol_driver_registry)
+xash3dpp_add_test(test_split_packet SOURCE wire/test_split_packet.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_oob_packet SOURCE wire/test_oob_packet.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_protocol_driver_registry SOURCE wire/test_protocol_driver_registry.cpp LIBS xash3dpp_networking)
 
 # transport
-add_executable(test_lag_queue transport/test_lag_queue.cpp)
-target_link_libraries(test_lag_queue PRIVATE xash3dpp_networking)
-add_test(NAME test_lag_queue COMMAND test_lag_queue)
-
-add_executable(test_loopback_transport transport/test_loopback_transport.cpp)
-target_link_libraries(test_loopback_transport PRIVATE xash3dpp_networking)
-add_test(NAME test_loopback_transport COMMAND test_loopback_transport)
-
-add_executable(test_packet_pool transport/test_packet_pool.cpp)
-target_link_libraries(test_packet_pool PRIVATE xash3dpp_networking)
-add_test(NAME test_packet_pool COMMAND test_packet_pool)
-
-add_executable(test_split_reassembler transport/test_split_reassembler.cpp)
-target_link_libraries(test_split_reassembler PRIVATE xash3dpp_networking)
-add_test(NAME test_split_reassembler COMMAND test_split_reassembler)
+xash3dpp_add_test(test_lag_queue SOURCE transport/test_lag_queue.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_loopback_transport SOURCE transport/test_loopback_transport.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_packet_pool SOURCE transport/test_packet_pool.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_split_reassembler SOURCE transport/test_split_reassembler.cpp LIBS xash3dpp_networking)
 
 # channel
-add_executable(test_netchan test_netchan.cpp)
-target_link_libraries(test_netchan PRIVATE xash3dpp_networking)
-add_test(NAME test_netchan COMMAND test_netchan)
-
-add_executable(test_network_context_sockets test_network_context_sockets.cpp)
-target_link_libraries(test_network_context_sockets PRIVATE xash3dpp_networking xash3dpp_platform)
-add_test(NAME test_network_context_sockets COMMAND test_network_context_sockets)
-
-add_executable(test_master_list test_master_list.cpp)
-target_link_libraries(test_master_list PRIVATE xash3dpp_networking xash3dpp_platform)
-add_test(NAME test_master_list COMMAND test_master_list)
+xash3dpp_add_test(test_netchan LIBS xash3dpp_networking)
+xash3dpp_add_test(test_network_context_sockets LIBS xash3dpp_networking xash3dpp_platform)
+xash3dpp_add_test(test_master_list LIBS xash3dpp_networking xash3dpp_platform)
 
 # delta
-add_executable(test_delta_field_codec delta/test_delta_field_codec.cpp)
-target_link_libraries(test_delta_field_codec PRIVATE xash3dpp_networking)
-add_test(NAME test_delta_field_codec COMMAND test_delta_field_codec)
-
-add_executable(test_delta_wire_formats delta/test_delta_wire_formats.cpp)
-target_link_libraries(test_delta_wire_formats PRIVATE xash3dpp_networking)
-add_test(NAME test_delta_wire_formats COMMAND test_delta_wire_formats)
-
-add_executable(test_delta_lst_parser delta/test_delta_lst_parser.cpp)
-target_link_libraries(test_delta_lst_parser PRIVATE xash3dpp_networking)
-add_test(NAME test_delta_lst_parser COMMAND test_delta_lst_parser)
-
-add_executable(test_delta_tables delta/test_delta_tables.cpp)
-target_link_libraries(test_delta_tables PRIVATE xash3dpp_networking)
-add_test(NAME test_delta_tables COMMAND test_delta_tables)
-
-add_executable(test_delta_table_wire delta/test_delta_table_wire.cpp)
-target_link_libraries(test_delta_table_wire PRIVATE xash3dpp_networking)
-add_test(NAME test_delta_table_wire COMMAND test_delta_table_wire)
-
-add_executable(test_delta_codec delta/test_delta_codec.cpp)
-target_link_libraries(test_delta_codec PRIVATE xash3dpp_networking)
-add_test(NAME test_delta_codec COMMAND test_delta_codec)
+xash3dpp_add_test(test_delta_field_codec SOURCE delta/test_delta_field_codec.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_delta_wire_formats SOURCE delta/test_delta_wire_formats.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_delta_lst_parser SOURCE delta/test_delta_lst_parser.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_delta_tables SOURCE delta/test_delta_tables.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_delta_table_wire SOURCE delta/test_delta_table_wire.cpp LIBS xash3dpp_networking)
+xash3dpp_add_test(test_delta_codec SOURCE delta/test_delta_codec.cpp LIBS xash3dpp_networking)

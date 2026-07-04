@@ -1,6 +1,4 @@
-add_executable(test_platform test_platform.cpp)
-target_link_libraries(test_platform PRIVATE xash3dpp_platform)
-add_test(NAME test_platform COMMAND test_platform)
+xash3dpp_add_test(test_platform LIBS xash3dpp_platform)
 
 # ---------------------------------------------------------------------------
 # Per-platform tests — each file contains platform-specific invariants.
@@ -9,18 +7,7 @@ add_test(NAME test_platform COMMAND test_platform)
 # guards inside a single source file.
 # ---------------------------------------------------------------------------
 
-add_executable(test_os_io test_os_io.cpp)
-target_link_libraries(test_os_io PRIVATE xash3dpp_platform)
-add_test(NAME test_os_io COMMAND test_os_io)
-
-add_executable(test_console test_console.cpp)
-target_link_libraries(test_console PRIVATE xash3dpp_platform)
-add_test(NAME test_console COMMAND test_console)
-
-add_executable(test_crash test_crash.cpp)
-target_link_libraries(test_crash PRIVATE xash3dpp_platform)
-add_test(NAME test_crash COMMAND test_crash)
-
-add_executable(test_os_socket test_os_socket.cpp)
-target_link_libraries(test_os_socket PRIVATE xash3dpp_platform)
-add_test(NAME test_os_socket COMMAND test_os_socket)
+xash3dpp_add_test(test_os_io LIBS xash3dpp_platform)
+xash3dpp_add_test(test_console LIBS xash3dpp_platform)
+xash3dpp_add_test(test_crash LIBS xash3dpp_platform)
+xash3dpp_add_test(test_os_socket LIBS xash3dpp_platform)

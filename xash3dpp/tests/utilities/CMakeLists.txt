@@ -13,7 +13,5 @@ set(test_sources
 )
 
 foreach(test_name IN LISTS test_sources)
-    add_executable(${test_name} ${test_name}.cpp)
-    target_link_libraries(${test_name} PRIVATE xash3dpp_utilities)
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    xash3dpp_add_test(${test_name} LIBS xash3dpp_utilities)
 endforeach()
