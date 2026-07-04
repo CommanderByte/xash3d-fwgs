@@ -1,7 +1,8 @@
-# Repo guide for Claude Code
+# Repo guide for coding agents
 
-This file and the root `AGENTS.md` are twins: the SYNC-CORE blocks below
-are byte-identical in both (enforced by `xash3dpp/tools/workflow_sync.py`).
+Read by Codex CLI, opencode, and VS Code Copilot (Claude Code primarily
+reads `CLAUDE.md`). The SYNC-CORE blocks below are byte-identical between
+this file and `CLAUDE.md` (enforced by `xash3dpp/tools/workflow_sync.py`).
 Edit them in both files together; the tails are framework-specific.
 
 ## Repo truth
@@ -83,18 +84,23 @@ a `Co-Authored-By` trailer naming the agent/model. Record a `checkpoint`
 after each commit.
 <!-- SYNC-CORE:END commit-style -->
 
-## Claude Code specifics
+## Codex CLI notes
 
-- Slash commands (thin adapters over `.github/prompts/`, all 21):
-  /analyse-modernization, /analyse-subsystem, /analyse-threading,
-  /analyse-utility-consolidation, /assess-impact, /bisect,
-  /dependency-graph, /detail-audit, /document-architecture,
-  /finish-subsystem, /implement-audit, /init, /limits-audit,
-  /migrate-to-memory, /plan-implementation, /pre-pr, /retriever,
-  /scaffold-subsystem, /status-and-next, /sweep-module, /write-unit-tests.
-- Subagent types: `xash3dpp-reviewer`, `abi-watchdog`,
-  `legacy-parity-auditor` (charters in `.github/agents/`).
-- Commit trailer: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
-- After editing `.mcp.json`, restart the session for MCP changes to apply.
-- Shared permission allowlist: `.claude/settings.json` (committed);
-  personal overrides go in `.claude/settings.local.json` (gitignored).
+- Codex has no per-command mechanism: to run a workflow step, **open
+  `.github/prompts/<name>.prompt.md`, read it, and follow it exactly**
+  (same 21 steps the other frameworks expose as commands).
+- MCP servers come from the committed `.codex/config.toml` after the
+  one-time trust step (`.github/AGENT-SETUP.md` §Codex). Codex never reads
+  `.github/` files automatically — only this AGENTS.md.
+- Keep this file lean: Codex budgets ~32 KiB for combined AGENTS.md
+  content.
+
+## opencode notes
+
+- The 21 workflow steps are `/`-commands from `.opencode/commands/`
+  (same names as the prompt stems); subagents live in `.opencode/agents/`.
+- `opencode.json` registers both MCP servers and additionally loads
+  `.github/copilot-instructions.md` via its `instructions` array
+  (additive with this file).
+- opencode auto-loads AGENTS.md in preference to CLAUDE.md — a no-op here
+  because the core blocks are identical.
