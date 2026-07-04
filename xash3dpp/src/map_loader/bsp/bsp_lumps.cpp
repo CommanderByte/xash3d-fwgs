@@ -440,8 +440,9 @@ WorldDataFill::Result WorldDataFill::leafs( const LoadContext &ctx, World &w )
 
                 // Legacy passes leaf->compressed_vis = visdata + visofs with
                 // no clamp; an in-range offset sees the identical byte
-                // stream, an out-of-range one decompresses as no-vis
-                // (hardening — legacy reads out of buffer).
+                // stream, an out-of-range one is treated like a missing vis
+                // pointer → full visibility (hardening — legacy reads out
+                // of buffer).
                 std::span<const std::byte> in{};
                 if ( leaf.visofs >= 0 &&
                      static_cast<std::size_t>( leaf.visofs ) < w.visdata_.size() )

@@ -30,3 +30,11 @@ add_test(NAME test_bsp_flags COMMAND test_bsp_flags)
 add_executable(test_map_crc bsp/test_map_crc.cpp)
 target_link_libraries(test_map_crc PRIVATE xash3dpp_map_loader)
 add_test(NAME test_map_crc COMMAND test_map_crc)
+
+add_executable(test_pvs_decompress pvs/test_pvs_decompress.cpp)
+target_link_libraries(test_pvs_decompress PRIVATE xash3dpp_map_loader)
+add_test(NAME test_pvs_decompress COMMAND test_pvs_decompress)
+
+add_executable(test_pvs_queries pvs/test_pvs_queries.cpp)
+target_link_libraries(test_pvs_queries PRIVATE xash3dpp_map_loader)
+add_test(NAME test_pvs_queries COMMAND test_pvs_queries)
