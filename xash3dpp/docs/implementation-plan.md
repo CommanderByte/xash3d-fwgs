@@ -22,7 +22,7 @@ ______________________________________________________________________
 | cmd_cvar | 11 | ✓ | ✓ | **Complete** |
 | host | 2 | ✓ | ✓ | **Complete** (Chunk 3 ✅; EngineContext owns networking) |
 | abi | 1 | ✓ | ✗ | **Partial** (`Host_Error` shim + accessor only) |
-| map_loader | 9 | ✓ | ✓ | **Complete** (BSP v29/30/BSP2/30ext → immutable WorldData; PVS + trace kernel, Q-18 golden-gated; FSM loads worlds) |
+| map_loader | 10 | ✓ | ✓ | **Complete** (BSP v29/30/BSP2/30ext → immutable WorldData; PVS + trace kernel, Q-18 golden-gated; FSM loads worlds; PHS module per Q-19) |
 | launcher | 1 | ✗ | ✗ | **Partial** (thin argv bootstrap, no tests) |
 | networking | 24 | ✓ | ✓ | **Complete** (Layers 0–4 incl. delta encoder + satellites, wired into EngineContext; DNS/bz2 deferred) |
 | server | 1 | ✓ | ✓ | **In progress** (Chunk 6 — scaffold landed 2026-07-04, stubs only; session ladder under Chunk 6) |

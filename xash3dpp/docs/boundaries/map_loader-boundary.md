@@ -120,6 +120,16 @@ hull0 `last = headnode + count` off-by-one; `.ent` patch age gate.
 
 ## 5. Known Deviations (intentional; parity-audit reviewed)
 
+**PHS module (Chunk 6 S3, Q-19).** `Mod_CalcPHS`'s OpenMP build
+parallelism is not ported (single-threaded fold, byte-identical output;
+parallelising internally at load is an allowed follow-up per the
+server-boundary OQ-9 posture); `PhsTable::compressed_row()` bounds-checks
+the row index (legacy indexes `phsofs` unchecked; out-of-range decompresses
+as all-visible per the module hardening convention); the `vis_stats`
+developer counters are not ported (pure logging). Both fat-vis paths share
+one walk (`private/map_loader/fat_vis.hpp`); `Mod_HeadnodeVisible`'s
+recursion is an explicit stack preserving front-first traversal order.
+
 **Error model.** Legacy `Host_Error` (process kill) → error codes
 (`BspUnsupportedVersion`/`BspCorruptLump`/`BspBadWorld`), logged at tag
 `map_loader` (Q-5). Legacy tolerates per-lump validation errors for the

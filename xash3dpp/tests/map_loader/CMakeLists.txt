@@ -15,6 +15,7 @@ xash3dpp_add_test(test_map_crc SOURCE bsp/test_map_crc.cpp LIBS xash3dpp_map_loa
 
 xash3dpp_add_test(test_pvs_decompress SOURCE pvs/test_pvs_decompress.cpp LIBS xash3dpp_map_loader)
 xash3dpp_add_test(test_pvs_queries SOURCE pvs/test_pvs_queries.cpp LIBS xash3dpp_map_loader)
+xash3dpp_add_test(test_phs SOURCE phs/test_phs.cpp LIBS xash3dpp_map_loader)
 
 xash3dpp_add_test(test_point_contents SOURCE trace/test_point_contents.cpp LIBS xash3dpp_map_loader)
 xash3dpp_add_test(test_hull_trace SOURCE trace/test_hull_trace.cpp LIBS xash3dpp_map_loader)

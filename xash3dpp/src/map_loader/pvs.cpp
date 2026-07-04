@@ -12,6 +12,7 @@
 #include <xash3dpp/map_loader/pvs.hpp>
 
 #include <xash3dpp/map_loader/contents.hpp>
+#include <xash3dpp/private/map_loader/fat_vis.hpp>
 #include <xash3dpp/private/map_loader/trace_math.hpp>
 
 #include <cstring>
@@ -216,49 +217,13 @@ std::size_t fat_pvs( const WorldData &w, const ::xash::utilities::Vec3 &org,
     if ( !merge )
         std::memset( visbuffer.data(), 0x00, bytes );
 
-    // Per-leaf decompression scratch (legacy uses the static g_visdata row).
-    std::vector<std::byte> row( bytes );
-
-    const auto nodes  = w.nodes();
-    const auto planes = w.planes();
-    const auto leafs  = w.leafs();
-
-    // Explicit stack replaces Mod_FatPVS_RecursiveBSPNode's recursion.
-    std::vector<int> stack;
-    stack.push_back( 0 );
-
-    while ( !stack.empty() )
-    {
-        int num = stack.back();
-        stack.pop_back();
-
-        while ( num >= 0 )
-        {
-            const Node &node = nodes[static_cast<std::size_t>( num )];
-            const float d = plane_diff( org, planes[static_cast<std::size_t>( node.planenum )] );
-
-            if ( d > radius )
-                num = node.children[0];
-            else if ( d < -radius )
-                num = node.children[1];
-            else
-            {
-                // go down both sides
-                stack.push_back( node.children[0] );
-                num = node.children[1];
-            }
-        }
-
-        const Leaf &leaf_hit = leafs[static_cast<std::size_t>( -1 - num )];
-        if ( leaf_hit.cluster < 0 )
-            continue;
-
-        decompress_pvs( leaf_compressed_pvs( w, -1 - num ), bytes, row );
-        for ( std::size_t i = 0; i < bytes; ++i )
-            visbuffer[i] = static_cast<std::byte>(
-                static_cast<unsigned char>( visbuffer[i] ) |
-                static_cast<unsigned char>( row[i] ));
-    }
+    // Shared walk (private/map_loader/fat_vis.hpp); the PVS row source is
+    // the leaf's own compressed run.
+    detail::fat_vis_walk( w, org, radius, visbuffer, bytes,
+                          [&w]( int leaf_index, int /*cluster*/ )
+                          {
+                              return leaf_compressed_pvs( w, leaf_index );
+                          } );
 
     return bytes;
 }

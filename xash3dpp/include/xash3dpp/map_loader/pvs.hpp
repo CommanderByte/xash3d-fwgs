@@ -7,8 +7,9 @@
 // Deep dive: docs/legacy-survey/deep-dive-trace-pvs.md §3.
 //
 // All functions are pure queries over const WorldData& — concurrent-read-
-// safe after load (Q-6).  Server-side PHS machinery (Mod_CalcPHS, the phs
-// path of Mod_FatPVS) belongs to Chunk 6 and is not implemented here.
+// safe after load (Q-6).  PHS machinery (Mod_CalcPHS, the phs path of
+// Mod_FatPVS, Mod_HeadnodeVisible) lives in phs.hpp (Q-19); both fat-vis
+// paths share the walk in private/map_loader/fat_vis.hpp.
 //
 // NOTE the tie-break asymmetry, preserved from legacy: the point-in-leaf
 // walk sends an exactly-on-plane point to the BACK child (PlaneDiff <= 0),
