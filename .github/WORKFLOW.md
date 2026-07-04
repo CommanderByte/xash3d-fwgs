@@ -82,7 +82,52 @@ decision session), then scaffold. `whereami` reports the blocking rows.
   cheaper to interpret.
 - **Subagents verify, they don't explore.** Spawn `xash3dpp-reviewer`,
   `abi-watchdog`, or `legacy-parity-auditor` for verification gates; do
-  exploratory reading inline where you can act on it.
+  exploratory reading inline where you can act on it. **A gate finding —
+  and any fix it suggests — is a hypothesis:** verify it against the legacy
+  reference before acting, especially for parity-sensitive code. A
+  reviewer's "off-by-one" fix can itself break parity when the legacy
+  deliberately does the same thing (e.g. an info-string bound where legacy
+  uses `>` with an identical latent 1-byte OOB — the `>=` hardening is only
+  correct because it matches legacy for every *defined* input and differs
+  solely where legacy invokes UB).
+
+---
+
+## Parallel / multi-agent work
+
+Fanning out two implementation agents at once pays off **only for genuinely
+independent work.** For a producer/consumer pair — one step's output drives
+the other's (e.g. a frame loop that calls the other half's per-client send) —
+the *integration seam is exactly what neither agent can build in isolation*,
+so parallelism finishes the independent bulk fast but leaves the seam, and
+often each step's hardest sub-piece, undone. Sequential-with-the-seam-in-mind
+is sometimes less total effort; decide before fanning out, not after.
+
+When you do parallelise (rules learned the hard way):
+
+- **Isolate every writer in its own git worktree.** A shared tree collides on
+  the shared files (aggregate / `*Runtime` structs, `CMakeLists`, the ABI
+  function table, test doubles) *and* on the single `build/Debug` tree —
+  concurrent builds corrupt each other. Worktree isolation removes both.
+- **Verify each worktree's base commit first.** Worktrees have been spawned
+  from the wrong base (a legacy ancestor from before `xash3dpp/` existed);
+  each agent must confirm its base is the intended HEAD and
+  `git merge --ff-only` up if not, *before* touching anything.
+- **Carve the shared files disjointly, and report the exact edits.** Tell each
+  agent to add a single aggregate member to a shared struct (not scatter
+  fields across it), to leave ABI/table slots the sibling owns untouched, and
+  to end with a precise list of every shared-file edit — that list is what the
+  orchestrator reconciles from, not a re-read of the whole diff.
+- **The build is the merge backstop.** git can *silently* auto-merge two
+  agents' additions at the same anchor into a duplicate definition — no
+  conflict marker. Always `build` + full `test` after reconciling; a clean
+  textual merge is not proof it compiles.
+- **Agents skip the gates; the orchestrator gates the merged result.** Each
+  agent lands its own green commit but does NOT run reviewer / parity /
+  checkpoint — those run once, after reconciliation, over the combined slice.
+- **The orchestrator's half is serial.** Reconciliation + review + fixing what
+  the gates surface does not parallelise. Budget for it when weighing the
+  payoff against a plain sequential run.
 
 ---
 
