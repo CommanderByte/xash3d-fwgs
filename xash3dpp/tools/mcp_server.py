@@ -13,6 +13,7 @@ tools/ is stdlib-only.
 
 from __future__ import annotations
 
+import importlib
 import subprocess
 import sys
 from pathlib import Path
@@ -21,11 +22,42 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
+import xtools  # noqa: E402
 from xtools import REPO, venv_python  # noqa: E402
-from xtools import buildtools, checks, state  # noqa: E402
+from xtools import buildtools, checks, proc, report, rules, scan, state  # noqa: E402
 from xtools import sync as xsync  # noqa: E402
+from xtools import vsenv  # noqa: E402
 
 mcp = FastMCP("xash-tools")
+
+# ---------------------------------------------------------------------------
+# Hot reload: the server process is long-lived, but the xtools modules get
+# edited mid-session (a stale compliance ruleset once kept reporting a fixed
+# blocker).  Before each tool call, reload every xtools module in dependency
+# order when any source file changed on disk.  Tool REGISTRATIONS in this
+# file still need a session restart — only module bodies hot-reload.
+# ---------------------------------------------------------------------------
+
+_XTOOLS_DIR = Path(__file__).resolve().parent / "xtools"
+_RELOAD_ORDER = [xtools, proc, report, vsenv, rules, scan,
+                 buildtools, checks, state, xsync]
+
+
+def _xtools_mtimes() -> dict[str, float]:
+    return {p.name: p.stat().st_mtime for p in _XTOOLS_DIR.glob("*.py")}
+
+
+_mtimes = _xtools_mtimes()
+
+
+def _maybe_reload() -> None:
+    global _mtimes
+    now = _xtools_mtimes()
+    if now == _mtimes:
+        return
+    _mtimes = now
+    for module in _RELOAD_ORDER:
+        importlib.reload(module)
 
 
 @mcp.tool()
@@ -33,6 +65,7 @@ def build(preset: str = "debug", configure: bool = False,
           target: str = "") -> dict:
     """Build xash3dpp via the VS2022-bundled cmake. Returns parsed errors,
     counts, and a log tail."""
+    _maybe_reload()
     return buildtools.build(preset=preset, configure=configure,
                             target=target or None)
 
@@ -40,7 +73,9 @@ def build(preset: str = "debug", configure: bool = False,
 @mcp.tool()
 def test(filter: str = "", preset: str = "debug") -> dict:
     """Run ctest (optionally filtered with -R `filter`). Returns pass/fail
-    breakdown and failed-test tails."""
+    breakdown; failed tests carry their output block and a decoded exit
+    code (STATUS_BREAKPOINT, ACCESS_VIOLATION, ...) when recognizable."""
+    _maybe_reload()
     return buildtools.test(filter_regex=filter, preset=preset)
 
 
@@ -48,6 +83,7 @@ def test(filter: str = "", preset: str = "debug") -> dict:
 def refresh_compile_db() -> dict:
     """Regenerate build/clangd/compile_commands.json (the cpp-lsp/clangd
     database). Run after adding files or targets."""
+    _maybe_reload()
     return buildtools.refresh_compile_db()
 
 
@@ -56,7 +92,9 @@ def compliance_scan(subsystem: str, checks_set: str = "all",
                     min_severity: str = "note") -> dict:
     """Mechanical convention scan (reviewer [M] checks). checks_set: all |
     prepr | detail | comma-list of check ids. candidate-* findings need
-    judgment."""
+    judgment. ABI-forced constructs carry inline compliance-allow markers,
+    echoed in the result's `allows` list."""
+    _maybe_reload()
     return checks.compliance_scan(subsystem, checks=checks_set,
                                   min_severity=min_severity)
 
@@ -66,6 +104,7 @@ def status(check: bool = False) -> dict:
     """Per-subsystem implementation status derived from the tree (src file
     counts, include/tests presence). check=True also diffs against the
     implementation-plan status table (drift list)."""
+    _maybe_reload()
     data = checks.status_table()
     if check:
         data["drift"] = checks.status_check(data)
@@ -78,6 +117,7 @@ def whereami(doctor: bool = False) -> dict:
     blocking OQs, recent checkpoints (with staleness/concurrency flags), and
     a suggested next action. Run at session start and after dormancy.
     doctor=True adds environment checks."""
+    _maybe_reload()
     return state.whereami(doctor_requested=doctor)
 
 
@@ -88,6 +128,7 @@ def checkpoint(chunk: str, step: str, note: str, actor: str = "",
     .agent-checkpoints.jsonl. Record at every commit, handoff, or
     interruption. Ground truth is always derived — checkpoints only aid
     resumption."""
+    _maybe_reload()
     return state.append_checkpoint(chunk, step, note, actor or None,
                                    session or None)
 
@@ -97,6 +138,7 @@ def workflow_sync(stage: int = 2) -> dict:
     """Drift check over the agent-workflow surface (.github originals vs
     adapters, model dialects, twin entry files, MCP registrations, doc
     counters). stage 1 = tooling subset, stage 2 (default) = full gate."""
+    _maybe_reload()
     return xsync.workflow_sync(stage=stage)
 
 
@@ -104,6 +146,7 @@ def workflow_sync(stage: int = 2) -> dict:
 def finish_check(subsystem: str, run_tests: bool = False) -> dict:
     """The 9-section finish-subsystem done checklist as
     pass/fail/needs-judgment items."""
+    _maybe_reload()
     return checks.finish_check(subsystem, run_tests=run_tests)
 
 
@@ -111,6 +154,7 @@ def finish_check(subsystem: str, run_tests: bool = False) -> dict:
 def stub_scan(subsystem: str) -> dict:
     """TODO/stub markers with enclosing symbols plus a live-vs-stub test
     tally for a subsystem."""
+    _maybe_reload()
     return checks.stub_scan(subsystem)
 
 
@@ -118,7 +162,21 @@ def stub_scan(subsystem: str) -> dict:
 def limits_scan(subsystem: str = "") -> dict:
     """limits.hpp audit: parsed XASH_LIMIT_* entries, dead limits, magic
     numbers and shadow literals in scope."""
+    _maybe_reload()
     return checks.limits_scan(subsystem or None)
+
+
+@mcp.tool()
+def slice_diff(base: str = "", include_patch: bool = False,
+               max_patch_lines: int = 400) -> dict:
+    """Change inventory since `base` (default: the newest checkpoint head
+    differing from HEAD, else HEAD~1): files with add/delete counts +
+    untracked list, optional capped patch. Use it to brief gate agents
+    (abi-watchdog / reviewer) from ground truth instead of a hand-typed
+    file list."""
+    _maybe_reload()
+    return state.slice_diff(base=base, include_patch=include_patch,
+                            max_patch_lines=max_patch_lines)
 
 
 @mcp.tool()

@@ -61,9 +61,97 @@ def _build_result(preset, configured, rc, log, duration) -> dict:
     }
 
 
+# Windows NTSTATUS / CRT exit codes a crashing test child commonly dies
+# with — the decoded name is usually the whole diagnosis (a bare "Failed"
+# with exit 0x80000003 once cost a four-round-trip bisect).
+_EXIT_DECODE = {
+    0x80000003: "STATUS_BREAKPOINT — __debugbreak / MSVC debug assert "
+                "(debug-heap leak check, _ASSERTE)",
+    0xC0000005: "STATUS_ACCESS_VIOLATION — segfault / null deref",
+    0xC0000409: "STATUS_STACK_BUFFER_OVERRUN — fail-fast (/GS, "
+                "std::terminate on MSVC)",
+    0xC00000FD: "STATUS_STACK_OVERFLOW",
+    0xC0000135: "STATUS_DLL_NOT_FOUND — missing dependent DLL",
+    3: "MSVC CRT abort()",
+}
+
+
+def _decode_exit(text: str) -> str | None:
+    """Map any recognizable exit code in `text` to its decoded name."""
+    for m in re.finditer(r"0x[0-9A-Fa-f]{8}|-?\d{9,10}|\bcode 3\b", text):
+        token = m.group(0)
+        if token == "code 3":
+            token = "3"
+        try:
+            value = int(token, 0) & 0xFFFFFFFF
+        except ValueError:
+            continue
+        if value in _EXIT_DECODE:
+            return "%s (%s)" % (_EXIT_DECODE[value], m.group(0))
+    return None
+
+
+_FAIL_LINE_RX = re.compile(
+    r"^\s*\d+/\d+\s+Test\s+#\d+:\s+(\S+)\s+\.*\*\*\*(\S[\w ]*)")
+_BLOCK_END_RX = re.compile(
+    r"^\s*(Start\s+\d+:|\d+/\d+\s+Test\s+#|\d+% tests passed)")
+
+
+def _failed_output_blocks(lines: list[str]) -> dict[str, list[str]]:
+    """Per-failed-test inline output (present with --output-on-failure)."""
+    blocks: dict[str, list[str]] = {}
+    current: str | None = None
+    for line in lines:
+        fm = _FAIL_LINE_RX.match(line)
+        if fm:
+            current = fm.group(1)
+            blocks[current] = []
+            continue
+        if current is not None:
+            if _BLOCK_END_RX.match(line):
+                current = None
+                continue
+            if len(blocks[current]) < 40:
+                blocks[current].append(line)
+    return blocks
+
+
+def _last_test_log_section(lines: list[str], name: str) -> list[str]:
+    """Fallback: the test's section from Testing/Temporary/LastTest.log —
+    ctest records output there even when the child crashed before its
+    stdout reached the console."""
+    build_dir = None
+    for line in lines:
+        m = re.search(r"Test project (.+)", line)
+        if m:
+            build_dir = Path(m.group(1).strip())
+            break
+    if build_dir is None:
+        return []
+    log = build_dir / "Testing" / "Temporary" / "LastTest.log"
+    if not log.is_file():
+        return []
+    try:
+        log_lines = log.read_text(encoding="utf-8",
+                                  errors="replace").splitlines()
+    except OSError:
+        return []
+    section: list[str] = []
+    in_section = False
+    for line in log_lines:
+        if re.search(r"Testing:\s+%s\s*$" % re.escape(name), line):
+            in_section = True
+            continue
+        if in_section and re.search(r"Testing:\s+\S+\s*$", line):
+            break
+        if in_section:
+            section.append(line)
+    return section[-40:]
+
+
 def test(filter_regex: str = "", preset: str = "debug") -> dict:
     ctest = ctest_path()
-    cmd = [str(ctest), "--preset", preset]
+    cmd = [str(ctest), "--preset", preset, "--output-on-failure"]
     if filter_regex:
         cmd += ["-R", filter_regex]
     rc, lines, duration = run(cmd, cwd=XPP)
@@ -81,8 +169,15 @@ def test(filter_regex: str = "", preset: str = "debug") -> dict:
         m = re.search(r"(\d+) tests? skipped", line)
         if m:
             skipped = int(m.group(1))
+    blocks = _failed_output_blocks(lines) if failed_tests else {}
     for ft in failed_tests:
-        ft["tail"] = [l for l in lines if ft["name"] in l][:8]
+        output = blocks.get(ft["name"]) or []
+        if not any(l.strip() for l in output):
+            output = _last_test_log_section(lines, ft["name"])
+        ft["output"] = output
+        decoded = _decode_exit("\n".join(output + [ft["reason"]]))
+        if decoded:
+            ft["exit_decode"] = decoded
     return {
         "preset": preset, "filter": filter_regex,
         "exit_code": rc, "total": total, "passed": passed,

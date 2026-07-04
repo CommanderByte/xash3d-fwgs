@@ -195,6 +195,121 @@ def plan_summary() -> dict:
             "next_todo_chunk": next_todo, "status_drift": drift}
 
 
+def ladder_summary() -> dict | None:
+    """Parse the in-progress chunk's **Session ladder** line: per-step ✅
+    ticks.  Returns None when no ladder line exists (chunks without a
+    committed ladder)."""
+    try:
+        text = _PLAN.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    m = re.search(r"\*\*Session ladder\*\*[^\n]*", text)
+    if not m:
+        return None
+    # The step list starts after the parenthetical preamble (which itself
+    # mentions step ids, e.g. "refined by S2 plan-implementation").
+    line = m.group(0).split("):", 1)[-1]
+    steps = []
+    for segment in line.split("→"):
+        sm = re.search(r"\bS(\d+)\b", segment)
+        if sm:
+            steps.append({"id": "S%s" % sm.group(1),
+                          "num": int(sm.group(1)),
+                          "done": "✅" in segment})
+    if not steps:
+        return None
+    done_nums = [s["num"] for s in steps if s["done"]]
+    return {"steps": steps,
+            "highest_done": ("S%d" % max(done_nums)) if done_nums else None}
+
+
+def ladder_drift(cps: dict, ladder: dict | None) -> str | None:
+    """Ladder-vs-checkpoint lag: the newest checkpoint's step (e.g.
+    'S6b-table' → 6) should not be ahead of the highest ✅-ticked ladder
+    step — commits are supposed to tick the ladder they complete."""
+    if not ladder or not cps.get("recent"):
+        return None
+    m = re.match(r"S(\d+)", str(cps["recent"][0].get("step", "")))
+    if not m:
+        return None
+    cp_num = int(m.group(1))
+    done = [s["num"] for s in ladder["steps"] if s["done"]]
+    highest = max(done) if done else 0
+    # The checkpointed step may still be in flight; only completed PRIOR
+    # steps count as lag.
+    if cp_num - 1 > highest:
+        return ("ladder lags checkpoints: checkpoint at S%d but ladder "
+                "ticks stop at S%d — tick completed steps in "
+                "implementation-plan.md" % (cp_num, highest))
+    return None
+
+
+def slice_diff(base: str = "", include_patch: bool = False,
+               max_patch_lines: int = 400) -> dict:
+    """Change inventory since `base` — the gate-agent briefing pack.
+
+    Default base: the newest checkpoint head that differs from HEAD (the
+    previous stable state), else HEAD~1.  The diff spans committed AND
+    uncommitted tracked changes (worktree vs base); untracked files are
+    listed separately.  include_patch adds the unified diff, capped at
+    max_patch_lines.
+    """
+    git = git_state()
+    base_source = "explicit"
+    if not base:
+        recent, _ = read_checkpoints()
+        for cp in reversed(recent):
+            cp_head = str(cp.get("head", ""))
+            if cp_head and cp_head != git["head"]:
+                base = cp_head
+                base_source = "checkpoint %s/%s" % (cp.get("chunk", "?"),
+                                                    cp.get("step", "?"))
+                break
+        if not base:
+            base = "HEAD~1"
+            base_source = "HEAD~1 (no differing checkpoint)"
+
+    files: list[dict] = []
+    rc, status_lines = _git(["diff", "--name-status", "-M", base])
+    if rc != 0:
+        return {"error": "git diff failed for base %r" % base,
+                "base": base, "base_source": base_source}
+    status_by_path: dict[str, str] = {}
+    for line in status_lines:
+        parts = line.split("\t")
+        if len(parts) >= 2:
+            status_by_path[parts[-1]] = parts[0]
+
+    total_added = total_deleted = 0
+    rc, numstat_lines = _git(["diff", "--numstat", "-M", base])
+    for line in numstat_lines if rc == 0 else []:
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            added = int(parts[0]) if parts[0].isdigit() else 0
+            deleted = int(parts[1]) if parts[1].isdigit() else 0
+            total_added += added
+            total_deleted += deleted
+            files.append({"path": parts[2],
+                          "status": status_by_path.get(parts[2], "M"),
+                          "added": added, "deleted": deleted})
+
+    rc, untracked_lines = _git(["ls-files", "--others", "--exclude-standard"])
+    untracked = [l.strip() for l in untracked_lines if l.strip()] if rc == 0 else []
+
+    out = {
+        "base": base, "base_source": base_source,
+        "head": git["head_short"], "dirty": git["dirty"],
+        "files": files, "untracked": untracked,
+        "total_added": total_added, "total_deleted": total_deleted,
+    }
+    if include_patch:
+        rc, patch_lines = _git(["diff", "-M", base])
+        if rc == 0:
+            out["patch"] = patch_lines[:max_patch_lines]
+            out["patch_truncated"] = len(patch_lines) > max_patch_lines
+    return out
+
+
 def blocking_oqs() -> list[dict]:
     try:
         text = _REGISTER.read_text(encoding="utf-8", errors="replace")
@@ -374,6 +489,7 @@ def whereami(doctor_requested: bool = False) -> dict:
     oqs = blocking_oqs()
     cps = _checkpoint_summary(git["head"])
     doc = doctor() if doctor_requested else None
+    ladder = ladder_summary()
     out = {
         "git": git,
         "plan": plan,
@@ -383,6 +499,11 @@ def whereami(doctor_requested: bool = False) -> dict:
         "suggested_next": suggested_next(git, plan, gates, oqs, cps, doc),
         "doc_pointers": DOC_POINTERS,
     }
+    if ladder is not None:
+        out["ladder"] = ladder
+        drift = ladder_drift(cps, ladder)
+        if drift:
+            out["ladder"]["drift"] = drift
     if doc is not None:
         out["doctor"] = doc
     return out

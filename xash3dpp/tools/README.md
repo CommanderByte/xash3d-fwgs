@@ -33,7 +33,7 @@ Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 | Script | Purpose | Consumed by |
 |--------|---------|-------------|
 | `build.py` | Configure/build via the VS2022-bundled cmake (presets `debug-msvc`/`debug`); parsed `error C…` list | sweep-module, implement-audit, retriever, bisect, write-unit-tests, pre-pr |
-| `test.py` | `ctest --preset debug` (optional `-R` filter); pass/fail breakdown | same set + `finish_check.py` |
+| `test.py` | `ctest --preset debug --output-on-failure` (optional `-R` filter); pass/fail breakdown; failed tests carry their output block (LastTest.log fallback for crashed children) and a decoded exit code (STATUS_BREAKPOINT/ACCESS_VIOLATION/…) | same set + `finish_check.py` |
 | `refresh_compile_db.py` | `VsDevCmd -arch=x64 && cmake --preset clangd` → regenerates `build/clangd/compile_commands.json` for the cpp-lsp/clangd MCP server | manual, after adding files/targets |
 | `compliance_scan.py` | The reviewer charter's [M] checks + pre-pr/sweep/detail grep sweeps as JSON violations (`--checks all\|prepr\|detail\|id,…`). ABI-forced constructs a rule can't know about carry an inline `// compliance-allow(<check-id>): <rationale>` on the flagged line; every allow is echoed in the result's `allows` list for pre-pr audit | pre-pr Phase 2, sweep-module Step 2, detail-audit, reviewer pre-pass |
 | `limits_scan.py` | Parses `limits.hpp` `XASH_LIMIT_*` blocks; magic-number/shadow/dead-limit report | limits-audit, detail-audit, finish_check |
@@ -41,11 +41,12 @@ Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 | `status_table.py` | Regenerates the subsystem status table from the tree; `--check` diffs vs implementation-plan.md | status-and-next; plan refresh |
 | `finish_check.py` | The 9-section done checklist as pass/fail/needs-judgment JSON — single source for finish-subsystem AND pre-pr Phase 1 | finish-subsystem, pre-pr |
 | `dep_scan.py` | Dependency edges (cross-namespace refs) + InitParams inventory + cycle check | dependency-graph |
+| `slice_diff.py` | Change inventory since a base ref (default: last differing checkpoint head): files + add/delete counts + untracked, optional capped patch — brief gate agents from ground truth, not hand-typed file lists | abi-watchdog / reviewer / parity-auditor invocations |
 | `workflow_sync.py` | Drift checker: frontmatter schema, model dialects vs MODEL-GUIDE canonical table, adapter parity, twin-entry-file SYNC-CORE blocks, ABI single-source, MCP registrations, doc counters. `--stage 1` = tooling-session subset | run after ANY workflow-surface edit |
 | `whereami.py` | Ground-truth session brief (git, plan/chunk status, gates, blocking OQs, checkpoints with staleness/concurrency flags, suggested next action); `--doctor` adds environment checks | session start, dormancy recovery |
 | `checkpoint.py` | Append an advisory checkpoint (intent record) to `.agent-checkpoints.jsonl` | every commit / handoff / interruption |
 | `cpp_lsp_launcher.py` | Portable launcher for the `cpp-lsp` MCP server: resolves clangd + mcp-language-server via vswhere/PATH/env instead of hardcoded machine paths | `.mcp.json` / `.vscode/mcp.json` |
-| `mcp_server.py` | `xash-tools` FastMCP server (stdio) exposing build/test/refresh_compile_db/compliance_scan/status/finish_check/stub_scan/limits_scan/markdown_lint/workflow_sync/whereami/checkpoint | Claude Code, VS Code, opencode, Codex MCP configs |
+| `mcp_server.py` | `xash-tools` FastMCP server (stdio) exposing build/test/refresh_compile_db/compliance_scan/status/finish_check/stub_scan/limits_scan/slice_diff/markdown_lint/workflow_sync/whereami/checkpoint. Hot-reloads the xtools modules when their sources change on disk (tool registrations still need a session restart) | Claude Code, VS Code, opencode, Codex MCP configs |
 
 ## State & checkpoints
 

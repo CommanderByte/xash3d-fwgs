@@ -305,6 +305,13 @@ ______________________________________________________________________
 Deferred items from the 2026-07-04 workflow-hardening pass (tracked here so
 they don't get lost; pick up opportunistically or when the trigger fires):
 
+- **Shared legacy-header include prelude for layout-parity tests** — the
+  guard pre-defines + typedef prelude for including real legacy headers in
+  a sealed namespace now exists twice (`tests/server/abi/
+  test_edict_layout.cpp`, `test_eiface_layout.cpp`). Extract
+  `tests/legacy_abi_prelude.hpp` before writing the third copy.
+  **Trigger**: S8 vendors `playermove_t`; S9 vendors `entity_state_t`/
+  `usercmd_t`.
 - **Q-18 golden-vector generator** *(deferred by decision)* — a committed
   CMake target/script that compiles the frozen legacy kernels
   (`pm_trace.c` hull check, CRC32, PVS decompress, delta field codec) and
