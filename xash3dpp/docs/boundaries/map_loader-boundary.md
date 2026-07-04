@@ -45,7 +45,8 @@ physent list are server-side. `WorldData::checksum()` (with
 `multiplayer_crc`) feeds `sv.worldmapCRC`. `pfnGetHullBounds` overrides flow
 in through `WorldLoadOptions::hull_bounds`. PHS (Mod_CalcPHS + the phs path
 of Mod_FatPVS), `pfnCheckVisibility`/`Mod_HeadnodeVisible` and entity leaf
-caching are Chunk 6.
+caching are Chunk 6 — the PHS lands here as a map_loader `phs` query
+module per Q-19 (PHS_PLACEMENT).
 
 ## 2a. Dependencies
 

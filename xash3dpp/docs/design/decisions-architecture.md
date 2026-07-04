@@ -186,21 +186,22 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
-All eighteen questions (Q-1 … Q-18) are decided.
+All twenty questions (Q-1 … Q-20) are decided.
 
 ### Question index
 
 | Q | Name | Q | Name |
 |---|------|---|------|
-| Q-1 | SUBSYSTEM_CLASS | Q-10 | PLUGIN_VERSION |
-| Q-2 | ENGINE_CONTEXT | Q-11 | SATELLITE_PLACEMENT |
-| Q-3 | PIMPL_MOVE | Q-12 | COMPAT_SCOPE |
-| Q-4 | DI_PARAMS | Q-13 | ALLOC_POLICY |
-| Q-5 | ERROR_RETURN | Q-14 | DRIVER_INHERITANCE |
-| Q-6 | THREADING | Q-15 | PRECONDITION_DOCS |
-| Q-7 | INTERFACE_ABI | Q-16 | CONST_CAST_ISOLATION |
-| Q-8 | STRING_VIEW_BOUNDARY | Q-17 | INTERFACE_SIGNATURE_IMPACT |
-| Q-9 | OWNERSHIP | Q-18 | PM_FP_MODEL |
+| Q-1 | SUBSYSTEM_CLASS | Q-11 | SATELLITE_PLACEMENT |
+| Q-2 | ENGINE_CONTEXT | Q-12 | COMPAT_SCOPE |
+| Q-3 | PIMPL_MOVE | Q-13 | ALLOC_POLICY |
+| Q-4 | DI_PARAMS | Q-14 | DRIVER_INHERITANCE |
+| Q-5 | ERROR_RETURN | Q-15 | PRECONDITION_DOCS |
+| Q-6 | THREADING | Q-16 | CONST_CAST_ISOLATION |
+| Q-7 | INTERFACE_ABI | Q-17 | INTERFACE_SIGNATURE_IMPACT |
+| Q-8 | STRING_VIEW_BOUNDARY | Q-18 | PM_FP_MODEL |
+| Q-9 | OWNERSHIP | Q-19 | PHS_PLACEMENT |
+| Q-10 | PLUGIN_VERSION | Q-20 | EDICT_STORE |
 
 File order is historical — Q-14 appears before Q-13 below; do not renumber.
 
@@ -226,11 +227,11 @@ decided by this table.
 | `networking-boundary` | OQ-1 … OQ-8 | all closed (decided in-doc) | — |
 | `host-boundary` | OQ-1 … OQ-11 | closed, except **OQ-8 deferred** (Sys_NewInstance restart mechanism; re-evaluate after server/client chunks) | none currently |
 | `map_loader-boundary` | — (post-implementation spec; its "(OQ-2)" cite means host-boundary#OQ-2) | — | — |
-| `server-boundary` | OQ-1 (PHS placement) | **open — needs a register entry** | **scaffold** |
+| `server-boundary` | OQ-1 (PHS placement) | ✅ decided 2026-07-04 — promoted to **Q-19 (PHS_PLACEMENT)** | — |
 | `server-boundary` | OQ-2 (studio-hull option seam) | open (seam shape at scaffold; null provider until Chunk 7) | impl |
 | `server-boundary` | OQ-3 (HPAK placement) | open (may stub uploads for the milestone) | impl |
 | `server-boundary` | OQ-4 (listen-server capability seam) | open (shape now, null impl for dedicated) | impl |
-| `server-boundary` | OQ-5 (`entvars_t` internal representation) | **open — recommendation recorded in-doc** (ABI-exact edict array as single store) | **scaffold** |
+| `server-boundary` | OQ-5 (`entvars_t` internal representation) | ✅ decided 2026-07-04 — promoted to **Q-20 (EDICT_STORE)** | — |
 | `server-boundary` | OQ-6 (64-bit string-pool strategy) | open (legacy-Windows baseline = heap arena + INT-range fallback) | impl |
 | `server-boundary` | OQ-7 (compat routing via ICompatPolicy) | open (proposal in-doc) | impl |
 | `server-boundary` | OQ-8 (dedicated-milestone scope trims) | open (stub-marker proposal in-doc) | impl |
@@ -828,6 +829,60 @@ change to the compat engine.
 
 ______________________________________________________________________
 
+### PHS_PLACEMENT (Q-19): PHS lives in map_loader as a load-time query module
+
+> **Status**: ✅ DECIDED (2026-07-04; raised as `server-boundary#OQ-1`)
+
+**Context**: Legacy builds the PHS in `mod_bmodel.c` (`Mod_CalcPHS`,
+OpenMP-parallel) at map load, derived purely from BSP visdata; it is
+immutable afterwards. The server is the sole consumer (`pfnSetFatPAS`,
+`SV_Multicast` PAS routing, radius 8). The map_loader boundary deferred
+`Mod_CalcPHS` and the PHS row source of `Mod_FatPVS` to Chunk 6, but the
+fat-vis recursive BSP walk itself already lives in `xash3dpp_map_loader`.
+
+**Decision**: `xash3dpp_map_loader` gains a `phs` query module (built during
+world load, immutable after — same home and lifecycle as PVS). Rationale:
+all BSP-derived immutable data stays in one place (the Q-6 immutability
+posture), the existing fat-vis walk is reused instead of duplicated in
+server code, and any build parallelism stays inside load per the
+server-boundary OQ-9 threading posture. The server consumes it through the
+map_loader query API only. Parity gate: byte-parity golden fixture against
+GoldSrc PHS dumps (`mod_bmodel.c:3845-3859` parity note). Landing as part
+of Chunk 6 scope (it is server-driven work even though the code lives in
+map_loader).
+
+______________________________________________________________________
+
+### EDICT_STORE (Q-20): one ABI-exact edict store behind a zero-cost seam
+
+> **Status**: ✅ DECIDED (2026-07-04; raised as `server-boundary#OQ-5`)
+
+**Context**: Game DLLs see raw `edict_t` arrays and do byte-offset
+arithmetic over them (`PEntityOfEntOffset` is a byte offset from the
+`svgame.edicts` base); gameplay depends on stale entvars persisting into
+slot reuse; the save format mirrors exact `entvars_t` field order. Any
+shadow representation must project at every one of the 159 engine-func +
+50 DLL-func boundary crossings — each projection bug a silent gameplay
+divergence, doubling the state the Q-18 determinism regime must keep
+honest. A future non-GoldSrc game ABI is a **load-time flavor** (one game
+DLL per server process), so what keeps that door open is not the data
+layout but how coupled engine-internal code is to `entvars_t`.
+
+**Decision**: The ABI-exact `edict_t` array is the **single authoritative
+store** — no shadow copies, no projection. One arena class owns allocation
+and lifecycle (ED_Alloc free-list, serialnumbers, `freetime` grace,
+deliberate stale-field reuse). Engine-internal code addresses entities by
+index/ref through **inline typed accessors that compile to direct array
+access** (zero runtime cost, no divergence possible). Raw
+`entvars_t`/`edict_t` access is confined to the owners of the memory
+contract: the ABI shim (`src/abi/` + `src/server/abi/`), the pmove bridge,
+and the Chunk 8 save serializer. Enforcement: a compliance-scan rule (no
+`->v.` outside the allowed set) added when the server scaffold lands.
+Handleization or a new ABI format is a post-parity, load-time
+binding/arena flavor behind this seam — never a Chunk 6 concern.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 All open questions are decided. This section records when each rule applies.
@@ -884,6 +939,13 @@ These rules apply from the first line of any new subsystem:
 - Float math strict-by-default (`/fp:precise`, `-ffp-contract=off`); relaxation
   is a per-presentation-target option via `xash3dpp_relax_fp()`, never for
   simulation-critical targets (Q-18)
+- BSP-derived immutable query data (PVS, PHS, hulls) lives in `map_loader`,
+  built at load; consumers use the query API, never rebuild or cache their
+  own copies (Q-19)
+- Server entity state: the ABI-exact edict array is the single store; engine
+  internals go through the zero-cost typed accessor facade; raw
+  `entvars_t`/`edict_t` access only in the ABI shim, pmove bridge, and save
+  serializer (Q-20)
 
 ______________________________________________________________________
 

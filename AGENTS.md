@@ -44,7 +44,7 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 <!-- SYNC-CORE:BEGIN where-truth-lives -->
 
 - `.github/instructions/xash3dpp.instructions.md` — binding C++ conventions.
-- `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-18 register;
+- `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-20 register;
   §3a is the boundary-spec OQ crosswalk (blocks-scaffold rows gate work);
   §4.3 applies to all new code.
 - `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (21) +

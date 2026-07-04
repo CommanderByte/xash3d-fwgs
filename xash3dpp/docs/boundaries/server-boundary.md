@@ -358,13 +358,12 @@ Q-11 test applied (≥2 "separate" criteria → separate target):
 
 ## Open questions
 
-- **OQ-1 — PHS placement.** `Mod_CalcPHS` + fat-PHS were explicitly
-  deferred to Chunk 6 by the map_loader boundary. Options: (a) extend
-  `xash3dpp_map_loader` with a `phs.hpp` query module (keeps all
-  BSP-derived data in one immutable home, matches Q-6), or (b)
-  server-internal. Leaning (a); byte-parity golden fixture against
-  GoldSrc dumps is available either way (mod_bmodel.c:3845-3859 parity
-  note). Needs a decision-register entry before scaffold.
+- **OQ-1 — PHS placement.** ✅ **Decided 2026-07-04 → Q-19
+  (PHS_PLACEMENT)**: option (a) — `xash3dpp_map_loader` gains a `phs`
+  query module (built at world load, immutable after; reuses the existing
+  fat-vis walk; server consumes via the query API only). Byte-parity
+  golden fixture against GoldSrc dumps (mod_bmodel.c:3845-3859 parity
+  note) gates it. Lands as Chunk 6 scope.
 - **OQ-2 — Studio hitbox hulls.** `SV_HullForStudioModel` / `pfnGetBonePosition` /
   `pfnGetAttachment` / `SV_StudioSetupBones` need studio model parsing
   (Chunk 7). Chunk 6 ships the bbox fallback behind an
@@ -381,12 +380,15 @@ Q-11 test applied (≥2 "separate" criteria → separate target):
   `IListenClientHooks` (null for dedicated) covering
   save-preview/decal-list/sound-snapshot/visibility-disable/credits.
   Shape it now, implement null-only.
-- **OQ-5 — `entvars_t` internal representation** (plan risk register).
-  The DLL sees raw `edict_t` arrays; any internal SoA/handle scheme needs
-  a projection layer at every callback boundary. Recommendation to
-  resolve before scaffold: keep the ABI-exact edict array as the *single*
-  authoritative store in Chunk 6 (no projection), and treat handleization
-  as a post-parity refactor with the ABI shim as the seam.
+- **OQ-5 — `entvars_t` internal representation.** ✅ **Decided 2026-07-04
+  → Q-20 (EDICT_STORE)**: the ABI-exact edict array is the *single*
+  authoritative store (no projection); one arena class owns lifecycle
+  (free-list, serialnumbers, freetime grace, stale-field reuse); engine
+  internals use zero-cost inline typed accessors, with raw
+  `entvars_t`/`edict_t` access confined to the ABI shim, pmove bridge,
+  and Chunk 8 save serializer (compliance-scan rule when the scaffold
+  lands). Handleization / a future ABI flavor is a post-parity load-time
+  choice behind that seam.
 - **OQ-6 — 64-bit string pool strategy.** Legacy's mmap-within-±2 GB
   trick is Linux/amd64-only; **legacy Windows x64 — the milestone
   platform — already uses a plain heap arena** with the `SV_MakeString`
