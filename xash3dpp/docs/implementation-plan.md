@@ -16,7 +16,7 @@ ______________________________________________________________________
 | cmd_cvar | 11 | ✓ | ✓ | **Complete** |
 | host | 2 | ✓ | ✓ | **Complete** (Chunk 3 ✅; EngineContext owns networking) |
 | abi | 1 | ✓ | ✗ | **Partial** (`Host_Error` shim + accessor only) |
-| map_loader | 1 | ✓ | ✗ | **Partial** (FSM scaffold; no BSP parsing yet) |
+| map_loader | 9 | ✓ | ✓ | **Implemented** (BSP v29/30/BSP2/30ext → immutable WorldData; PVS + trace kernel, Q-18 golden-gated; FSM loads worlds) |
 | launcher | 1 | ✗ | ✗ | **Partial** (thin argv bootstrap, no tests) |
 | networking | 17 | ✓ | ✓ | **Partial** (Layers 0–3 + satellites complete, wired into EngineContext; delta encoder in progress; DNS/bz2 deferred) |
 | server | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
@@ -107,7 +107,17 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### Chunk 5 — map loader (BSP + world queries)
+### Chunk 5 — map loader (BSP + world queries) — ✅ DONE 2026-07-04
+
+*Delivered: BSP v29/v30/BSP2/BSP30ext → immutable `WorldData`
+(`load_world_data`, span + Filesystem overloads incl. the `.ent` patch);
+full PVS query surface; the pm_trace clip-hull kernel float-exact to legacy
+(golden vectors + 18k-trace bit-exact cross-check — the Q-18 gate);
+edict-free trace API for Chunk 6; MapLoader FSM loads/owns the world; map
+CRC for the protocol. Verification: format-watchdog CLEAR, loader +
+kernel parity audits (findings fixed / PARITY-CONFIRMED), reviewer sweep +
+finish-subsystem gates closed. See `docs/boundaries/map_loader-boundary.md`
+and `docs/architecture/map_loader/`.*
 
 **Subsystems**: `map_loader` (promote scaffold to real parser)\
 **Depends on**: filesystem, utilities, memory *(all done)*\
