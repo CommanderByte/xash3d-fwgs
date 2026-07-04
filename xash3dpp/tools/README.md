@@ -103,3 +103,18 @@ scanners; `buildtools.py` build/test/refresh; `sync.py` drift invariants;
 `vsenv.py` tool discovery; `scan.py` comment-aware C++ line iteration;
 `report.py` envelope/exit codes). CLIs and the MCP server are thin wrappers
 so behaviour is defined exactly once.
+
+## Tests
+
+`tests/` holds stdlib-`unittest` regression coverage for the check ruleset
+(filesystem-free: regex rules are exercised against snippet lines, the
+`compliance-allow` hatch against `_filter_allows`). Run after any edit to
+`rules.py` / `checks.py`:
+
+```powershell
+c:\git\xash3d-fwgs\.venv\Scripts\python.exe -m unittest discover -s xash3dpp\tools\tests
+```
+
+Stdlib-only, no pip step — the same contract as the CLI scripts. The
+`compliance-allow(<check-id>)` marker is honored by every `[M]` check
+(regex rules and the structured heuristics alike).

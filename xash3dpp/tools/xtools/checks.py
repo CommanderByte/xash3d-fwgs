@@ -36,7 +36,29 @@ def _violation(check, severity, path, line, excerpt, hint, rule_ref, candidate=F
         "excerpt": excerpt.strip()[:200],
         "hint": hint,
         "rule_ref": rule_ref,
+        # Full raw line kept for the inline compliance-allow pass
+        # (_filter_allows); stripped from the returned envelope.
+        "_raw": excerpt,
     }
+
+
+def _filter_allows(violations: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Honor inline `// compliance-allow(<check>)` markers for the structured
+    checks (the regex-rule loop already filters its own hits inline).  A
+    violation whose stashed `_raw` line carries a marker naming its check is
+    moved to the allows list; `_raw` is stripped from every kept violation so
+    it never leaks into the envelope."""
+    kept: list[dict] = []
+    allowed: list[dict] = []
+    for v in violations:
+        raw = v.pop("_raw", "")
+        m = ALLOW_RE.search(raw)
+        if m and v["check"] in {c.strip() for c in m.group(1).split(",")}:
+            allowed.append({"check": v["check"], "file": v["file"],
+                            "line": v["line"], "excerpt": raw.strip()[:200]})
+        else:
+            kept.append(v)
+    return kept, allowed
 
 
 def _scope_of(path: Path) -> str:
@@ -184,6 +206,11 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
             violations.extend(_scan_ns_qualify(sub, sub_files, file_texts))
         if "test-macros" in structured:
             violations.extend(_scan_test_macros(sub))
+
+    # Inline compliance-allow markers for the structured checks (and a no-op
+    # re-check + _raw strip for the regex-rule hits, which filtered inline).
+    violations, structured_allows = _filter_allows(violations)
+    allows.extend(structured_allows)
 
     if files is not None:
         # File-list mode scopes EVERY check to the given set — the

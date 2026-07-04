@@ -96,18 +96,26 @@ RULES: list[Rule] = [
     Rule(
         check="raw-cstring",
         severity="warning",
-        pattern=r"(?<!utilities::)\b(strlen|strcpy|strcmp|strcat|sprintf)\s*\(",
+        # Only UNqualified/global C calls: a preceding ':' '.' or '>' means the
+        # call is namespace-qualified (std::/ut::/utilities::) or a member
+        # (obj.strcmp / p->strcpy) and is a deliberate, allowed choice.
+        pattern=r"(?<![:.>])\b(strlen|strcpy|strcmp|strcat|sprintf)\s*\(",
         scopes=("src",),
-        hint="use utilities:: equivalents (reviewer §6)",
+        # utilities is the definitional home of these wrappers (xash::utilities::
+        # strcmp et al.) — like memory owns the allocators.
+        exclude_subsystems=("utilities",),
+        hint="use utilities:: equivalents for bare C string funcs (qualified std::/ut:: calls are fine) (reviewer §6)",
         source_ref="reviewer §6; sweep Forbidden patterns",
         sets=("all", "detail"),
     ),
     Rule(
         check="include-cstring-cstdio",
         severity="note",
-        pattern=r"#\s*include\s*<(cstring|cstdio|string\.h|stdio\.h)>",
+        # The C headers are the smell; the C++ wrappers <cstring>/<cstdio> are
+        # legitimately needed for std::memcpy/std::snprintf and are not flagged.
+        pattern=r"#\s*include\s*<(string\.h|stdio\.h)>",
         scopes=("src", "include"),
-        hint="flag for review — usually a smell for raw C string/file usage (sweep)",
+        hint="prefer the C++ <cstring>/<cstdio> headers with std:: qualification (sweep)",
         source_ref="sweep Forbidden patterns",
         sets=("all", "detail"),
     ),
@@ -183,6 +191,11 @@ RULES: list[Rule] = [
         severity="warning",
         pattern=r"(~\w+\s*\(\s*\)|\w+\s*&&\s*\w*\s*\)\s*noexcept)\s*=\s*default",
         scopes=("include",),
+        # `virtual ~IFoo() = default;` is the correct idiom for an abstract
+        # interface, not a pimpl type — a pimpl dtor is non-virtual and
+        # declared-only in the header.  The move-ctor half still catches real
+        # pimpl violations (interfaces don't default a move ctor).
+        exclude_line_re=r"\bvirtual\b",
         hint="pimpl dtor/move must be '= default' in the .cpp, declared-only in the header (sweep PIMPL_MOVE, Q-3)",
         source_ref="sweep PIMPL_MOVE (Q-3)",
         candidate=True,
