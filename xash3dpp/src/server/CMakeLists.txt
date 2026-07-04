@@ -10,18 +10,18 @@
 #
 # Subfolder plan (decided at scaffold time — see server-boundary.md):
 #   abi/      — game-DLL ABI shim: DLL loader, GiveFnptrsToDll handshake,
-#               enginefuncs_t population, DLL_FUNCTIONS resolution (S5);
+#               enginefuncs_t population, DLL_FUNCTIONS resolution (S6);
 #               EdictArena + string pool + typed accessor seam (S4, Q-20)
 #   world/    — areanodes, SV_LinkEdict, SV_Move/SV_ClipMoveToEntity over
-#               the map_loader trace kernel, lightstyles (S6)
+#               the map_loader trace kernel, lightstyles (S5)
 #   physics/  — sv_phys movetypes/pushers + the sv_pmove bridge (S8)
 #   clients/  — connection state machine, snapshots, multicast, user
 #               messages, query.cpp/filter.cpp/log.cpp satellites (S9)
 
 add_library(xash3dpp_server STATIC
     server.cpp
-    # abi/      sources land in S4-S5
-    # world/    sources land in S6
+    # abi/      sources land in S4 + S6
+    # world/    sources land in S5
     # physics/  sources land in S8
     # clients/  sources land in S9
 )
@@ -37,8 +37,8 @@ target_link_libraries(xash3dpp_server
     PUBLIC  xash3dpp_memory
     PRIVATE xash3dpp_core
     # Added as the slices land (see server-boundary.md Dependencies):
-    # PUBLIC  xash3dpp_map_loader   # S3/S6 — WorldData, PVS/PHS, trace kernel
+    # PUBLIC  xash3dpp_map_loader   # S5 — WorldData, PVS/PHS, trace kernel
     # PUBLIC  xash3dpp_networking   # S9 — netchan, delta codec, master_list
-    # PUBLIC  xash3dpp_filesystem   # S5+ — game DLL path, resource lists, logs
-    # PRIVATE xash3dpp_platform     # S5 — dynlib load, time
+    # PUBLIC  xash3dpp_filesystem   # S6+ — game DLL path, resource lists, logs
+    # PRIVATE xash3dpp_platform     # S6 — dynlib load, time
 )

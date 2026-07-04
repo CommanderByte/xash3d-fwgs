@@ -85,7 +85,7 @@ public:
     //                  (MapLoader GameState FSM entry points), shutdown_game.
     // TODO(chunk6-S8): frame() — Host_ServerFrame order incl. the
     //                  zero-physics-frames early-return quirk.
-    // TODO(chunk6-S6): engine-internal trace/query surface (SV_Move,
+    // TODO(chunk6-S5): engine-internal trace/query surface (SV_Move,
     //                  SV_PointContents, SV_LinkEdict, lightstyles).
 
 private:

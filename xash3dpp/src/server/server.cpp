@@ -29,11 +29,11 @@ struct Server::Impl
     //                  stale-field reuse) + string pool (heap arena +
     //                  SV_MakeString INT-range fallback, OQ-6 baseline) +
     //                  vendored ABI structs behind the Q-20 accessor seam.
-    // TODO(chunk6-S5): svgame binding — DLL handle, the three function
+    // TODO(chunk6-S5): world-interaction state — sv_areanodes[32], box-hull
+    //                  scratch, touch-links semaphore, lightstyles.
+    // TODO(chunk6-S6): svgame binding — DLL handle, the three function
     //                  tables, globalvars_t (pStringBase), LINK_ENTITY
     //                  dispatch, pfnGetHullBounds ×4 → hull_bounds flow.
-    // TODO(chunk6-S6): world-interaction state — sv_areanodes[32], box-hull
-    //                  scratch, touch-links semaphore, lightstyles.
     // TODO(chunk6-S7): sv (per-level) / svs (persistent) state split per
     //                  the boundary Owned-state section; lifecycle FSM.
     // TODO(chunk6-S8): frame timing state — sv.time (epoch 1.0), frametime,
