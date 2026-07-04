@@ -25,7 +25,7 @@ ______________________________________________________________________
 | map_loader | 9 | ✓ | ✓ | **Complete** (BSP v29/30/BSP2/30ext → immutable WorldData; PVS + trace kernel, Q-18 golden-gated; FSM loads worlds) |
 | launcher | 1 | ✗ | ✗ | **Partial** (thin argv bootstrap, no tests) |
 | networking | 24 | ✓ | ✓ | **Complete** (Layers 0–4 incl. delta encoder + satellites, wired into EngineContext; DNS/bz2 deferred) |
-| server | 0 | ✓ | ✗ | **Skeleton** (include stub; recon done — boundary spec + 6 deep dives committed 2026-07-04) |
+| server | 1 | ✓ | ✓ | **In progress** (Chunk 6 — scaffold landed 2026-07-04, stubs only; session ladder under Chunk 6) |
 | client | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
 | content | 0 | ✗ | ✗ | **Skeleton** |
 | demo | 0 | ✗ | ✗ | **Skeleton** |
@@ -140,7 +140,7 @@ and `docs/architecture/map_loader/`.*
 
 ______________________________________________________________________
 
-### Chunk 6 — server *(dedicated-server milestone)*
+### Chunk 6 — server *(dedicated-server milestone — IN PROGRESS 2026-07-04)*
 
 **Subsystems**: `server` (incl. the server-side pmove bridge `sv_pmove.c`, moved in from Chunk 11 per the boundary spec's satellite table)\
 **Depends on**: cmd_cvar, networking (Chunk 2), map_loader (Chunk 5), host, filesystem, memory, platform\
@@ -148,7 +148,8 @@ ______________________________________________________________________
 **Legacy reference**: `engine/server/sv_main.c`, `sv_game.c` (159-slot `enginefuncs_t`), `sv_world.c`, `sv_phys.c`, `sv_pmove.c`, `sv_frame.c`, `sv_client.c`\
 **Complexity note**: The `enginefuncs_t` table is 159 function pointers and `entvars_t` layout is byte-exact frozen — highest ABI risk in the entire rewrite. Getting `sv_game.c` to load and call a real HL game DLL without crashing is the integration milestone; `entvars_t` layout must be ABI-exact at the boundary even if internal entity storage differs.\
 **ABI surfaces touched**: `engine/eiface.h`, `engine/edict.h` — **FROZEN Game DLL ABI**\
-**Deliverable**: Dedicated server starts, loads HL `dlls/hl.dll`, runs a single map frame; server ctest green — **dedicated-server milestone**
+**Deliverable**: Dedicated server starts, loads HL `dlls/hl.dll`, runs a single map frame; server ctest green — **dedicated-server milestone**\
+**Session ladder** (one green commit + checkpoint per step; slice order refined by S2 `plan-implementation`): S1 scaffold ✅ 2026-07-04 → S2 plan-implementation → S3 map_loader `phs` module (Q-19, golden-gated) → S4 edict arena + string pool + vendored ABI (Q-20) → S5 game-DLL bridge (enginefuncs ×159, in-tree fake-DLL test double) → S6 world interaction (link/move/contents/lightstyles) → S7 lifecycle (spawn/activate/changelevel seams, EngineContext wiring) → S8 frame loop + sv_phys + pmove bridge → S9 clients/messaging/satellites (OQ-8 stub markers) → S10 sweep-module → S11 analyse-threading (OQ-9) → S12 document-architecture → S13 legacy-parity audit → S14 finish-subsystem + pre-pr → S15 hl.dll milestone smoke (needs a local HL install — user-provided)
 
 ______________________________________________________________________
 
