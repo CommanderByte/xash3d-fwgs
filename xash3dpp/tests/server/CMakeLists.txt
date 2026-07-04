@@ -54,6 +54,13 @@ add_dependencies(test_game_dll
     fake_game_dll_nohandshake fake_game_dll_badver
 )
 
+xash3dpp_add_test(test_engine_table SOURCE abi/test_engine_table.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)
+target_compile_definitions(test_engine_table PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_engine_table fake_game_dll_full)
+
 xash3dpp_add_test(test_world_links SOURCE world/test_world_links.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader)
 xash3dpp_add_test(test_world_trace SOURCE world/test_world_trace.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)
 xash3dpp_add_test(test_world_contents SOURCE world/test_world_contents.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)

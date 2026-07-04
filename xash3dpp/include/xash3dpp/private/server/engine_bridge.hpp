@@ -1,0 +1,113 @@
+#pragma once
+// xash3dpp — engine bridge: the state behind the enginefuncs_t table
+// Legacy reference: engine/server/sv_game.c — the file-scope svgame
+// aggregate (server.h :301-337) that every gEngfuncs slot reaches for,
+// and the gEngfuncs table itself (:4705-4866).
+// Deep dive: docs/legacy-survey/deep-dive-server-game-dll-bridge.md §2/§6.
+//
+// The 159 slots are plain C function pointers — they cannot capture
+// state, so (exactly like legacy) the implementations reach a file-scope
+// bridge installed before the table is built.  Lifecycle (S7) owns the
+// bridge instance and keeps its pointers current across map changes;
+// S6-era tests install a fixture bridge directly.
+//
+// Pointers may be null before their owning slice wires them (world
+// interaction until a map is loaded, game until the DLL is up); every
+// slot degrades to its documented legacy-safe default in that case.
+//
+// Threading: main-thread only (server-boundary OQ-9).
+
+#include <xash3dpp/abi/eiface.hpp>
+#include <xash3dpp/map_loader/phs.hpp>
+#include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/private/server/edict_arena.hpp>
+#include <xash3dpp/private/server/game_dll.hpp>
+#include <xash3dpp/private/server/lightstyles.hpp>
+#include <xash3dpp/private/server/string_pool.hpp>
+#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/private/server/world_trace.hpp>
+
+namespace xash::server {
+
+// Q-5: the legacy Host_Error surface — installed by the host layer;
+// slots that legacy hard-errors from (edict exhaustion, bad WriteEntity)
+// route here.  The hook may not return control flow guarantees; slot
+// implementations still return a safe value afterwards.
+using HostErrorHook = void ( * )( void *ctx, const char *msg );
+
+struct EngineBridge
+{
+    // S4 stores
+    EdictArena *arena   = nullptr;                  // @lifetime: engine
+    StringPool *strings = nullptr;                  // @lifetime: engine
+    ::xash::abi::globalvars_t *globals = nullptr;   // @lifetime: engine
+    GameDll    *game    = nullptr;                  // @lifetime: engine
+
+    // S5 world interaction (null until lifecycle loads a map)
+    MoveEnv     *move_env    = nullptr;             // @lifetime: engine
+    WorldLinks  *links       = nullptr;             // @lifetime: engine
+    LinkEnv     *link_env    = nullptr;             // @lifetime: engine
+    LightStyles *lightstyles = nullptr;             // @lifetime: engine
+    const ::xash::map_loader::PhsTable *phs = nullptr; // @lifetime: engine
+
+    // Misc allocations the ABI forces on the engine (cvar string
+    // replacements); typically the svgame mempool equivalent.
+    ::xash::memory::PoolHandle misc_pool;
+
+    // Host state mirrored for the slots
+    double      sv_time     = 0.0;  // sv.time (edict freetime/reuse)
+    int         max_clients = 0;    // svs.maxclients
+    int         developer   = 0;    // host_developer (AlertMessage gates)
+    bool        dedicated   = true;
+    bool        merge_visibility = false; // SVF_MERGE_VISIBILITY (portal pass)
+    bool        novis       = false;      // sv_novis
+    const char *game_dir    = "";         // GI->gamefolder  @lifetime: engine
+
+    // pfnSetGroupMask mirror (svs.groupmask/groupop); also pushed into
+    // move_env/links when present.
+    int group_mask = 0;
+    int group_op   = 0;
+
+    // pfnGetAimVector: legacy seeds bestdist from sv_aim.value only when
+    // sv_allow_autoaim is set, else 0 (autoaim disabled).  Lifecycle
+    // wires the cvars (S7); 0 keeps autoaim off.
+    float autoaim_threshold = 0.0f;
+
+    // pfnCVarRegister / pfnCvar_RegisterVariable chain: the game's own
+    // cvar_t structs, linked through THEIR next pointers (the struct is
+    // the storage — game DLLs read .value/.string directly).
+    // TODO(chunk6-S7): unify with the cmd_cvar engine registry.
+    ::xash::abi::cvar_t *external_cvars = nullptr;  // @lifetime: game DLL
+
+    // Engine-owned replacement strings from pfnCVarSetFloat/SetString
+    // (opaque chain inside the allocations; legacy leaks these into the
+    // svgame mempool and bulk-frees at unload — misc_pool asserts on
+    // leaks instead, so reset_external_cvars() must run at teardown).
+    void *cvar_string_allocs = nullptr;
+
+    HostErrorHook host_error     = nullptr;
+    void         *host_error_ctx = nullptr;
+};
+
+// Install the bridge the table implementations reach (legacy svgame).
+// Passing nullptr detaches (tests).  @lifetime: engine — the pointer is
+// kept, not copied.
+void install_engine_bridge( EngineBridge *bridge ) noexcept;
+[[nodiscard]] EngineBridge *engine_bridge() noexcept;
+
+// Build a fresh table copy (legacy gpEngfuncs local-copy semantics: the
+// caller's copy goes to the DLL so "bots.dll etc. can't corrupt the
+// master table").  `peoei_broken` applies the BUGCOMP_PENTITYOFENTINDEX
+// patch (sv_game.c:5250-5251) — pfnPEntityOfEntIndex gets the broken
+// GoldSrc player-range variant.  Every slot is populated; pre-wiring
+// milestone slots are XASH3DPP-STUB(chunk6)-marked no-ops.
+[[nodiscard]] ::xash::abi::enginefuncs_t
+build_engine_table( bool peoei_broken ) noexcept;
+
+// SV_UnloadProgs counterpart for the cvar chain: unlink the game's
+// cvar_t structs and free every engine-owned replacement string (their
+// .string pointers dangle afterwards, exactly like legacy post-unload).
+// Must run before the misc_pool is destroyed.
+void reset_external_cvars( EngineBridge &bridge ) noexcept;
+
+} // namespace xash::server

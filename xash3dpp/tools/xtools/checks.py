@@ -13,6 +13,12 @@ from .scan import code_lines, subsystem_files
 
 SEV_ORDER = {"blocker": 3, "warning": 2, "note": 1}
 
+# Inline exemption for ABI-forced constructs the rules can't know about:
+#   <flagged code>  // compliance-allow(<check-id>[, <check-id>]): <rationale>
+# The marker must sit on the flagged line (comment side); every allow is
+# reported in the scan result so pre-pr can audit the full list.
+ALLOW_RE = re.compile(r"compliance-allow\(\s*([\w\-, ]+?)\s*\)")
+
 
 def _rel(p: Path) -> str:
     try:
@@ -65,6 +71,7 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
         structured = [c for c in STRUCTURED_CHECKS if c in explicit]
 
     violations: list[dict] = []
+    allows: list[dict] = []
     files_scanned = 0
     for sub in subs:
         files = subsystem_files(sub, tests=True)
@@ -90,6 +97,14 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
                     if not code.strip():
                         continue
                     if rx.search(code) and not (ex and ex.search(code)):
+                        allow = ALLOW_RE.search(raw)
+                        if allow and rule.check in {
+                                c.strip() for c in allow.group(1).split(",")}:
+                            allows.append({"check": rule.check,
+                                           "file": _rel(path),
+                                           "line": lineno,
+                                           "excerpt": raw.strip()[:200]})
+                            continue
                         violations.append(_violation(
                             rule.check, rule.severity, path, lineno, raw,
                             rule.hint, rule.source_ref, rule.candidate))
@@ -140,6 +155,7 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
         "files_scanned": files_scanned,
         "violations": violations,
         "counts": counts,
+        "allows": allows,
         "judgment_checks_not_run": JUDGMENT_CHECKS,
     }
 

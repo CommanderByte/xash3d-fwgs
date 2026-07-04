@@ -35,7 +35,7 @@ Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 | `build.py` | Configure/build via the VS2022-bundled cmake (presets `debug-msvc`/`debug`); parsed `error C…` list | sweep-module, implement-audit, retriever, bisect, write-unit-tests, pre-pr |
 | `test.py` | `ctest --preset debug` (optional `-R` filter); pass/fail breakdown | same set + `finish_check.py` |
 | `refresh_compile_db.py` | `VsDevCmd -arch=x64 && cmake --preset clangd` → regenerates `build/clangd/compile_commands.json` for the cpp-lsp/clangd MCP server | manual, after adding files/targets |
-| `compliance_scan.py` | The reviewer charter's [M] checks + pre-pr/sweep/detail grep sweeps as JSON violations (`--checks all\|prepr\|detail\|id,…`) | pre-pr Phase 2, sweep-module Step 2, detail-audit, reviewer pre-pass |
+| `compliance_scan.py` | The reviewer charter's [M] checks + pre-pr/sweep/detail grep sweeps as JSON violations (`--checks all\|prepr\|detail\|id,…`). ABI-forced constructs a rule can't know about carry an inline `// compliance-allow(<check-id>): <rationale>` on the flagged line; every allow is echoed in the result's `allows` list for pre-pr audit | pre-pr Phase 2, sweep-module Step 2, detail-audit, reviewer pre-pass |
 | `limits_scan.py` | Parses `limits.hpp` `XASH_LIMIT_*` blocks; magic-number/shadow/dead-limit report | limits-audit, detail-audit, finish_check |
 | `stub_scan.py` | TODO/stub markers with enclosing symbol; live-vs-stub test tally | plan-implementation, status-and-next |
 | `status_table.py` | Regenerates the subsystem status table from the tree; `--check` diffs vs implementation-plan.md | status-and-next; plan refresh |

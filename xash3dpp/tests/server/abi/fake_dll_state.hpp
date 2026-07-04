@@ -29,6 +29,15 @@ struct State
     int game_shutdown_calls;
     int on_free_calls;
     int link_calls; // fake_item LINK_ENTITY export invocations
+
+    // fake_run_engine_probe results — the double calling back INTO the
+    // engine through the received table (cross-DLL slot exercise).
+    int          probe_ran;
+    int          probe_string_ok;   // AllocString → SzFromIndex roundtrip
+    int          probe_entity_index; // CreateEntity → IndexOfEdict
+    void        *probe_private;      // PvAllocEntPrivateData(17)
+    unsigned int probe_crc;          // CRC32 quartet over "123456789"
+    int          probe_dedicated;    // pfnIsDedicatedServer
 };
 
 using StateFn = State *( * )();

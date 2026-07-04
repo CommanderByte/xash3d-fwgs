@@ -23,12 +23,12 @@ add_library(xash3dpp_server STATIC
     abi/edict_arena.cpp
     abi/string_pool.cpp
     abi/game_dll.cpp
+    abi/engine_table.cpp
     world/links.cpp
     world/hulls.cpp
     world/clip.cpp
     world/contents.cpp
     world/light.cpp
-    # abi/engine_table.cpp lands in S6b (enginefuncs_t population)
     # physics/  sources land in S8
     # clients/  sources land in S9
 )

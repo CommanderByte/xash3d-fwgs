@@ -122,6 +122,37 @@ FAKE_EXPORT void FAKE_CDECL fake_item( abi::entvars_t *pev )
     pev->health = 123.0f;
 }
 
+// Drive the engine through the table received in GiveFnptrsToDll — the
+// calls cross the DLL boundary exactly like a real game DLL's.
+FAKE_EXPORT void fake_run_engine_probe( void )
+{
+    const abi::enginefuncs_t *ef = g_state.engfuncs;
+    if ( ef == nullptr )
+        return;
+
+    g_state.probe_ran = 1;
+
+    const int s = ef->pfnAllocString( "probe_string" );
+    g_state.probe_string_ok =
+        std::strcmp( ef->pfnSzFromIndex( s ), "probe_string" ) == 0 ? 1 : 0;
+
+    abi::edict_t *ent = ef->pfnCreateEntity();
+    if ( ent != nullptr )
+    {
+        g_state.probe_entity_index = ef->pfnIndexOfEdict( ent );
+        g_state.probe_private = ef->pfnPvAllocEntPrivateData( ent, 17 );
+        ef->pfnRemoveEntity( ent );
+    }
+
+    abi::CRC32_t crc = 0;
+    ef->pfnCRC32_Init( &crc );
+    ef->pfnCRC32_ProcessBuffer( &crc, "12345678", 8 );
+    ef->pfnCRC32_ProcessByte( &crc, '9' );
+    g_state.probe_crc = ef->pfnCRC32_Final( crc );
+
+    g_state.probe_dedicated = ef->pfnIsDedicatedServer();
+}
+
 #if !defined( FAKE_NO_GIVEFNPTRS )
 FAKE_EXPORT void FAKE_STDCALL GiveFnptrsToDll( abi::enginefuncs_t *engfuncs,
                                                abi::globalvars_t  *pGlobals )

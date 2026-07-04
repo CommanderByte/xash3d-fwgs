@@ -23,11 +23,16 @@ inline constexpr int k_movetype_follow   = 12; // track movement of aiment
 inline constexpr int k_movetype_pushstep = 13; // BSP model with physics/world collisions
 
 // common/const.h — entvars_t.flags bits used by the clip filters
-inline constexpr int k_fl_client      = 1 << 3;
-inline constexpr int k_fl_monster     = 1 << 5;
-inline constexpr int k_fl_fakeclient  = 1 << 13;
-inline constexpr int k_fl_monsterclip = 1 << 23;
-inline constexpr int k_fl_worldbrush  = 1 << 25;
+inline constexpr int k_fl_client       = 1 << 3;
+inline constexpr int k_fl_monster      = 1 << 5;
+inline constexpr int k_fl_onground     = 1 << 9;
+inline constexpr int k_fl_fakeclient   = 1 << 13;
+inline constexpr int k_fl_monsterclip  = 1 << 23;
+inline constexpr int k_fl_worldbrush   = 1 << 25;
+inline constexpr int k_fl_customentity = 1 << 29; // beam entities
+
+// common/const.h :133 — entvars_t.takedamage (DAMAGE_AIM; float field)
+inline constexpr float k_damage_aim = 2.0f;
 
 // common/const.h :689 — rendermode (kRenderNormal)
 inline constexpr int k_render_normal = 0;
