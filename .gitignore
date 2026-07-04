@@ -347,6 +347,9 @@ __pycache__
 
 # Agent workflow state (advisory checkpoints; ground truth is derived)
 .agent-checkpoints.jsonl
+
+# Claude Code personal settings (shared allowlist lives in .claude/settings.json)
+.claude/settings.local.json
 *.code-workspace
 .history/*
 .cache/*
