@@ -38,3 +38,15 @@ add_test(NAME test_pvs_decompress COMMAND test_pvs_decompress)
 add_executable(test_pvs_queries pvs/test_pvs_queries.cpp)
 target_link_libraries(test_pvs_queries PRIVATE xash3dpp_map_loader)
 add_test(NAME test_pvs_queries COMMAND test_pvs_queries)
+
+add_executable(test_point_contents trace/test_point_contents.cpp)
+target_link_libraries(test_point_contents PRIVATE xash3dpp_map_loader)
+add_test(NAME test_point_contents COMMAND test_point_contents)
+
+add_executable(test_hull_trace trace/test_hull_trace.cpp)
+target_link_libraries(test_hull_trace PRIVATE xash3dpp_map_loader)
+add_test(NAME test_hull_trace COMMAND test_hull_trace)
+
+add_executable(test_box_hull trace/test_box_hull.cpp)
+target_link_libraries(test_box_hull PRIVATE xash3dpp_map_loader)
+add_test(NAME test_box_hull COMMAND test_box_hull)

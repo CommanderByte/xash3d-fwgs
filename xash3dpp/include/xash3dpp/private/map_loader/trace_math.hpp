@@ -15,7 +15,7 @@
 
 namespace xash::map_loader {
 
-inline constexpr float k_dist_epsilon = 1.0f / 32.0f; // legacy DIST_EPSILON (com_model.h:572)
+// (k_dist_epsilon lives in the public trace.hpp.)
 
 [[nodiscard]] inline float vec3_component( const ::xash::utilities::Vec3 &v, int i ) noexcept
 {

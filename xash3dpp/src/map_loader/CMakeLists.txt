@@ -6,6 +6,7 @@ add_library(xash3dpp_map_loader STATIC
     map_loader.cpp
     world.cpp
     pvs.cpp
+    trace.cpp
     bsp/bsp_loader.cpp
     bsp/bsp_lumps.cpp
     bsp/bsp_hulls.cpp
