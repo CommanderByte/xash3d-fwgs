@@ -58,6 +58,7 @@ public:
     [[nodiscard]] Vec3 maxs() const noexcept { return to_vec3( e_->v.maxs ); }
     [[nodiscard]] Vec3 absmin() const noexcept { return to_vec3( e_->v.absmin ); }
     [[nodiscard]] Vec3 absmax() const noexcept { return to_vec3( e_->v.absmax ); }
+    [[nodiscard]] Vec3 size() const noexcept { return to_vec3( e_->v.size ); }
 
     void set_absmin( const Vec3 &v ) noexcept { store_vec3( e_->v.absmin, v ); }
     void set_absmax( const Vec3 &v ) noexcept { store_vec3( e_->v.absmax, v ); }
@@ -70,6 +71,7 @@ public:
     [[nodiscard]] int groupinfo() const noexcept { return e_->v.groupinfo; }
     [[nodiscard]] int flags() const noexcept { return e_->v.flags; }
     [[nodiscard]] int effects() const noexcept { return e_->v.effects; }
+    [[nodiscard]] int rendermode() const noexcept { return e_->v.rendermode; }
 
     // --- entity cross-links ----------------------------------------------
     [[nodiscard]] ::xash::abi::edict_t *aiment() const noexcept { return e_->v.aiment; }

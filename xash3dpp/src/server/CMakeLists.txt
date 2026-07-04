@@ -23,8 +23,10 @@ add_library(xash3dpp_server STATIC
     abi/edict_arena.cpp
     abi/string_pool.cpp
     world/links.cpp
+    world/hulls.cpp
+    world/clip.cpp
     # abi/      bridge sources land in S6
-    # world/    hull/clip/contents/light sources land in S5b
+    # world/    contents/light sources land in S5c
     # physics/  sources land in S8
     # clients/  sources land in S9
 )
