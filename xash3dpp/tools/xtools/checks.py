@@ -543,13 +543,20 @@ def finish_check(subsystem: str, run_tests: bool = False) -> dict:
         "pass" if arch_ok and thr else ("needs-judgment" if arch_ok else "fail"),
         ["architecture docs: %s" % arch_ok, "threading documented: %s" % thr])
 
-    # 8 tests pass
+    # 8 tests pass — filter by the subsystem's actual test names, parsed
+    # from tests/<sub>/CMakeLists.txt (xash3dpp_add_test / add_test)
     if run_tests:
         from .buildtools import test as run_test
-        result = run_test(filter_regex="test_%s" % sub)
-        ok = result["failed"] == 0 and result["total"] > 0
-        add(8, "Tests pass", "pass" if ok else "fail",
-            "%d/%d passed" % (result["passed"], result["total"]))
+        names = _subsystem_test_names(sub)
+        if names:
+            rx = "^(%s)$" % "|".join(sorted(names))
+            result = run_test(filter_regex=rx)
+            ok = result["failed"] == 0 and result["total"] == len(names)
+            add(8, "Tests pass", "pass" if ok else "fail",
+                "%d/%d passed (%d registered)" % (
+                    result["passed"], result["total"], len(names)))
+        else:
+            add(8, "Tests pass", "fail", "no test targets registered")
     else:
         add(8, "Tests pass", "needs-judgment", "not run (use --run-tests)")
 
@@ -570,6 +577,20 @@ def finish_check(subsystem: str, run_tests: bool = False) -> dict:
                 passed,
                 sum(1 for i in items if i["status"] == "needs-judgment"),
                 sum(1 for i in items if i["status"] == "fail"))}
+
+
+def _subsystem_test_names(sub: str) -> list[str]:
+    cml = TESTS / sub / "CMakeLists.txt"
+    if not cml.is_file():
+        return []
+    text = cml.read_text(encoding="utf-8", errors="replace")
+    names = re.findall(r"xash3dpp_add_test\(\s*(\w+)", text)
+    names += re.findall(r"add_test\(\s*NAME\s+(\w+)", text)
+    # a foreach over a list variable registers each listed name
+    m = re.search(r"set\(test_sources(.*?)\)", text, re.DOTALL)
+    if m and "foreach" in text:
+        names += re.findall(r"(test_\w+)", m.group(1))
+    return sorted({n for n in names if not n.startswith("${")})
 
 
 # --------------------------------------------------------------------------- #
