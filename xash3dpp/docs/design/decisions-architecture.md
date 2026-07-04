@@ -186,7 +186,55 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
-All twelve questions are now decided.
+All eighteen questions (Q-1 … Q-18) are decided.
+
+### Question index
+
+| Q | Name | Q | Name |
+|---|------|---|------|
+| Q-1 | SUBSYSTEM_CLASS | Q-10 | PLUGIN_VERSION |
+| Q-2 | ENGINE_CONTEXT | Q-11 | SATELLITE_PLACEMENT |
+| Q-3 | PIMPL_MOVE | Q-12 | COMPAT_SCOPE |
+| Q-4 | DI_PARAMS | Q-13 | ALLOC_POLICY |
+| Q-5 | ERROR_RETURN | Q-14 | DRIVER_INHERITANCE |
+| Q-6 | THREADING | Q-15 | PRECONDITION_DOCS |
+| Q-7 | INTERFACE_ABI | Q-16 | CONST_CAST_ISOLATION |
+| Q-8 | STRING_VIEW_BOUNDARY | Q-17 | INTERFACE_SIGNATURE_IMPACT |
+| Q-9 | OWNERSHIP | Q-18 | PM_FP_MODEL |
+
+File order is historical — Q-14 appears before Q-13 below; do not renumber.
+
+______________________________________________________________________
+
+## 3a. Boundary-spec open questions (OQ crosswalk)
+
+Boundary specs carry their own doc-local `OQ-n` lists. **Convention**:
+existing docs keep their local numbering and are cited with compound keys
+(`server-boundary#OQ-1`, `host-boundary#OQ-2`); **new** boundary docs must
+use prefixed IDs (`SRV-OQ-n`, `CL-OQ-n`, …) so bare references stay
+unambiguous. An OQ whose answer shapes more than its own subsystem is
+**promoted** to a numbered Q entry in this register when decided — Q-18
+(PM_FP_MODEL) is the worked example: raised as the pm_shared float-vs-fixed
+landmine, decided with its own design brief
+(`pm-determinism-decision.md`), and recorded as a register entry.
+
+This table is the live index. Statuses are recorded as-is; nothing is
+decided by this table.
+
+| Doc | OQs | Status | Blocks |
+|-----|-----|--------|--------|
+| `networking-boundary` | OQ-1 … OQ-8 | all closed (decided in-doc) | — |
+| `host-boundary` | OQ-1 … OQ-11 | closed, except **OQ-8 deferred** (Sys_NewInstance restart mechanism; re-evaluate after server/client chunks) | none currently |
+| `map_loader-boundary` | — (post-implementation spec; its "(OQ-2)" cite means host-boundary#OQ-2) | — | — |
+| `server-boundary` | OQ-1 (PHS placement) | **open — needs a register entry** | **scaffold** |
+| `server-boundary` | OQ-2 (studio-hull option seam) | open (seam shape at scaffold; null provider until Chunk 7) | impl |
+| `server-boundary` | OQ-3 (HPAK placement) | open (may stub uploads for the milestone) | impl |
+| `server-boundary` | OQ-4 (listen-server capability seam) | open (shape now, null impl for dedicated) | impl |
+| `server-boundary` | OQ-5 (`entvars_t` internal representation) | **open — recommendation recorded in-doc** (ABI-exact edict array as single store) | **scaffold** |
+| `server-boundary` | OQ-6 (64-bit string-pool strategy) | open (legacy-Windows baseline = heap arena + INT-range fallback) | impl |
+| `server-boundary` | OQ-7 (compat routing via ICompatPolicy) | open (proposal in-doc) | impl |
+| `server-boundary` | OQ-8 (dedicated-milestone scope trims) | open (stub-marker proposal in-doc) | impl |
+| `server-boundary` | OQ-9 (threading posture) | open (assumption: all entry points main-thread) | analysis |
 
 ______________________________________________________________________
 

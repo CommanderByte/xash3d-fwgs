@@ -440,6 +440,11 @@ def status_check(data: dict) -> list[str]:
     """Diff generated statuses against the implementation-plan status table."""
     plan = DOCS / "implementation-plan.md"
     text = plan.read_text(encoding="utf-8", errors="replace")
+    # scope to the "## Status Table" section only (the Subsystem Scores
+    # table reuses subsystem names in its first column)
+    m = re.search(r"## Status Table(.*?)(?:\n## |\n_{10,})", text, re.DOTALL)
+    if m:
+        text = m.group(1)
     drift = []
     plan_status: dict[str, str] = {}
     for line in text.splitlines():
