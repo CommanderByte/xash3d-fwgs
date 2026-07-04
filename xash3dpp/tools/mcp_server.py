@@ -88,21 +88,37 @@ def refresh_compile_db() -> dict:
 
 
 @mcp.tool()
-def compliance_scan(subsystem: str, checks_set: str = "all",
-                    min_severity: str = "note") -> dict:
+def compliance_scan(subsystem: str = "", checks_set: str = "all",
+                    min_severity: str = "note", slice: bool = False,
+                    files: str = "") -> dict:
     """Mechanical convention scan (reviewer [M] checks). checks_set: all |
     prepr | detail | comma-list of check ids. candidate-* findings need
     judgment. ABI-forced constructs carry inline compliance-allow markers,
-    echoed in the result's `allows` list."""
+    echoed in the result's `allows` list. slice=True scans the current
+    change set (slice_diff default base) instead of a subsystem — slices
+    cross subsystem boundaries; `files` (comma-list of repo-relative
+    paths) scans exactly those."""
     _maybe_reload()
-    return checks.compliance_scan(subsystem, checks=checks_set,
-                                  min_severity=min_severity)
+    file_list = None
+    if slice:
+        diff = state.slice_diff()
+        if "error" in diff:
+            return {"error": diff["error"]}
+        file_list = [f["path"] for f in diff["files"]] + diff["untracked"]
+    elif files:
+        file_list = [f for f in files.split(",") if f.strip()]
+    elif not subsystem:
+        return {"error": "give a subsystem, files, or slice=True"}
+    return checks.compliance_scan(subsystem or None, checks=checks_set,
+                                  min_severity=min_severity, files=file_list)
 
 
 @mcp.tool()
 def status(check: bool = False) -> dict:
     """Per-subsystem implementation status derived from the tree (src file
-    counts, include/tests presence). check=True also diffs against the
+    counts, include/tests presence, stub-marker counts; the
+    complete_with_stubs list surfaces structurally-Complete subsystems
+    still carrying TODO/stub markers). check=True also diffs against the
     implementation-plan status table (drift list)."""
     _maybe_reload()
     data = checks.status_table()
@@ -169,11 +185,12 @@ def limits_scan(subsystem: str = "") -> dict:
 @mcp.tool()
 def slice_diff(base: str = "", include_patch: bool = False,
                max_patch_lines: int = 400) -> dict:
-    """Change inventory since `base` (default: the newest checkpoint head
-    differing from HEAD, else HEAD~1): files with add/delete counts +
-    untracked list, optional capped patch. Use it to brief gate agents
-    (abi-watchdog / reviewer) from ground truth instead of a hand-typed
-    file list."""
+    """Change inventory since `base` (default: HEAD when the tree is dirty
+    at a checkpointed commit — the slice is the uncommitted work — else
+    the newest checkpoint head differing from HEAD, else HEAD~1): files
+    with add/delete counts + untracked list, optional capped patch. Use it
+    to brief gate agents (abi-watchdog / reviewer) from ground truth
+    instead of a hand-typed file list."""
     _maybe_reload()
     return state.slice_diff(base=base, include_patch=include_patch,
                             max_patch_lines=max_patch_lines)

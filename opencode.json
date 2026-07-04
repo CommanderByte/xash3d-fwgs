@@ -5,7 +5,8 @@
     "xash-tools": {
       "type": "local",
       "enabled": true,
-      "command": [".venv/Scripts/python.exe", "xash3dpp/tools/mcp_server.py"]
+      "command": [".venv/Scripts/python.exe", "xash3dpp/tools/mcp_server.py"],
+      "environment": { "XASH_CHECKPOINT_ACTOR": "opencode" }
     },
     "cpp-lsp": {
       "type": "local",

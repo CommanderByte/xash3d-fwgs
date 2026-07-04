@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """Change inventory since a base ref — the gate-agent briefing pack.
 
-Default base is the newest checkpoint head that differs from HEAD (the
-previous stable state), else HEAD~1. Spans committed AND uncommitted
-tracked changes; untracked files listed separately."""
+Default base: HEAD when the tree is dirty at a checkpointed commit (the
+slice is the uncommitted work); else the newest checkpoint head that
+differs from HEAD (the previous stable state), else HEAD~1. Spans
+committed AND uncommitted tracked changes; untracked files listed
+separately."""
 import argparse
 import sys
 
@@ -14,7 +16,8 @@ from xtools.state import slice_diff
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", default="",
-                    help="git ref to diff against (default: last differing "
+                    help="git ref to diff against (default: HEAD when dirty "
+                         "at a checkpointed commit, else last differing "
                          "checkpoint head, else HEAD~1)")
     ap.add_argument("--patch", action="store_true",
                     help="include the unified diff (capped)")

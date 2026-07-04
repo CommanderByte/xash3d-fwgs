@@ -6,7 +6,8 @@
     },
     "xash-tools": {
       "command": ".venv/Scripts/python.exe",
-      "args": ["xash3dpp/tools/mcp_server.py"]
+      "args": ["xash3dpp/tools/mcp_server.py"],
+      "env": { "XASH_CHECKPOINT_ACTOR": "claude" }
     }
   }
 }

@@ -312,6 +312,20 @@ they don't get lost; pick up opportunistically or when the trigger fires):
   `tests/legacy_abi_prelude.hpp` before writing the third copy.
   **Trigger**: S8 vendors `playermove_t`; S9 vendors `entity_state_t`/
   `usercmd_t`.
+- **cmd_cvar NS_QUALIFY sweep** — ~115 candidate warnings (relative
+  `memory::`/`utilities::`/`limits::` sibling refs) because the
+  NS_QUALIFY rule postdates Chunk 1; plus a handful of thread-assert and
+  pre-reserve candidates. Mechanical hygiene pass; found by the first
+  cross-subsystem `compliance_scan --slice` run (S7a touched
+  `cvar_ops.cpp`). Do alongside another cmd_cvar-touching session or the
+  S10 sweep. Known remaining stub: `cvar_write_variables` (surfaced by
+  the stub-debt report; its consumer is host config write-out).
+- **Crash-stack capture tool** *(deferred by decision, 2026-07-04)* — a
+  `crash_run` xtool that reruns a failing test under the Windows SDK
+  `cdb` and returns the stack + loaded modules as JSON, for native
+  crashes the `test.py` exit-code decoder can't localize.
+  **Trigger**: the first unexplained native crash inside a real game DLL
+  (S13 parity fixes / S15 hl.dll smoke test).
 - **Q-18 golden-vector generator** *(deferred by decision)* — a committed
   CMake target/script that compiles the frozen legacy kernels
   (`pm_trace.c` hull check, CRC32, PVS decompress, delta field codec) and

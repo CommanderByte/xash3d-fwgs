@@ -150,7 +150,8 @@ def plan_summary() -> dict:
         text = _PLAN.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return {"updated": "", "chunks": [], "next_todo_chunk": None,
-                "status_drift": ["implementation-plan.md unreadable"]}
+                "status_drift": ["implementation-plan.md unreadable"],
+                "stub_debt": []}
     m = re.search(r"Updated:\s*([0-9-]+)", text)
     updated = m.group(1) if m else ""
     chunks = []
@@ -168,13 +169,21 @@ def plan_summary() -> dict:
         section_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         section = text[cm.end():section_end]
         sub = None
-        sm = re.search(r"\*\*Subsystems\*\*:\s*`?(\w+)`?", section)
+        subs_all: list[str] = []
+        sm = re.search(r"\*\*Subsystems\*\*:(.*)$", section, re.MULTILINE)
         if sm:
-            sub = sm.group(1)
+            # Chunks may own several subsystems ("`client`, `demo` stub,
+            # `ui` stub"); `subsystem` stays the primary (first) for the
+            # router, `subsystems` carries the full set.
+            subs_all = re.findall(r"`(\w+)`", sm.group(1))
+            if not subs_all:
+                wm = re.search(r"\s*(\w+)", sm.group(1))
+                subs_all = [wm.group(1)] if wm else []
+            sub = subs_all[0] if subs_all else None
         name = re.sub(r"\s*(✅ DONE|\*\(tombstone\)\*|\*\(.*?\)\*)\s*", " ",
                       title).strip().strip("—").strip()
         chunks.append({"num": num, "name": name, "status": status,
-                       "subsystem": sub})
+                       "subsystem": sub, "subsystems": subs_all})
     next_todo = None
     for c in sorted(chunks, key=lambda c: c["num"]):
         if c["status"] in ("todo", "in-progress") and c["subsystem"]:
@@ -188,11 +197,27 @@ def plan_summary() -> dict:
             break
     try:
         from .checks import status_check, status_table
-        drift = status_check(status_table())
+        table = status_table()
+        drift = status_check(table)
+        # Stub debt: structurally-Complete subsystems still carrying
+        # TODO/stub markers.  The in-progress chunk's subsystem is
+        # excluded — its milestone stubs are ladder-tracked, not debt
+        # (the cvar_full_set incident: a silent Chunk 1 TODO stub in
+        # "Complete" cmd_cvar was only found when its first consumer's
+        # tests failed).
+        in_progress: set[str] = set()
+        for c in chunks:
+            if c["status"] == "in-progress":
+                in_progress.update(c.get("subsystems") or
+                                   ([c["subsystem"]] if c["subsystem"] else []))
+        stub_debt = [d for d in table.get("complete_with_stubs", [])
+                     if d["subsystem"] not in in_progress]
     except Exception:  # noqa: BLE001 — tolerant by design
         drift = ["status_table check failed to run"]
+        stub_debt = []
     return {"updated": updated, "chunks": chunks,
-            "next_todo_chunk": next_todo, "status_drift": drift}
+            "next_todo_chunk": next_todo, "status_drift": drift,
+            "stub_debt": stub_debt}
 
 
 def ladder_summary() -> dict | None:
@@ -244,27 +269,56 @@ def ladder_drift(cps: dict, ladder: dict | None) -> str | None:
     return None
 
 
+def _unmunge_rename(path: str) -> str:
+    """`git diff --numstat -M` emits rename paths as `dir/{old => new}/x`
+    (or `old => new` with no shared prefix).  Resolve to the NEW path so
+    downstream consumers (compliance_scan files mode, gate briefs) see a
+    real file instead of silently dropping the rename."""
+    if "{" in path and " => " in path:
+        path = re.sub(r"\{[^{}]*? => ([^{}]*?)\}", r"\1", path)
+        while "//" in path:  # `{old => }` collapses to an empty segment
+            path = path.replace("//", "/")
+        return path
+    if " => " in path:
+        return path.split(" => ", 1)[1]
+    return path
+
+
 def slice_diff(base: str = "", include_patch: bool = False,
                max_patch_lines: int = 400) -> dict:
     """Change inventory since `base` — the gate-agent briefing pack.
 
-    Default base: the newest checkpoint head that differs from HEAD (the
-    previous stable state), else HEAD~1.  The diff spans committed AND
-    uncommitted tracked changes (worktree vs base); untracked files are
-    listed separately.  include_patch adds the unified diff, capped at
-    max_patch_lines.
+    Default base: HEAD when the tree is dirty at a checkpointed commit
+    (the slice is the uncommitted work); otherwise the newest checkpoint
+    head that differs from HEAD (the previous stable state), else
+    HEAD~1.  The diff spans committed AND uncommitted tracked changes
+    (worktree vs base); untracked files are listed separately.
+    include_patch adds the unified diff, capped at max_patch_lines.
     """
     git = git_state()
     base_source = "explicit"
     if not base:
         recent, _ = read_checkpoints()
-        for cp in reversed(recent):
-            cp_head = str(cp.get("head", ""))
-            if cp_head and cp_head != git["head"]:
-                base = cp_head
-                base_source = "checkpoint %s/%s" % (cp.get("chunk", "?"),
-                                                    cp.get("step", "?"))
-                break
+        # A dirty tree at a checkpointed HEAD means the slice IS the
+        # uncommitted work: diff against HEAD so the gate brief lists
+        # only it (the previous default re-listed the files of the
+        # already-committed prior slice).
+        # Any checkpoint may match: an interleaved checkpoint from
+        # another branch/session must not defeat the preference (the
+        # newest entry alone is not authoritative — see the concurrent-
+        # session warning in _checkpoint_summary).
+        if git["dirty"] and any(str(cp.get("head", "")) == git["head"]
+                                for cp in recent):
+            base = "HEAD"
+            base_source = "HEAD (dirty tree at checkpointed commit)"
+        if not base:
+            for cp in reversed(recent):
+                cp_head = str(cp.get("head", ""))
+                if cp_head and cp_head != git["head"]:
+                    base = cp_head
+                    base_source = "checkpoint %s/%s" % (cp.get("chunk", "?"),
+                                                        cp.get("step", "?"))
+                    break
         if not base:
             base = "HEAD~1"
             base_source = "HEAD~1 (no differing checkpoint)"
@@ -289,8 +343,9 @@ def slice_diff(base: str = "", include_patch: bool = False,
             deleted = int(parts[1]) if parts[1].isdigit() else 0
             total_added += added
             total_deleted += deleted
-            files.append({"path": parts[2],
-                          "status": status_by_path.get(parts[2], "M"),
+            path = _unmunge_rename(parts[2])
+            files.append({"path": path,
+                          "status": status_by_path.get(path, "M"),
                           "added": added, "deleted": deleted})
 
     rc, untracked_lines = _git(["ls-files", "--others", "--exclude-standard"])

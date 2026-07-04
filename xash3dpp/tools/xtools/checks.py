@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import DOCS, INCLUDE, LIMITS_HPP, PRIVATE, REPO, SRC, TESTS, resolve_scope
 from .rules import JUDGMENT_CHECKS, MUTATOR_NAMES, RULES, STRUCTURED_CHECKS
-from .scan import code_lines, subsystem_files
+from .scan import CPP_EXT, code_lines, subsystem_files
 
 SEV_ORDER = {"blocker": 3, "warning": 2, "note": 1}
 
@@ -48,17 +48,68 @@ def _scope_of(path: Path) -> str:
     return "include"
 
 
+def _sub_of_path(path: Path) -> str:
+    """Infer the owning subsystem from a repo-relative xash3dpp path (for
+    per-subsystem rule exclusions in file-list scans)."""
+    rel = _rel(path)
+    for rx in (r"xash3dpp/src/([\w]+)/",
+               r"xash3dpp/include/xash3dpp/private/([\w]+)/",
+               r"xash3dpp/include/xash3dpp/([\w]+)/",
+               r"xash3dpp/tests/([\w]+)/"):
+        m = re.match(rx, rel)
+        if m:
+            return m.group(1)
+    return "slice"
+
+
+def _group_files(paths: list[str]) -> tuple[list[tuple[str, list[Path]]],
+                                            list[str]]:
+    """Group an explicit file list (repo-relative) by inferred subsystem
+    (suffix set = scan.CPP_EXT, same as subsystem mode).  Anything outside
+    xash3dpp/ (the legacy engine is reference-only, never scanned),
+    non-C++ files and missing paths land in the returned `ignored` list —
+    a gate must be able to see what it did NOT scan.  Duplicates are
+    scanned once."""
+    by_sub: dict[str, list[Path]] = {}
+    ignored: list[str] = []
+    seen: set[str] = set()
+    for raw in paths:
+        rel = raw.strip().replace("\\", "/")
+        if rel.startswith("./"):
+            rel = rel[2:]
+        if not rel or rel in seen:
+            continue
+        seen.add(rel)
+        p = REPO / rel
+        if not rel.startswith("xash3dpp/") or p.suffix not in CPP_EXT \
+                or not p.is_file():
+            ignored.append(rel)
+            continue
+        by_sub.setdefault(_sub_of_path(p), []).append(p)
+    return sorted(by_sub.items()), ignored
+
+
 # --------------------------------------------------------------------------- #
 # compliance_scan
 # --------------------------------------------------------------------------- #
 
 def compliance_scan(subsystem: str | None, checks: str = "all",
-                    min_severity: str = "note") -> dict:
+                    min_severity: str = "note",
+                    files: list[str] | None = None) -> dict:
     """Run the [M] ruleset over one subsystem (or all).
 
     checks: "all" | "prepr" | "detail" | comma-list of check ids.
+    files: explicit repo-relative paths (a slice_diff change set) —
+    overrides subsystem discovery so gates cover exactly what a slice
+    touched, wherever it lives (the S7a cvar_ops.cpp gap).
     """
-    subs = resolve_scope(subsystem)
+    files_ignored: list[str] = []
+    if files is not None:
+        groups, files_ignored = _group_files(files)
+        subs = [g[0] for g in groups]
+    else:
+        subs = resolve_scope(subsystem)
+        groups = [(sub, subsystem_files(sub, tests=True)) for sub in subs]
     explicit = None
     if checks in ("all", "prepr", "detail"):
         active = [r for r in RULES if checks in r.sets]
@@ -73,11 +124,10 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
     violations: list[dict] = []
     allows: list[dict] = []
     files_scanned = 0
-    for sub in subs:
-        files = subsystem_files(sub, tests=True)
-        files_scanned += len(files)
+    for sub, sub_files in groups:
+        files_scanned += len(sub_files)
         file_texts: dict[Path, str] = {}
-        for path in files:
+        for path in sub_files:
             scope = _scope_of(path)
             lines = list(code_lines(path))
             file_texts[path] = "\n".join(code for _, code, _ in lines)
@@ -118,22 +168,30 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
                         "no .hpp under src/ — move to include/xash3dpp/[private/]%s/" % sub,
                         "reviewer §3; detail CHECK-HEADERS"))
         if "naming-file-case" in structured:
-            for p in files:
+            for p in sub_files:
                 if not re.fullmatch(r"[a-z0-9_.]+", p.name):
                     violations.append(_violation(
                         "naming-file-case", "warning", p, 0, p.name,
                         "files are snake_case (reviewer §12)",
                         "reviewer §12; decisions-style"))
         if "naming-enum-kprefix" in structured:
-            violations.extend(_scan_enum_kprefix(files))
+            violations.extend(_scan_enum_kprefix(sub_files))
         if "nodiscard-missing" in structured:
             violations.extend(_scan_nodiscard(sub))
         if "thread-assert" in structured:
             violations.extend(_scan_thread_assert(sub))
         if "ns-qualify" in structured:
-            violations.extend(_scan_ns_qualify(sub, files, file_texts))
+            violations.extend(_scan_ns_qualify(sub, sub_files, file_texts))
         if "test-macros" in structured:
             violations.extend(_scan_test_macros(sub))
+
+    if files is not None:
+        # File-list mode scopes EVERY check to the given set — the
+        # directory-walking structured checks above would otherwise
+        # report a touched subsystem's whole backlog (full-subsystem
+        # coverage stays with subsystem mode, which pre-pr runs).
+        in_slice = {_rel(p) for _, ps in groups for p in ps}
+        violations = [v for v in violations if v["file"] in in_slice]
 
     threshold = SEV_ORDER.get(min_severity, 1)
     violations = [
@@ -149,7 +207,7 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
             counts["candidate"] += 1
             sev = sev.removeprefix("candidate-")
         counts[sev] += 1
-    return {
+    out = {
         "subsystems": subs,
         "checks": checks,
         "files_scanned": files_scanned,
@@ -158,6 +216,9 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
         "allows": allows,
         "judgment_checks_not_run": JUDGMENT_CHECKS,
     }
+    if files is not None:
+        out["files_ignored"] = files_ignored
+    return out
 
 
 def _scan_enum_kprefix(files: list[Path]) -> list[dict]:
@@ -422,6 +483,18 @@ def _test_liveness(subs: list[str]) -> dict:
 # status_table
 # --------------------------------------------------------------------------- #
 
+_STUB_MARKER_RX = re.compile(r"//\s*(TODO|STUB|XASH3DPP-STUB)\b")
+
+
+def _stub_marker_count(src_files: list[Path]) -> int:
+    count = 0
+    for path in src_files:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        count += sum(1 for line in text.splitlines()
+                     if _STUB_MARKER_RX.search(line))
+    return count
+
+
 def status_table() -> dict:
     rows = []
     for sub in resolve_scope(None):
@@ -437,8 +510,17 @@ def status_table() -> dict:
         rows.append({
             "subsystem": sub, "src_files": len(src_files),
             "include": inc, "tests": tst, "status": status,
+            "stub_markers": _stub_marker_count(src_files),
         })
-    return {"rows": rows}
+    # Structural completeness can hide unfinished work (the cvar_full_set
+    # incident): surface every "Complete" subsystem still carrying
+    # TODO/stub markers so consumers (whereami stub-debt, plan refresh)
+    # see the debt without a per-subsystem stub_scan pass.
+    complete_with_stubs = [
+        {"subsystem": r["subsystem"], "stub_markers": r["stub_markers"]}
+        for r in rows if r["status"] == "Complete" and r["stub_markers"] > 0
+    ]
+    return {"rows": rows, "complete_with_stubs": complete_with_stubs}
 
 
 def status_markdown(data: dict) -> str:

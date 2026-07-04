@@ -14,6 +14,7 @@
 [mcp_servers.xash-tools]
 command = ".venv/Scripts/python.exe"
 args = ["xash3dpp/tools/mcp_server.py"]
+env = { "XASH_CHECKPOINT_ACTOR" = "codex" }
 
 [mcp_servers.cpp-lsp]
 command = ".venv/Scripts/python.exe"
