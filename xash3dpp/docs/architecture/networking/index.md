@@ -13,6 +13,7 @@
 | `networking/master_list.hpp` | `xash::networking` | `IMasterListConfig`, `IMasterListClient` |
 | `networking/protocol_driver.hpp` | `xash::networking` | `IProtocolDriver`, `IProtocolDriverRegistry`, `SplitFormat`, `DeltaTableSet`, `FrameMeta` |
 | `networking/netchan.hpp` | `xash::networking` | `Netchan`, `NetchanConfig`, `NetchanFlags`, `FragStream`, `FragSize`, `IBlockSizeProvider`, `Fragbuf`, `FragbufBatch`, `IncomingStream` (Layer 3 — fully implemented) |
+| `networking/delta.hpp` | `xash::networking` | `DeltaTables`, `DeltaField`, `DeltaEncodeFn`, `DeltaStructId`, `DeltaEntityKind`, `IBaselineResolver`, `WriteDeltaEntityParams`/`ReadDeltaEntityParams`, `DeltaStats` |
 
 ## Private / internal headers
 
@@ -29,6 +30,12 @@
 | `private/networking/transport/loopback_transport.hpp` | `LoopbackTransport` — in-process dual-ring loopback |
 | `private/networking/master_list.hpp` | Redirect → `networking/master_list.hpp` (public tree) |
 | `private/networking/protocol_driver.hpp` | Redirect → `networking/protocol_driver.hpp` (public tree) |
+| `private/networking/delta/delta_types.hpp` | Wire-frozen DT_* flags, field-descriptor bit widths, `q_rint`/`q_equal` legacy float helpers, `goldsrc_delta_t` |
+| `private/networking/delta/field_defs.hpp` | The 7 verbatim legacy field-definition tables (`XASH_DELTA_DEF` macros) |
+| `private/networking/delta/field_codec.hpp` | Per-field bit codec incl. `SignEncoding` (two's-complement vs GoldSrc sign-magnitude) |
+| `private/networking/delta/wire_format.hpp` | `IDeltaWireFormat` seam (Xash per-field-mark vs GoldSrc count+mask wire), `delta_wire_format_for()` |
+| `private/networking/delta/lst_parser.hpp` | delta.lst script tokenizer/cursor |
+| `private/networking/delta/delta_tables_impl.hpp` | `DeltaTables::Impl` — table storage, custom-encoder registry, movevars fallback |
 
 ## Source files
 
@@ -50,6 +57,13 @@
 | `src/networking/wire/protocol_driver_goldsrc.cpp` | `GoldSrcProtocolDriver` — GoldSrc wire protocol (protocol 48) |
 | `src/networking/master_list.cpp` | `MasterListClient`: iterates `master_addresses()`, sends GoldSrc OOB heartbeat/shutdown |
 | `src/networking/netchan.cpp` | `Netchan` Layer-3 channel — fully implemented reliable channel, fragment assembly, bandwidth choking |
+| `src/networking/delta/delta_tables.cpp` | `DeltaTables` lifecycle (init/init_from_script/init_client/clear), field lookup/set/unset, encoder registration |
+| `src/networking/delta/lst_parser.cpp` | delta.lst parsing (incl. the trailing-comma backtrack quirk) |
+| `src/networking/delta/field_codec.cpp` | Field read/write bit codecs; exact legacy conversion chains, sign-encoding switch |
+| `src/networking/delta/wire_format_xash.cpp` | Xash per-field-mark wire format |
+| `src/networking/delta/wire_format_goldsrc.cpp` | GoldSrc 3-bit-group-count + mask-byte wire format (sign-magnitude payloads) |
+| `src/networking/delta/table_wire.cpp` | svc_deltatable descriptor wire + GoldSrc meta-table parse (×4000 premultiply, DT_SIGNED_GS remap) |
+| `src/networking/delta/delta_codec.cpp` | Entity header walk, struct codecs, `test_baseline`, count_fields helpers |
 
 ## Key types
 
@@ -92,12 +106,16 @@
 | `FragStream` | enum class | `networking/netchan.hpp` | `Normal` vs. `File` fragment stream |
 | `FragSize` | enum class | `networking/netchan.hpp` | `Fragment` / `Split` / `Unreliable` block-size query |
 | `IBlockSizeProvider` | struct (pure virt) | `networking/netchan.hpp` | Host-supplied per-channel fragment sizing callback |
+| `DeltaTables` | class (pimpl) | `networking/delta.hpp` | Delta-table registry + struct codecs (the delta encoder's hub) |
+| `IBaselineResolver` | struct (pure virt) | `networking/delta.hpp` | Baseline lookup seam (replaces legacy client globals) |
+| `IDeltaWireFormat` | struct (pure virt) | `private/networking/delta/wire_format.hpp` | Xash vs GoldSrc field-mask wire seam (future formats slot in here) |
+| `SignEncoding` | enum class | `private/networking/delta/field_codec.hpp` | Two's-complement vs GoldSrc sign-magnitude signed payloads |
 
 ## CMake targets
 
 | Target | Type | Public deps | Private deps |
 |--------|------|-------------|--------------|
-| `xash3dpp_networking` | STATIC | include dir (`xash3dpp`), C++23, `xash3dpp_utilities`, `xash3dpp_memory` | `xash3dpp_core`, `xash3dpp_platform` |
+| `xash3dpp_networking` | STATIC | include dir (`xash3dpp`), C++23, `xash3dpp_utilities`, `xash3dpp_memory` | `xash3dpp_core`, `xash3dpp_platform`, `xash3dpp_filesystem` (DeltaTables::init loads delta.lst) |
 | — | — | LZSS TU always compiled in; `XASH_NET_COMPRESSION` selects `codec/compress_bz2.cpp` (ON) vs `codec/compress_null.cpp` (OFF) at link time | bzip2 backend wiring deferred — `codec/compress_bz2.cpp` is a stub TU until 3rdparty/bzip2 lands |
 
 > **Note**: `xash3dpp_utilities` and `xash3dpp_memory` are PUBLIC so downstream

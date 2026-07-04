@@ -141,4 +141,5 @@ notes" for the seam shifts vs. legacy.
 - [transport-layer.md](./transport-layer.md) — LagQueue, LoopbackTransport, PacketPool (Layer 1)
 - [wire-encoding.md](./wire-encoding.md) — wire framing: split packets, OOB, compressed packet, LZSS (Layer 2)
 - [protocol-driver.md](./protocol-driver.md) — IProtocolDriver, IProtocolDriverRegistry, GoldSrcProtocolDriver, compat
+- [delta-encoder.md](./delta-encoder.md) — DeltaTables, field codecs, IDeltaWireFormat (Xash/GoldSrc), baselines, Delta_AddEncoder hook
 - [satellites.md](./satellites.md) — NetworkingStats, IMasterListConfig/Client

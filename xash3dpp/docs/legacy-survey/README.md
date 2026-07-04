@@ -29,6 +29,7 @@ sessions) read instead of re-deriving.
 
 - [deep-dive-bsp-loader.md](deep-dive-bsp-loader.md) — BSP v29/v30/BSP2 on-disk format, `mod_bmodel.c` load path, hull construction, map CRC, 18-item quirk list (Chunk 5 recon, 2026-07-04)
 - [deep-dive-trace-pvs.md](deep-dive-trace-pvs.md) — `pm_trace.c` hull-trace kernel (exact pseudocode + epsilons), contents/PVS query surface, map_loader-vs-server split, fixture guidance (Chunk 5 recon, 2026-07-04)
+- [deep-dive-delta-encoder.md](deep-dive-delta-encoder.md) — `net_encode.c` delta tables, DT_* flags + wire widths, delta.lst grammar, field-codec math, Xash vs GoldSrc wire dialects, Delta_AddEncoder, baselines (retroactive networking recon, reconstructed 2026-07-04; primary input for the Chunk 6 server)
 
 ## Top-level reference
 

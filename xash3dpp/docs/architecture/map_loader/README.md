@@ -45,7 +45,7 @@ extents (content pipeline, Chunk 7), or studio hitbox hulls.
 
 ## Data flow
 
-```
+```text
 Filesystem::load_file ─→ parse_header ─→ resolve_lump (validation ladder)
                                               │
         entities/planes/submodels/textures/…  ▼   (legacy stage order)
@@ -100,3 +100,13 @@ parity audits on the loader (findings fixed) and the trace kernel
 (PARITY-CONFIRMED); 18,156-trace bit-exact cross-check against the verbatim
 legacy kernel; golden trace fixtures in `tests/map_loader/trace/` are the
 standing Q-18 determinism gate.
+
+## Index of concepts
+
+- [index.md](./index.md) — full file/symbol/test index
+- [bsp-loading.md](./bsp-loading.md) — header/quirk detection, validation ladder, stage pipeline
+- [world-data.md](./world-data.md) — the immutable model and its normalisations
+- [hulls.md](./hulls.md) — clipnode widening, MakeHull0, per-submodel hull wiring
+- [pvs.md](./pvs.md) — visibility queries (decompress, point/box/fat)
+- [trace.md](./trace.md) — the Q-18 kernel, hull selection, BoxHull
+- [fsm.md](./fsm.md) — MapLoader FSM, world ownership, the `.ent` patch
