@@ -179,6 +179,23 @@ static void test_submodel_flags_from_surfaces()
     CHECK( ( w->submodels()[2].flags & ml::k_model_conveyor ) != 0 );
 }
 
+static void test_underwater_marking()
+{
+    // Non-empty leafs mark their marksurfaces with SURF_UNDERWATER (legacy
+    // Mod_LoadLeafs :3704-3712); empty leafs do not.
+    auto b = make_minimal_world();
+    std::vector<bsp::dleaf_t> leafs( 3 );
+    leafs[0] = { -2, -1, {}, {}, 0, 0, {} };
+    leafs[1] = { -1,  0, {}, {}, 0, 2, {} }; // EMPTY refs both marks → no marking
+    leafs[2] = { -3, -1, {}, {}, 1, 1, {} }; // water refs marksurface 1 → surface 1
+    b.set_lump_records( bsp::k_lump_leafs, leafs );
+
+    const auto w = ml::load_world_data( b.build(), "t", world_opts() );
+    REQUIRE( w.has_value() );
+    CHECK_EQ( w->surfaces()[0].flags & ml::k_surf_underwater, 0u );
+    CHECK( ( w->surfaces()[1].flags & ml::k_surf_underwater ) != 0 );
+}
+
 // ---------------------------------------------------------------------------
 // water-alpha probe
 // ---------------------------------------------------------------------------
@@ -233,6 +250,7 @@ int main()
     RUN_TEST( test_texinfo_flag_rules );
     RUN_TEST( test_corrupt_face_guard );
     RUN_TEST( test_submodel_flags_from_surfaces );
+    RUN_TEST( test_underwater_marking );
     RUN_TEST( test_wateralpha_probe );
 
     std::printf( "bsp_flags: %d passed, %d failed\n", g_pass, g_fail );

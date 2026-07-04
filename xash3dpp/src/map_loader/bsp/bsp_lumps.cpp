@@ -32,58 +32,10 @@ using ::xash::core::LogLevel;
 
 namespace {
 
-// -------------------------------------------------------------------------
-// Minimal COM_ParseFile-equivalent tokenizer for the worldspawn scan.
-// Handles whitespace, // comments, quoted strings (no escapes — legacy
-// COM_ParseFile has none) and '{' / '}' as single-character tokens.
-// -------------------------------------------------------------------------
-
-struct EntityCursor
+// Legacy `token[0]` tests are applied to possibly-empty token text.
+[[nodiscard]] char first_char( std::string_view s ) noexcept
 {
-    const char *p;
-    const char *end;
-};
-
-[[nodiscard]] bool next_token( EntityCursor &c, std::string &out )
-{
-    out.clear();
-
-    for ( ;; )
-    {
-        while ( c.p < c.end && static_cast<unsigned char>( *c.p ) <= ' ' )
-            ++c.p;
-        if ( c.p + 1 < c.end && c.p[0] == '/' && c.p[1] == '/' )
-        {
-            while ( c.p < c.end && *c.p != '\n' )
-                ++c.p;
-            continue;
-        }
-        break;
-    }
-
-    if ( c.p >= c.end )
-        return false;
-
-    if ( *c.p == '"' )
-    {
-        ++c.p;
-        while ( c.p < c.end && *c.p != '"' )
-            out.push_back( *c.p++ );
-        if ( c.p < c.end )
-            ++c.p; // closing quote
-        return true;
-    }
-
-    if ( *c.p == '{' || *c.p == '}' )
-    {
-        out.push_back( *c.p++ );
-        return true;
-    }
-
-    while ( c.p < c.end && static_cast<unsigned char>( *c.p ) > ' ' &&
-            *c.p != '{' && *c.p != '}' && *c.p != '"' )
-        out.push_back( *c.p++ );
-    return true;
+    return s.empty() ? '\0' : s[0];
 }
 
 template <typename T>
@@ -126,38 +78,46 @@ WorldDataFill::Result WorldDataFill::entities( const LoadContext &ctx, World &w 
         return {};
 
     // Worldspawn key scan — first entity block only (legacy returns after
-    // the first closing brace).
-    EntityCursor c{ w.entities_.data(), w.entities_.data() + w.entities_.size() };
-    std::string  token, keyname;
+    // the first closing brace).  Tokenization via utilities::Tokenizer, the
+    // project's COM_ParseFileSafe port (escaped quotes, NUL handling and
+    // single-char tokens follow legacy; token length caps at
+    // limits::tokenizer_token_max vs the legacy MAX_TOKEN 2048).
+    ::xash::utilities::Tokenizer tk( w.entities_.c_str() );
+    std::string keyname;
 
-    if ( !next_token( c, token ))
+    const auto first = tk.next();
+    if ( !first )
         return {}; // empty entities: nothing to scan (legacy loop never runs)
 
-    if ( token != "{" )
+    if ( first_char( first->text ) != '{' )
     {
         ::xash::core::logf( LogLevel::Error, "map_loader",
-                            "entities: found '%s' when expecting '{'", token.c_str() );
+                            "entities: found '%.*s' when expecting '{'",
+                            static_cast<int>( first->text.size() ), first->text.data() );
         return std::unexpected( ErrorCode::BspBadWorld );
     }
 
     for ( ;; )
     {
-        if ( !next_token( c, keyname ))
+        const auto key = tk.next();
+        if ( !key )
         {
             ::xash::core::log( LogLevel::Error, "map_loader",
                                "entities: EOF without closing brace" );
             return std::unexpected( ErrorCode::BspBadWorld );
         }
-        if ( keyname == "}" )
+        if ( first_char( key->text ) == '}' )
             break;
+        keyname.assign( key->text );
 
-        if ( !next_token( c, token ))
+        const auto value = tk.next();
+        if ( !value )
         {
             ::xash::core::log( LogLevel::Error, "map_loader",
                                "entities: EOF without closing brace" );
             return std::unexpected( ErrorCode::BspBadWorld );
         }
-        if ( token == "}" )
+        if ( first_char( value->text ) == '}' )
         {
             ::xash::core::log( LogLevel::Error, "map_loader",
                                "entities: closing brace without data" );
@@ -165,9 +125,9 @@ WorldDataFill::Result WorldDataFill::entities( const LoadContext &ctx, World &w 
         }
 
         if ( ::xash::utilities::stricmp( keyname.c_str(), "wad" ) == 0 )
-            w.wadlist_ = token;
+            w.wadlist_.assign( value->text );
         else if ( ::xash::utilities::stricmp( keyname.c_str(), "message" ) == 0 )
-            w.message_ = token;
+            w.message_.assign( value->text );
     }
 
     return {};
@@ -412,6 +372,24 @@ WorldDataFill::Result WorldDataFill::leafs( const LoadContext &ctx, World &w )
 
         // Raw, unclamped — legacy parity (final compressed_vis assignment).
         out.visofs = visofs;
+
+        // GL underwater warp: mark every surface referenced by a non-empty
+        // leaf (legacy :3704-3712, world and bmodels alike).  Marksurface
+        // range clamped to the loaded array (hardening; legacy indexes raw
+        // pointers).
+        if ( out.contents != k_contents_empty )
+        {
+            for ( int j = 0; j < out.nummarksurfaces; ++j )
+            {
+                const long long idx =
+                    static_cast<long long>( out.firstmarksurface ) + j;
+                if ( idx < 0 ||
+                     idx >= static_cast<long long>( w.marksurfaces_.size() ))
+                    break;
+                const int si = w.marksurfaces_[static_cast<std::size_t>( idx )];
+                w.surfaces_[static_cast<std::size_t>( si )].flags |= k_surf_underwater;
+            }
+        }
     }
 
     // Legacy Host_Error → BspBadWorld.

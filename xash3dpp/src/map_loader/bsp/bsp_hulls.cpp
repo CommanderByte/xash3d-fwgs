@@ -54,11 +54,15 @@ template <typename T>
 
 // Legacy CountClipNodes*_r / CountDClipNodes_r: counts every non-leaf node
 // reachable from `headnode`, erroring at `cap`.  Iterative (see file note).
+// `seed` mirrors the legacy call pattern where hull->lastclipnode is
+// pre-seeded (Mod_SetupSubmodels seeds it with the headnode) and the cap
+// check tests the RUNNING value — so the overflow threshold is
+// seed + count == cap, and the return value is the final counter.
 [[nodiscard]] std::expected<int, ErrorCode>
 count_clipnodes( std::span<const ::xash::map_loader::ClipNode32> nodes,
-                 int headnode, int cap, const char *caller ) noexcept
+                 int headnode, int seed, int cap, const char *caller ) noexcept
 {
-    int count = 0;
+    int counter = seed;
     std::vector<int> stack;
     stack.push_back( headnode );
 
@@ -75,18 +79,18 @@ count_clipnodes( std::span<const ::xash::map_loader::ClipNode32> nodes,
                                 "%s: clipnode index %d out of range", caller, num );
             return std::unexpected( ErrorCode::BspCorruptLump );
         }
-        if ( count == cap )
+        if ( counter == cap )
         {
             ::xash::core::logf( LogLevel::Error, "map_loader",
                                 "%s: MAX_MAP_CLIPNODES (%d) limit exceeded", caller, cap );
             return std::unexpected( ErrorCode::BspCorruptLump );
         }
-        ++count;
+        ++counter;
 
         stack.push_back( nodes[static_cast<std::size_t>( num )].children[0] );
         stack.push_back( nodes[static_cast<std::size_t>( num )].children[1] );
     }
-    return count;
+    return counter;
 }
 
 // Legacy RemapClipNodes_r: preorder re-emission of the subtree rooted at
@@ -158,65 +162,37 @@ remap_clipnodes( std::span<const ::xash::map_loader::ClipNode32> src,
     return emitted;
 }
 
+// Legacy `token[0]` tests are applied to possibly-empty token text.
+[[nodiscard]] char first_char( std::string_view s ) noexcept
+{
+    return s.empty() ? '\0' : s[0];
+}
+
 // Legacy Mod_FindModelOrigin: scans the FULL entity text for an entity whose
 // "model" key equals `modelname`, extracting its "origin".  Only applied
-// when the current origin is null (legacy early-out).
+// when the current origin is null (legacy early-out).  Tokenization via
+// utilities::Tokenizer (COM_ParseFileSafe port), matching Mod_LoadEntities.
 [[nodiscard]] std::expected<void, ErrorCode>
-find_model_origin( std::string_view entities, const char *modelname,
+find_model_origin( const std::string &entities, const char *modelname,
                    ::xash::utilities::Vec3 &origin ) noexcept
 {
     if ( entities.empty() || !vec_is_null( origin ))
         return {};
 
-    // Local tokenizer identical to the worldspawn scan in bsp_lumps.cpp.
-    const char *p   = entities.data();
-    const char *end = p + entities.size();
-    std::string token, keyname;
+    ::xash::utilities::Tokenizer tk( entities.c_str() );
+    std::string keyname, value;
 
-    const auto next = [&]( std::string &out ) -> bool
+    for ( ;; )
     {
-        out.clear();
-        for ( ;; )
-        {
-            while ( p < end && static_cast<unsigned char>( *p ) <= ' ' )
-                ++p;
-            if ( p + 1 < end && p[0] == '/' && p[1] == '/' )
-            {
-                while ( p < end && *p != '\n' )
-                    ++p;
-                continue;
-            }
-            break;
-        }
-        if ( p >= end )
-            return false;
-        if ( *p == '"' )
-        {
-            ++p;
-            while ( p < end && *p != '"' )
-                out.push_back( *p++ );
-            if ( p < end )
-                ++p;
-            return true;
-        }
-        if ( *p == '{' || *p == '}' )
-        {
-            out.push_back( *p++ );
-            return true;
-        }
-        while ( p < end && static_cast<unsigned char>( *p ) > ' ' &&
-                *p != '{' && *p != '}' && *p != '"' )
-            out.push_back( *p++ );
-        return true;
-    };
+        const auto open = tk.next();
+        if ( !open )
+            return {}; // scanned every entity without a match
 
-    while ( next( token ))
-    {
-        if ( token != "{" )
+        if ( first_char( open->text ) != '{' )
         {
             ::xash::core::logf( LogLevel::Error, "map_loader",
-                                "find_model_origin: found '%s' when expecting '{'",
-                                token.c_str() );
+                                "find_model_origin: found '%.*s' when expecting '{'",
+                                static_cast<int>( open->text.size() ), open->text.data() );
             return std::unexpected( ErrorCode::BspBadWorld );
         }
 
@@ -225,36 +201,41 @@ find_model_origin( std::string_view entities, const char *modelname,
 
         for ( ;; )
         {
-            if ( !next( keyname ))
+            const auto key = tk.next();
+            if ( !key )
             {
                 ::xash::core::log( LogLevel::Error, "map_loader",
                                    "find_model_origin: EOF without closing brace" );
                 return std::unexpected( ErrorCode::BspBadWorld );
             }
-            if ( keyname == "}" )
+            if ( first_char( key->text ) == '}' )
                 break;
-            if ( !next( token ))
+            keyname.assign( key->text );
+
+            const auto val = tk.next();
+            if ( !val )
             {
                 ::xash::core::log( LogLevel::Error, "map_loader",
                                    "find_model_origin: EOF without closing brace" );
                 return std::unexpected( ErrorCode::BspBadWorld );
             }
-            if ( token == "}" )
+            if ( first_char( val->text ) == '}' )
             {
                 ::xash::core::log( LogLevel::Error, "map_loader",
                                    "find_model_origin: closing brace without data" );
                 return std::unexpected( ErrorCode::BspBadWorld );
             }
+            value.assign( val->text );
 
             if ( ::xash::utilities::stricmp( keyname.c_str(), "model" ) == 0 &&
-                 ::xash::utilities::stricmp( token.c_str(), modelname ) == 0 )
+                 ::xash::utilities::stricmp( value.c_str(), modelname ) == 0 )
                 model_found = true;
 
             if ( ::xash::utilities::stricmp( keyname.c_str(), "origin" ) == 0 )
             {
                 // Legacy Q_atov( origin, token, 3 ): whitespace-separated floats.
                 float v[3] = { 0.0f, 0.0f, 0.0f };
-                const char *s = token.c_str();
+                const char *s = value.c_str();
                 for ( int i = 0; i < 3; ++i )
                 {
                     char *next_num = nullptr;
@@ -273,7 +254,6 @@ find_model_origin( std::string_view entities, const char *modelname,
             return {};
         }
     }
-    return {};
 }
 
 } // namespace
@@ -285,8 +265,6 @@ find_model_origin( std::string_view entities, const char *modelname,
 WorldDataFill::Result WorldDataFill::clipnodes( const LoadContext &ctx, World &w,
                                                 LoadScratch &s )
 {
-    ( void ) w;
-
     const auto lv = resolve_lump( ctx.file, ctx.hi, k_lump_clipnodes );
     if ( !lv )
         return std::unexpected( lv.error() );
@@ -301,6 +279,16 @@ WorldDataFill::Result WorldDataFill::clipnodes( const LoadContext &ctx, World &w
         for ( std::size_t i = 0; i < lv->count; ++i )
         {
             const auto in = read_record<dclipnode32_t>( lv->bytes, i );
+
+            // 32-bit children have no aguirRe wrap; validate the node range
+            // so the trace kernel can trust its indices (hardening — legacy
+            // walks raw pointers).  Negative values are contents.
+            if ( in.children[0] >= numclipnodes || in.children[1] >= numclipnodes )
+            {
+                ::xash::core::logf( LogLevel::Error, "map_loader",
+                                    "clipnodes: bad child on clipnode %zu", i );
+                return std::unexpected( ErrorCode::BspCorruptLump );
+            }
             s.clipnodes_widened[i] = { in.planenum, { in.children[0], in.children[1] } };
         }
     }
@@ -316,12 +304,27 @@ WorldDataFill::Result WorldDataFill::clipnodes( const LoadContext &ctx, World &w
             {
                 // aguirRe QBSP 'broken' clipnodes: children pass through an
                 // unsigned-16 reinterpretation; anything at or above the
-                // clipnode count wraps back to a negative value.
+                // clipnode count wraps back to a negative value.  (This
+                // also guarantees every non-negative child is in range.)
                 int c = static_cast<std::uint16_t>( in.children[j] );
                 if ( c >= numclipnodes )
                     c -= 65536;
                 out.children[j] = c;
             }
+        }
+    }
+
+    // Plane indices feed hull.planes[] lookups in the kernel — validate once
+    // at load (hardening; legacy trusts them).
+    const int numplanes = static_cast<int>( w.planes_.size() );
+    for ( std::size_t i = 0; i < s.clipnodes_widened.size(); ++i )
+    {
+        const int p = s.clipnodes_widened[i].planenum;
+        if ( p < 0 || p >= numplanes )
+        {
+            ::xash::core::logf( LogLevel::Error, "map_loader",
+                                "clipnodes: bad plane index %d on clipnode %zu", p, i );
+            return std::unexpected( ErrorCode::BspCorruptLump );
         }
     }
 
@@ -391,14 +394,16 @@ WorldDataFill::Result WorldDataFill::setup_submodels( const LoadContext &ctx, Wo
             HullDescriptor &h0 = bm.hulls[0];
             const int headnode = bm.headnode[0];
 
-            const auto count = count_clipnodes( w.hull0_nodes_, headnode,
-                                                hull0_cap, "setup_submodels(hull0)" );
-            if ( !count )
-                return std::unexpected( count.error() );
+            // Legacy: lastclipnode seeded with the headnode, then the count
+            // recursion increments it → final = headnode + subtree count
+            // (with the cap tested against the running value).
+            const auto last = count_clipnodes( w.hull0_nodes_, headnode, headnode,
+                                               hull0_cap, "setup_submodels(hull0)" );
+            if ( !last )
+                return std::unexpected( last.error() );
 
-            // Legacy: first = headnode, last = headnode + subtree count.
             h0.firstclipnode = headnode;
-            h0.lastclipnode  = headnode + *count;
+            h0.lastclipnode  = *last;
             h0.clip_mins     = {};
             h0.clip_maxs     = {};
             h0.present       = true;
