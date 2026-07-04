@@ -344,6 +344,9 @@ __pycache__
 !.vscode/settings.json
 !.vscode/c_cpp_properties.json
 !.vscode/mcp.json
+
+# Agent workflow state (advisory checkpoints; ground truth is derived)
+.agent-checkpoints.jsonl
 *.code-workspace
 .history/*
 .cache/*

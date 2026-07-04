@@ -22,7 +22,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 from xtools import REPO, venv_python  # noqa: E402
-from xtools import buildtools, checks  # noqa: E402
+from xtools import buildtools, checks, state  # noqa: E402
+from xtools import sync as xsync  # noqa: E402
 
 mcp = FastMCP("xash-tools")
 
@@ -61,10 +62,42 @@ def compliance_scan(subsystem: str, checks_set: str = "all",
 
 
 @mcp.tool()
-def status() -> dict:
+def status(check: bool = False) -> dict:
     """Per-subsystem implementation status derived from the tree (src file
-    counts, include/tests presence)."""
-    return checks.status_table()
+    counts, include/tests presence). check=True also diffs against the
+    implementation-plan status table (drift list)."""
+    data = checks.status_table()
+    if check:
+        data["drift"] = checks.status_check(data)
+    return data
+
+
+@mcp.tool()
+def whereami(doctor: bool = False) -> dict:
+    """Ground-truth session brief: git state, plan/chunk status, sync gates,
+    blocking OQs, recent checkpoints (with staleness/concurrency flags), and
+    a suggested next action. Run at session start and after dormancy.
+    doctor=True adds environment checks."""
+    return state.whereami(doctor_requested=doctor)
+
+
+@mcp.tool()
+def checkpoint(chunk: str, step: str, note: str, actor: str = "",
+               session: str = "") -> dict:
+    """Append an advisory checkpoint (intent record) to
+    .agent-checkpoints.jsonl. Record at every commit, handoff, or
+    interruption. Ground truth is always derived — checkpoints only aid
+    resumption."""
+    return state.append_checkpoint(chunk, step, note, actor or None,
+                                   session or None)
+
+
+@mcp.tool()
+def workflow_sync(stage: int = 2) -> dict:
+    """Drift check over the agent-workflow surface (.github originals vs
+    adapters, model dialects, twin entry files, MCP registrations, doc
+    counters). stage 1 = tooling subset, stage 2 (default) = full gate."""
+    return xsync.workflow_sync(stage=stage)
 
 
 @mcp.tool()

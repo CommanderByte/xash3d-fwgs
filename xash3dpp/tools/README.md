@@ -42,14 +42,32 @@ Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 | `finish_check.py` | The 9-section done checklist as pass/fail/needs-judgment JSON — single source for finish-subsystem AND pre-pr Phase 1 | finish-subsystem, pre-pr |
 | `dep_scan.py` | Dependency edges (cross-namespace refs) + InitParams inventory + cycle check | dependency-graph |
 | `workflow_sync.py` | Drift checker: frontmatter schema, model dialects vs MODEL-GUIDE canonical table, adapter parity, twin-entry-file SYNC-CORE blocks, ABI single-source, MCP registrations, doc counters. `--stage 1` = tooling-session subset | run after ANY workflow-surface edit |
+| `whereami.py` | Ground-truth session brief (git, plan/chunk status, gates, blocking OQs, checkpoints with staleness/concurrency flags, suggested next action); `--doctor` adds environment checks | session start, dormancy recovery |
+| `checkpoint.py` | Append an advisory checkpoint (intent record) to `.agent-checkpoints.jsonl` | every commit / handoff / interruption |
 | `cpp_lsp_launcher.py` | Portable launcher for the `cpp-lsp` MCP server: resolves clangd + mcp-language-server via vswhere/PATH/env instead of hardcoded machine paths | `.mcp.json` / `.vscode/mcp.json` |
-| `mcp_server.py` | `xash-tools` FastMCP server (stdio) exposing build/test/refresh_compile_db/compliance_scan/status/finish_check/stub_scan/limits_scan/markdown_lint | Claude Code, VS Code, opencode MCP configs |
+| `mcp_server.py` | `xash-tools` FastMCP server (stdio) exposing build/test/refresh_compile_db/compliance_scan/status/finish_check/stub_scan/limits_scan/markdown_lint/workflow_sync/whereami/checkpoint | Claude Code, VS Code, opencode, Codex MCP configs |
+
+## State & checkpoints
+
+`.agent-checkpoints.jsonl` (repo root, **gitignored**) is an append-only
+JSONL of advisory checkpoints:
+`{ts, actor, session, branch, head, chunk, step, note, dirty}`.
+Checkpoints record **intent** for resumption — they are never
+authoritative. `whereami` derives ground truth (git / implementation-plan /
+sync gates / OQ crosswalk) every time and flags a checkpoint as **stale**
+when its recorded `head` no longer matches HEAD, and warns when ≥2 distinct
+sessions checkpointed within 24 h (concurrent-session detection).
+Defaults: `actor` = `XASH_CHECKPOINT_ACTOR` env or `agent`; `session` =
+`<actor>-<utc-date>` — pass explicit `--session` ids when running multiple
+concurrent sessions. Convention: run `whereami` at session start; record a
+`checkpoint` at every commit, handoff, or interruption.
 
 ## Path resolution / env overrides
 
 `xtools/vsenv.py` finds tooling via (in order): env override → vswhere →
 PATH. Overrides: `XASH_CMAKE`, `XASH_CTEST`, `XASH_VSDEVCMD`, `XASH_CLANGD`,
-and `XASH_MCP_LANGUAGE_SERVER` (cpp_lsp_launcher only).
+`XASH_MCP_LANGUAGE_SERVER` (cpp_lsp_launcher only), and
+`XASH_CHECKPOINT_ACTOR` (default checkpoint actor label).
 
 ## Codex CLI note
 
