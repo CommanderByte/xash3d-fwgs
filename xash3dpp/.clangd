@@ -1,0 +1,5 @@
+# clangd picks up the compilation database emitted by the `clangd` CMake
+# preset (Ninja; the VS generator used for real builds cannot emit one).
+# Refresh with:  VsDevCmd -arch=x64  &&  cmake --preset clangd   (from xash3dpp/)
+CompileFlags:
+  CompilationDatabase: build/clangd

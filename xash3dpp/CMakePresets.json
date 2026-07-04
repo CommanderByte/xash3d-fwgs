@@ -16,6 +16,18 @@
             }
         },
         {
+            "name": "clangd",
+            "displayName": "clangd · compile_commands.json",
+            "description": "Ninja configure whose only purpose is emitting compile_commands.json for clangd/LSP tooling (the VS generator ignores CMAKE_EXPORT_COMPILE_COMMANDS). Run from a VS x64 dev prompt (VsDevCmd -arch=x64) so cl/ninja are on PATH. Never build from this tree.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/clangd",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "XASH3DPP_BUILD_TESTS": "ON"
+            }
+        },
+        {
             "name": "release-msvc",
             "displayName": "Release · MSVC x64",
             "description": "Optimised release build — Visual Studio 17 2022, x64",

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "cpp-lsp": {
+      "command": "C:\\Users\\JCN\\go\\bin\\mcp-language-server.exe",
+      "args": [
+        "--workspace", "C:\\git\\xash3d-fwgs\\xash3dpp",
+        "--lsp", "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\x64\\bin\\clangd.exe",
+        "--",
+        "--compile-commands-dir=C:\\git\\xash3d-fwgs\\xash3dpp\\build\\clangd",
+        "--background-index",
+        "--header-insertion=never"
+      ]
+    }
+  }
+}
