@@ -4,7 +4,9 @@
 
 add_library(xash3dpp_map_loader STATIC
     map_loader.cpp
+    world.cpp
     bsp/bsp_loader.cpp
+    bsp/bsp_lumps.cpp
 )
 
 target_include_directories(xash3dpp_map_loader

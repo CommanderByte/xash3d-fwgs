@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <expected>
 #include <span>
+#include <string_view>
 
 namespace xash::map_loader::bsp {
 
@@ -102,5 +103,38 @@ struct LumpView
 // Absent optional lumps return {present=false}; violations → BspCorruptLump.
 [[nodiscard]] std::expected<LumpView, ::xash::core::ErrorCode>
 resolve_lump( std::span<const std::byte> file, const HeaderInfo &hi, int lump ) noexcept;
+
+// ---------------------------------------------------------------------------
+// Loader pipeline — heap-builder stages (legacy Mod_Load* functions).
+// Stages run in the legacy load order and are the only code with write
+// access to WorldData (friend).  Each returns BspCorruptLump/BspBadWorld on
+// a violation; absent optional lumps succeed with empty output.
+// ---------------------------------------------------------------------------
+
+struct LoadContext
+{
+    std::span<const std::byte>                 file;
+    HeaderInfo                                 hi;
+    ::xash::map_loader::WorldLoadOptions       opts;
+    std::string_view                           name; // diagnostics only
+};
+
+struct WorldDataFill
+{
+    using Result = std::expected<void, ::xash::core::ErrorCode>;
+    using World  = ::xash::map_loader::WorldData;
+
+    static void begin( const LoadContext &ctx, World &w );     // version/name stamp
+
+    static Result entities    ( const LoadContext &ctx, World &w ); // Mod_LoadEntities (+worldspawn scan)
+    static Result planes      ( const LoadContext &ctx, World &w ); // Mod_LoadPlanes (signbits)
+    static Result submodels   ( const LoadContext &ctx, World &w ); // Mod_LoadSubmodels (bounds spread)
+    static Result visibility  ( const LoadContext &ctx, World &w ); // Mod_LoadVisibility (raw copy)
+    static Result marksurfaces( const LoadContext &ctx, World &w ); // Mod_LoadMarkSurfaces (fix-ups)
+    static Result leafs       ( const LoadContext &ctx, World &w ); // Mod_LoadLeafs (clusters, leaf-0 check)
+    static Result nodes       ( const LoadContext &ctx, World &w ); // Mod_LoadNodes (no parent links)
+
+    static Result finalize    ( const LoadContext &ctx, World &w ); // required-lump presence checks
+};
 
 } // namespace xash::map_loader::bsp

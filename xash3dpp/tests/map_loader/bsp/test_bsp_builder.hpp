@@ -137,4 +137,87 @@ private:
 inline constexpr std::string_view k_worldspawn_entities =
     "{\n\"classname\" \"worldspawn\"\n\"message\" \"test\"\n}\n";
 
+// Worldspawn text used by the minimal-world fixture (wad + message keys).
+inline constexpr std::string_view k_minimal_world_entities =
+    "{\n"
+    "\"classname\" \"worldspawn\"\n"
+    "\"wad\" \"\\half-life\\valve\\halflife.wad;decals.wad\"\n"
+    "\"message\" \"Test Map\"\n"
+    "}\n";
+
+// ---------------------------------------------------------------------------
+// Minimal valid world fixture (hand-derived, one splitting node):
+//   planes:  p0 { normal +X, dist 128, type PLANE_X }   → signbits 0
+//            p1 { normal -Y, dist -64, type PLANE_Y }   → signbits 0b010
+//   faces:   2 zeroed records (contents unread pre-C6; the count feeds
+//            marksurface validation)
+//   marks:   { 0, 1 }
+//   leafs:   0 solid (visofs -1, ambient {1,2,3,4}) / 1 empty (visofs 0) /
+//            2 water (visofs -1)
+//   node 0:  plane 0, children { leaf1, leaf2 } = { -2, -3 }
+//   model 0: bounds ±64, headnode { 0, -1, -1, -1 }, visleafs 2, numfaces 2
+//   visdata: 4 arbitrary bytes
+// ---------------------------------------------------------------------------
+
+inline TestBspBuilder make_minimal_world( bool bsp2 = false )
+{
+    TestBspBuilder b{ bsp2 ? bsp::k_qbsp2_version : bsp::k_hlbsp_version };
+
+    b.set_entities( k_minimal_world_entities );
+
+    const std::vector<bsp::dplane_t> planes = {
+        { {  1.0f,  0.0f, 0.0f },  128.0f, bsp::k_plane_x },
+        { {  0.0f, -1.0f, 0.0f },  -64.0f, bsp::k_plane_y },
+    };
+    b.set_lump_records( bsp::k_lump_planes, planes );
+
+    if ( bsp2 )
+    {
+        const std::vector<bsp::dface32_t> faces( 2 );
+        b.set_lump_records( bsp::k_lump_faces, faces );
+        const std::vector<bsp::dmarkface32_t> marks = { 0, 1 };
+        b.set_lump_records( bsp::k_lump_marksurfaces, marks );
+
+        std::vector<bsp::dleaf32_t> leafs( 3 );
+        leafs[0] = { -2, -1, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, { 1, 2, 3, 4 } };
+        leafs[1] = { -1,  0, { 0, 0, 0 }, { 64, 64, 64 }, 0, 2, {} };
+        leafs[2] = { -3, -1, { -64, -64, -64 }, { 0, 0, 0 }, 0, 0, {} };
+        b.set_lump_records( bsp::k_lump_leafs, leafs );
+
+        std::vector<bsp::dnode32_t> nodes( 1 );
+        nodes[0] = { 0, { -2, -3 }, { -128, -128, -128 }, { 128, 128, 128 }, 0, 2 };
+        b.set_lump_records( bsp::k_lump_nodes, nodes );
+    }
+    else
+    {
+        const std::vector<bsp::dface_t> faces( 2 );
+        b.set_lump_records( bsp::k_lump_faces, faces );
+        const std::vector<bsp::dmarkface_t> marks = { 0, 1 };
+        b.set_lump_records( bsp::k_lump_marksurfaces, marks );
+
+        std::vector<bsp::dleaf_t> leafs( 3 );
+        leafs[0] = { -2, -1, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, { 1, 2, 3, 4 } };
+        leafs[1] = { -1,  0, { 0, 0, 0 }, { 64, 64, 64 }, 0, 2, {} };
+        leafs[2] = { -3, -1, { -64, -64, -64 }, { 0, 0, 0 }, 0, 0, {} };
+        b.set_lump_records( bsp::k_lump_leafs, leafs );
+
+        std::vector<bsp::dnode_t> nodes( 1 );
+        nodes[0] = { 0, { -2, -3 }, { -128, -128, -128 }, { 128, 128, 128 }, 0, 2 };
+        b.set_lump_records( bsp::k_lump_nodes, nodes );
+    }
+
+    std::vector<bsp::dmodel_t> models( 1 );
+    models[0] = { { -64.0f, -64.0f, -64.0f },
+                  {  64.0f,  64.0f,  64.0f },
+                  {   0.0f,   0.0f,   0.0f },
+                  { 0, -1, -1, -1 },
+                  /*visleafs=*/2, /*firstface=*/0, /*numfaces=*/2 };
+    b.set_lump_records( bsp::k_lump_models, models );
+
+    const unsigned char vis[4] = { 0x03, 0x00, 0x01, 0xFF };
+    b.set_lump_bytes( bsp::k_lump_visibility, vis, sizeof vis );
+
+    return b;
+}
+
 } // namespace test_bsp
