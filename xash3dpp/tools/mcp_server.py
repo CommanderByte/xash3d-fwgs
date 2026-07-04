@@ -128,6 +128,7 @@ def markdown_lint(paths: list[str]) -> dict:
     abs_paths = [str(REPO / p) for p in paths]
     proc = subprocess.run(
         [str(venv_python()), "-m", "pymarkdown", "scan", *abs_paths],
+        stdin=subprocess.DEVNULL,  # never inherit the MCP stdio pipe
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         cwd=str(REPO), timeout=300,
     )

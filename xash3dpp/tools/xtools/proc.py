@@ -15,10 +15,14 @@ def run(
 ) -> tuple[int, list[str], float]:
     """Run a command, return (returncode, combined-output lines, seconds)."""
     start = time.monotonic()
+    # stdin must be DEVNULL: under the MCP server, children would otherwise
+    # inherit the protocol stdin pipe and the call blocks until the client
+    # drops the connection.
     proc = subprocess.run(
         cmd,
         cwd=str(cwd) if cwd else None,
         shell=shell,
+        stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
         encoding="utf-8",
