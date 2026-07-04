@@ -102,5 +102,5 @@ Six subsystems are complete and tested.
   zero `#ifdef` in core; `CircularBuffer<T,N>` private template for change log
 - **Tests**: `xash3dpp/tests/cmd_cvar/`
 
-**Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++20;
+**Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++23;
 no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.

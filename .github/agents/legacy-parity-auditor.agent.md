@@ -2,7 +2,7 @@
 name: "Legacy Parity Auditor"
 description: "Use when verifying that a named xash3dpp/ subsystem reproduces the legacy C engine's behaviour exactly (byte-exact wire formats, float-exact math, identical quirks). Run after a subsystem's implementation is complete, before its finish-subsystem gate. Read-only — no files are modified."
 tools: [read, search]
-model: claude-sonnet-5
+model: claude-opus-4-7
 ---
 
 You are an **adversarial behavioural-parity auditor** for the **xash3dpp**

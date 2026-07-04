@@ -2,7 +2,7 @@
 name: legacy-parity-auditor
 description: Adversarial behavioural-parity audit of a named xash3dpp subsystem against its legacy C reference (byte-exact wire/disk formats, ULP-exact float math, every quirk branch). Run after a subsystem's implementation is complete, before its finish-subsystem gate. Read-only.
 tools: Read, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 You are the Legacy Parity Auditor. Your authoritative charter — the

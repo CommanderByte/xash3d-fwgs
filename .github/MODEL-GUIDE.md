@@ -15,10 +15,30 @@ Quick reference for choosing the right model and knowing when to start fresh.
 | **Premium** | GPT-5.5 | 7.5x | Large-context reasoning, complex refactors |
 | **Top** | Claude Opus 4.7 | 15x | Deep architectural reasoning, subtle concurrency bugs, last resort when Sonnet is wrong |
 
-> **Note on model ID strings**: the display names above may differ from the string
-> accepted by the `model:` frontmatter field. Check your Copilot configuration or
-> experiment — common patterns are `claude-opus-4-7`, `claude-sonnet-4-6`,
-> `gpt-4.1`, etc.
+> **Note on model ID strings**: display names differ from the string each
+> framework's `model:` field accepts — see the canonical table below. Do not
+> invent new ID spellings; add rows/columns here first.
+
+---
+
+## Canonical model table (all frameworks)
+
+The single source of truth for every `model:` value in this repo. Any
+`model:` in `.github/` (Copilot dialect), `.claude/` (Claude Code alias), or
+`.opencode/` (opencode string) MUST match its dialect's column exactly —
+`xash3dpp/tools/workflow_sync.py` enforces this. The Codex column is
+advisory only (Codex CLI runs OpenAI models; its config is user-global).
+
+| Tier | Copilot frontmatter ID | Claude Code alias | opencode string | Codex (advisory) |
+|------|------------------------|-------------------|-----------------|------------------|
+| Budget+ | `claude-haiku-4-5-20251001` | `haiku` | `anthropic/claude-haiku-4-5` | nearest mini tier |
+| Standard | `claude-sonnet-4-6` | `sonnet` | `anthropic/claude-sonnet-4-6` | nearest codex tier |
+| Top | `claude-opus-4-7` | `opus` | `anthropic/claude-opus-4-7` | nearest premium tier |
+
+Cross-dialect rule: a given prompt/agent must resolve to the **same tier row**
+in every framework (no silent downgrades — the historical example was
+`legacy-parity-auditor` declaring a top-tier model in `.github/` while its
+Claude adapter said `sonnet`).
 
 ---
 
@@ -58,6 +78,7 @@ Quick reference for choosing the right model and knowing when to start fresh.
 | `bisect` | Standard (Sonnet 4.6) | Needs to read diffs and reason about causality |
 | `xash3dpp-reviewer` (agent) | Budget+ (Haiku 4.5) | Checklist application — not deep reasoning |
 | `abi-watchdog` (agent) | Standard (Sonnet 4.6) | ABI mistakes are expensive; don't cheap out |
+| `legacy-parity-auditor` (agent) | **Top (Opus 4.7)** | Adversarial ULP-level parity hunting is exactly the confident-but-wrong failure class on cheaper models; Sonnet acceptable for small pure-utility subsystems |
 
 ---
 

@@ -7,7 +7,7 @@ applyTo: "xash3dpp/**"
 This tree is a self-contained C++ project, intended to become its own repository.
 The legacy engine at the repo root is the behavioural reference only.
 
-- **Language**: C++20. No exceptions, no RTTI (`/EHs-c- /GR-` on MSVC; `-fno-exceptions -fno-rtti` on GCC/Clang).
+- **Language**: C++23 (`CMAKE_CXX_STANDARD 23`; `std::expected` is in active use per Q-5). No exceptions, no RTTI (`/EHs-c- /GR-` on MSVC; `-fno-exceptions -fno-rtti` on GCC/Clang).
 - **Build system**: CMake (not Waf). Add targets under `xash3dpp/cmake/`.
 - **Tests**: go in `xash3dpp/tests/`. Mirror the subsystem path: `src/filesystem/` → `tests/filesystem/`.
 - **Public headers** (API exposed to other subsystems) live in `xash3dpp/include/xash3dpp/<subsystem>/`. Private/internal headers — including implementation-detail headers shared between TUs of the same subsystem — live in `xash3dpp/include/xash3dpp/private/<subsystem>/`, mirroring the public tree. Only `.cpp` files go in `xash3dpp/src/`; do **not** put `.hpp` files under `src/`. A single CMake `PATTERN "private" EXCLUDE` rule keeps private headers out of any install target.
