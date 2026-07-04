@@ -356,6 +356,21 @@ Q-11 test applied (≥2 "separate" criteria → separate target):
 | HPAK custom-resource archive (legacy `engine/common/hpak.c`) | 2-3 (own file format; useful to client too; only touches server via 4 calls) | **Separate small target or content-side module** — decision deferred to OQ-3; Chunk 6 can stub customization upload storage behind an interface. |
 | Master-server reporting | — | Already decided (networking boundary Q-11 table): protocol lives in `xash3dpp_networking` `master_list`; server implements `IMasterListConfig`. |
 
+## Known Deviations (intentional; parity-audit reviewed)
+
+- **S4 `EdictArena::free_private`** frees `pvPrivateData` unconditionally;
+  legacy gates on `Mem_IsAllocatedExt(svgame.mempool, …)` and silently
+  skips foreign pointers (sv_game.c:970). The xash3dpp memory API has no
+  ownership probe — `pvPrivateData` must come from `alloc_private`
+  (precondition). Revisit if a real mod assigns its own block.
+- **S4 arena exhaustion** returns `nullptr` instead of calling
+  `Host_Error` directly (Q-5 error model); the game-DLL bridge maps it to
+  the host error policy — behaviour identical at the ABI surface.
+- **S4 string pool** implements the legacy-Windows-x64 heap-arena path
+  only (OQ-6 baseline); the Linux mmap near-module probing is not ported.
+  The `physFuncs.pfnAllocString/pfnMakeString/pfnGetString` overrides are
+  a deferred S8 seam (physics interface) — tracked, absent until then.
+
 ## Open questions
 
 - **OQ-1 — PHS placement.** ✅ **Decided 2026-07-04 → Q-19

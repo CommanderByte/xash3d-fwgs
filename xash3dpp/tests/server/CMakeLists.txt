@@ -5,3 +5,14 @@
 cmake_minimum_required(VERSION 3.16)
 
 xash3dpp_add_test(test_server LIBS xash3dpp_server xash3dpp_core)
+
+xash3dpp_add_test(test_edict_layout SOURCE abi/test_edict_layout.cpp LIBS xash3dpp_server)
+# The layout test includes the ACTUAL legacy headers (engine/progdefs.h,
+# engine/edict.h) for byte-exact offset parity; common/ resolves their
+# guarded-off "const.h" include.
+target_include_directories(test_edict_layout PRIVATE
+    ${PROJECT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/../common
+)
+xash3dpp_add_test(test_edict_arena SOURCE abi/test_edict_arena.cpp LIBS xash3dpp_server xash3dpp_core)
+xash3dpp_add_test(test_string_pool SOURCE abi/test_string_pool.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_utilities)

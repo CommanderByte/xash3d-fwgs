@@ -381,4 +381,20 @@ inline constexpr std::size_t net_delta_gs_mask_bytes = 8; // GoldSrc changed-fie
 inline constexpr std::size_t net_delta_gs_mask_bytes = XASH_LIMIT_NET_DELTA_GS_MASK_BYTES;
 #endif
 
+// server subsystem
+// Legacy reference: engine/server/sv_game.c SV_AllocStringPool (:3074) —
+// string arena sized 65536 * ceil(max_edicts / 1024), two halves
+// (dynamic + static phase).
+#ifndef XASH_LIMIT_SERVER_STRING_BLOCK
+inline constexpr std::size_t server_string_block = 65536; // string arena bytes per edict quantum
+#else
+inline constexpr std::size_t server_string_block = XASH_LIMIT_SERVER_STRING_BLOCK;
+#endif
+
+#ifndef XASH_LIMIT_SERVER_STRING_QUANTUM
+inline constexpr std::size_t server_string_quantum = 1024; // max_edicts per string-arena block
+#else
+inline constexpr std::size_t server_string_quantum = XASH_LIMIT_SERVER_STRING_QUANTUM;
+#endif
+
 } // namespace xash::limits
