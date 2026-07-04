@@ -7,7 +7,7 @@
                 "${workspaceFolder}/xash3dpp/src"
             ],
             "defines": [],
-            "cppStandard": "c++20",
+            "cppStandard": "c++23",
             "intelliSenseMode": "windows-msvc-x64",
             "configurationProvider": "ms-vscode.cmake-tools"
         },
@@ -18,7 +18,7 @@
                 "${workspaceFolder}/xash3dpp/src"
             ],
             "defines": [],
-            "cppStandard": "c++20",
+            "cppStandard": "c++23",
             "intelliSenseMode": "linux-gcc-x64",
             "configurationProvider": "ms-vscode.cmake-tools"
         }

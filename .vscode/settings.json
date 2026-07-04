@@ -43,5 +43,13 @@
     "chat.promptFiles": true,
     "chat.useAgentsMdFile": true,
     "chat.useNestedAgentsMdFiles": true,
-    "github.copilot.chat.codeGeneration.useInstructionFiles": true
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "chat.mcp.serverSampling": {
+        "xash3d-fwgs/.mcp.json: xash-tools": {
+            "allowedModels": [
+                "copilotcli/auto",
+                "copilot/auto",
+            ]
+        }
+    }
 }
