@@ -30,6 +30,12 @@ sessions) read instead of re-deriving.
 - [deep-dive-bsp-loader.md](deep-dive-bsp-loader.md) — BSP v29/v30/BSP2 on-disk format, `mod_bmodel.c` load path, hull construction, map CRC, 18-item quirk list (Chunk 5 recon, 2026-07-04)
 - [deep-dive-trace-pvs.md](deep-dive-trace-pvs.md) — `pm_trace.c` hull-trace kernel (exact pseudocode + epsilons), contents/PVS query surface, map_loader-vs-server split, fixture guidance (Chunk 5 recon, 2026-07-04)
 - [deep-dive-delta-encoder.md](deep-dive-delta-encoder.md) — `net_encode.c` delta tables, DT_* flags + wire widths, delta.lst grammar, field-codec math, Xash vs GoldSrc wire dialects, Delta_AddEncoder, baselines (retroactive networking recon, reconstructed 2026-07-04; primary input for the Chunk 6 server)
+- [deep-dive-server-lifecycle.md](deep-dive-server-lifecycle.md) — `sv_main/sv_init/sv_cmds`: spawn/activate/deactivate ordering, Host_ServerFrame loop, cvar roster, console commands (Chunk 6 recon, 2026-07-04)
+- [deep-dive-server-game-dll-bridge.md](deep-dive-server-game-dll-bridge.md) — `sv_game.c` + eiface/edict/progdefs: enginefuncs_t catalogue, DLL load negotiation, edict lifecycle, string pool, user messages, 32-item bug-compat list (Chunk 6 recon, 2026-07-04)
+- [deep-dive-server-clients.md](deep-dive-server-clients.md) — `sv_client/sv_custom/sv_query/sv_filter/sv_log`: connection state machine, usercmd parsing, resource/consistency/download system, queries/rcon/bans/logging (Chunk 6 recon, 2026-07-04)
+- [deep-dive-server-physics.md](deep-dive-server-physics.md) — `sv_phys/sv_move/sv_pmove`: MOVETYPE dispatch, pushers, monster locomotion, pmove bridge + unlag, physics-interface hooks (Chunk 6 recon, 2026-07-04)
+- [deep-dive-server-world-frame.md](deep-dive-server-world-frame.md) — `sv_world/sv_frame`: areanodes, trace composition, PVS/PHS multicast, snapshot/delta pipeline (Chunk 6 recon, 2026-07-04)
+- [deep-dive-server-save-boundary.md](deep-dive-server-save-boundary.md) — `sv_save.c` boundary with the server core: changelevel ordering, game-DLL save callbacks, SAVERESTOREDATA ABI, separation verdict input (Chunk 6 recon, 2026-07-04; format internals deferred to Chunk 8)
 
 ## Top-level reference
 

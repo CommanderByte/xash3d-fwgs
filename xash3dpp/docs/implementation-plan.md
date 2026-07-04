@@ -133,7 +133,7 @@ ______________________________________________________________________
 **Subsystems**: `server`\
 **Depends on**: cmd_cvar, networking (Chunk 4), map_loader (Chunk 5), host, filesystem, memory, platform\
 **Legacy reference**: `engine/server/sv_main.c`, `sv_game.c` (100+ `enginefuncs_t` callbacks), `sv_world.c`, `sv_phys.c`, `sv_frame.c`, `sv_client.c`\
-**Complexity note**: The `enginefuncs_t` table is 150 function pointers and `entvars_t` layout is byte-exact frozen — highest ABI risk in the entire rewrite. Getting `sv_game.c` to load and call a real HL game DLL without crashing is the integration milestone; `entvars_t` layout must be ABI-exact at the boundary even if internal entity storage differs.\
+**Complexity note**: The `enginefuncs_t` table is 159 function pointers and `entvars_t` layout is byte-exact frozen — highest ABI risk in the entire rewrite. Getting `sv_game.c` to load and call a real HL game DLL without crashing is the integration milestone; `entvars_t` layout must be ABI-exact at the boundary even if internal entity storage differs.\
 **ABI surfaces touched**: `engine/eiface.h`, `engine/edict.h` — **FROZEN Game DLL ABI**\
 **Deliverable**: Dedicated server starts, loads HL `dlls/hl.dll`, runs a single map frame; server ctest green — **dedicated-server milestone**
 
