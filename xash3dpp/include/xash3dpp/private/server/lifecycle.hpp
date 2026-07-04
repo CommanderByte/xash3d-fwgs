@@ -27,6 +27,7 @@
 #include <xash3dpp/private/server/lightstyles.hpp>
 #include <xash3dpp/private/server/model_resolver.hpp>
 #include <xash3dpp/private/server/precache.hpp>
+#include <xash3dpp/private/server/snapshot.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
 #include <xash3dpp/private/server/world_hooks.hpp>
 
@@ -181,6 +182,10 @@ struct ServerRuntime
     // ban filters, server log.  One aggregate keeps the S9 surface out of
     // LevelState/PersistentState (clean merge boundary with the S8 slice).
     ClientMachinery clients;
+
+    // S9 completion — svs.baselines + sv.instanced.  The packet_entities ring
+    // and per-client frames ring land in the following snapshot sub-slices.
+    SnapshotState snapshot;
 
     bool game_loaded = false;
 
