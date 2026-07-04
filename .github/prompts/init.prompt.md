@@ -107,5 +107,6 @@ no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.
 
 **Environment/framework setup** lives in `.github/AGENT-SETUP.md`. For the
 current-state brief (git, chunk status, gates, blocking OQs, last
-checkpoint, suggested next action) run `whereami` — the `xash-tools` MCP
-tool or `& .venv\Scripts\python.exe xash3dpp\tools\whereami.py --json`.
+checkpoint, suggested next action) run
+`& .venv\Scripts\python.exe xash3dpp\tools\whereami.py --json`
+*(MCP: xash-tools tool `whereami` — same data.)*

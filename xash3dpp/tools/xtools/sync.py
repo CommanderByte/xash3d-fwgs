@@ -332,6 +332,49 @@ def workflow_sync(stage: int = 2) -> dict:
                 findings.append(_finding(2, "claude-lists",
                                          "CLAUDE.md does not list /%s" % cmd.name.removesuffix(".md")))
 
+    # ---- stage 2: host configs, state hygiene, AGENTS.md budget, MCP notes --
+    codex_cfg = REPO / ".codex" / "config.toml"
+    if not codex_cfg.is_file():
+        findings.append(_finding(2, "mcp-parity", ".codex/config.toml missing"))
+    else:
+        ctext = codex_cfg.read_text(encoding="utf-8", errors="replace")
+        for server in ("xash-tools", "cpp-lsp"):
+            if "[mcp_servers.%s]" % server not in ctext:
+                findings.append(_finding(2, "mcp-parity",
+                                         ".codex/config.toml missing [mcp_servers.%s]" % server))
+    vs_settings = REPO / ".vscode" / "settings.json"
+    if vs_settings.is_file():
+        vtext = vs_settings.read_text(encoding="utf-8", errors="replace")
+        for key in ("chat.promptFiles", "chat.useAgentsMdFile",
+                    "chat.useNestedAgentsMdFiles",
+                    "github.copilot.chat.codeGeneration.useInstructionFiles"):
+            if key not in vtext:
+                findings.append(_finding(2, "vscode-settings",
+                                         ".vscode/settings.json missing %r" % key))
+    else:
+        findings.append(_finding(2, "vscode-settings", ".vscode/settings.json missing"))
+    gitignore = (REPO / ".gitignore").read_text(encoding="utf-8", errors="replace")
+    for line in (".agent-checkpoints.jsonl", ".claude/settings.local.json"):
+        if line not in gitignore:
+            findings.append(_finding(2, "gitignore-state",
+                                     ".gitignore missing %s" % line))
+    agents_md_f = REPO / "AGENTS.md"
+    if agents_md_f.is_file() and agents_md_f.stat().st_size >= 32768:
+        findings.append(_finding(2, "agents-md-budget",
+                                 "AGENTS.md is %d bytes (Codex combined budget is 32768)"
+                                 % agents_md_f.stat().st_size))
+    # every prompt invoking an MCP-exposed script must mention the MCP twin
+    mcp_scripts = ("build", "test", "refresh_compile_db", "compliance_scan",
+                   "status_table", "finish_check", "stub_scan", "limits_scan",
+                   "workflow_sync", "whereami", "checkpoint")  # dep_scan: CLI-only
+    script_rx = re.compile(r"tools[\\/](%s)\.py" % "|".join(mcp_scripts))
+    for p in prompts:
+        body = p.read_text(encoding="utf-8", errors="replace")
+        if script_rx.search(body) and "MCP: xash-tools" not in body:
+            findings.append(_finding(2, "mcp-note",
+                                     "%s invokes an MCP-exposed tool but lacks the "
+                                     "'MCP: xash-tools' alternative note" % p.name))
+
     # ---- stage 2: WORKFLOW table completeness + Q cite ----------------------
     wf = GITHUB / "WORKFLOW.md"
     wtext = wf.read_text(encoding="utf-8", errors="replace")
