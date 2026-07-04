@@ -35,6 +35,10 @@ Only the SDK-facing contracts that game DLLs and client DLLs depend on are
 fixed. Renderer, filesystem, and other internal plugin interfaces will be
 redesigned as part of the rewrite.
 
+> This table is the **only** copy of the frozen-surface list. Agent charters
+> (`abi-watchdog`, `xash3dpp-reviewer`) reference this section — do not
+> duplicate the table elsewhere.
+
 | Surface | Headers |
 |---------|---------|
 | Game DLL | `engine/eiface.h`, `engine/edict.h` |

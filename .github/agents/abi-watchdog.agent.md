@@ -17,15 +17,10 @@ the frozen ABI surfaces.**
 
 ## The frozen surfaces
 
-These headers define the ABI that must never change:
-
-| Surface | Headers |
-|---------|---------|
-| Game DLL | `engine/eiface.h`, `engine/edict.h` |
-| Client DLL | `engine/cdll_int.h`, `engine/cdll_exp.h` |
-| Shared SDK | `common/*.h`, `pm_shared/*.h`, `engine/*.h` |
-
-Read these headers to understand what symbols, types, and values are frozen.
+The frozen surfaces are enumerated in `.github/copilot-instructions.md`
+§"ABI Surfaces — Do Not Break" — read that section first; it is the
+canonical list. Read the headers it names to understand what symbols,
+types, and values are frozen.
 
 ---
 
