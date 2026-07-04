@@ -21,7 +21,8 @@ PROMPTS = GITHUB / "prompts"
 AGENTS = GITHUB / "agents"
 CL_COMMANDS = REPO / ".claude" / "commands"
 CL_AGENTS = REPO / ".claude" / "agents"
-OC_COMMANDS = REPO / ".opencode" / "command"
+OC_COMMANDS = REPO / ".opencode" / "commands"  # plural is opencode-canonical
+OC_AGENTS = REPO / ".opencode" / "agents"
 TOOLS_DIR = XPP / "tools"
 
 NO_ARG_PROMPTS = {"init", "status-and-next", "dependency-graph"}
@@ -239,6 +240,8 @@ def workflow_sync(stage: int = 2) -> dict:
                                          "%s (%s): description differs from origin" % (stem, kind)))
     for a in agents:
         stem = a.name.removesuffix(".agent.md")
+        origin_desc = dict(read_frontmatter(a)[0]).get("description", "")
+        origin_model = dict(read_frontmatter(a)[0]).get("model", "")
         adapter = CL_AGENTS / ("%s.md" % stem)
         if not adapter.is_file():
             findings.append(_finding(2, "adapter-existence",
@@ -248,11 +251,54 @@ def workflow_sync(stage: int = 2) -> dict:
             if ".github/agents/%s.agent.md" % stem not in abody:
                 findings.append(_finding(2, "adapter-pointer",
                                          "%s (agent): body lacks exact origin path" % stem))
-    for adapter in CL_COMMANDS.glob("*.md"):
-        stem = adapter.name.removesuffix(".md")
-        if not (PROMPTS / ("%s.prompt.md" % stem)).is_file():
-            findings.append(_finding(2, "adapter-existence",
-                                     "orphan Claude command adapter %s" % adapter.name))
+        # opencode agent adapter: existence, pointer, description parity,
+        # subagent mode, model dialect + tier parity, tool lockdown
+        oc = OC_AGENTS / ("%s.md" % stem)
+        if not oc.is_file():
+            findings.append(_finding(2, "opencode-agents",
+                                     "no opencode agent adapter for %s" % stem))
+        else:
+            opairs, obody = read_frontmatter(oc)
+            okv = dict(opairs)
+            otext = oc.read_text(encoding="utf-8", errors="replace")
+            if ".github/agents/%s.agent.md" % stem not in obody:
+                findings.append(_finding(2, "opencode-agents",
+                                         "%s: body lacks exact origin path" % oc.name))
+            if _norm(okv.get("description", "")) != _norm(origin_desc):
+                findings.append(_finding(2, "opencode-agents",
+                                         "%s: description differs from origin" % oc.name))
+            if okv.get("mode") != "subagent":
+                findings.append(_finding(2, "opencode-agents",
+                                         "%s: mode must be 'subagent'" % oc.name))
+            if models:
+                oc_ids = {m["opencode"] for m in models.values()}
+                tier_of_oc = {m["opencode"]: t for t, m in models.items()}
+                if okv.get("model") not in oc_ids:
+                    findings.append(_finding(2, "opencode-agents",
+                                             "%s: model %r not in canonical opencode column"
+                                             % (oc.name, okv.get("model"))))
+                else:
+                    gtier = tier_of.get(origin_model)
+                    otier = tier_of_oc.get(okv.get("model", ""))
+                    if gtier and otier and gtier != otier:
+                        findings.append(_finding(2, "opencode-agents",
+                                                 "%s: tier %s vs .github tier %s"
+                                                 % (oc.name, otier, gtier)))
+            if "write: false" not in otext or "bash: deny" not in otext:
+                findings.append(_finding(2, "opencode-agents",
+                                         "%s: read-only lockdown (write: false / bash: deny) missing"
+                                         % oc.name))
+    for adir, label, origin_dir, suffix in (
+            (CL_COMMANDS, "Claude command", PROMPTS, ".prompt.md"),
+            (OC_COMMANDS, "opencode command", PROMPTS, ".prompt.md"),
+            (OC_AGENTS, "opencode agent", AGENTS, ".agent.md")):
+        if not adir.is_dir():
+            continue
+        for adapter in adir.glob("*.md"):
+            stem = adapter.name.removesuffix(".md")
+            if not (origin_dir / (stem + suffix)).is_file():
+                findings.append(_finding(2, "adapter-existence",
+                                         "orphan %s adapter %s" % (label, adapter.name)))
 
     # ---- stage 2: twin entry files -----------------------------------------
     claude_md = REPO / "CLAUDE.md"

@@ -95,10 +95,15 @@ The `.github/` files are the single source of truth. Other frameworks get
   single `description:` (copied **verbatim** from the origin prompt's
   `description`), body is the standard "Read `.github/prompts/<stem>.prompt.md`
   and execute it exactly as written" delegation with `$ARGUMENTS` pass-through.
-- `.opencode/command/<stem>.md` — opencode commands: same shape.
+- `.opencode/commands/<stem>.md` — opencode commands (plural directory is
+  opencode-canonical): same shape.
 - `.claude/agents/<stem>.md` — Claude subagents: Claude dialect frontmatter
   (`tools: Read, Grep, Glob`; `model:` alias per the MODEL-GUIDE canonical
   table) + a body that defers to the `.github/agents/` charter.
+- `.opencode/agents/<stem>.md` — opencode subagents: `mode: subagent`,
+  `model:` per the MODEL-GUIDE opencode column, read-only lockdown
+  (`tools: {write: false, edit: false}`, `permission: {bash: deny}`), body
+  defers to the `.github/agents/` charter.
 
 Edit the `.github/` originals, never the adapters; `xash3dpp/tools/
 workflow_sync.py` enforces existence, origin-path pointers, description
