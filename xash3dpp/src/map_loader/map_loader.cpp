@@ -8,11 +8,15 @@
 
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/limits.hpp>
+#include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
 #include <array>
 #include <cstring>
+#include <optional>
+#include <string>
 
 namespace xash {
 
@@ -23,6 +27,12 @@ namespace xash {
 struct MapLoader::Impl
 {
     xash::memory::PoolHandle pool;
+
+    ::xash::filesystem::Filesystem *filesystem = nullptr; // @lifetime: engine
+
+    // Active world — immutable after activation (Q-6); readers borrow via
+    // MapLoader::world().
+    std::optional<::xash::map_loader::WorldData> world;
 
     MapLoadState state = MapLoadState::RunFrame;
     MapLoadState next  = MapLoadState::RunFrame;
@@ -67,12 +77,13 @@ MapLoader::~MapLoader() = default;
 MapLoader::MapLoader(MapLoader &&) noexcept            = default;
 MapLoader &MapLoader::operator=(MapLoader &&) noexcept = default;
 
-bool MapLoader::init( const MapLoaderInitParams & ) noexcept
+bool MapLoader::init( const MapLoaderInitParams &p ) noexcept
 {
     Impl &s = *impl_;
     if (s.initialised) return true;
     s.pool = xash::memory::create_pool("map_loader");
     if (!s.pool) return false;
+    s.filesystem = p.filesystem;
     s.state = MapLoadState::RunFrame;
     s.next  = MapLoadState::RunFrame;
     s.initialised = true;
@@ -83,11 +94,13 @@ void MapLoader::shutdown() noexcept
 {
     Impl &s = *impl_;
     if (!s.initialised) return;
+    s.world.reset();
     if (s.pool) {
         xash::memory::destroy_pool(s.pool);
         s.pool = {};
     }
     s.observers.fill(nullptr);
+    s.filesystem = nullptr;
     s.initialised = false;
 }
 
@@ -131,13 +144,40 @@ void MapLoader::run_frame_step() noexcept
     Impl &s = *impl_;
     if (s.next == s.state) return;
 
-    // TODO Chunk 5/9 implementation prompt: dispatch to server / client.
-    // For now, just transition + notify observers so client code can hook in.
     const std::string_view map{ s.level_name.data() };
-    s.notify_begin( map, s.next );
-    s.state = s.next;
-    s.next  = MapLoadState::RunFrame;
-    s.notify_end( map, /*success=*/true );
+    const MapLoadState pending = s.next;
+
+    switch (pending)
+    {
+    case MapLoadState::LoadLevel:
+    {
+        // Synchronous world load (Chunk 5 scope): observers see the real
+        // outcome and the FSM returns to frame processing in one step.
+        s.notify_begin( map, pending );
+        const bool ok = load_world( map, ::xash::map_loader::WorldLoadOptions{} );
+        s.state = MapLoadState::RunFrame;
+        s.next  = MapLoadState::RunFrame;
+        s.notify_end( map, ok );
+        break;
+    }
+
+    case MapLoadState::GameShutdown:
+        s.notify_begin( map, pending );
+        clear_world();
+        s.state = pending;
+        s.next  = MapLoadState::RunFrame;
+        s.notify_end( map, /*success=*/true );
+        break;
+
+    default:
+        // LoadGame (Chunk 8 save/restore) and ChangeLevel (Chunk 6 server
+        // landmark handling) keep the scaffold transition-only behaviour.
+        s.notify_begin( map, pending );
+        s.state = pending;
+        s.next  = MapLoadState::RunFrame;
+        s.notify_end( map, /*success=*/true );
+        break;
+    }
 }
 
 void MapLoader::attach_observer( IMapLoaderObserver *obs ) noexcept
@@ -157,5 +197,47 @@ void MapLoader::detach_observer( IMapLoaderObserver *obs ) noexcept
 
 MapLoadState     MapLoader::state()       const noexcept { return impl_->state; }
 std::string_view MapLoader::current_map() const noexcept { return impl_->level_name.data(); }
+
+bool MapLoader::load_world( std::string_view mapname,
+                            const map_loader::WorldLoadOptions &opts ) noexcept
+{
+    Impl &s = *impl_;
+    s.world.reset();
+
+    if (!s.initialised || !s.filesystem) {
+        core::log( core::LogLevel::Error, "map_loader",
+                   "load_world: no filesystem available" );
+        return false;
+    }
+    if (mapname.empty()) {
+        core::log( core::LogLevel::Error, "map_loader", "load_world: empty map name" );
+        return false;
+    }
+
+    // "maps/<name>.bsp" unless the caller already provided a path/extension.
+    std::string path;
+    if (mapname.find('/') == std::string_view::npos)
+        path = "maps/";
+    path += mapname;
+    if (path.size() < 4 || path.compare(path.size() - 4, 4, ".bsp") != 0)
+        path += ".bsp";
+
+    auto loaded = map_loader::load_world_data( *s.filesystem, path, opts );
+    if (!loaded) // load_world_data already logged the specific failure
+        return false;
+
+    s.world.emplace( std::move( *loaded ));
+    return true;
+}
+
+void MapLoader::clear_world() noexcept
+{
+    impl_->world.reset();
+}
+
+const map_loader::WorldData *MapLoader::world() const noexcept
+{
+    return impl_->world.has_value() ? &*impl_->world : nullptr;
+}
 
 } // namespace xash

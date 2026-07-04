@@ -1,12 +1,13 @@
-// xash3dpp — MapLoader FSM tests (Chunk 5, C1)
-// Covers the pre-BSP scaffold surface: init/shutdown/re-init, transition
-// queueing (new_game/load_level/load_game/change_level), run_frame_step
-// dispatch + observer notifications, observer attach/detach and the fixed
-// 4-slot table, and MAX_QPATH name truncation (limits::map_qpath_max).
+// xash3dpp — MapLoader FSM tests (Chunk 5)
+// Covers: init/shutdown/re-init, transition queueing (new_game/load_level/
+// load_game/change_level), run_frame_step dispatch + observer notifications,
+// observer attach/detach and the fixed 4-slot table, and MAX_QPATH name
+// truncation (limits::map_qpath_max).
 //
-// The LoadLevel state gains real world loading in C9; the notify sequence
-// pinned here (begin/end around every state change, including the return to
-// RunFrame) is the scaffold contract and is revisited there.
+// Since C9 the LoadLevel state loads the world synchronously and returns to
+// RunFrame in ONE step; without an injected filesystem every load fails
+// (observers see success=false).  World-loading success paths live in
+// test_map_loader_world.cpp.
 
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
@@ -88,12 +89,11 @@ static void test_transitions_queue_until_step()
     CHECK( ml.state() == MapLoadState::RunFrame ); // not applied yet
     CHECK_STREQ( ml.current_map().data(), "c1a0" );
 
-    ml.run_frame_step();
-    CHECK( ml.state() == MapLoadState::LoadLevel );
-
-    // Second step returns the FSM to RunFrame (scaffold behaviour).
+    // LoadLevel processes synchronously (the load fails without a
+    // filesystem) and returns to RunFrame in one step.
     ml.run_frame_step();
     CHECK( ml.state() == MapLoadState::RunFrame );
+    CHECK( ml.world() == nullptr );
 
     // No pending transition → step is a no-op.
     ml.run_frame_step();
@@ -133,7 +133,7 @@ static void test_observer_notifications()
     CHECK( obs.events[0].reason == MapLoadState::LoadLevel );
     CHECK_STREQ( obs.events[0].map.c_str(), "de_dust" );
     CHECK( !obs.events[1].begin );
-    CHECK( obs.events[1].success );
+    CHECK( !obs.events[1].success ); // no filesystem → the load fails
 
     // Detached observers stop receiving events.
     ml.detach_observer( &obs );
@@ -161,18 +161,14 @@ static void test_observer_slot_table()
         CHECK_EQ( obs[i].events.size(), std::size_t{ 2 } );
     CHECK_EQ( obs[4].events.size(), std::size_t{ 0 } );
 
-    // Drain the FSM back to RunFrame so the next transition is observable.
-    ml.run_frame_step();
-    for ( int i = 0; i < 4; ++i )
-        CHECK_EQ( obs[i].events.size(), std::size_t{ 4 } );
-
-    // Detaching frees a slot for a new attach.
+    // Detaching frees a slot for a new attach (LoadLevel already returned
+    // the FSM to RunFrame, so the next transition is observable at once).
     ml.detach_observer( &obs[1] );
     ml.attach_observer( &obs[4] );
     ml.new_game( "c2a5" );
     ml.run_frame_step();
     CHECK_EQ( obs[4].events.size(), std::size_t{ 2 } );
-    CHECK_EQ( obs[1].events.size(), std::size_t{ 4 } ); // unchanged after detach
+    CHECK_EQ( obs[1].events.size(), std::size_t{ 2 } ); // unchanged after detach
 
     // Null attach is ignored (no crash, no slot consumed).
     ml.attach_observer( nullptr );

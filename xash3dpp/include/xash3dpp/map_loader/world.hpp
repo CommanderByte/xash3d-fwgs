@@ -185,6 +185,12 @@ struct WorldLoadOptions
                                              // worldspawn scan, leaf-0-solid check
     bool            multiplayer_crc = false; // checksum(): real CRC vs SP constant (C6)
     HullBoundsTable hull_bounds = k_default_hull_bounds;
+
+    // When non-empty, replaces the ENTITIES lump content wholesale (the
+    // legacy maps/<name>.ent patch mechanism — Mod_LoadEntities:2356-2382).
+    // The Filesystem overload of load_world_data fills this automatically
+    // for world loads; the map CRC is unaffected (it never covers entities).
+    std::span<const std::byte> entity_patch{};
 };
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,10 @@ add_executable(test_map_loader test_map_loader.cpp)
 target_link_libraries(test_map_loader PRIVATE xash3dpp_map_loader)
 add_test(NAME test_map_loader COMMAND test_map_loader)
 
+add_executable(test_map_loader_world test_map_loader_world.cpp)
+target_link_libraries(test_map_loader_world PRIVATE xash3dpp_map_loader)
+add_test(NAME test_map_loader_world COMMAND test_map_loader_world)
+
 add_executable(test_bsp_disk_format bsp/test_disk_format.cpp)
 target_link_libraries(test_bsp_disk_format PRIVATE xash3dpp_map_loader)
 add_test(NAME test_bsp_disk_format COMMAND test_bsp_disk_format)

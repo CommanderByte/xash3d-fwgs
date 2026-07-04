@@ -70,9 +70,15 @@ WorldDataFill::Result WorldDataFill::entities( const LoadContext &ctx, World &w 
 
     // Raw text copy; std::string guarantees the trailing NUL the legacy
     // loader appends manually.  Absent lump → empty string (legacy parity:
-    // fileofs 0 silently yields empty entdata).
-    w.entities_.assign( reinterpret_cast<const char *>( lv->bytes.data() ),
-                        lv->bytes.size() );
+    // fileofs 0 silently yields empty entdata).  A supplied entity patch
+    // (maps/<name>.ent) replaces the lump content wholesale.
+    if ( !ctx.opts.entity_patch.empty() )
+        w.entities_.assign(
+            reinterpret_cast<const char *>( ctx.opts.entity_patch.data() ),
+            ctx.opts.entity_patch.size() );
+    else
+        w.entities_.assign( reinterpret_cast<const char *>( lv->bytes.data() ),
+                            lv->bytes.size() );
 
     if ( !ctx.opts.is_world )
         return {};

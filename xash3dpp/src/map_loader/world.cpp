@@ -125,7 +125,41 @@ load_world_data( ::xash::filesystem::Filesystem &fs, std::string_view path,
                             static_cast<int>( path.size() ), path.data() );
         return std::unexpected( ::xash::core::ErrorCode::MapNotFound );
     }
-    return load_world_data( file, path, opts );
+
+    // World loads check for an external maps/<name>.ent entity patch that
+    // is not older than the bsp (legacy Mod_LoadEntities:2356-2382; note
+    // the gamedironly=true lookup for the patch, false for the bsp).
+    WorldLoadOptions       effective = opts;
+    std::vector<std::byte> patch;
+    if ( opts.is_world && opts.entity_patch.empty() )
+    {
+        std::string entpath( path );
+        if ( const auto dot = entpath.find_last_of( '.' ); dot != std::string::npos )
+            entpath.resize( dot );
+        entpath += ".ent";
+
+        if ( const auto ent_time = fs.file_time( entpath, true ))
+        {
+            const auto bsp_time = fs.file_time( path, false );
+            if ( bsp_time && *bsp_time > *ent_time )
+            {
+                ::xash::core::log( ::xash::core::LogLevel::Warning, "map_loader",
+                                   "Entity patch is older than bsp. Ignored." );
+            }
+            else
+            {
+                patch = fs.load_file( entpath, true );
+                if ( !patch.empty() )
+                {
+                    ::xash::core::logf( ::xash::core::LogLevel::Info, "map_loader",
+                                        "Read entity patch: %s", entpath.c_str() );
+                    effective.entity_patch = patch;
+                }
+            }
+        }
+    }
+
+    return load_world_data( file, path, effective );
 }
 
 } // namespace xash::map_loader

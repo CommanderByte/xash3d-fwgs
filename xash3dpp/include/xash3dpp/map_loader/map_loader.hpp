@@ -15,9 +15,13 @@
 //   • client    (loading plaque, demo bookkeeping)
 //   • server    (savegame staging)
 
+#include <xash3dpp/map_loader/world.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string_view>
+
+namespace xash::filesystem { class Filesystem; }
 
 namespace xash {
 
@@ -50,7 +54,9 @@ struct IMapLoaderObserver
 
 struct MapLoaderInitParams
 {
-    // Reserved for future config (background-map name override, etc.).
+    // Injected dependency (Q-4): required for world loading; a MapLoader
+    // without a filesystem still runs the FSM but every load fails.
+    ::xash::filesystem::Filesystem *filesystem = nullptr; // @lifetime: engine
 };
 
 // ---------------------------------------------------------------------------
@@ -92,6 +98,17 @@ public:
 
     [[nodiscard]] MapLoadState     state() const noexcept;
     [[nodiscard]] std::string_view current_map() const noexcept;
+
+    // ---- World ownership ----------------------------------------------
+    // Loads "maps/<name>.bsp" (a name containing '/' is used as-is; the
+    // .bsp extension is appended when missing) and activates it as the
+    // current world.  Q-6: the returned WorldData is immutable and
+    // concurrent-read-safe; the pointer stays valid until the next
+    // load_world/clear_world/shutdown.
+    [[nodiscard]] bool load_world( std::string_view mapname,
+                                   const map_loader::WorldLoadOptions &opts ) noexcept;
+    void clear_world() noexcept;
+    [[nodiscard]] const map_loader::WorldData *world() const noexcept; // nullptr when none
 
 private:
     struct Impl;

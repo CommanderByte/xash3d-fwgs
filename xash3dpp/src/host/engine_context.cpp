@@ -83,7 +83,7 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
     }
 
     // --- MapLoader --------------------------------------------------------
-    if ( !map_loader.init( MapLoaderInitParams{} ) )
+    if ( !map_loader.init( MapLoaderInitParams{ .filesystem = &filesystem } ) )
     {
         core::log( core::LogLevel::Error, "engine_context", "MapLoader::init failed" );
         networking.shutdown();
