@@ -30,9 +30,11 @@
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/private/server/physics.hpp>
 #include <xash3dpp/private/server/world_links.hpp>
 
 #include <cstdio>
+#include <cstring>
 
 namespace xash::server {
 
@@ -97,6 +99,11 @@ void install_world_bridge( ServerRuntime &rt, const ml::WorldData &world ) noexc
     // SV_ClearWorld areanode part — the tree spans the world submodel bounds.
     const ml::SubModel &w0 = world.submodels()[0];
     rt.links.clear_world( w0.mins, w0.maxs );
+
+    // SV_ClearWorld also resets every lightstyle to full (sv_world.c:473-477);
+    // wire the bridge so pfnLightStyle writes here and SV_RunLightStyles reads.
+    rt.lightstyles.reset();
+    rt.bridge.lightstyles = &rt.lightstyles;
 
     rt.bridge.move_env = &rt.move_env;
     rt.bridge.links    = &rt.links;
@@ -330,7 +337,10 @@ bool spawn_server( ServerRuntime &rt, const char *mapname,
     }
 
     // XASH3DPP-STUB(chunk6-S9): NET_MasterClear.
-    // XASH3DPP-STUB(chunk6-S8): SV_UpdateMovevars(true).
+
+    // SV_UpdateMovevars( true ) (sv_init.c:1058): stamp the physics movevars
+    // from the sv_* cvars before the settle frames run.
+    sv_update_movevars( rt, true );
 
     install_world_bridge( rt, *world );
 
@@ -345,7 +355,10 @@ void activate_server( ServerRuntime &rt, bool run_physics ) noexcept
     if ( !rt.persistent.initialized )
         return;
 
-    // XASH3DPP-STUB(chunk6-S8): Cvar_SetValue( "sv_newunit", 0 ).
+    // Cvar_SetValue( "sv_newunit", 0 ) (sv_init.c:582): the changelevel
+    // new-unit latch is consumed once the level is activated.
+    if ( rt.cvars != nullptr )
+        rt.cvars->cvar_set( "sv_newunit", "0" );
 
     free_old_entities( rt );
 
@@ -375,21 +388,23 @@ void activate_server( ServerRuntime &rt, bool run_physics ) noexcept
         num_frames         = 1;
     }
 
-    // Run some frames to let everything settle.  XASH3DPP-STUB(chunk6-S8):
-    // SV_Physics — the fixed-step physics loop lands in S8; the frame COUNT
-    // and frametime are preserved here so S8 only fills the body.
+    // Run some frames to let everything settle (SV_Physics per frame,
+    // sv_init.c:617-619).  Legacy does NOT advance sv.time here — every settle
+    // frame runs at the spawn epoch (sv.time == 1.0); only the per-frame
+    // SV_RunGameFrame advances the clock later.
     for ( int i = 0; i < num_frames; ++i )
-    {
-        // sv_physics( rt );
-    }
+        sv_physics( rt );
 
     // XASH3DPP-STUB(chunk6-S9): SV_CreateBaseline / SV_CreateResourceList /
     // SV_TransferConsistencyInfo / per-client Netchan_Clear.
 
     rt.globals.changelevel = 0; // svgame.globals->changelevel = false
 
-    // XASH3DPP-STUB(chunk6-S8): sv.hostflags = 0, oldmovevars memset,
-    // host.movevars_changed; HPAK_FlushHostQueue; Mod_FreeUnused (dedicated).
+    // sv.hostflags = 0 + oldmovevars snapshot (sv_init.c:663-668).  The
+    // host.movevars_changed / HPAK_FlushHostQueue / Mod_FreeUnused steps stay
+    // S9/host seams.
+    rt.level.hostflags = 0;
+    std::memcpy( &rt.oldmovevars, &rt.movevars, sizeof( rt.movevars ) );
 
     set_server_state( rt, ServerState::Active );
 }

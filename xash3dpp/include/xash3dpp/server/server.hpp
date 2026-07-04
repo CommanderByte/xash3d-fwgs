@@ -116,8 +116,12 @@ public:
                                           std::string_view landmark,
                                           bool background ) noexcept override;
 
-    // TODO(chunk6-S8): frame() — Host_ServerFrame order incl. the
-    //                  zero-physics-frames early-return quirk.
+    // Host_ServerFrame (S8): the per-host-frame server tick — movevars
+    // refresh → fixed-step physics → prep-world-frame.  `host_frametime` is
+    // the elapsed host wall-clock delta.  Preserves the zero-physics-frames
+    // early-return quirk (see host_server_frame).  The client/networking
+    // ingress + snapshot-send steps are S9 seams.
+    void frame( double host_frametime ) noexcept;
 
 private:
     struct Impl;

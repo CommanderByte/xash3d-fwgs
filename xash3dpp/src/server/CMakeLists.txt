@@ -35,7 +35,8 @@ add_library(xash3dpp_server STATIC
     lifecycle/world_hooks.cpp
     lifecycle/entity_parse.cpp
     lifecycle/spawn.cpp
-    # physics/  sources land in S8
+    physics/movevars.cpp
+    physics/physics.cpp
     # clients/  sources land in S9
 )
 

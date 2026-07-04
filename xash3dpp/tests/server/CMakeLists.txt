@@ -98,3 +98,13 @@ target_compile_definitions(test_spawn_server PRIVATE
     FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
 )
 add_dependencies(test_spawn_server fake_game_dll_full)
+
+# S8 — physics driver + fixed-step frame loop over the fake DLL + a spawned
+# world: settle frames, gravity, thinks, pusher linear move, Host_ServerFrame.
+xash3dpp_add_test(test_physics SOURCE physics/test_physics.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem
+         xash3dpp_map_loader xash3dpp_utilities cmd_cvar_test_stubs)
+target_compile_definitions(test_physics PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_physics fake_game_dll_full)

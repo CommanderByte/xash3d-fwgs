@@ -57,6 +57,24 @@ bool LightStyles::set( int style, const char *pattern, float time ) noexcept
     return true;
 }
 
+void LightStyles::run_frame( float frametime ) noexcept
+{
+    // SV_RunLightStyles (sv_phys.c:1789-1803): map values are 'a'-relative
+    // (0..25); the 12.0 divisor yields the legacy normal-brightness scale.
+    for ( LightStyle &ls : styles_ )
+    {
+        ls.time += frametime;
+        const int ofs = static_cast<int>( ls.time * 10.0f );
+
+        if ( ls.length == 0 )
+            ls.value = 1.0f; // disable this light
+        else if ( ls.length == 1 )
+            ls.value = ls.map[0] / 12.0f;
+        else
+            ls.value = ls.map[ofs % ls.length] / 12.0f;
+    }
+}
+
 int light_for_entity( ::xash::abi::edict_t *ed ) noexcept
 {
     const EntityView view( ed );

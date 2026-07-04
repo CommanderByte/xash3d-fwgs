@@ -17,6 +17,7 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
+#include <xash3dpp/private/server/physics.hpp>
 
 #include <cstddef>
 
@@ -127,6 +128,12 @@ bool Server::exec_load_level( std::string_view map, bool background ) noexcept
 
     impl_->stats_.frames_run.fetch_add( 1, std::memory_order_relaxed );
     return active();
+}
+
+void Server::frame( double host_frametime ) noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+    host_server_frame( impl_->rt, host_frametime );
 }
 
 bool Server::exec_load_game( std::string_view /*map*/ ) noexcept

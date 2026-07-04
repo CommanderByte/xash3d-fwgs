@@ -43,6 +43,11 @@ struct State
     int activate_edict_count;    // edictCount handed to the last ServerActivate
     int activate_client_max;     // clientMax handed to the last ServerActivate
 
+    // S8 physics-frame probes.
+    int start_frame_calls; // pfnStartFrame invocations (once per SV_Physics)
+    int think_calls;       // pfnThink invocations (SV_RunThink dispatch)
+    int blocked_calls;     // pfnBlocked invocations (pusher obstruction)
+
     // Every pfnKeyValue the double receives (class/key/value snapshot) — the
     // parse test reads these back to pin the quirk transforms.
     struct KvdRecord

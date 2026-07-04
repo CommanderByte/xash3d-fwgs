@@ -409,6 +409,21 @@ inline constexpr std::size_t server_lightstyle_pattern = 256; // lightstyle_t pa
 inline constexpr std::size_t server_lightstyle_pattern = XASH_LIMIT_SERVER_LIGHTSTYLE_PATTERN;
 #endif
 
+// Physics scratch — engine/server/server.h :59 (MAX_PUSHED_ENTS) and
+// engine/server/sv_phys.c :44 (MAX_CLIP_PLANES).  The pusher stack has no
+// legacy overflow check; the rewrite bound-checks + logs but keeps the cap.
+#ifndef XASH_LIMIT_SERVER_PUSHED_ENTS
+inline constexpr std::size_t server_pushed_ents = 256; // MAX_PUSHED_ENTS
+#else
+inline constexpr std::size_t server_pushed_ents = XASH_LIMIT_SERVER_PUSHED_ENTS;
+#endif
+
+#ifndef XASH_LIMIT_SERVER_CLIP_PLANES
+inline constexpr std::size_t server_clip_planes = 5; // MAX_CLIP_PLANES (FlyMove)
+#else
+inline constexpr std::size_t server_clip_planes = XASH_LIMIT_SERVER_CLIP_PLANES;
+#endif
+
 #ifndef XASH_LIMIT_SERVER_STRING_BLOCK
 inline constexpr std::size_t server_string_block = 65536; // string arena bytes per edict quantum
 #else

@@ -131,6 +131,24 @@ static void fake_touch( abi::edict_t *, abi::edict_t * )
     ++g_state.touch_calls;
 }
 
+// pfnStartFrame: fires once per SV_Physics before the entity loop.
+static void fake_start_frame( void )
+{
+    ++g_state.start_frame_calls;
+}
+
+// pfnThink: SV_RunThink dispatch when nextthink is due.
+static void fake_think( abi::edict_t * )
+{
+    ++g_state.think_calls;
+}
+
+// pfnBlocked: a pusher hit an obstruction it could not move.
+static void fake_blocked( abi::edict_t *, abi::edict_t * )
+{
+    ++g_state.blocked_calls;
+}
+
 // pfnServerActivate: the game DLL's per-map activation hook — records the
 // edict/client counts the engine hands it (SV_ActivateServer).
 static void fake_server_activate( abi::edict_t *, int edictCount, int clientMax )
@@ -183,11 +201,14 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     std::memset( table, 0, sizeof( *table ));
     table->pfnGameInit           = fake_game_init;
     table->pfnSpawn              = fake_spawn;
+    table->pfnThink              = fake_think;
+    table->pfnTouch              = fake_touch;
+    table->pfnBlocked            = fake_blocked;
     table->pfnKeyValue           = fake_key_value;
     table->pfnSetAbsBox          = fake_set_abs_box;
-    table->pfnTouch              = fake_touch;
     table->pfnServerActivate     = fake_server_activate;
     table->pfnServerDeactivate   = fake_server_deactivate;
+    table->pfnStartFrame         = fake_start_frame;
     table->pfnGetGameDescription = fake_game_description;
     table->pfnGetHullBounds      = fake_get_hull_bounds;
     table->pfnRegisterEncoders   = fake_register_encoders;

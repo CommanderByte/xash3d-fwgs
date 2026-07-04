@@ -15,12 +15,15 @@
 //
 // Threading: main-thread only (server-boundary OQ-9).
 
+#include <xash3dpp/abi/pm_movevars.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/networking/delta.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
 #include <xash3dpp/private/server/game_dll.hpp>
+#include <xash3dpp/private/server/lightstyles.hpp>
 #include <xash3dpp/private/server/model_resolver.hpp>
 #include <xash3dpp/private/server/precache.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
@@ -84,9 +87,15 @@ struct LevelState
     std::uint32_t worldmap_crc = 0;
     int           progs_crc    = 0;  // Quake-compat progs.dat CRC
 
+    // Per-frame simulation state (S8; sv.framecount/hostflags/paused/…).
+    std::uint32_t framecount = 0;    // sv.framecount (SV_Physics increments)
+    int           hostflags  = 0;    // sv.hostflags (SVF_* snapshot bits)
+    bool          paused      = false; // sv.paused (listen-server freeze)
+    bool          playersonly = false; // sv.playersonly (sv_playersonly cvar)
+    bool          simulating  = false; // sv.simulating (SV_IsSimulating cache)
+
     // TODO(chunk6-S7b): worldmodel/models cache, sizebufs, consistency +
     // resource lists, instanced baselines, lightstyle mirrors.
-    // TODO(chunk6-S8): hostflags, paused/simulating, playersonly.
 };
 
 // legacy server_static_t (subset — persists across map changes).
@@ -105,6 +114,16 @@ struct PersistentState
 
     // TODO(chunk6-S9): client array, snapshot ring, baselines pointers,
     // serverinfo/localinfo, testpacket, log state.
+};
+
+// legacy sv_pushed_t (server.h:277-283): one saved pusher/pushed state on
+// the SV_PushMove/SV_PushRotate rollback stack (svgame.pushed[256]).
+struct PushedEnt
+{
+    ::xash::abi::edict_t *ent = nullptr;
+    ::xash::utilities::Vec3 origin{};
+    ::xash::utilities::Vec3 angles{};
+    int fixangle = 0;
 };
 
 // The aggregate replacing the legacy sv/svs/svgame triple.
@@ -128,6 +147,18 @@ struct ServerRuntime
                                                // keep the received pointer)
     ::xash::networking::DeltaTables     delta;
     ::xash::map_loader::HullBoundsTable hull_bounds{}; // pfnGetHullBounds ×4
+
+    // svgame.movevars / oldmovevars (S8): SV_UpdateMovevars mirrors the sv_*
+    // cvars here; the pmove bridge and delta layer read them.
+    ::xash::abi::movevars_t movevars{};
+    ::xash::abi::movevars_t oldmovevars{};
+
+    // sv.lightstyles (S8 animates them in SV_RunLightStyles); the pfnLightStyle
+    // slot writes through the bridge pointer install_world_bridge wires.
+    LightStyles lightstyles;
+
+    // svgame.pushed[256] — the pusher rollback stack (SV_PushMove/PushRotate).
+    PushedEnt pushed[::xash::limits::server_pushed_ents];
 
     EngineBridge   bridge;
     PrecacheTables precache;  // per-level content; cleared each spawn

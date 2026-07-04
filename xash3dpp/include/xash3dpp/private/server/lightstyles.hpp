@@ -40,6 +40,10 @@ public:
     // unchecked — hardening).
     bool set( int style, const char *pattern, float time ) noexcept;
 
+    // SV_RunLightStyles (sv_phys.c:1784): advance every style's clock by
+    // `frametime` and resolve its animated value (used by GetEntityIllum).
+    void run_frame( float frametime ) noexcept;
+
     [[nodiscard]] const LightStyle *style( int index ) const noexcept
     {
         if ( index < 0 ||
