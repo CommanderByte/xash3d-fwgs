@@ -27,6 +27,9 @@ enum class ErrorCode : std::uint32_t
     // Map-load
     MapNotFound        = 200,
     MapLoadFailed      = 201,
+    BspUnsupportedVersion = 202, // header version not 29/30/'BSP2'
+    BspCorruptLump     = 203,    // lump directory/record validation failed
+    BspBadWorld        = 204,    // world invariant broken (missing required lump, leaf 0 not solid)
 };
 
 // Stable string name for diagnostic output.  Never null.

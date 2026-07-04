@@ -15,6 +15,9 @@ const char *error_code_name( ErrorCode ec ) noexcept
     case ErrorCode::FrameAborted:       return "FrameAborted";
     case ErrorCode::MapNotFound:        return "MapNotFound";
     case ErrorCode::MapLoadFailed:      return "MapLoadFailed";
+    case ErrorCode::BspUnsupportedVersion: return "BspUnsupportedVersion";
+    case ErrorCode::BspCorruptLump:     return "BspCorruptLump";
+    case ErrorCode::BspBadWorld:        return "BspBadWorld";
     }
     return "Unknown";
 }
