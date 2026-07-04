@@ -475,6 +475,28 @@ WorldDataFill::Result WorldDataFill::setup_submodels( const LoadContext &ctx, Wo
                  ::xash::utilities::stricmp( w.name_.c_str(), "maps/c2a1.bsp" ) == 0 )
                 bm.flags |= k_model_has_origin;
         }
+
+        // Surface-derived model flags — submodels only (legacy loop is
+        // gated on i != 0).  Range clamped to the loaded surface array
+        // (hardening; legacy indexes raw pointers).
+        if ( i != 0 )
+        {
+            const std::size_t begin =
+                bm.firstface >= 0 ? static_cast<std::size_t>( bm.firstface ) : 0;
+            const std::size_t end_face =
+                bm.numfaces >= 0 ? begin + static_cast<std::size_t>( bm.numfaces ) : begin;
+
+            for ( std::size_t f = begin; f < end_face && f < w.surfaces_.size(); ++f )
+            {
+                const std::uint32_t sf = w.surfaces_[f].flags;
+                if (( sf & k_surf_conveyor ) != 0 )
+                    bm.flags |= k_model_conveyor;
+                if (( sf & k_surf_transparent ) != 0 )
+                    bm.flags |= k_model_transparent;
+                if (( sf & k_surf_drawturb ) != 0 )
+                    bm.flags |= k_model_liquid;
+            }
+        }
     }
 
     return {};

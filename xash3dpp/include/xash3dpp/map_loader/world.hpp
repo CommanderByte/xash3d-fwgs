@@ -113,6 +113,37 @@ inline constexpr std::uint32_t k_model_has_origin  = 1u << 1;
 inline constexpr std::uint32_t k_model_liquid      = 1u << 2;
 inline constexpr std::uint32_t k_model_transparent = 1u << 3;
 
+// Surface::flags bits — ABI values from common/bspfile.h:52-59 (legacy
+// msurface_t.flags; game DLLs read these through the SDK).
+inline constexpr std::uint32_t k_surf_planeback   = 1u << 1;
+inline constexpr std::uint32_t k_surf_drawsky     = 1u << 2;
+inline constexpr std::uint32_t k_surf_drawturb    = 1u << 4;
+inline constexpr std::uint32_t k_surf_drawtiled   = 1u << 5;
+inline constexpr std::uint32_t k_surf_conveyor    = 1u << 6;
+inline constexpr std::uint32_t k_surf_underwater  = 1u << 7;
+inline constexpr std::uint32_t k_surf_transparent = 1u << 8;
+
+// WorldData::flags() bits — legacy world.flags (engine/ref_api.h:109).
+inline constexpr std::uint32_t k_fworld_wateralpha = 1u << 2;
+
+// Minimal texinfo subset: the texture reference + TEX_* flags that feed
+// surface content flags.  Texture matrices/faceinfo are render-side and
+// deferred to the content pipeline (Chunk 7).
+struct TexInfo
+{
+    int          miptex; // index into texture_names(); pre-clamped like legacy
+    std::int16_t flags;  // TEX_* disk flags
+};
+
+// Minimal surface subset: enough to derive per-submodel MODEL_* flags and
+// serve future flag queries.  Edges/extents/lightmaps are render-side.
+struct Surface
+{
+    int           planenum;
+    int           texinfo;
+    std::uint32_t flags;   // k_surf_* bits
+};
+
 // Legacy dmodel_t / "*N" inline brush model.  Bounds are spread by one unit
 // at load (legacy Mod_LoadSubmodels).  k_model_* flag bits: origin detection
 // in C5, surface-derived conveyor/transparent/liquid in C6.
@@ -185,6 +216,9 @@ public:
     [[nodiscard]] std::span<const SubModel>     submodels()    const noexcept; // [0] = world
     [[nodiscard]] std::span<const ClipNode32>   clipnodes()    const noexcept; // shared hull 1-3 array (C5)
     [[nodiscard]] std::span<const ClipNode32>   hull0_nodes()  const noexcept; // MakeHull0 output (C5)
+    [[nodiscard]] std::span<const Surface>      surfaces()     const noexcept; // flag subset (C6)
+    [[nodiscard]] std::span<const TexInfo>      texinfos()     const noexcept;
+    [[nodiscard]] std::span<const std::string>  texture_names() const noexcept; // lowercased miptex names
 
     [[nodiscard]] std::span<const std::byte>    visdata()      const noexcept; // raw compressed PVS
     [[nodiscard]] int                           visclusters()  const noexcept;
@@ -208,14 +242,17 @@ private:
     std::string wadlist_;
     std::string message_;
 
-    std::vector<Plane>      planes_;
-    std::vector<Node>       nodes_;
-    std::vector<Leaf>       leafs_;
-    std::vector<int>        marksurfaces_;
-    std::vector<SubModel>   submodels_;
-    std::vector<ClipNode32> clipnodes_;
-    std::vector<ClipNode32> hull0_nodes_;
-    std::vector<std::byte>  visdata_;
+    std::vector<Plane>       planes_;
+    std::vector<Node>        nodes_;
+    std::vector<Leaf>        leafs_;
+    std::vector<int>         marksurfaces_;
+    std::vector<SubModel>    submodels_;
+    std::vector<ClipNode32>  clipnodes_;
+    std::vector<ClipNode32>  hull0_nodes_;
+    std::vector<Surface>     surfaces_;
+    std::vector<TexInfo>     texinfos_;
+    std::vector<std::string> texture_names_;
+    std::vector<std::byte>   visdata_;
 };
 
 // ---------------------------------------------------------------------------

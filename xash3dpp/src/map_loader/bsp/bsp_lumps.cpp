@@ -19,6 +19,7 @@
 
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/map_loader/contents.hpp>
+#include <xash3dpp/map_loader/pvs.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
 #include <cstring>
@@ -419,6 +420,55 @@ WorldDataFill::Result WorldDataFill::leafs( const LoadContext &ctx, World &w )
         ::xash::core::log( LogLevel::Error, "map_loader",
                            "leafs: leaf 0 is not CONTENTS_SOLID" );
         return std::unexpected( ErrorCode::BspBadWorld );
+    }
+
+    // Water-alpha probe — Mod_CheckWaterAlphaSupport (:1412-1437): a map
+    // supports r_wateralpha when any liquid leaf can see an empty leaf.
+    // No visdata at all counts as supported.
+    if ( ctx.opts.is_world )
+    {
+        bool wateralpha = w.visdata_.empty();
+
+        if ( !wateralpha )
+        {
+            std::vector<std::byte> vis( w.visbytes_ );
+            for ( const Leaf &leaf : w.leafs_ )
+            {
+                if (( leaf.contents != k_contents_water &&
+                      leaf.contents != k_contents_slime ) || leaf.cluster < 0 )
+                    continue;
+
+                // Legacy passes leaf->compressed_vis = visdata + visofs with
+                // no clamp; an in-range offset sees the identical byte
+                // stream, an out-of-range one decompresses as no-vis
+                // (hardening — legacy reads out of buffer).
+                std::span<const std::byte> in{};
+                if ( leaf.visofs >= 0 &&
+                     static_cast<std::size_t>( leaf.visofs ) < w.visdata_.size() )
+                    in = std::span<const std::byte>( w.visdata_ )
+                             .subspan( static_cast<std::size_t>( leaf.visofs ));
+
+                decompress_pvs( in, w.visbytes_, vis );
+
+                for ( const Leaf &other : w.leafs_ )
+                {
+                    const int c = other.cluster;
+                    const bool visible = c >= 0 &&
+                        ( static_cast<unsigned char>( vis[static_cast<std::size_t>( c ) >> 3] ) &
+                          ( 1u << ( static_cast<unsigned>( c ) & 7u ))) != 0;
+                    if ( visible && other.contents == k_contents_empty )
+                    {
+                        wateralpha = true;
+                        break;
+                    }
+                }
+                if ( wateralpha )
+                    break;
+            }
+        }
+
+        if ( wateralpha )
+            w.flags_ |= k_fworld_wateralpha;
     }
 
     return {};

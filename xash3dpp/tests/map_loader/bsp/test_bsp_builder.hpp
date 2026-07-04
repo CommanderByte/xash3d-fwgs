@@ -14,6 +14,7 @@
 #include <cstring>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -137,6 +138,37 @@ private:
 inline constexpr std::string_view k_worldspawn_entities =
     "{\n\"classname\" \"worldspawn\"\n\"message\" \"test\"\n}\n";
 
+// Builds a LUMP_TEXTURES payload from miptex names.  An empty string emits
+// a miptex with an empty name (legacy → "miptex_N"); the sentinel name
+// "\x01missing" emits dataofs = -1 (legacy → "*default").
+inline std::vector<std::byte> make_textures_lump( const std::vector<std::string> &names )
+{
+    const auto n = static_cast<std::int32_t>( names.size() );
+    const std::size_t dir_bytes = sizeof( std::int32_t ) * ( 1 + names.size() );
+
+    std::vector<std::byte> out( dir_bytes );
+    std::memcpy( out.data(), &n, sizeof n );
+
+    for ( std::size_t i = 0; i < names.size(); ++i )
+    {
+        std::int32_t dataofs = -1;
+        if ( names[i] != "\x01missing" )
+        {
+            dataofs = static_cast<std::int32_t>( out.size() );
+            bsp::mip_t mip{};
+            std::memcpy( mip.name, names[i].data(),
+                         names[i].size() < 16 ? names[i].size() : 15 );
+            mip.width  = 16;
+            mip.height = 16;
+            const auto *raw = reinterpret_cast<const std::byte *>( &mip );
+            out.insert( out.end(), raw, raw + sizeof mip );
+        }
+        std::memcpy( out.data() + sizeof( std::int32_t ) * ( 1 + i ),
+                     &dataofs, sizeof dataofs );
+    }
+    return out;
+}
+
 // Worldspawn text used by the minimal-world fixture (wad + message keys).
 inline constexpr std::string_view k_minimal_world_entities =
     "{\n"
@@ -235,6 +267,16 @@ inline TestBspBuilder make_minimal_world( bool bsp2 = false )
 
     const unsigned char vis[4] = { 0x03, 0x00, 0x01, 0xFF };
     b.set_lump_bytes( bsp::k_lump_visibility, vis, sizeof vis );
+
+    // Textures + texinfo so faces resolve names ("wall" → no flags).
+    const auto tex = make_textures_lump( { "wall" } );
+    b.set_lump_bytes( bsp::k_lump_textures, tex.data(), tex.size() );
+    const std::vector<bsp::dtexinfo_t> ti( 1 ); // miptex 0, flags 0
+    b.set_lump_records( bsp::k_lump_texinfo, ti );
+
+    // Surfedge count backs the corrupt-face guard (records unread).
+    const std::vector<bsp::dsurfedge_t> surfedges( 8 );
+    b.set_lump_records( bsp::k_lump_surfedges, surfedges );
 
     return b;
 }

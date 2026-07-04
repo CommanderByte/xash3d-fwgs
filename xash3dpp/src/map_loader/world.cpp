@@ -47,6 +47,10 @@ std::span<const SubModel>   WorldData::submodels()    const noexcept { return su
 std::span<const ClipNode32> WorldData::clipnodes()    const noexcept { return clipnodes_; }
 std::span<const ClipNode32> WorldData::hull0_nodes()  const noexcept { return hull0_nodes_; }
 
+std::span<const Surface>     WorldData::surfaces()      const noexcept { return surfaces_; }
+std::span<const TexInfo>     WorldData::texinfos()      const noexcept { return texinfos_; }
+std::span<const std::string> WorldData::texture_names() const noexcept { return texture_names_; }
+
 std::span<const std::byte> WorldData::visdata()     const noexcept { return visdata_; }
 int                        WorldData::visclusters() const noexcept { return visclusters_; }
 std::size_t                WorldData::visbytes()    const noexcept { return visbytes_; }
@@ -86,13 +90,17 @@ load_world_data( std::span<const std::byte> file, std::string_view name,
     if ( !( r = Fill::entities( ctx, w )) ||
          !( r = Fill::planes( ctx, w )) ||
          !( r = Fill::submodels( ctx, w )) ||
+         !( r = Fill::textures( ctx, w )) ||
          !( r = Fill::visibility( ctx, w )) ||
+         !( r = Fill::texinfo( ctx, w )) ||
+         !( r = Fill::surfaces( ctx, w )) ||
          !( r = Fill::marksurfaces( ctx, w )) ||
          !( r = Fill::leafs( ctx, w )) ||
          !( r = Fill::nodes( ctx, w )) ||
          !( r = Fill::clipnodes( ctx, w, scratch )) ||
          !( r = Fill::make_hull0( ctx, w )) ||
          !( r = Fill::setup_submodels( ctx, w, scratch )) ||
+         !( r = Fill::checksum( ctx, w )) ||
          !( r = Fill::finalize( ctx, w )))
     {
         ::xash::core::logf( ::xash::core::LogLevel::Error, "map_loader",

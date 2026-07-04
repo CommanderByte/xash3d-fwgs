@@ -141,8 +141,17 @@ struct WorldDataFill
     static Result submodels   ( const LoadContext &ctx, World &w ); // Mod_LoadSubmodels (bounds spread)
     static Result visibility  ( const LoadContext &ctx, World &w ); // Mod_LoadVisibility (raw copy)
     static Result marksurfaces( const LoadContext &ctx, World &w ); // Mod_LoadMarkSurfaces (fix-ups)
-    static Result leafs       ( const LoadContext &ctx, World &w ); // Mod_LoadLeafs (clusters, leaf-0 check)
+    static Result leafs       ( const LoadContext &ctx, World &w ); // Mod_LoadLeafs (clusters, leaf-0 check,
+                                                                    //   water-alpha probe)
     static Result nodes       ( const LoadContext &ctx, World &w ); // Mod_LoadNodes (no parent links)
+
+    // bsp_flags.cpp — name/flag subset of the texture pipeline
+    static Result textures    ( const LoadContext &ctx, World &w ); // Mod_LoadTextures (names only)
+    static Result texinfo     ( const LoadContext &ctx, World &w ); // Mod_LoadTexInfo (miptex clamp + flags)
+    static Result surfaces    ( const LoadContext &ctx, World &w ); // Mod_LoadSurfaces (SURF_* flags only)
+
+    // map_crc.cpp
+    static Result checksum    ( const LoadContext &ctx, World &w ); // CRC32_MapFile
 
     // bsp_hulls.cpp
     static Result clipnodes       ( const LoadContext &ctx, World &w, LoadScratch &s ); // Mod_LoadClipnodes (widen + aguirRe fix)
