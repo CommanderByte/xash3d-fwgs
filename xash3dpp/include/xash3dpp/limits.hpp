@@ -78,6 +78,13 @@ inline constexpr std::size_t host_frame_abort_detail_buf = 256; // max bytes for
 inline constexpr std::size_t host_frame_abort_detail_buf = XASH_LIMIT_HOST_FRAME_ABORT_DETAIL_BUF;
 #endif
 
+// map_loader subsystem
+#ifndef XASH_LIMIT_MAP_QPATH_MAX
+inline constexpr std::size_t map_qpath_max = 64; // max bytes in a map/landmark name incl. null terminator; matches legacy MAX_QPATH (common/const.h)
+#else
+inline constexpr std::size_t map_qpath_max = XASH_LIMIT_MAP_QPATH_MAX;
+#endif
+
 // utilities subsystem
 #ifndef XASH_LIMIT_TOKENIZER_TOKEN_MAX
 inline constexpr std::size_t tokenizer_token_max = 512; // max token bytes in Tokenizer::next()

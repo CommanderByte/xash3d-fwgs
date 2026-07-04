@@ -8,6 +8,7 @@
 
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
 #include <array>
@@ -26,10 +27,9 @@ struct MapLoader::Impl
     MapLoadState state = MapLoadState::RunFrame;
     MapLoadState next  = MapLoadState::RunFrame;
 
-    // Fixed buffers — see legacy MAX_QPATH (64).  Avoids heap traffic on
-    // transition.  Real value lives in xash3dpp/limits.hpp when wired.
-    std::array<char, 64> level_name    {};
-    std::array<char, 64> landmark_name {};
+    // Fixed buffers — legacy MAX_QPATH.  Avoids heap traffic on transition.
+    std::array<char, ::xash::limits::map_qpath_max> level_name    {};
+    std::array<char, ::xash::limits::map_qpath_max> landmark_name {};
 
     bool background = false;
     bool load_game  = false;
@@ -40,7 +40,8 @@ struct MapLoader::Impl
     static constexpr std::size_t k_max_observers = 4;
     std::array<IMapLoaderObserver *, k_max_observers> observers{};
 
-    void copy_name( std::array<char, 64> &dst, std::string_view src ) noexcept
+    void copy_name( std::array<char, ::xash::limits::map_qpath_max> &dst,
+                    std::string_view src ) noexcept
     {
         const std::size_t n = src.size() < dst.size() - 1 ? src.size() : dst.size() - 1;
         std::memcpy( dst.data(), src.data(), n );
