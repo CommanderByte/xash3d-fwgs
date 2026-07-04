@@ -29,6 +29,9 @@ add_library(xash3dpp_server STATIC
     world/clip.cpp
     world/contents.cpp
     world/light.cpp
+    lifecycle/precache.cpp
+    lifecycle/game_host.cpp
+    # lifecycle/ spawn/activate/exec sources land in S7b
     # physics/  sources land in S8
     # clients/  sources land in S9
 )
@@ -43,9 +46,11 @@ target_link_libraries(xash3dpp_server
     PUBLIC  xash3dpp_utilities
     PUBLIC  xash3dpp_memory
     PUBLIC  xash3dpp_map_loader
+    PUBLIC  xash3dpp_networking    # S7 — DeltaTables (Delta_Init per spawn)
+    PUBLIC  xash3dpp_cmd_cvar      # S7 — state mirrors, FCVAR_EXTDLL dance
+    PUBLIC  xash3dpp_filesystem    # S7 — delta.lst, resource lists (via delta)
     PRIVATE xash3dpp_core
     PRIVATE xash3dpp_platform      # S6 — dynlib load, time
     # Added as the slices land (see server-boundary.md Dependencies):
-    # PUBLIC  xash3dpp_networking   # S9 — netchan, delta codec, master_list
-    # PUBLIC  xash3dpp_filesystem   # S7+ — game DLL path, resource lists, logs
+    # (networking netchan/master_list usage widens in S9)
 )

@@ -335,8 +335,51 @@ void CmdCvarContext::cvar_full_set(std::string_view name,
                                     const char     *value,
                                     std::uint32_t   flags) noexcept
 {
-    // TODO: find-or-create, then force-set bypassing all guards + update flags
-    (void)name; (void)value; (void)flags;
+    if (name.empty() || !value) return;
+
+    Cvar *cv = cvar_find(name);
+    if (!cv) {
+        // Legacy Cvar_FullSet on a missing name → Cvar_Get(name, value,
+        // flags): created with the requested flags (cvar.c:769-772).
+        (void)cvar_get_or_create(name, value, flags);
+        return;
+    }
+
+    // Legacy Cvar_DirectFullSet (cvar.c:594-605): force-write bypassing
+    // EVERY guard, READ_ONLY included.  Quirks kept: the flags argument is
+    // IGNORED for an existing cvar (cvar.c:775 passes var->flags back into
+    // SetBits — a FullSet never adds flags after creation), and there is
+    // no same-value skip (Cvar_Changed fires unconditionally).
+    if (cv->abi.flags & FCVAR_ALLOCATED) {
+        memory::mem_free(cv->abi.string);
+        cv->abi.flags &= ~static_cast<std::uint32_t>(FCVAR_ALLOCATED);
+    }
+    cv->abi.string = pool_dup(impl_->pool, value);
+    if (!cv->abi.string) {
+        cv->abi.string = const_cast<char *>(""); // OOM fallback
+        return;
+    }
+    cv->abi.flags |= FCVAR_ALLOCATED;
+    cv->abi.value  = utilities::atof(value);
+
+    // Cvar_Changed equivalent (same write-tail as cvar_set_direct).
+    cv->abi.flags |= FCVAR_CHANGED;
+    cv->generation.fetch_add(1u, std::memory_order_release);
+
+#if XASH_STATS
+    cv->write_count.fetch_add(1u, std::memory_order_relaxed);
+    cv->last_write_source = CvarWriteSource::EngineInternal;
+#endif
+
+    const std::uint32_t cvar_flags = cv->abi.flags;
+    const char *old_value = cv->def_string ? cv->def_string : "";
+    for (std::size_t i = 0; i < impl_->observer_count; ++i) {
+        const auto &entry = impl_->observers[i];
+        if (entry.observer && (entry.flag_mask & cvar_flags))
+            entry.observer->on_cvar_changed(cv, old_value);
+    }
+
+    impl_->stats_block.cvars_written.fetch_add(1u, std::memory_order_relaxed);
 }
 
 void CmdCvarContext::cvar_set_cheat_state() noexcept

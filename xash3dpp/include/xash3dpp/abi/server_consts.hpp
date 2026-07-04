@@ -6,6 +6,8 @@
 // Only the constants consumed by implemented slices are vendored; each
 // later slice adds its set verbatim (values never change).
 
+#include <cstdint>
+
 namespace xash::abi {
 
 // common/const.h :88-94 — entvars_t.solid
@@ -46,5 +48,9 @@ inline constexpr int k_ef_fullbright = 1 << 27; // just get fullbright
 inline constexpr int k_move_normal     = 0; // dont_ignore_monsters
 inline constexpr int k_move_nomonsters = 1; // ignore_monsters
 inline constexpr int k_move_missile    = 2; // ±15 expanded monster boxes
+
+// engine/custom.h :47-49 — resource_t.ucFlags bits (wire + game-visible)
+inline constexpr std::uint32_t k_res_fatalifmissing = 1u << 0; // disconnect if unavailable
+inline constexpr std::uint32_t k_res_wasmissing     = 1u << 1;
 
 } // namespace xash::abi

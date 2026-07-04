@@ -23,6 +23,7 @@
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/game_dll.hpp>
 #include <xash3dpp/private/server/lightstyles.hpp>
+#include <xash3dpp/private/server/precache.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
 #include <xash3dpp/private/server/world_links.hpp>
 #include <xash3dpp/private/server/world_trace.hpp>
@@ -49,6 +50,10 @@ struct EngineBridge
     LinkEnv     *link_env    = nullptr;             // @lifetime: engine
     LightStyles *lightstyles = nullptr;             // @lifetime: engine
     const ::xash::map_loader::PhsTable *phs = nullptr; // @lifetime: engine
+
+    // S7 lifecycle (null in pre-lifecycle fixtures: the precache slots
+    // then return 0, the legacy no-server answer)
+    PrecacheTables *precache = nullptr;             // @lifetime: engine
 
     // Misc allocations the ABI forces on the engine (cvar string
     // replacements); typically the svgame mempool equivalent.

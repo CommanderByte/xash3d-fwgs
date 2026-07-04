@@ -82,6 +82,11 @@ static int fake_get_hull_bounds( int hullnumber, float *mins, float *maxs )
     }
 }
 
+static void fake_register_encoders( void )
+{
+    ++g_state.register_encoders_calls;
+}
+
 static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
 {
     std::memset( table, 0, sizeof( *table ));
@@ -89,16 +94,28 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnSpawn              = fake_spawn;
     table->pfnGetGameDescription = fake_game_description;
     table->pfnGetHullBounds      = fake_get_hull_bounds;
+    table->pfnRegisterEncoders   = fake_register_encoders;
 }
 
 static void fake_game_shutdown( void )
 {
     ++g_state.game_shutdown_calls;
+
+    // S7 unload-order probe: pfnGameShutdown must still see the live cvar
+    // chain (legacy PrepareToUnlink runs before it, the actual unlink
+    // after — sv_game.c:5184-5202).  Writes .value on a test-owned struct
+    // the lifecycle test reads back after the DLL is gone.  Null-guarded:
+    // S6 handshake tests hand the DLL a zeroed table.
+    if ( g_state.engfuncs != nullptr &&
+         g_state.engfuncs->pfnCVarSetFloat != nullptr )
+        g_state.engfuncs->pfnCVarSetFloat( "fake_shutdown_probe", 42.0f );
 }
 
 static void fake_on_free_private_data( abi::edict_t * )
 {
     ++g_state.on_free_calls;
+    if ( g_state.on_free_out != nullptr )
+        ++*g_state.on_free_out;
 }
 
 // ---------------------------------------------------------------------------

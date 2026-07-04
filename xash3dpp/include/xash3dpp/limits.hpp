@@ -421,4 +421,31 @@ inline constexpr std::size_t server_string_quantum = 1024; // max_edicts per str
 inline constexpr std::size_t server_string_quantum = XASH_LIMIT_SERVER_STRING_QUANTUM;
 #endif
 
+// Precache table capacities — engine/common/protocol.h :109-127 (the
+// non-low-memory branch this fork targets); each is a wire bit-width
+// (12/11/10/10 bits) and therefore a protocol constant, not tunable.
+#ifndef XASH_LIMIT_SV_MAX_MODELS
+inline constexpr std::size_t sv_max_models = 4096; // MAX_MODELS (12 bits)
+#else
+inline constexpr std::size_t sv_max_models = XASH_LIMIT_SV_MAX_MODELS;
+#endif
+
+#ifndef XASH_LIMIT_SV_MAX_SOUNDS
+inline constexpr std::size_t sv_max_sounds = 2048; // MAX_SOUNDS (11 bits)
+#else
+inline constexpr std::size_t sv_max_sounds = XASH_LIMIT_SV_MAX_SOUNDS;
+#endif
+
+#ifndef XASH_LIMIT_SV_MAX_EVENTS
+inline constexpr std::size_t sv_max_events = 1024; // MAX_EVENTS (10 bits)
+#else
+inline constexpr std::size_t sv_max_events = XASH_LIMIT_SV_MAX_EVENTS;
+#endif
+
+#ifndef XASH_LIMIT_SV_MAX_GENERIC
+inline constexpr std::size_t sv_max_generic = 1024; // MAX_CUSTOM generic files (10 bits)
+#else
+inline constexpr std::size_t sv_max_generic = XASH_LIMIT_SV_MAX_GENERIC;
+#endif
+
 } // namespace xash::limits

@@ -41,6 +41,11 @@ bool EdictArena::init( ::xash::memory::PoolHandle pool,
     if ( edicts_ == nullptr )
         return false;
 
+    // "mark all edicts as freed" (sv_game.c:5345-5346): a never-allocated
+    // slot must fail SV_IsValidEdict until init_edict claims it.
+    for ( std::size_t i = 0; i < max_edicts; ++i )
+        edicts_[i].free = 1;
+
     max_edicts_   = max_edicts;
     reserved_     = reserved;
     num_entities_ = reserved;

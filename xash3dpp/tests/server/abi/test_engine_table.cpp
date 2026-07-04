@@ -101,6 +101,13 @@ struct BridgeFixture
         links.clear_world( { -256, -256, -256 }, { 256, 256, 256 } );
         styles.reset();
 
+        // SV_SpawnServer claims the world + client slots via SV_InitEdict
+        // (sv_init.c:1054-1064); a fresh arena is all-free like legacy
+        // post-SV_LoadProgs.
+        arena.init_edict( arena.edict_num( 0 ));
+        arena.init_edict( arena.edict_num( 1 ));
+        arena.init_edict( arena.edict_num( 2 ));
+
         abi::edict_t *ws = arena.edict_num( 0 );
         ws->v.modelindex = 1;
         ws->v.solid      = abi::k_solid_bsp;

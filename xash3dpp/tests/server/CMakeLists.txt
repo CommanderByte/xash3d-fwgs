@@ -64,3 +64,16 @@ add_dependencies(test_engine_table fake_game_dll_full)
 xash3dpp_add_test(test_world_links SOURCE world/test_world_links.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader)
 xash3dpp_add_test(test_world_trace SOURCE world/test_world_trace.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)
 xash3dpp_add_test(test_world_contents SOURCE world/test_world_contents.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)
+
+# S7 — lifecycle: precache registries + game-DLL host orchestration.
+xash3dpp_add_test(test_precache SOURCE lifecycle/test_precache.cpp
+    LIBS xash3dpp_server xash3dpp_core)
+# The lifecycle test drives a real CmdCvarContext (cmd_cvar_test_stubs is
+# built by tests/cmd_cvar, processed earlier) and a real Filesystem tree
+# with delta.lst.
+xash3dpp_add_test(test_game_lifecycle SOURCE lifecycle/test_game_lifecycle.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem cmd_cvar_test_stubs)
+target_compile_definitions(test_game_lifecycle PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_game_lifecycle fake_game_dll_full)

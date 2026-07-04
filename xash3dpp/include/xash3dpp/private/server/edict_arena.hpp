@@ -107,6 +107,10 @@ public:
     // Legacy SV_SpawnServer resets numEntities each spawn.
     void set_num_entities( std::size_t n ) noexcept { num_entities_ = n; }
 
+    // SV_SetupClients (S7b): maxclients can change between spawns while
+    // the arena persists — the alloc floor tracks svs.maxclients + 1.
+    void set_reserved( std::size_t n ) noexcept { reserved_ = n; }
+
 private:
     ::xash::memory::PoolHandle pool_;
     ::xash::abi::edict_t      *edicts_       = nullptr;

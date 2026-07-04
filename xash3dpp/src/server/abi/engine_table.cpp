@@ -277,30 +277,65 @@ void set_external_cvar_string( abi::cvar_t *var, const char *value )
 // Slot implementations, in table order
 // ===========================================================================
 
-// --- precache / model (S7 lifecycle owns the precache tables) -------------
+// --- precache / model ------------------------------------------------------
 
-int pfn_precache_model( const char * )
+// pfnPrecacheModel (sv_game.c:1280): '!' prefix marks the model optional
+// (no RES_FATALIFMISSING); empty input warns and returns world (the FWGS
+// deviation from GoldSrc's Host_Error, kept).
+int pfn_precache_model( const char *s )
 {
-    // XASH3DPP-STUB(chunk6): precache tables land in S7 lifecycle.
-    return 0;
+    if ( g_bridge->precache == nullptr )
+        return 0;
+
+    if ( s == nullptr || s[0] == '\0' )
+    {
+        ::xash::core::log_warning(
+            "server", "pfnPrecacheModel: NULL pointer or empty string as "
+                      "model name, returning world..." );
+        return 0;
+    }
+
+    bool optional = false;
+    if ( *s == '!' )
+    {
+        optional = true;
+        ++s;
+    }
+
+    const int i = g_bridge->precache->model_index( s );
+    if ( i == 0 )
+        return 0;
+
+    // XASH3DPP-STUB(chunk6): sv.models[i] = Mod_ForName(...) — the model
+    // cache / IModelResolver wiring lands with the S7b spawn path.
+
+    if ( !optional )
+        g_bridge->precache->set_model_flags(
+            static_cast<std::size_t>( i ), abi::k_res_fatalifmissing );
+
+    return i;
 }
 
-int pfn_precache_sound( const char * )
+// Legacy binds SV_SoundIndex directly as the slot (sv_game.c gEngfuncs).
+int pfn_precache_sound( const char *s )
 {
-    // XASH3DPP-STUB(chunk6): precache tables land in S7 lifecycle.
-    return 0;
+    if ( g_bridge->precache == nullptr )
+        return 0;
+    return g_bridge->precache->sound_index( s );
 }
 
 void pfn_set_model( abi::edict_t *, const char * )
 {
-    // XASH3DPP-STUB(chunk6): SV_SetModel needs the model precache +
-    // model cache (S7); bounds/link flow is ready in SV_SetMinMaxSize.
+    // XASH3DPP-STUB(chunk6): SV_SetModel needs the model cache (S7b);
+    // bounds/link flow is ready in SV_SetMinMaxSize.
 }
 
-int pfn_model_index( const char * )
+// pfnModelIndex (sv_game.c:1315): lookup only, never registers.
+int pfn_model_index( const char *m )
 {
-    // XASH3DPP-STUB(chunk6): precache tables land in S7 lifecycle.
-    return 0;
+    if ( g_bridge->precache == nullptr )
+        return 0;
+    return g_bridge->precache->find_model( m );
 }
 
 int pfn_model_frames( int )
@@ -1537,10 +1572,12 @@ void pfn_static_decal( const float *, int, int, int )
     // XASH3DPP-STUB(chunk6): svc_bspdecal into the signon lands in S9.
 }
 
-int pfn_precache_generic( const char * )
+// Legacy binds SV_GenericIndex directly as the slot.
+int pfn_precache_generic( const char *s )
 {
-    // XASH3DPP-STUB(chunk6): generic precache table lands in S7.
-    return 0;
+    if ( g_bridge->precache == nullptr )
+        return 0;
+    return g_bridge->precache->generic_index( s );
 }
 
 int pfn_get_player_user_id( abi::edict_t * )
@@ -1597,10 +1634,12 @@ const char *pfn_get_physics_info_string( const abi::edict_t * )
     return "";
 }
 
-unsigned short pfn_precache_event( int, const char * )
+// pfnPrecacheEvent (sv_game.c:4015): the type argument is ignored.
+unsigned short pfn_precache_event( int, const char *psz )
 {
-    // XASH3DPP-STUB(chunk6): event precache table lands in S7/S9.
-    return 0;
+    if ( g_bridge->precache == nullptr )
+        return 0;
+    return static_cast<unsigned short>( g_bridge->precache->event_index( psz ));
 }
 
 void pfn_playback_event( int, const abi::edict_t *, unsigned short, float,
