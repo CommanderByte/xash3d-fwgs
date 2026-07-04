@@ -8,10 +8,17 @@ making a change before understanding its blast radius.
 
 ## Starting a session
 
-| Situation | First prompt to run |
-|-----------|---------------------|
-| First time in this repo | `init` |
-| Resuming work | `status-and-next` |
+Route by current state — `whereami` (the `xash-tools` MCP tool, or
+`& .venv\Scripts\python.exe xash3dpp\tools\whereami.py`) derives it and
+suggests the next action:
+
+| Situation | Do this first |
+|-----------|---------------|
+| Fresh clone / new machine | `.github/AGENT-SETUP.md`, then `whereami --doctor` |
+| First time in this repo (human or agent) | `init`, then `whereami` |
+| Returning after a gap (dormancy) | `whereami --doctor`; follow its `suggested_next` and `doc_pointers` |
+| Resuming mid-chunk | `whereami` (read the last checkpoint note), then `status-and-next` if you need the full analysis |
+| Just edited the workflow surface (`.github/`, adapters, tools, entry files) | `workflow_sync.py` (full stage) |
 
 After orienting, **pick exactly one chunk and commit to it before starting anything else.**
 Open-ended sessions drift. Named, scoped sessions finish.
@@ -23,6 +30,9 @@ Open-ended sessions drift. Named, scoped sessions finish.
 Run these prompts in order. Each one must complete cleanly before the next starts.
 
 ```text
+analyse-subsystem          ← recon: read the legacy code, produce the boundary spec
+    ↓ commit deep-dive-*.md briefs to xash3dpp/docs/legacy-survey/ (committed-recon convention)
+    ↓ promote blocking OQs via the crosswalk in decisions-architecture.md §3a
 scaffold-subsystem
     ↓
 plan-implementation        ← orders the TODO stubs into layers
@@ -46,6 +56,33 @@ analyse-modernization      ← optional; future refactoring opportunities only
 **Why this order matters:** sweep-module catches violations that are cheap to fix
 while the code is fresh. analyse-threading after sweep ensures the threading model
 is documented correctly, not speculatively.
+
+**Scaffold gate:** scaffolding is **blocked while any row of the OQ
+crosswalk (`decisions-architecture.md` §3a) lists `scaffold` in its Blocks
+column** for the target subsystem. Resolve those decisions first (a
+decision session), then scaffold. `whereami` reports the blocking rows.
+
+---
+
+## Session scoping & token budget
+
+- **One chunk per session; one session per commit** (see MODEL-GUIDE's
+  session-lifecycle section). A session's deliverable is concrete:
+  analysis session → a committed doc; implementation session → a green
+  commit; decision session → a register entry.
+- **Read committed recon instead of re-deriving.** The legacy-survey deep
+  dives and boundary specs exist so sessions don't re-read 20k lines of
+  legacy C. If recon is missing, run `analyse-subsystem` — don't wing it.
+- **Never hand-grep what the tools cover.** `compliance_scan.py`,
+  `limits_scan.py`, `stub_scan.py`, `finish_check.py` produce the
+  mechanical findings as JSON; spend reasoning on judgment, not searching.
+- **Prefer MCP over shell** when the host exposes `xash-tools` (same data,
+  fewer round-trips), and **prefer `cpp-lsp`** (definition/references)
+  over grep dumps for symbol navigation — compile-accurate and far
+  cheaper to interpret.
+- **Subagents verify, they don't explore.** Spawn `xash3dpp-reviewer`,
+  `abi-watchdog`, or `legacy-parity-auditor` for verification gates; do
+  exploratory reading inline where you can act on it.
 
 ---
 
@@ -121,6 +158,30 @@ analyse-modernization      ← optional, after compliance is clean
 - **One commit per subsystem** when a change spans multiple subsystems.
 - **Never batch** a full spiral into one commit at the end. Small commits give rollback points.
 - Commit message format: `tag: short description` — see `CONTRIBUTING.md`.
+- **Record a checkpoint** (`checkpoint` MCP tool or
+  `xash3dpp\tools\checkpoint.py`) at every commit, handoff, or
+  interruption — it is what `whereami` shows the next session.
+
+---
+
+## Tooling (xash3dpp/tools/)
+
+Deterministic scripts do the mechanical work; prompts invoke them and
+interpret the JSON. Invocation:
+`& .venv\Scripts\python.exe xash3dpp\tools\<script>.py … --json` — or,
+preferred when available, the `xash-tools` MCP tool of the same name
+(identical `data`; `status_table` is exposed as `status`; `dep_scan` is
+CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
+
+| Script | Purpose | Consumed by |
+|--------|---------|-------------|
+| `whereami.py` | session ground-truth brief + `--doctor` env checks | session start, dormancy recovery |
+| `checkpoint.py` | record advisory intent | every commit / handoff / interruption |
+| `build.py` / `test.py` / `refresh_compile_db.py` | build, ctest, clangd DB | sweep-module, implement-audit, retriever, bisect, pre-pr |
+| `compliance_scan.py` | reviewer [M] checks as JSON | pre-pr, sweep-module, detail-audit, reviewer pre-pass |
+| `limits_scan.py` / `stub_scan.py` / `status_table.py` / `dep_scan.py` | limits, TODO/stubs, status table, dependency edges | limits-audit, plan-implementation, status-and-next, dependency-graph |
+| `finish_check.py` | the 9-section done checklist as data | finish-subsystem, pre-pr |
+| `workflow_sync.py` | drift gate over the whole workflow surface | after ANY workflow-surface edit |
 
 ---
 
@@ -151,6 +212,7 @@ analyse-modernization      ← optional, after compliance is clean
 | `limits-audit` | Check all magic numbers are in limits.hpp | No |
 | `abi-watchdog` | Verify xash3dpp/ does not conflict with frozen ABI surfaces | No |
 | `xash3dpp-reviewer` | Full correctness + ABI safety review of xash3dpp/ code | No |
+| `legacy-parity-auditor` | Adversarial behavioural-parity audit vs the legacy C reference, before the finish-subsystem gate | No |
 
 ---
 
@@ -158,10 +220,12 @@ analyse-modernization      ← optional, after compliance is clean
 
 | Document | What it covers |
 |---|---|
-| `PROMPT-GUIDE.md` | Frontmatter spec, tool tiers, and model selection for all `.prompt.md` files |
+| `PROMPT-GUIDE.md` | Frontmatter spec, tool tiers, adapters, and model selection for all `.prompt.md` files |
+| `AGENT-SETUP.md` | Per-framework setup matrix, human quickstart, env overrides, dormancy recovery |
 | `instructions/xash3dpp.instructions.md` | Mandatory C++ patterns and conventions for `xash3dpp/` |
-| `xash3dpp/docs/design/decisions-architecture.md` | Structural paradigms: ownership, error returns, interfaces (Q-1 through Q-17) |
+| `xash3dpp/docs/design/decisions-architecture.md` | Structural paradigms: ownership, error returns, interfaces (Q-1 through Q-18) + the OQ crosswalk |
 | `xash3dpp/docs/design/decisions-style.md` | Naming, `[[nodiscard]]`, logging, test conventions (QA through QM) |
+| `xash3dpp/tools/README.md` | The deterministic tooling: scripts, MCP tools, envelope, state conventions |
 
 ---
 
