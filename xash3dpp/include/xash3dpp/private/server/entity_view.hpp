@@ -128,6 +128,11 @@ public:
     void add_flags( int bits ) noexcept { e_->v.flags |= bits; }
     void clear_flags( int bits ) noexcept { e_->v.flags &= ~bits; }
 
+    // client-slot bookkeeping (SV_PutClientInServer / SV_FakeConnect).
+    // set_flags/add_flags come from the physics accessor block above.
+    [[nodiscard]] int colormap() const noexcept { return e_->v.colormap; }
+    void set_colormap( int v ) noexcept { e_->v.colormap = v; }
+
     // --- string_t fields (offsets into the server string pool) -----------
     [[nodiscard]] ::xash::abi::string_t classname() const noexcept
     {
@@ -135,6 +140,8 @@ public:
     }
     void set_classname( ::xash::abi::string_t s ) noexcept { e_->v.classname = s; }
     void set_model( ::xash::abi::string_t s ) noexcept { e_->v.model = s; }
+    [[nodiscard]] ::xash::abi::string_t netname() const noexcept { return e_->v.netname; }
+    void set_netname( ::xash::abi::string_t s ) noexcept { e_->v.netname = s; }
 
     // --- entity cross-links ----------------------------------------------
     [[nodiscard]] ::xash::abi::edict_t *aiment() const noexcept { return e_->v.aiment; }

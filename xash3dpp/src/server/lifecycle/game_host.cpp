@@ -110,7 +110,11 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     rt.bridge.game_dir       = rt.cfg.game_dir;
     rt.bridge.host_error     = rt.cfg.host_error;
     rt.bridge.host_error_ctx = rt.cfg.host_error_ctx;
+    rt.bridge.clients        = &rt.clients; // S9 — messaging pfn slots reach it
     install_engine_bridge( &rt.bridge );
+
+    // S9: bind the multicast scratch buffer + reset per-client staging.
+    clients_init( rt.clients );
 
     rt.precache.set_error_hook( rt.cfg.host_error, rt.cfg.host_error_ctx );
 

@@ -196,6 +196,39 @@ static void fake_register_encoders( void )
     ++g_state.register_encoders_calls;
 }
 
+// S9 client-lifecycle callbacks (the connection state machine drives these).
+static abi::qboolean fake_client_connect( abi::edict_t *, const char *,
+                                          const char *, char szRejectReason[128] )
+{
+    ++g_state.client_connect_calls;
+    if ( g_state.client_connect_should_reject )
+    {
+        fake_copy( szRejectReason, 128, "fake rejected you" );
+        return 0;
+    }
+    return 1;
+}
+
+static void fake_client_put_in_server( abi::edict_t * )
+{
+    ++g_state.client_put_in_server_calls;
+}
+
+static void fake_client_command( abi::edict_t * )
+{
+    ++g_state.client_command_calls;
+}
+
+static void fake_client_userinfo_changed( abi::edict_t *, char * )
+{
+    ++g_state.client_userinfo_calls;
+}
+
+static void fake_client_disconnect( abi::edict_t * )
+{
+    ++g_state.client_disconnect_calls;
+}
+
 static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
 {
     std::memset( table, 0, sizeof( *table ));
@@ -212,6 +245,11 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnGetGameDescription = fake_game_description;
     table->pfnGetHullBounds      = fake_get_hull_bounds;
     table->pfnRegisterEncoders   = fake_register_encoders;
+    table->pfnClientConnect          = fake_client_connect;
+    table->pfnClientPutInServer      = fake_client_put_in_server;
+    table->pfnClientCommand          = fake_client_command;
+    table->pfnClientUserInfoChanged  = fake_client_userinfo_changed;
+    table->pfnClientDisconnect       = fake_client_disconnect;
 }
 
 static void fake_game_shutdown( void )

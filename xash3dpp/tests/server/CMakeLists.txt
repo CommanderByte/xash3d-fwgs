@@ -108,3 +108,23 @@ target_compile_definitions(test_physics PRIVATE
     FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
 )
 add_dependencies(test_physics fake_game_dll_full)
+
+# S9 — clients + messaging + satellites.  Self-contained unit tests first.
+xash3dpp_add_test(test_info_string SOURCE clients/test_info_string.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_utilities)
+xash3dpp_add_test(test_client_filter SOURCE clients/test_filter.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_networking)
+xash3dpp_add_test(test_client_log SOURCE clients/test_log.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_utilities)
+xash3dpp_add_test(test_client_messages SOURCE clients/test_messages.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_networking)
+
+# S9 — connection state machine end-to-end against the fake DLL + a real map.
+xash3dpp_add_test(test_client_state SOURCE clients/test_client_state.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem
+         xash3dpp_map_loader xash3dpp_utilities xash3dpp_networking
+         cmd_cvar_test_stubs)
+target_compile_definitions(test_client_state PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_client_state fake_game_dll_full)

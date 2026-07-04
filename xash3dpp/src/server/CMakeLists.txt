@@ -37,7 +37,12 @@ add_library(xash3dpp_server STATIC
     lifecycle/spawn.cpp
     physics/movevars.cpp
     physics/physics.cpp
-    # clients/  sources land in S9
+    clients/info_string.cpp
+    clients/filter.cpp
+    clients/log.cpp
+    clients/messages.cpp
+    clients/client_state.cpp
+    clients/query.cpp
 )
 
 target_include_directories(xash3dpp_server

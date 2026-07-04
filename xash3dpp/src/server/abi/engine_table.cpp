@@ -24,7 +24,9 @@
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/map_loader/pvs.hpp>
 #include <xash3dpp/platform/platform.hpp>
+#include <xash3dpp/private/server/clients.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/private/server/info_string.hpp>
 #include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/math.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -1103,56 +1105,63 @@ int pfn_point_contents( const float *rgflVector )
 
 // --- user messages (S9 messaging pipeline) ----------------------------------
 
-void pfn_message_begin( int, int, const float *, abi::edict_t * )
+void pfn_message_begin( int dest, int num, const float *origin,
+                        abi::edict_t *ed )
 {
-    // XASH3DPP-STUB(chunk6): the user-message state machine (msg_started
-    // re-entry Host_Error, size reservation, GSMRF rewrite) lands in S9.
+    message_begin( *g_bridge, dest, num, origin, ed ); // S9 pipeline
 }
 
 void pfn_message_end( void )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9 with pfnMessageBegin.
+    message_end( *g_bridge );
 }
 
-void pfn_write_byte( int )
+void pfn_write_byte( int v )
 {
-    // XASH3DPP-STUB(chunk6): multicast buffer writes land in S9
-    // (incl. the -1 → 0xFF byte quirk).
+    if ( g_bridge->clients != nullptr )
+        message_write_byte( *g_bridge->clients, v );
 }
 
-void pfn_write_char( int )
+void pfn_write_char( int v )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9.
+    if ( g_bridge->clients != nullptr )
+        message_write_char( *g_bridge->clients, v );
 }
 
-void pfn_write_short( int )
+void pfn_write_short( int v )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9.
+    if ( g_bridge->clients != nullptr )
+        message_write_short( *g_bridge->clients, v );
 }
 
-void pfn_write_long( int )
+void pfn_write_long( int v )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9.
+    if ( g_bridge->clients != nullptr )
+        message_write_long( *g_bridge->clients, v );
 }
 
-void pfn_write_angle( float )
+void pfn_write_angle( float v )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9 (8-bit angle encode).
+    if ( g_bridge->clients != nullptr )
+        message_write_angle( *g_bridge->clients, v );
 }
 
-void pfn_write_coord( float )
+void pfn_write_coord( float v )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9.
+    if ( g_bridge->clients != nullptr )
+        message_write_coord( *g_bridge->clients, v );
 }
 
-void pfn_write_string( const char * )
+void pfn_write_string( const char *s )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9.
+    if ( g_bridge->clients != nullptr )
+        message_write_string( *g_bridge->clients, s );
 }
 
-void pfn_write_entity( int )
+void pfn_write_entity( int v )
 {
-    // XASH3DPP-STUB(chunk6): lands in S9 (out-of-range → Host_Error).
+    if ( g_bridge->clients != nullptr )
+        message_write_entity( *g_bridge->clients, v );
 }
 
 // --- cvars (bridge-local external chain; cmd_cvar unification in S7) -------
@@ -1347,11 +1356,9 @@ void *pfn_get_model_ptr( abi::edict_t * )
     return nullptr;
 }
 
-int pfn_reg_user_msg( const char *, int )
+int pfn_reg_user_msg( const char *pszName, int iSize )
 {
-    // XASH3DPP-STUB(chunk6): the user-message registry lands in S9;
-    // legacy failure value is svc_bad (0).
-    return 0;
+    return reg_user_msg( *g_bridge, pszName, iSize ); // S9 registry
 }
 
 void pfn_animation_automove( const abi::edict_t *, float )
@@ -1578,28 +1585,48 @@ int pfn_number_of_entities( void )
 
 // --- info strings (S9 client state) ------------------------------------------
 
-char *pfn_get_info_key_buffer( abi::edict_t * )
+char *pfn_get_info_key_buffer( abi::edict_t *e )
 {
-    // XASH3DPP-STUB(chunk6): localinfo/serverinfo/userinfo routing lands
-    // in S9; legacy fallback for an unknown target is "".
+    // pfnGetInfoKeyBuffer (sv_game.c): world/null → serverinfo; a client edict
+    // → that client's userinfo; anything else → "".
     static char s_empty[1] = { '\0' };
-    return s_empty;
+
+    if ( g_bridge->clients == nullptr )
+        return s_empty;
+    ClientMachinery &cm = *g_bridge->clients;
+
+    if ( e == nullptr ||
+         ( g_bridge->arena != nullptr && g_bridge->arena->index_of( e ) == 0 ) )
+        return cm.serverinfo;
+
+    ServerClient *cl = client_for_edict( cm, e );
+    return cl != nullptr ? cl->userinfo : s_empty;
 }
 
-const char *pfn_info_key_value( const char *, const char * )
+const char *pfn_info_key_value( const char *infobuffer, const char *key )
 {
-    // XASH3DPP-STUB(chunk6): Info_ValueForKey wiring lands in S9.
-    return "";
+    // rotating caller buffer would be ideal; the ABI contract only needs a
+    // stable pointer for the duration of the call — a file-static suffices.
+    static char s_value[k_max_info_string];
+    return info_value_for_key( infobuffer, key, s_value, sizeof( s_value ) );
 }
 
-void pfn_set_key_value( char *, char *, char * )
+void pfn_set_key_value( char *infobuffer, char *key, char *value )
 {
-    // XASH3DPP-STUB(chunk6): S9 (localinfo/serverinfo only in legacy).
+    // legacy: localinfo/serverinfo only (star keys allowed for serverinfo).
+    if ( infobuffer != nullptr )
+        info_set_value_for_key( infobuffer, key, value, k_max_serverinfo, true );
 }
 
-void pfn_set_client_key_value( int, char *, char *, char * )
+void pfn_set_client_key_value( int clientIndex, char *infobuffer, char *key,
+                               char *value )
 {
-    // XASH3DPP-STUB(chunk6): S9 (userinfo + FCL_RESEND_USERINFO).
+    if ( g_bridge->clients == nullptr || infobuffer == nullptr )
+        return;
+    // XASH3DPP-STUB(S8-seam): FCL_RESEND_USERINFO flagging (re-broadcast on
+    // the next frame) hangs off the client flags the send path owns.
+    info_set_value_for_key( infobuffer, key, value, k_max_info_string );
+    ( void )clientIndex;
 }
 
 int pfn_is_map_valid( char * )
@@ -1622,11 +1649,12 @@ int pfn_precache_generic( const char *s )
     return g_bridge->precache->generic_index( s );
 }
 
-int pfn_get_player_user_id( abi::edict_t * )
+int pfn_get_player_user_id( abi::edict_t *e )
 {
-    // XASH3DPP-STUB(chunk6): client array lands in S9; legacy failure is
-    // -1.
-    return -1;
+    if ( g_bridge->clients == nullptr )
+        return -1;
+    const ServerClient *cl = client_for_edict( *g_bridge->clients, e );
+    return cl != nullptr ? cl->userid : -1;
 }
 
 void pfn_build_sound_msg( abi::edict_t *, int, const char *, float, float,
