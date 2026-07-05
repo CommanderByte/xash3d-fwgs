@@ -217,6 +217,13 @@ void write_clientdata_to_message( ServerRuntime &rt, ServerClient &cl,
 void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
                            ::xash::networking::MessageBuf &msg ) noexcept;
 
+// SV_UpdateToReliableMessages (sv_frame.c:747): fan the accumulated broadcast
+// buffers out to every client — sv.reliable_datagram → each connected non-fake
+// client's netchan reliable queue — then clear the broadcast buffers.  Called at
+// the top of send_client_messages each frame.  The per-client resends
+// (FCL_RESEND_USERINFO/MOVEVARS) and the unreliable sv.datagram append are seams.
+void update_to_reliable_messages( ServerRuntime &rt ) noexcept;
+
 // SV_SendClientMessages (sv_frame.c:820): the per-frame send driver — the
 // send-rate gate (next_messagetime for spawned clients / bandwidth choke via
 // Netchan_CanPacket), then either SV_SendClientDatagram (spawned) or an empty

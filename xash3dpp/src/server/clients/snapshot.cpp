@@ -1076,6 +1076,51 @@ void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
                      msg.num_bits_written() );
 }
 
+void update_to_reliable_messages( ServerRuntime &rt ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    ClientMachinery &cm = rt.clients;
+
+    // XASH3DPP-STUB(chunk6-S9): the per-spawned-client FCL_RESEND_USERINFO
+    // (SV_FullClientUpdate) + FCL_RESEND_MOVEVARS (SV_FullUpdateMovevars) resends
+    // queue into reliable_datagram / netchan.message before the fan-out —
+    // deferred with those wire builders.
+
+    // Drop the unreliable broadcast buffers whole if they overflowed (legacy).
+    if ( cm.datagram.overflowed() )
+        cm.datagram.reset();
+    if ( cm.spec_datagram.overflowed() )
+        cm.spec_datagram.reset();
+
+    // Fan the reliable broadcast to every connected (non-fake) client's netchan
+    // reliable queue.  reliable_datagram is byte-framed (svc_* commands), so a
+    // byte-granular append matches; the Netchan_CreateFragments fallback for an
+    // over-large broadcast (download-class) is an OQ-8 seam.
+    const std::size_t reliable_bytes = cm.reliable_datagram.num_bytes_written();
+    if ( reliable_bytes > 0 )
+    {
+        const std::span<const std::byte> payload =
+            cm.reliable_datagram.data().first( reliable_bytes );
+        for ( int i = 0; i < cm.maxclients; ++i )
+        {
+            ServerClient &cl = cm.clients[i];
+            if ( cl.state == ClientState::Free ||
+                 cl.state == ClientState::Zombie || cl.fakeclient )
+                continue;
+            ( void )cm.netchans[i].write_reliable( payload );
+        }
+    }
+
+    // XASH3DPP-STUB(chunk6-S9): the unreliable sv.datagram / sv.spec_datagram →
+    // per-client cl.datagram append (particle / HLTV-spec broadcasts) — their
+    // producers are stubbed; the raw-buffer bit-append lands with them.
+
+    cm.reliable_datagram.reset();
+    cm.spec_datagram.reset();
+    cm.datagram.reset();
+}
+
 void send_client_messages( ServerRuntime &rt ) noexcept
 {
     ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
@@ -1083,9 +1128,9 @@ void send_client_messages( ServerRuntime &rt ) noexcept
     if ( rt.level.state == ServerState::Dead )
         return;
 
-    // XASH3DPP-STUB(chunk6-S9): SV_UpdateToReliableMessages — the reliable
-    // fan-out (sv.reliable_datagram → per-client netchan message) + the
-    // FCL_RESEND_USERINFO / MOVEVARS resends land in the reliable slice.
+    // Fan pending broadcasts (reliable_datagram → netchans) before the per-client
+    // send (SV_SendClientMessages runs SV_UpdateToReliableMessages first).
+    update_to_reliable_messages( rt );
 
     ClientMachinery &cm        = rt.clients;
     const double     realtime  = cm.realtime;

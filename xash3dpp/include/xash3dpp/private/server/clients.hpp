@@ -261,6 +261,18 @@ struct ClientMachinery
     // for its whole lifetime so the self-reference is safe (never moved).
     ::xash::networking::MessageBuf multicast;
 
+    // Broadcast staging (sv.reliable_datagram / sv.datagram / sv.spec_datagram):
+    // reliable-to-all messages (lightstyles, client updates, MSG_ALL multicast)
+    // and unreliable-to-all (particles) accumulate here; update_to_reliable_messages
+    // fans them to every client each frame, then clears them.  Bound + reset by
+    // clients_init (same address-stable self-reference as multicast).
+    std::byte                      reliable_datagram_buf[k_max_multicast] = {};
+    ::xash::networking::MessageBuf reliable_datagram;
+    std::byte                      datagram_buf[k_max_multicast] = {};
+    ::xash::networking::MessageBuf datagram;
+    std::byte                      spec_datagram_buf[k_max_multicast] = {};
+    ::xash::networking::MessageBuf spec_datagram;
+
     BanFilters filters;
     ServerLog  log;
 

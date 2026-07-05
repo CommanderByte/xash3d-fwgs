@@ -58,6 +58,14 @@ void clients_init( ClientMachinery &cm ) noexcept
 
     cm.multicast.rebind( { cm.multicast_buf, k_max_multicast }, "multicast" );
     cm.multicast.reset();
+    cm.reliable_datagram.rebind( { cm.reliable_datagram_buf, k_max_multicast },
+                                 "reliable_datagram" );
+    cm.reliable_datagram.reset();
+    cm.datagram.rebind( { cm.datagram_buf, k_max_multicast }, "datagram" );
+    cm.datagram.reset();
+    cm.spec_datagram.rebind( { cm.spec_datagram_buf, k_max_multicast },
+                             "spec_datagram" );
+    cm.spec_datagram.reset();
     for ( ServerClient &cl : cm.clients )
     {
         cl.reliable_bits = 0;

@@ -525,6 +525,39 @@ static void test_send_client_keepalive()
     CHECK( !cl.send_net_message );
 }
 
+// ---------------------------------------------------------------------------
+// SV_UpdateToReliableMessages: a staged reliable broadcast is fanned into every
+// connected client's netchan reliable queue, then the broadcast buffer clears.
+// ---------------------------------------------------------------------------
+static void test_reliable_fanout()
+{
+    ConnFixture fx;
+    CaptureSink sink;
+    const net::NetAddress from = client_adr();
+
+    const std::uint32_t window =
+        static_cast<std::uint32_t>( fx.rt.clients.realtime / 5 );
+    const std::int32_t chal =
+        sv::compute_challenge( fx.rt.persistent.challenge_salt, from, window );
+    const int slot = sv::connect_client(
+        fx.rt, from, 49, chal,
+        "\\qport\\27015\\uuid\\0123456789abcdef0123456789abcdef",
+        "\\name\\RelPlayer", sink );
+    REQUIRE( slot == 0 );
+
+    // Stage a reliable broadcast (svc_lightstyle-shaped: two bytes).
+    fx.rt.clients.reliable_datagram.reset();
+    fx.rt.clients.reliable_datagram.write_byte( 12 ); // svc_lightstyle
+    fx.rt.clients.reliable_datagram.write_byte( 0 );
+
+    sv::update_to_reliable_messages( fx.rt );
+
+    // The connected client's netchan reliable queue received the two bytes,
+    // and the broadcast buffer was cleared.
+    CHECK( fx.rt.clients.netchans[0].reliable_length_bits() >= 16 );
+    CHECK( fx.rt.clients.reliable_datagram.num_bytes_written() == 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -538,6 +571,7 @@ int main()
     RUN_TEST( test_netchan_setup_and_clear );
     RUN_TEST( test_execute_client_message );
     RUN_TEST( test_send_client_keepalive );
+    RUN_TEST( test_reliable_fanout );
 
     std::filesystem::remove_all( g_root );
     std::printf( "server_client_state: %d passed, %d failed\n", g_pass, g_fail );
