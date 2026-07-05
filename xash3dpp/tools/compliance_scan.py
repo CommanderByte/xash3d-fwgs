@@ -56,11 +56,29 @@ def main() -> int:
         data = compliance_scan(args.subsystem or None, checks=args.checks,
                                min_severity=args.min_severity, files=files,
                                baseline_base=baseline_base)
+        if args.checks == "annotation-coverage":
+            # Coverage payload has no counts/violations envelope; clean =
+            # every axis at 100% (6B S2/S3 CLI crash fix — the MCP path
+            # never hit this).
+            clean = all(
+                slot["coverage_pct"] >= 100.0
+                for cov in data["coverage"].values()
+                for slot in cov.values() if isinstance(slot, dict))
+            return clean, data
         hard = data["counts"]["blocker"] + data["counts"]["warning"] \
             + data["counts"]["note"] - data["counts"]["candidate"]
         return hard == 0 and not data["violations"], data
 
     def human(data):
+        if "coverage" in data:
+            for sub, cov in data["coverage"].items():
+                print("%s annotation coverage:" % sub)
+                for axis, slot in cov.items():
+                    if isinstance(slot, dict):
+                        print("  %-13s required=%-3d annotated=%-3d exempt=%-3d %.1f%%"
+                              % (axis, slot["required"], slot["annotated"],
+                                 slot["exempt"], slot["coverage_pct"]))
+            return
         print("scanned %d files in %s (checks=%s)" % (
             data["files_scanned"], ", ".join(data["subsystems"]), data["checks"]))
         if data.get("baseline_base"):
