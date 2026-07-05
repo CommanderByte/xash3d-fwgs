@@ -89,6 +89,8 @@ pool-based memory accounting accurate.
 **Forbidden raw alternatives** (flag in code review):
 - `malloc`, `calloc`, `realloc`, `free` — use `memory::mem_alloc` / `mem_free`
 - `new` / `delete` — use pool helpers; `std::make_unique<Impl>()` is the *only* allowed exception (pimpl construction before the subsystem pool exists)
+- Class-scoped `operator new` — forbidden entirely; pool-owned classes use
+  the `create_<thing>` factory + `operator delete` idiom (Q-22, see below)
 - `fopen`, `fclose`, `FILE *`, `CreateFile`, `open()` — use `Filesystem` passed by reference
 - `printf`, `puts`, `fprintf` — use `core::log` / `core::logf`
 - `assert()` from `<cassert>` — use `XASH_ASSERT` or `XASH_FATAL`
@@ -143,6 +145,37 @@ stay in the parent target.  A grouping pass at end-of-chunk may move
 related satellite targets into a shared `src/<area>/` subdirectory
 without code changes.
 
+### Registries and Handles
+
+The recurring registry idiom (pool registry, cvar/command registries,
+precache tables, archive backends, protocol drivers) — codified so new
+registries match:
+
+- **Fixed capacity** from a named `limits.hpp` constant — never unbounded
+  growth on a hot path.
+- **Registration confined to a declared init window** (the cvar-observer
+  discipline: registered at init, never mutated at runtime) — or, where
+  runtime registration is inherent (precache), the open/closed transition is
+  explicit and asserted.
+- **Handles are 32-bit value types** (QG); `0` / `k_null_*` is the invalid
+  sentinel; handles are indices or tokens, never pointers.
+- **Stats hook** per the three-tier model when the registry has mutable
+  runtime state.
+
+### Interface Seams — When to Introduce `I<X>`
+
+An internal `I<X>` vtable seam must be justified by at least one of:
+
+1. a **test fake** is needed to unit-test the consumer in isolation;
+2. **policy/compat injection** (Q-12 `ICompatPolicy` family);
+3. **protocol/format variants** with multiple production implementations
+   (Q-7 addendum, Q-14);
+4. a **service pattern** from `extension-goals.md` (P-1 inbox / P-2
+   snapshot consumers).
+
+Otherwise use a concrete class. No speculative interfaces — seams are
+earned, not scattered.
+
 ### Driver inheritance (template-method, Q-14)
 When two concrete `I<X>` implementations share all algorithm logic and
 differ only in metadata or policy flags (version numbers, capability bits,
@@ -188,7 +221,14 @@ Full specification: `xash3dpp/docs/design/threading-model.md`.
 **Thread role enforcement** (every subsystem must follow):
 - Call `assert_thread_role(ThreadRole::Main)` at the top of every public function
   that is main-thread-only. The call is a no-op in release builds.
-- Call `register_thread_role(role)` once at the start of every background thread.
+- **"Documents-but-never-asserts is non-compliant" (QN)**: a subsystem whose
+  headers declare a main-thread-only contract must also assert it at every
+  public mutating entry point — orchestrators included. Pure-function
+  namespaces are exempt.
+- Call `register_thread_role(role)` once at the start of every background thread;
+  `ThreadRole::Main` is registered on the real production entry paths
+  (launcher, host init) and in test mains — asserts are meaningless on
+  unregistered threads.
 - Never call into a game DLL (`pfnThink`, `pfnClientMove`, etc.) from any thread
   other than `T_Main`.
 
@@ -242,6 +282,45 @@ struct FilesystemInitParams {
 // wrong: bool Init(StringView base_dir, StringView game_dir)
 // right: bool Init(const FilesystemInitParams& p)
 ```
+
+### Class Lifecycle and Pool-Owned Classes — Mandatory
+
+Full decision: `xash3dpp/docs/design/decisions-architecture.md` §LIFECYCLE_MODEL (Q-22).
+
+- **State with invariants lives in a class with an RAII lifecycle.**
+  Free-functions-over-aggregate style is reserved for **orchestrators**
+  (frame loops, lifecycle sequencing, ABI dispatch tables).
+- **Narrowest-state signatures**: a free function over an aggregate takes the
+  smallest sub-aggregate it touches, never the whole runtime — whole-aggregate
+  parameters are for orchestrators only.
+- **Pool-owned-class idiom** (canonical shape — `File` and `ISearchBackend`
+  are the precedents):
+
+  ```cpp
+  // Factory holds the injected pool handle (Q-2/Q-4 DI):
+  [[nodiscard]] std::unique_ptr<Thing> create_thing(memory::PoolHandle pool, ...);
+  //   → constructs via memory::pool_new<Thing>(pool, ...)
+
+  class Thing {
+  public:
+      // Both overloads — routes destruction back to the source pool, so the
+      // DEFAULT unique_ptr deleter is correct:
+      static void operator delete(void *p) noexcept;
+      static void operator delete(void *p, std::size_t) noexcept;
+      ...
+  };
+  ```
+
+- **Class-scoped `operator new` is forbidden** — it cannot carry the injected
+  handle and would force a global/TLS pool (violates Q-2).
+- **Smart pointers**: `std::make_unique<T>` only for pimpl `Impl`;
+  `std::unique_ptr<T>` with the default deleter only when `T` carries the
+  `operator delete` pair and was constructed via `pool_new`.
+- **Alignment**: `pool_new<T>` requires `alignof(T) <= 8` (pool payloads are
+  only ≥8-byte aligned; enforced by `static_assert`).
+- **Promotion safety**: classes promoted from aggregates with self-bound
+  storage (buffers bound to owning-struct storage, back-pointers) must keep a
+  stable address — delete copy/move per QJ unless an explicit rebind exists.
 
 ### Error Return Patterns — Mandatory
 
@@ -299,6 +378,28 @@ session pool for `changelevel`-scoped objects, frame pool for per-frame scratch.
 
 Raw `T*` in public APIs means "borrowed reference with engine lifetime". Document
 with `// @lifetime: engine` on the declaration. No `BorrowedRef<T>` type alias.
+Pool-owned objects follow the Q-22 factory + `operator delete` idiom (see
+"Class Lifecycle and Pool-Owned Classes" above).
+
+### Annotation Discipline — Mandatory
+
+Full decision: `xash3dpp/docs/design/decisions-style.md` §ANNOTATION_DISCIPLINE (QN).
+This is the normative matrix; applies to state-bearing types.
+
+| Marker | Required on |
+|--------|-------------|
+| `// @lifetime: <owner>` | every raw pointer/reference member and stored view (`span`/`string_view`) whose referent outlives the expression |
+| `// @thread-safety: <contract>` | every public class/interface header of a subsystem with any off-main surface or internal synchronisation |
+| `// @pre-reserved: <LIMIT>` | hot-path `vector`/`deque` members (Q-13) |
+| `// Pre:` | non-trivial preconditions not expressible in types (Q-15) |
+| `// SAFETY:` | every `reinterpret_cast`, sanctioned pointer pun, and Q-16 `const_cast` wrapper outside vendored-ABI layout-pin TUs |
+| `// Post:` | **RETIRED — do not introduce** (postconditions live in return types, `[[nodiscard]]`, asserts) |
+
+**Exemptions**: declare with a one-line
+`// @annotation-exempt: <pure-namespace|abi-pod|fnptr-table|cold-value-type>`
+on the type/namespace. Tooling counts exemptions as satisfied; reviewers
+judge marker truthfulness. Coverage is reported with denominators, never raw
+counts.
 
 ### `[[nodiscard]]` Completeness — Mandatory
 
