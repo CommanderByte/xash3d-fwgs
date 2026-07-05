@@ -208,6 +208,19 @@ SvTrace clip_move_to_entity( const MoveEnv &env, abi::edict_t *ent,
 
     if ( rotated )
     {
+        // TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy
+        // (S13 parity finding, deferred to a dedicated slice with the Q-18
+        // golden-vector generator — no map_loader ripple, server-only callers):
+        //   (a) from_angles builds the rotation in FLOAT trig (sinf + float
+        //       deg2rad) vs legacy Matrix4x4_CreateFromEntity's DOUBLE M_PI2/360
+        //       + double SinCos;
+        //   (b) invert_ortho + transform_point compute (v·R − t·R) whereas
+        //       legacy VectorITransform is (v − t)·R (subtract-first grouping);
+        //   (c) world_transform_aabb uses a plain transpose vs Invert_Simple's
+        //       transpose × 1/(row0·row0);
+        //   (d) transform_positive_plane assumes scale==1 (omits the
+        //       sqrt(row0·row0) normalization).
+        // Rotated-geometry parity ticks at S15/Chunk 11 (like pmove parity).
         matrix = ut::from_angles( transform_bbox ? view.origin() : offset,
                                   view.angles() );
         const ut::Matrix3x4 inv = ut::invert_ortho( matrix );
