@@ -25,6 +25,14 @@ target_include_directories(test_eiface_layout PRIVATE
     ${PROJECT_SOURCE_DIR}/../common
 )
 
+xash3dpp_add_test(test_pmove_layout SOURCE abi/test_pmove_layout.cpp LIBS xash3dpp_server)
+# Same include dance: the REAL legacy header pm_shared/pm_defs.h (which pulls
+# its sibling pm_info.h) for byte-exact pmove-struct offset parity.
+target_include_directories(test_pmove_layout PRIVATE
+    ${PROJECT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/../common
+)
+
 # S6 — fake game DLL doubles: MODULE libraries the loader test dlopens.
 # One source, per-target defines select the export surface (see
 # abi/fake_game_dll.cpp header comment).
