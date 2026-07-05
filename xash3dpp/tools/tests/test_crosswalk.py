@@ -18,8 +18,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from xtools.crosswalk import (  # noqa: E402
-    _DEEP_DIVE, _STYLE_A, _STYLE_D, _entry, _looks_legacy, _match_fileline,
-    _match_symbol, _missing, _next_def, _parse_header)
+    _DEEP_DIVE, _STYLE_A, _STYLE_D, _STYLE_E, _entry, _index_rows,
+    _looks_legacy, _match_fileline, _match_symbol, _missing, _next_def,
+    _parse_header)
 
 
 def _rows(*lines: str):
@@ -85,6 +86,49 @@ class NextDef(unittest.TestCase):
         rows = _rows("// SV_Foo (x.c:1)", "// -----------", "",
                      "bool test_it() {")
         self.assertEqual(_next_def(rows, 0)[0], "test_it")
+
+
+class StyleE(unittest.TestCase):
+    """The bare-symbol doc/section-divider form: `// SV_Foo` above a def."""
+
+    def test_bare_symbol_above_def_is_port(self):
+        rows = _rows("// SV_LinkEdict", "void WorldLinks::link_edict( E &e,")
+        entries = _index_rows(rows, "links.cpp")
+        self.assertEqual(len(entries), 1)
+        e = entries[0]
+        self.assertEqual(e["legacy_symbol"], "SV_LinkEdict")
+        self.assertEqual(e["cpp_symbol"], "WorldLinks::link_edict")
+        self.assertEqual(e["source"], "code-symbol")
+        self.assertEqual(e["confidence"], "symbol")
+        self.assertTrue(e["ported"])
+
+    def test_section_divider_block(self):
+        # the real form: rule / symbol / rule / blank / definition.
+        rows = _rows("// -----------", "// SV_LinkEdict", "// -----------", "",
+                     "void link_edict() {")
+        syms = [e["legacy_symbol"] for e in _index_rows(rows, "x.cpp")]
+        self.assertEqual(syms, ["SV_LinkEdict"])  # dividers don't add entries
+
+    def test_leading_symbol_above_statement_is_not_indexed(self):
+        # a citation (symbol opens the comment, but a statement follows) stays
+        # out of the index — the signature-gate is the noise filter.
+        rows = _rows("// SV_Foo returns false here", "    return x;")
+        self.assertEqual(_index_rows(rows, "x.cpp"), [])
+
+    def test_style_a_not_shadowed_by_e(self):
+        # a symbol WITH a file:line still resolves as Style A (high), not E.
+        rows = _rows("// SV_Multicast (sv_game.c:1): fan out", "int sv_mc() {")
+        entries = _index_rows(rows, "x.cpp")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["source"], "code-styleA")
+        self.assertEqual(entries[0]["confidence"], "high")
+
+    def test_prose_first_word_dropped(self):
+        # a non-legacy leading word never fires E even above a def.
+        rows = _rows("// helper that clips the move", "void clip_move() {")
+        self.assertEqual(_index_rows(rows, "x.cpp"), [])
+        # and the regex itself keeps only the first comment token.
+        self.assertEqual(_STYLE_E.search("  // SV_Foo bar").group(1), "SV_Foo")
 
 
 class Header(unittest.TestCase):

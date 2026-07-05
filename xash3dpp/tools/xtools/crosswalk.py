@@ -9,9 +9,12 @@ file-level in networking/map_loader), so every hit reports its `source` and
 `confidence` rather than pretending uniform coverage.  Annotation grammars
 (verified across src/): a symbol + `(file.c:line)` directly above the porting
 function (Style A, the gold source); a `// Legacy reference:` file header
-(Style B, file-level); `// Legacy <Symbol>` with no line (Style D, networking).
+(Style B, file-level); `// Legacy <Symbol>` with no line (Style D, networking);
+and a bare `// SV_Foo` symbol opening a doc / section-divider comment directly
+above the porting definition (Style E — the form that resolves class-method
+ports like SV_LinkEdict -> WorldLinks::link_edict, which A/B/D miss).
 
-A Style-A/D comment is treated as a *port* when the next substantive line is a
+A Style-A/D/E comment is treated as a *port* when the next substantive line is a
 function signature (definition or declaration), and as a mid-body *citation*
 (confidence "ref") otherwise — this is namespace-agnostic, unlike brace depth.
 """
@@ -38,6 +41,13 @@ _STYLE_B = re.compile(r"//\s*Legacy(?:\s+reference)?:\s*(.+)")
 # lookahead keeps "Legacy reference:" (Style B) out; captured symbols are then
 # filtered through _looks_legacy so prose words ("Legacy behavior") drop.
 _STYLE_D = re.compile(r"//\s*Legacy\s+(?!reference\b)([A-Za-z_]\w+)")
+# Style E: a bare legacy symbol as the FIRST token of a comment-first line,
+# with no file:line and no "Legacy" keyword — the "// SV_LinkEdict" doc /
+# section-divider form that sits directly above the porting definition (often a
+# class method, which Style A/B/D never resolve).  It only fires when _next_def
+# finds a real signature below, so prose that merely opens with a symbol
+# ("// SV_Foo returns false here") is rejected as a citation, not a port.
+_STYLE_E = re.compile(r"^\s*//+\s*([A-Za-z_]\w*)")
 # Deep-dive prose: Symbol (file.c:line[-range]) anywhere in a recon doc.
 _DEEP_DIVE = re.compile(
     r"\b([A-Za-z_]\w+)\s*\(\s*([\w./]+\.c)\s*:\s*(\d+)(?:\s*-\s*(\d+))?\s*\)")
@@ -91,7 +101,7 @@ def _entry(legacy_symbol, legacy_file, legacy_line, cpp_file, cpp_symbol,
         "cpp_line": cpp_line,
         "source": source,
         "confidence": confidence,
-        "ported": source in ("code-styleA", "code-networking")
+        "ported": source in ("code-styleA", "code-networking", "code-symbol")
         and cpp_symbol not in (None, "<file scope>"),
     }
 
@@ -120,8 +130,13 @@ def _next_def(rows, i, window: int = 12):
 
 
 def _index_code_file(path: Path) -> list[dict]:
-    rel = _rel(path)
-    rows = list(code_lines(path))  # (lineno, code_only, raw)
+    return _index_rows(list(code_lines(path)), _rel(path))  # (lineno, code, raw)
+
+
+def _index_rows(rows: list, rel: str) -> list[dict]:
+    """Extract every port annotation from a file's rows (pure; the disk read is
+    _index_code_file's job).  Style A wins and short-circuits; then D; then the
+    bare-symbol Style E, which only indexes when a real signature follows."""
     entries: list[dict] = []
     for i, (lineno, _code, raw) in enumerate(rows):
         if lineno <= 8:  # Style B file-header banner
@@ -145,6 +160,15 @@ def _index_code_file(path: Path) -> list[dict]:
                                   cpp_sym or "<file scope>", cpp_line or lineno,
                                   "code-networking",
                                   "symbol" if cpp_sym else "file"))
+            continue
+        me = _STYLE_E.search(raw)
+        if me and _looks_legacy(me.group(1)):
+            # Only a real definition below turns a leading-symbol comment into a
+            # port; a statement/citation leaves it out of the index.
+            cpp_sym, cpp_line, conf = _next_def(rows, i)
+            if cpp_sym and conf in ("high", "symbol"):
+                entries.append(_entry(me.group(1), None, None, rel, cpp_sym,
+                                      cpp_line, "code-symbol", "symbol"))
     return entries
 
 
