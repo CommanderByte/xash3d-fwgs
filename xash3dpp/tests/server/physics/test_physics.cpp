@@ -9,11 +9,13 @@
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
+#include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/physics.hpp>
+#include <xash3dpp/private/server/pmove.hpp>
 #include <xash3dpp/private/server/world_links.hpp>
 
 #include "../abi/fake_dll_state.hpp"
@@ -306,6 +308,211 @@ static void test_frame_loop_early_return()
     CHECK_EQ( g_err_calls, 0 );
 }
 
+// ---------------------------------------------------------------------------
+// pmove bridge (P2): SV_SetupPMove / SV_FinishPMove + the physent gather.
+// ---------------------------------------------------------------------------
+
+// A client-like edict linked into the world.  link_edict does not fill v.size
+// (legacy SetMinMaxSize does), so set it explicitly — the gather treats a
+// null-size entity as a point trigger and skips it.
+static abi::edict_t *make_client( PhysFixture &fx, const Vec3 &origin )
+{
+    abi::edict_t *e = fx.spawn( abi::k_movetype_walk, abi::k_solid_bbox, origin,
+                                Vec3{ -16, -16, -36 }, Vec3{ 16, 16, 36 } );
+    e->v.flags |= abi::k_fl_client;
+    e->v.health   = 100.0f;
+    e->v.maxspeed = 320.0f;
+    for ( int i = 0; i < 3; ++i )
+        e->v.size[i] = e->v.maxs[i] - e->v.mins[i];
+    return e;
+}
+
+// A solid modeled prop the gather should collect, with a deterministic absbox.
+static abi::edict_t *spawn_prop( PhysFixture &fx, int solid, const Vec3 &origin,
+                                 const Vec3 &mins, const Vec3 &maxs,
+                                 int modelindex )
+{
+    abi::edict_t *e =
+        fx.spawn( abi::k_movetype_none, solid, origin, mins, maxs );
+    e->v.modelindex = modelindex;
+    e->v.size[0] = maxs.x - mins.x;
+    e->v.size[1] = maxs.y - mins.y;
+    e->v.size[2] = maxs.z - mins.z;
+    e->v.absmin[0] = origin.x + mins.x;
+    e->v.absmin[1] = origin.y + mins.y;
+    e->v.absmin[2] = origin.z + mins.z;
+    e->v.absmax[0] = origin.x + maxs.x;
+    e->v.absmax[1] = origin.y + maxs.y;
+    e->v.absmax[2] = origin.z + maxs.z;
+    return e;
+}
+
+static void test_pmove_setup_state()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 1;
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 100.0f, 0.0f, 0.0f } );
+    pl->v.velocity[0] = 1.0f; pl->v.velocity[1] = 2.0f; pl->v.velocity[2] = 3.0f;
+    pl->v.v_angle[0] = 10.0f; pl->v.v_angle[1] = 20.0f; pl->v.v_angle[2] = 30.0f;
+    pl->v.teleport_time = 5.0f;
+
+    sv::ServerClient cl;
+    cl.edict    = pl;
+    cl.timebase = 2.0;
+
+    abi::usercmd_t ucmd{};
+    ucmd.msec    = 50;
+    ucmd.buttons = 0x0008;
+
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "testphys" );
+    const abi::playermove_t &pm = *fx.rt.pmove;
+
+    CHECK_EQ( pm.player_index, fx.rt.arena.index_of( pl ) - 1 );
+    CHECK_EQ( pm.multiplayer, 0 );
+    CHECK( pm.time == 2000.0f ); // timebase(2.0) * 1000
+    CHECK( pm.origin[0] == 100.0f && pm.origin[1] == 0.0f );
+    CHECK( pm.velocity[0] == 1.0f && pm.velocity[2] == 3.0f );
+    CHECK( pm.angles[0] == 10.0f && pm.angles[1] == 20.0f && pm.angles[2] == 30.0f );
+    CHECK_EQ( pm.usehull, 0 );          // not ducking
+    CHECK_EQ( pm.onground, 0 );         // SP → not forced to -1
+    CHECK_EQ( pm.dead, 0 );             // health 100
+    CHECK( pm.waterjumptime == 5.0f );  // teleport_time
+    CHECK( pm.maxspeed == fx.rt.movevars.maxspeed );
+    CHECK( pm.clientmaxspeed == 320.0f );
+    CHECK_EQ( static_cast<int>( pm.cmd.msec ), 50 );
+    CHECK_EQ( static_cast<int>( pm.cmd.buttons ), 0x0008 );
+    CHECK( fx.rt.globals.frametime > 0.049f && fx.rt.globals.frametime < 0.051f );
+    CHECK( std::string( pm.physinfo ) == "testphys" );
+    CHECK( pm.numphysent >= 1 );        // world always present
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+static void test_pmove_setup_multiplayer_ducking()
+{
+    PhysFixture fx( /*dedicated=*/true, /*maxclients=*/4, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 4;
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    pl->v.flags |= abi::k_fl_ducking;
+
+    sv::ServerClient cl;
+    cl.edict = pl;
+
+    abi::usercmd_t ucmd{};
+    ucmd.msec = 20;
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    const abi::playermove_t &pm = *fx.rt.pmove;
+
+    CHECK_EQ( pm.multiplayer, 1 );
+    CHECK_EQ( pm.onground, -1 ); // MP forces onground = -1
+    CHECK_EQ( pm.usehull, 1 );   // FL_DUCKING
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+static void test_pmove_gather()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 1;
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient cl;
+    cl.edict = pl;
+    abi::usercmd_t ucmd{};
+    ucmd.msec = 50;
+
+    // baseline: world only (the player has modelindex 0 → no physent model).
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    const int world_only = fx.rt.pmove->numphysent;
+    CHECK_EQ( world_only, 1 );
+
+    // a modeled prop within the 256-unit cube is gathered.
+    const int mi = fx.rt.precache.model_index( "models/thing.mdl" );
+    CHECK( mi > 0 );
+    abi::edict_t *prop = spawn_prop( fx, abi::k_solid_bbox, Vec3{ 40, 0, 0 },
+                                     Vec3{ -8, -8, -8 }, Vec3{ 8, 8, 8 }, mi );
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    CHECK_EQ( fx.rt.pmove->numphysent, 2 );
+    CHECK_EQ( fx.rt.pmove->numvisent, 2 );
+    // find the prop physent and check its copied fields.
+    bool found = false;
+    for ( int i = 0; i < fx.rt.pmove->numphysent; ++i )
+    {
+        const abi::physent_t &pe = fx.rt.pmove->physents[i];
+        if ( pe.info == fx.rt.arena.index_of( prop ) )
+        {
+            found = true;
+            CHECK_EQ( pe.solid, abi::k_solid_bbox );
+            CHECK( pe.mins[0] == -8.0f && pe.maxs[2] == 8.0f );
+            CHECK( std::string( pe.name ) == "models/thing.mdl" );
+        }
+    }
+    CHECK( found );
+
+    // moved beyond the cube → culled.
+    prop->v.origin[0]  = 500.0f;
+    prop->v.absmin[0]  = 492.0f;
+    prop->v.absmax[0]  = 508.0f;
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    CHECK_EQ( fx.rt.pmove->numphysent, 1 ); // world only again
+
+    // a model-less entity is skipped (legacy SV_ModelHandle NULL).
+    (void)spawn_prop( fx, abi::k_solid_bbox, Vec3{ 30, 0, 0 },
+                      Vec3{ -8, -8, -8 }, Vec3{ 8, 8, 8 }, /*modelindex=*/0 );
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    CHECK_EQ( fx.rt.pmove->numphysent, 1 );
+
+    // a non-brush "ladder" is NOT a moveent (ladders require a brush model).
+    abi::edict_t *fake_ladder = spawn_prop( fx, abi::k_solid_not, Vec3{ 20, 0, 0 },
+                                            Vec3{ -8, -8, -8 }, Vec3{ 8, 8, 8 }, mi );
+    fake_ladder->v.skin = ml::k_contents_ladder;
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    CHECK_EQ( fx.rt.pmove->nummoveent, 0 );
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+static void test_pmove_finish()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient cl;
+    cl.edict = pl;
+
+    abi::playermove_t &pm = *fx.rt.pmove;
+    pm.origin[0] = 7.0f; pm.origin[1] = 8.0f; pm.origin[2] = 9.0f;
+    pm.velocity[0] = 1.0f; pm.velocity[1] = 2.0f; pm.velocity[2] = 3.0f;
+    pm.waterjumptime = 4.0f;
+    pm.angles[0] = 30.0f; pm.angles[1] = 60.0f; pm.angles[2] = 12.0f;
+    pm.usehull       = 1; // ducked hull
+    pm.numphysent    = 1;
+    pm.onground      = -1;
+    pl->v.fixangle   = 0;
+    pl->v.flags |= abi::k_fl_onground; // finish should clear it (onground -1)
+
+    sv::sv_finish_pmove( fx.rt, cl );
+
+    CHECK( pl->v.origin[0] == 7.0f && pl->v.origin[2] == 9.0f );
+    CHECK( pl->v.velocity[1] == 2.0f );
+    CHECK( pl->v.teleport_time == 4.0f );
+    CHECK( ( pl->v.flags & abi::k_fl_onground ) == 0 );
+    CHECK( pl->v.v_angle[0] == 30.0f && pl->v.v_angle[1] == 60.0f );
+    CHECK( pl->v.angles[0] == -10.0f ); // pitch = -v_angle.pitch / 3
+    CHECK( pl->v.angles[1] == 60.0f );  // yaw   = v_angle.yaw
+    CHECK( pl->v.angles[2] == 12.0f );  // roll  = v_angle.roll
+    // ducked hull extents (hull_bounds[1])
+    CHECK( pl->v.mins[2] == fx.rt.hull_bounds[1].mins.z );
+    CHECK( pl->v.maxs[2] == fx.rt.hull_bounds[1].maxs.z );
+    CHECK( pl->v.size[2] == pl->v.maxs[2] - pl->v.mins[2] );
+
+    // onground >= 0 resolves a groundentity from the physent info.
+    pm.onground            = 0;
+    pm.physents[0].info    = 0; // world
+    sv::sv_finish_pmove( fx.rt, cl );
+    CHECK( ( pl->v.flags & abi::k_fl_onground ) != 0 );
+    CHECK( pl->v.groundentity == fx.rt.arena.edict_num( 0 ) );
+    CHECK_EQ( g_err_calls, 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -318,6 +525,10 @@ int main()
     RUN_TEST( test_pusher_linear_move );
     RUN_TEST( test_frame_loop_dedicated );
     RUN_TEST( test_frame_loop_early_return );
+    RUN_TEST( test_pmove_setup_state );
+    RUN_TEST( test_pmove_setup_multiplayer_ducking );
+    RUN_TEST( test_pmove_gather );
+    RUN_TEST( test_pmove_finish );
 
     std::filesystem::remove_all( g_root );
 

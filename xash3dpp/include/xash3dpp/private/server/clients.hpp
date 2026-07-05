@@ -193,6 +193,8 @@ struct ServerClient
 
     double connection_started  = 0.0; // realtime of the connect
     double connecttime         = 0.0; // set on "begin"
+    double timebase            = 0.0; // cl->timebase — SV_EstablishTimeBase (P4);
+                                      // SV_SetupPMove reads pmove->time = timebase*1000
     double last_received       = 0.0; // netchan last_received mirror
     double next_messagetime    = 0.0;
     double next_messageinterval = 0.05;

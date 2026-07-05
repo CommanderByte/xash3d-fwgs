@@ -15,6 +15,7 @@
 //
 // Threading: main-thread only (server-boundary OQ-9).
 
+#include <xash3dpp/abi/pm_defs.hpp>
 #include <xash3dpp/abi/pm_movevars.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/world.hpp>
@@ -156,6 +157,13 @@ struct ServerRuntime
     // cvars here; the pmove bridge and delta layer read them.
     ::xash::abi::movevars_t movevars{};
     ::xash::abi::movevars_t oldmovevars{};
+
+    // svgame.pmove — the single player-move working set (physents[600] etc.,
+    // ~270 KB), pool-owned to keep ServerRuntime off the stack (legacy
+    // Mem_Alloc from svgame.mempool).  Allocated in load_progs (SV_InitClient-
+    // Move), freed in unload_progs; the pmove bridge (physics/pmove.cpp) fills
+    // and drains it per usercmd.
+    ::xash::memory::pool_ptr<::xash::abi::playermove_t> pmove;
 
     // sv.lightstyles (S8 animates them in SV_RunLightStyles); the pfnLightStyle
     // slot writes through the bridge pointer install_world_bridge wires.

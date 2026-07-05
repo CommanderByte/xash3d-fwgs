@@ -37,6 +37,7 @@ add_library(xash3dpp_server STATIC
     lifecycle/spawn.cpp
     physics/movevars.cpp
     physics/physics.cpp
+    physics/pmove.cpp
     clients/info_string.cpp
     clients/filter.cpp
     clients/log.cpp

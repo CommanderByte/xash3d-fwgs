@@ -78,6 +78,8 @@ inline constexpr int k_world_index = 1;
 
 // common/const.h :97 — entvars_t.deadflag (DEAD_NO; alive)
 inline constexpr int k_dead_no = 0;
+// common/const.h :99 — entvars_t.deadflag (DEAD_DEAD; corpse — pmove skips it)
+inline constexpr int k_dead_dead = 2;
 
 // common/const.h :610/:614 — pfnEmitSound channels
 inline constexpr int k_chan_auto = 0;

@@ -19,6 +19,7 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/private/server/pmove.hpp>
 #include <xash3dpp/private/server/world_links.hpp>
 
 #include <cstdio>
@@ -200,10 +201,20 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     rt.game.funcs().pfnGameInit();
     rt.game_initialized = true;
 
-    // SV_InitClientMove position (sv_game.c:5358): the hull-bounds
-    // enumeration is the part the trace kernel needs now; the rest of the
-    // pmove bridge is S8.  XASH3DPP-STUB(chunk6): playermove_t wiring.
+    // SV_InitClientMove (sv_game.c:5358): enumerate the hull bounds the trace
+    // kernel needs and allocate the single player-move working set (legacy
+    // Mod_Init allocates svgame.pmove once; freed in unload_progs).  The PM_*
+    // callback table it exposes is wired by the P3 trace family.
     rt.hull_bounds = query_hull_bounds( rt.game.funcs());
+    rt.pmove       = ::xash::memory::pool_ptr<::xash::abi::playermove_t>(
+        ::xash::memory::pool_new<::xash::abi::playermove_t>( rt.game_pool ));
+    if ( rt.pmove == nullptr )
+    {
+        host_error( rt, "load_progs: playermove_t allocation failed" );
+        rt.game_loaded = true;
+        unload_progs( rt );
+        return false;
+    }
 
     // Delta_Init (sv_game.c:5360) — legacy hard-errors from inside
     // Delta_Load when delta.lst is unreadable.
@@ -280,6 +291,7 @@ void unload_progs( ServerRuntime &rt ) noexcept
     rt.arena.set_private_releaser( nullptr, nullptr );
     rt.precache.shutdown();
     snapshot_shutdown( rt ); // Z_Free svs.baselines + packet_entities + frames
+    rt.pmove.reset();        // free svgame.pmove
 
     rt.game.unload(); // COM_FreeLibrary
 
@@ -341,8 +353,7 @@ void deactivate_server( ServerRuntime &rt ) noexcept
         rt.arena.free_edict( ed, rt.level.time );
     }
 
-    // PM_ClearPhysEnts( svgame.pmove ) — XASH3DPP-STUB(chunk6-S8): pmove
-    // bridge lands in S8.
+    pm_clear_phys_ents( rt ); // PM_ClearPhysEnts( svgame.pmove )
 
     // SV_EmptyStringPool( true ) + Mem_EmptyPool( svgame.stringspool ): the
     // per-level dynamic arena is reset; the static arena survives.
