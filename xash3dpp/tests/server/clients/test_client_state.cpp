@@ -11,6 +11,9 @@
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/networking/address.hpp>
+#include <xash3dpp/networking/networking.hpp>
+#include <xash3dpp/platform/os_socket.hpp>
+#include <xash3dpp/platform/platform_sockets.hpp>
 #include <xash3dpp/private/server/clients.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -21,10 +24,12 @@
 
 #include "../../test_helpers.hpp"
 
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -32,6 +37,10 @@ namespace sv  = xash::server;
 namespace abi = xash::abi;
 namespace cc  = xash::cmd_cvar;
 namespace net = xash::networking;
+
+using xash::platform::IpFamily;
+using xash::platform::IPlatformSockets;
+using xash::platform::OsSocket;
 
 static int g_pass = 0, g_fail = 0;
 
@@ -93,6 +102,47 @@ struct CaptureSink final : sv::IOobSink
     }
 };
 
+// A do-nothing platform sockets layer: NetworkContext::init only creates its
+// fragment pool (no socket syscalls) and these tests never transmit, so
+// open_udp just hands back a valid-looking handle and the rest are inert.
+struct FakeSockets final : IPlatformSockets
+{
+    net::Result<OsSocket> open_udp( IpFamily, std::uint16_t,
+                                    std::string_view ) noexcept override
+    {
+        return OsSocket{ static_cast<xash::platform::SocketHandle>( 0x42 ) };
+    }
+    net::Result<OsSocket> open_tcp( IpFamily ) noexcept override
+    {
+        return std::unexpected( net::NetError::NotInitialised );
+    }
+    net::Result<std::size_t> sendto( const OsSocket &, std::span<const std::byte>,
+                                     const net::NetAddress & ) noexcept override
+    {
+        return std::unexpected( net::NetError::NotInitialised );
+    }
+    net::Result<std::size_t> recvfrom( const OsSocket &, std::span<std::byte>,
+                                       net::NetAddress & ) noexcept override
+    {
+        return std::unexpected( net::NetError::WouldBlock );
+    }
+    net::Result<std::size_t> send_stream( const OsSocket &,
+                                          std::span<const std::byte> ) noexcept override
+    {
+        return std::unexpected( net::NetError::NotInitialised );
+    }
+    net::Result<std::size_t> recv_stream( const OsSocket &,
+                                          std::span<std::byte> ) noexcept override
+    {
+        return std::unexpected( net::NetError::NotInitialised );
+    }
+    net::Result<void> connect_stream( const OsSocket &,
+                                      const net::NetAddress & ) noexcept override
+    {
+        return std::unexpected( net::NetError::NotInitialised );
+    }
+};
+
 static fake_dll::State *state_of( sv::GameDll &dll )
 {
     auto fn = reinterpret_cast<fake_dll::StateFn>( dll.symbol( "fake_state" ) );
@@ -106,7 +156,11 @@ struct ConnFixture
     cc::test::NullPolicy         policy;
     cc::CmdCvarContext ctx = cc::test::make_test_context( oracle, policy );
     xash::MapLoader   maps;
-    sv::ServerRuntime rt;
+    // Declared before `rt` so the NetworkContext (and its fragment pool)
+    // outlives the per-client netchans that borrow it.
+    FakeSockets         net_sockets;
+    net::NetworkContext net_ctx;
+    sv::ServerRuntime   rt;
     fake_dll::State  *st = nullptr;
 
     ConnFixture()
@@ -118,6 +172,11 @@ struct ConnFixture
         mp.filesystem = &fs;
         REQUIRE( maps.init( mp ) );
 
+        // Bring the NetworkContext up so connect can arm each slot's netchan
+        // (Netchan_Setup pulls the driver + fragment pool from here).
+        REQUIRE( net_ctx.init( net::NetworkInitParams{ .sockets   = &net_sockets,
+                                                       .dedicated = true } ) );
+
         ( void )ctx.cvar_get_or_create( "sv_maxclients", "1", 0 );
 
         rt.cfg.game_dir   = "game";
@@ -127,6 +186,7 @@ struct ConnFixture
         rt.cvars          = &ctx;
         rt.fs             = &fs;
         rt.maps           = &maps;
+        rt.net            = &net_ctx;
 
         REQUIRE( sv::spawn_server( rt, "conntest", nullptr, false ) );
         st = state_of( rt.game );
@@ -307,6 +367,46 @@ static void test_fake_connect()
     CHECK( cl.state == sv::ClientState::Spawned );
 }
 
+// ---------------------------------------------------------------------------
+// Netchan lifecycle: connect arms the slot's channel through the host-owned
+// NetworkContext (Netchan_Setup); drop flushes it (Netchan_Clear).
+// ---------------------------------------------------------------------------
+static void test_netchan_setup_and_clear()
+{
+    ConnFixture fx;
+    CaptureSink sink;
+    const net::NetAddress from = client_adr();
+
+    const std::uint32_t window =
+        static_cast<std::uint32_t>( fx.rt.clients.realtime / 5 );
+    const std::int32_t chal =
+        sv::compute_challenge( fx.rt.persistent.challenge_salt, from, window );
+
+    const int slot = sv::connect_client(
+        fx.rt, from, 49, chal,
+        "\\qport\\27015\\uuid\\0123456789abcdef0123456789abcdef",
+        "\\name\\NetchanPlayer", sink );
+    REQUIRE( slot == 0 );
+
+    net::Netchan &nc = fx.rt.clients.netchans[0];
+
+    // Netchan_Setup ran against the injected NetworkContext: armed against the
+    // peer, with the address + qport carried over from the connect command.
+    CHECK( nc.is_active() );
+    CHECK( nc.qport() == static_cast<std::uint16_t>( 27015 ) );
+    CHECK( nc.remote_address() == from );
+
+    // A queued reliable payload is flushed by Netchan_Clear at drop.
+    const std::byte payload[4] = { std::byte{ 1 }, std::byte{ 2 },
+                                   std::byte{ 3 }, std::byte{ 4 } };
+    CHECK( nc.write_reliable( payload ) );
+    CHECK( nc.reliable_length_bits() > 0 );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    sv::drop_client( fx.rt, cl, false );
+    CHECK( nc.reliable_length_bits() == 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -317,6 +417,7 @@ int main()
     RUN_TEST( test_connect_rejected_by_game );
     RUN_TEST( test_connect_validation );
     RUN_TEST( test_fake_connect );
+    RUN_TEST( test_netchan_setup_and_clear );
 
     std::filesystem::remove_all( g_root );
     std::printf( "server_client_state: %d passed, %d failed\n", g_pass, g_fail );

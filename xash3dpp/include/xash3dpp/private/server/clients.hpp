@@ -19,6 +19,7 @@
 #include <xash3dpp/abi/usercmd.hpp>
 #include <xash3dpp/networking/address.hpp>
 #include <xash3dpp/networking/message_buf.hpp>
+#include <xash3dpp/networking/netchan.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -143,6 +144,22 @@ struct ServerLog
     // File I/O is a filesystem-satellite seam; the format + UDP path are here.
 };
 
+// SV_GetFragmentSize (sv_client.c:125) as the per-netchan block-size callback.
+// One shared instance backs every client netchan — it returns 0 ("use the
+// netchan default") for every mode, which is client-agnostic, so no per-client
+// object is needed until the userinfo-driven sizing lands.
+struct ServerFragmentSizer final : ::xash::networking::IBlockSizeProvider
+{
+    // XASH3DPP-STUB(chunk6-S9): the real SV_GetFragmentSize — local netchan ⇒
+    // 64000; else cl_dlmax/cl_urmax/cl_frmax userinfo bounds (quirk-3 swapped
+    // min/max) minus HEADER_BYTES.  Only affects large (download/signon)
+    // transfers; 0 keeps the netchan's built-in fragment sizing meanwhile.
+    [[nodiscard]] int block_size( ::xash::networking::FragSize ) noexcept override
+    {
+        return 0;
+    }
+};
+
 // --- one client slot (sv_client_t subset) -----------------------------------
 
 struct ServerClient
@@ -212,6 +229,13 @@ struct ClientMachinery
     ServerClient clients[k_max_clients] = {};
     int          maxclients = 0;  // mirror of svs.maxclients (set at spawn)
     int          g_userid   = 1;  // monotonic; NEVER reset per map
+
+    // Per-client netchan (sv_client_t.netchan), slot-parallel to `clients`:
+    // Netchan_Setup at connect, Netchan_Clear at drop; fake clients get none.
+    // ClientMachinery is address-stable (see the multicast note below), so the
+    // block_size_provider (&fragment_sizer) each netchan borrows stays valid.
+    ::xash::networking::Netchan netchans[k_max_clients];
+    ServerFragmentSizer         fragment_sizer;
 
     char serverinfo[k_max_serverinfo] = {};
     char localinfo[k_max_serverinfo]  = {};

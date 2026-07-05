@@ -123,7 +123,7 @@ xash3dpp_add_test(test_client_messages SOURCE clients/test_messages.cpp
 xash3dpp_add_test(test_client_state SOURCE clients/test_client_state.cpp
     LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem
          xash3dpp_map_loader xash3dpp_utilities xash3dpp_networking
-         cmd_cvar_test_stubs)
+         xash3dpp_platform cmd_cvar_test_stubs)
 target_compile_definitions(test_client_state PRIVATE
     FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
 )

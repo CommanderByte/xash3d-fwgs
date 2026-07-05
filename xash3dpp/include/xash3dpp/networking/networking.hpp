@@ -11,6 +11,7 @@
 // All public functions are noexcept and main-thread-only unless documented
 // otherwise.  Background DNS thread is internal and uses the resolver mutex.
 
+#include <xash3dpp/memory/memory.hpp>          // PoolHandle (fragment_pool)
 #include <xash3dpp/networking/address.hpp>
 #include <xash3dpp/networking/errors.hpp>
 #include <xash3dpp/networking/master_list.hpp>
@@ -110,6 +111,22 @@ public:
         SocketKind                  sock,
         std::span<const std::byte>  data,
         const NetAddress           &to ) noexcept;
+
+    // ---- Netchan support (per-peer channel construction) ------------------
+
+    // Resolve a wire protocol number to a shared IProtocolDriver — the SAME
+    // driver the context's own netchan path uses (the injected
+    // protocol_registry, or the built-in GoldSrc default registry for 48/49
+    // when none was injected).  Returns nullptr for an unknown protocol.  The
+    // driver is owned by the registry (process-wide, immutable); callers borrow
+    // it to build Netchan::setup() configs (server: one netchan per client).
+    // @lifetime: registry (outlives the context)
+    [[nodiscard]] IProtocolDriver *protocol_driver( std::uint16_t protocol ) noexcept;
+
+    // The "networking" fragment pool created at init().  Per-peer Netchans back
+    // their fragment storage on this handle (see netchan.hpp).  Returns an
+    // invalid handle before init() / after shutdown().
+    [[nodiscard]] xash::memory::PoolHandle fragment_pool() const noexcept;
 
     // ---- Stats ------------------------------------------------------------
 

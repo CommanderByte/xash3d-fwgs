@@ -5,6 +5,7 @@
 // Transport, netchan, codec, and delta work lands in Layer 1+ chunks.
 
 #include <xash3dpp/private/networking/context_impl.hpp>
+#include <xash3dpp/private/networking/wire/protocol_driver_default.hpp>
 
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/memory/memory.hpp>
@@ -262,6 +263,24 @@ Result<void> NetworkContext::send_packet(
     impl_->stats.packets_sent.fetch_add( 1, std::memory_order_relaxed );
     impl_->stats.bytes_sent.fetch_add( *tx, std::memory_order_relaxed );
     return {};
+}
+
+IProtocolDriver *NetworkContext::protocol_driver( std::uint16_t protocol ) noexcept
+{
+    if( !impl_ )
+        return nullptr;
+
+    // Same resolution the internal netchan path uses: the injected registry,
+    // or the process-wide default (GoldSrc 48/49) when none was supplied.
+    IProtocolDriverRegistry &reg = impl_->protocol_registry != nullptr
+                                       ? *impl_->protocol_registry
+                                       : default_protocol_driver_registry();
+    return reg.resolve( protocol );
+}
+
+xash::memory::PoolHandle NetworkContext::fragment_pool() const noexcept
+{
+    return impl_ ? impl_->pool : xash::memory::PoolHandle{};
 }
 
 const NetworkingStats &NetworkContext::stats() const noexcept

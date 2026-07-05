@@ -318,10 +318,25 @@ int connect_client( ServerRuntime &rt, net::NetAddress from, int protocol,
     ut::strncpy( newcl->hashedcdkey, uuid, 33 ); // 32 chars + NUL
     newcl->hashedcdkey[32] = '\0';
 
-    // XASH3DPP-STUB(S8-seam): Netchan_Setup for this slot (NETCHAN_USE_LZSS
-    // unless local, SV_GetFragmentSize callback) — the netchan is reused per
-    // slot per the boundary Dependencies table; the host wires the shared
-    // NetworkContext before the first packet is transmitted.
+    // Netchan_Setup (sv_client.c:404): arm this slot's channel against the peer
+    // through the host-owned NetworkContext (its GoldSrc driver + fragment
+    // pool).  The netchan is reused per slot; a fresh setup() resets all
+    // sequence state, which is exactly the reconnect contract.  NETCHAN_USE_LZSS
+    // unless the peer is local.  When the server is offline (rt.net == nullptr —
+    // scaffold / connection-state unit tests) the channel is left inactive; the
+    // state machine still runs, only transmit/process are unavailable.
+    if ( rt.net != nullptr )
+    {
+        net::NetchanConfig ncfg;
+        ncfg.sock                = net::SocketKind::Server;
+        ncfg.remote_address      = from;
+        ncfg.qport               = qport;
+        ncfg.driver              = rt.net->protocol_driver( k_protocol_version );
+        ncfg.block_size_provider = &cm.fragment_sizer;
+        ncfg.pool                = rt.net->fragment_pool();
+        ncfg.flags.use_lzss      = !is_loopback( from );
+        ( void )cm.netchans[slot].setup( ncfg );
+    }
 
     newcl->connection_started  = cm.realtime;
     newcl->last_received       = cm.realtime;
@@ -555,6 +570,13 @@ void drop_client( ServerRuntime &rt, ServerClient &cl, bool crash ) noexcept
     cl.edict      = nullptr;
     cl.reliable_bits = 0;
     cl.datagram_bits = 0;
+
+    // Netchan_Clear (sv_client.c:612): flush this slot's reliable + fragment
+    // queues; a later connect re-arms it via Netchan_Setup.
+    const int slot = static_cast<int>( &cl - rt.clients.clients );
+    if ( slot >= 0 && slot < k_max_clients )
+        rt.clients.netchans[slot].clear();
+
     // XASH3DPP-STUB(S8-seam): broadcast SV_FullClientUpdate (empty-name form)
     // into sv.reliable_datagram + NET_MasterClear on empty server.
 }
