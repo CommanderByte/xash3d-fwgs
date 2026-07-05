@@ -459,32 +459,87 @@ def limits_scan(subsystem: str | None) -> dict:
 
 _FUNC_DEF = re.compile(r"^[\w:\[\]<>,*&~\s]+?\b([\w~]+(?:::[\w~]+)+|\w+)\s*\([^;{}]*\)?\s*(?:const)?\s*(?:noexcept)?\s*\{?\s*$")
 
+# A stub/TODO marker, capturing the optional parenthesized tag right after the
+# keyword: `// XASH3DPP-STUB(chunk6-S9) ...` -> tag "chunk6-S9"; a bare
+# `// TODO: ...` leaves the tag group empty.
+_STUB_RX = re.compile(r"//\s*(TODO|STUB|XASH3DPP-STUB)\b(?:\(([^)]*)\))?(.*)")
 
-def stub_scan(subsystem: str) -> dict:
+
+def _norm_tag(tag: str | None) -> str:
+    """`by_tag` bucket key: fold whitespace + case so the noisy TODO variants
+    ('Chunk 7', 'chunk7', 'Chunk 7 ') collapse to one bucket; untagged markers
+    bucket together."""
+    if not tag or not tag.strip():
+        return "(untagged)"
+    return re.sub(r"\s+", "", tag).lower()
+
+
+def _scan_stub_text(text: str, rel: str) -> list[dict]:
+    """Stub/TODO markers in one file's raw text, each with its enclosing symbol
+    and the parenthesized marker tag.  Pure over text so it runs identically on
+    a working-tree file and a `git show` blob (the HEAD~1 delta)."""
+    stubs: list[dict] = []
+    enclosing = "<file scope>"
+    for lineno, rawline in enumerate(text.splitlines(), start=1):
+        m = _FUNC_DEF.match(rawline)
+        if m and "(" in rawline:
+            enclosing = m.group(1)
+        tm = _STUB_RX.search(rawline)
+        if tm:
+            stubs.append({
+                "file": rel, "line": lineno, "symbol": enclosing,
+                "tag": (tm.group(2) or "").strip(),
+                "marker": tm.group(0).strip()[:120],
+            })
+    return stubs
+
+
+def _count_by_tag(stubs: list[dict]) -> dict:
+    counts: dict[str, int] = {}
+    for s in stubs:
+        key = _norm_tag(s.get("tag"))
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
+def stub_scan(subsystem: str, delta: bool = False) -> dict:
     subs = resolve_scope(subsystem)
     stubs: list[dict] = []
-    todo_count = 0
     for sub in subs:
         src_dir = SRC / sub
         if not src_dir.is_dir():
             continue
         for path in sorted(src_dir.rglob("*.cpp")):
-            enclosing = "<file scope>"
             text = path.read_text(encoding="utf-8", errors="replace")
-            for lineno, rawline in enumerate(text.splitlines(), start=1):
-                m = _FUNC_DEF.match(rawline)
-                if m and "(" in rawline:
-                    enclosing = m.group(1)
-                tm = re.search(r"//\s*(TODO|STUB|XASH3DPP-STUB)\b(.*)", rawline)
-                if tm:
-                    todo_count += 1
-                    stubs.append({
-                        "file": _rel(path), "line": lineno,
-                        "symbol": enclosing, "marker": tm.group(0).strip()[:120],
-                    })
-    tests = _test_liveness(subs)
-    return {"subsystems": subs, "todo_count": todo_count, "stubs": stubs,
-            "tests": tests}
+            stubs.extend(_scan_stub_text(text, _rel(path)))
+    by_tag = _count_by_tag(stubs)
+    result = {"subsystems": subs, "todo_count": len(stubs), "stubs": stubs,
+              "by_tag": by_tag, "tests": _test_liveness(subs)}
+    if delta:
+        result["delta_by_tag"] = _stub_delta_by_tag(subs, by_tag)
+    return result
+
+
+def _stub_delta_by_tag(subs: list[str], now_by_tag: dict) -> dict:
+    """`by_tag`(worktree) - `by_tag`(HEAD~1): a net-zero refactor (retire one
+    tag, add another) shows as +1/-1 instead of a silently-unchanged total.
+    Walks current files only, so a wholesale file deletion is not reflected."""
+    from . import state  # git plumbing lives in the state layer
+    prev: list[dict] = []
+    for sub in subs:
+        src_dir = SRC / sub
+        if not src_dir.is_dir():
+            continue
+        for path in sorted(src_dir.rglob("*.cpp")):
+            rel = _rel(path)
+            rc, lines = state._git(["show", "HEAD~1:%s" % rel])
+            if rc != 0:
+                continue  # absent at HEAD~1 (added since) -> no prior markers
+            prev.extend(_scan_stub_text("\n".join(lines), rel))
+    prev_by_tag = _count_by_tag(prev)
+    tags = set(now_by_tag) | set(prev_by_tag)
+    delta = {t: now_by_tag.get(t, 0) - prev_by_tag.get(t, 0) for t in sorted(tags)}
+    return {t: d for t, d in delta.items() if d != 0}
 
 
 def _test_liveness(subs: list[str]) -> dict:

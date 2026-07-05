@@ -169,11 +169,14 @@ def finish_check(subsystem: str, run_tests: bool = False) -> dict:
 
 
 @mcp.tool()
-def stub_scan(subsystem: str) -> dict:
+def stub_scan(subsystem: str, delta: bool = False) -> dict:
     """TODO/stub markers with enclosing symbols plus a live-vs-stub test
-    tally for a subsystem."""
+    tally for a subsystem. `by_tag` counts markers by their parenthesized
+    tag (chunk6, chunk6-S9, S8-seam, ...); delta=True adds `delta_by_tag`,
+    the net change per tag vs HEAD~1 (surfaces net-zero marker churn — a
+    retired stub offset by a new one)."""
     _maybe_reload()
-    return checks.stub_scan(subsystem)
+    return checks.stub_scan(subsystem, delta=delta)
 
 
 @mcp.tool()
