@@ -183,9 +183,16 @@ struct ServerRuntime
     // LevelState/PersistentState (clean merge boundary with the S8 slice).
     ClientMachinery clients;
 
-    // S9 completion — svs.baselines + sv.instanced.  The packet_entities ring
-    // and per-client frames ring land in the following snapshot sub-slices.
+    // S9 completion — svs.baselines + sv.instanced + the packet_entities ring
+    // + per-client frames rings (snapshot.hpp).
     SnapshotState snapshot;
+
+    // sv.signon (server.h:169): the reliable signon message every connecting
+    // client replays — baselines (now), precache lists / user messages (later
+    // slices).  Pool-allocated once (snapshot_alloc_signon), the MessageBuf
+    // rebinds it; reset each spawn; the buffer is freed in snapshot_shutdown.
+    std::byte                     *signon_buf = nullptr; // [k_max_init_msg]
+    ::xash::networking::MessageBuf signon;
 
     bool game_loaded = false;
 

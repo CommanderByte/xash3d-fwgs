@@ -160,6 +160,8 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     // svs.static_entities (pfnMakeStatic) remains a later snapshot sub-slice.
     if ( ok )
         ok = snapshot_alloc_baselines( rt );
+    if ( ok )
+        ok = snapshot_alloc_signon( rt ); // sv.signon buffer (baselines/precache)
     rt.bridge.snapshot = &rt.snapshot; // pfnCreateInstancedBaseline reaches here
 
     if ( ok )

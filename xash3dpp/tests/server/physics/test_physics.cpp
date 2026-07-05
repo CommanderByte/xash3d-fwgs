@@ -42,6 +42,18 @@ static const char *k_delta_lst =
     "event_t gamedll Game_EventEncode\n"
     "{\n"
     "    DEFINE_DELTA( entindex, DT_INTEGER, 11, 1.0 )\n"
+    "}\n"
+    // entity tables: SV_ActivateServer's SV_CreateBaseline signon-write serializes
+    // every baseline through these (a real server's delta.lst always defines them).
+    "entity_state_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( origin[0], DT_SIGNED | DT_FLOAT, 16, 8.0 ),\n"
+    "    DEFINE_DELTA( sequence, DT_INTEGER, 8, 1.0 )\n"
+    "}\n"
+    "entity_state_player_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( origin[0], DT_SIGNED | DT_FLOAT, 16, 8.0 ),\n"
+    "    DEFINE_DELTA( sequence, DT_INTEGER, 8, 1.0 )\n"
     "}\n";
 
 static const char *k_spawn_entities =

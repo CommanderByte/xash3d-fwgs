@@ -48,6 +48,8 @@ inline constexpr int k_last_edict              = 8191;       // MAX_EDICTS-1 ter
 inline constexpr int k_max_entnumber           = 99999;      // MAX_ENTNUMBER merge sentinel
 inline constexpr int k_max_edicts_bytes        = 1024;       // (MAX_EDICTS+7)/8 dedup mask
 inline constexpr int k_max_local_weapons       = 64;         // MAX_LOCAL_WEAPONS
+inline constexpr int k_max_instanced_bits      = 6;          // sv.num_instanced field
+inline constexpr std::size_t k_max_init_msg    = 0x30000;    // MAX_INIT_MSG signon cap
 
 // snapshot-visibility server flags (sv.hostflags; server.h:42-43).
 inline constexpr int k_svf_skiplocalhost  = 1 << 0; // SVF_SKIPLOCALHOST
@@ -57,6 +59,7 @@ inline constexpr int k_svf_merge_visibility = 1 << 1; // SVF_MERGE_VISIBILITY
 inline constexpr int k_svc_time                = 7;  // [float] server time
 inline constexpr int k_svc_setangle            = 10; // [angle*3] absolute view
 inline constexpr int k_svc_clientdata          = 15; // [...] clientdata blob
+inline constexpr int k_svc_spawnbaseline       = 22; // signon baseline block
 inline constexpr int k_svc_addangle            = 38; // [angle] mover turn add
 inline constexpr int k_svc_packetentities      = 40;
 inline constexpr int k_svc_deltapacketentities = 41;
@@ -128,6 +131,12 @@ struct SnapshotState
 // frees and reallocates (resetting the ring cursor) when maxclients changes.
 // Returns false (logged) on allocation failure.
 [[nodiscard]] bool snapshot_alloc_ring( ServerRuntime &rt ) noexcept;
+
+// SV_SpawnServer signon init (sv_init.c:987 MSG_Init &sv.signon): pool-allocate
+// the signon buffer once (MAX_INIT_MSG) and bind rt.signon to it.  Idempotent —
+// the buffer persists across spawns (rt.signon.reset() rewinds it per level).
+// Returns false (logged) on allocation failure.
+[[nodiscard]] bool snapshot_alloc_signon( ServerRuntime &rt ) noexcept;
 
 // SV_SpawnServer reset (sv_init.c:995 memset baselines; instanced counters
 // cleared by the per-level sv memset).  Does NOT touch the persistent ring.

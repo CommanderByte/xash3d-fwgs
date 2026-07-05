@@ -297,6 +297,13 @@ static void test_baselines_created()
     CHECK_EQ( fx.rt.snapshot.num_instanced, 1 );
     CHECK_EQ( static_cast<int>( fx.rt.snapshot.instanced[0].classname ), 7 );
     CHECK_EQ( fx.rt.snapshot.instanced[0].baseline.modelindex, 42 );
+
+    // The signon buffer now carries the baseline block (SV_CreateBaseline's
+    // signon-write half): svc_spawnbaseline as the first command.
+    CHECK( fx.rt.signon.num_bits_written() > 0 );
+    xash::networking::MessageBuf signon_reader;
+    signon_reader.rebind_read( fx.rt.signon.data() );
+    CHECK_EQ( static_cast<int>( signon_reader.read_byte() ), 22 ); // svc_spawnbaseline
 }
 
 // ---------------------------------------------------------------------------

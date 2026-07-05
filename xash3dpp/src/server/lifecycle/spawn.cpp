@@ -249,8 +249,11 @@ bool spawn_server( ServerRuntime &rt, const char *mapname,
     rt.globals.time     = 1.0f;
     rt.level.background  = background;
 
-    // XASH3DPP-STUB(chunk6-S9): signon/datagram/multicast sizebuf inits +
-    // svs.static_entities memset (send sub-slice).
+    // MSG_Init( &sv.signon ) (sv_init.c:987): rewind the signon buffer for the
+    // new level (create_baselines refills it at activate).
+    // XASH3DPP-STUB(chunk6-S9): sv.datagram / sv.multicast / sv.spec_datagram
+    // sizebuf inits + svs.static_entities memset (send sub-slice).
+    rt.signon.reset();
     snapshot_reset( rt ); // svs.baselines cleared per level (sv_init.c:995)
 
     // Gamemode consistency + skill clamp (console cvars; globals stamped).

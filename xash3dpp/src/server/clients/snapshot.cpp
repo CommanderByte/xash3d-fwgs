@@ -460,6 +460,23 @@ bool snapshot_alloc_ring( ServerRuntime &rt ) noexcept
     return ok;
 }
 
+bool snapshot_alloc_signon( ServerRuntime &rt ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( rt.signon_buf != nullptr )
+        return true; // idempotent — allocated once per LoadProgs
+
+    void *mem = ::xash::memory::mem_calloc( rt.game_pool, k_max_init_msg );
+    if ( mem == nullptr )
+        return false;
+
+    rt.signon_buf = static_cast<std::byte *>( mem );
+    rt.signon.rebind( std::span<std::byte>( rt.signon_buf, k_max_init_msg ),
+                      "Signon" );
+    return true;
+}
+
 void snapshot_reset( ServerRuntime &rt ) noexcept
 {
     ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
@@ -484,6 +501,12 @@ void snapshot_shutdown( ServerRuntime &rt ) noexcept
     free_rings( rt );
     if ( rt.snapshot.baselines != nullptr )
         ::xash::memory::mem_free( rt.snapshot.baselines );
+    if ( rt.signon_buf != nullptr )
+    {
+        ::xash::memory::mem_free( rt.signon_buf );
+        rt.signon_buf = nullptr;
+        rt.signon     = net::MessageBuf{};
+    }
     rt.snapshot = SnapshotState{};
 }
 
@@ -561,9 +584,62 @@ void create_baselines( ServerRuntime &rt ) noexcept
     if ( rt.game.funcs().pfnCreateInstancedBaselines != nullptr )
         rt.game.funcs().pfnCreateInstancedBaselines();
 
-    // XASH3DPP-STUB(chunk6): the signon-write half (sv_init.c:510-544 —
-    // MSG_WriteDeltaEntity of every baseline + the instanced list into
-    // sv.signon) lands with the signon buffer in the send sub-slice.
+    // Serialize the baselines into the signon message (sv_init.c:510-544):
+    // svc_spawnbaseline, then every valid edict's baseline delta'd against a
+    // null state, the LAST_EDICT terminator, num_instanced, then the instanced
+    // list.  A connecting client replays this to seed its entity states.
+    if ( rt.signon_buf == nullptr )
+        return; // signon buffer not allocated (pre-S9 fixtures)
+
+    net::MessageBuf                  &signon    = rt.signon;
+    const ::xash::abi::entity_state_t nullstate{};
+    const int                         max_edicts = static_cast<int>( rt.cfg.max_edicts );
+
+    signon.write_byte( static_cast<std::uint8_t>( k_svc_spawnbaseline ));
+    for ( std::size_t entnum = 0; entnum < num; ++entnum )
+    {
+        ::xash::abi::edict_t *ed = rt.arena.edict_num( entnum );
+        if ( ed == nullptr )
+            continue;
+        const EntityView v( ed );
+        if ( v.freed() )
+            continue;
+
+        net::DeltaEntityKind kind;
+        if ( entnum != 0 && static_cast<int>( entnum ) <= maxclients )
+        {
+            kind = net::DeltaEntityKind::Player;
+        }
+        else
+        {
+            if ( v.modelindex() == 0 )
+                continue; // invisible non-player entity
+            kind = net::DeltaEntityKind::Entity;
+        }
+
+        net::WriteDeltaEntityParams p;
+        p.force      = true;
+        p.kind       = kind;
+        p.timebase   = 1.0;
+        p.max_edicts = max_edicts;
+        ( void )rt.delta.write_delta_entity( signon, &nullstate,
+                                             &rt.snapshot.baselines[entnum], p );
+    }
+    signon.write_ubit_long( static_cast<std::uint32_t>( k_last_edict ),
+                            k_max_entity_bits ); // end of baselines
+    signon.write_ubit_long(
+        static_cast<std::uint32_t>( rt.snapshot.num_instanced ), k_max_instanced_bits );
+
+    for ( int i = 0; i < rt.snapshot.num_instanced; ++i )
+    {
+        net::WriteDeltaEntityParams p;
+        p.force      = true;
+        p.kind       = net::DeltaEntityKind::Entity;
+        p.timebase   = 1.0;
+        p.max_edicts = max_edicts;
+        ( void )rt.delta.write_delta_entity(
+            signon, &nullstate, &rt.snapshot.instanced[i].baseline, p );
+    }
 }
 
 void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_index,
