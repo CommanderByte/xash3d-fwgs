@@ -16,6 +16,18 @@
             }
         },
         {
+            "name": "debug-msvc-x86",
+            "displayName": "Debug · MSVC Win32 (x86)",
+            "description": "32-bit Debug build with tests — for loading the retail 32-bit GoldSrc dlls/hl.dll (S15 milestone). Validates the vendored ABI's both-pointer-widths design + the OQ-6 32-bit string-pool path.",
+            "generator": "Visual Studio 17 2022",
+            "architecture": { "value": "Win32", "strategy": "set" },
+            "binaryDir": "${sourceDir}/build/Debug-x86",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "XASH3DPP_BUILD_TESTS": "ON"
+            }
+        },
+        {
             "name": "clangd",
             "displayName": "clangd · compile_commands.json",
             "description": "Ninja configure whose only purpose is emitting compile_commands.json for clangd/LSP tooling (the VS generator ignores CMAKE_EXPORT_COMPILE_COMMANDS). Run from a VS x64 dev prompt (VsDevCmd -arch=x64) so cl/ninja are on PATH. Never build from this tree.",
@@ -53,6 +65,12 @@
             "displayName": "Build Release",
             "configurePreset": "release-msvc",
             "configuration": "Release"
+        },
+        {
+            "name": "debug-x86",
+            "displayName": "Build Debug (x86)",
+            "configurePreset": "debug-msvc-x86",
+            "configuration": "Debug"
         }
     ],
 
@@ -61,6 +79,14 @@
             "name": "debug",
             "displayName": "Test Debug",
             "configurePreset": "debug-msvc",
+            "configuration": "Debug",
+            "output": { "outputOnFailure": true },
+            "execution": { "jobs": 1 }
+        },
+        {
+            "name": "debug-x86",
+            "displayName": "Test Debug (x86)",
+            "configurePreset": "debug-msvc-x86",
             "configuration": "Debug",
             "output": { "outputOnFailure": true },
             "execution": { "jobs": 1 }

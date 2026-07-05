@@ -488,6 +488,14 @@ FAKE_EXPORT void fake_run_engine_probe( void )
 }
 
 #if !defined( FAKE_NO_GIVEFNPTRS )
+#if defined( _WIN32 ) && !defined( _WIN64 )
+// On 32-bit MSVC, __stdcall + dllexport decorates the export to
+// `_GiveFnptrsToDll@8` (2 pointer args = 8 bytes).  The real GoldSrc hl.dll
+// exports it UNDECORATED via a .def; mirror that so the loader's
+// GetProcAddress("GiveFnptrsToDll") resolves on x86 too.  (x64 has no
+// decoration, so this alias is 32-bit-only.)
+#pragma comment( linker, "/EXPORT:GiveFnptrsToDll=_GiveFnptrsToDll@8" )
+#endif
 FAKE_EXPORT void FAKE_STDCALL GiveFnptrsToDll( abi::enginefuncs_t *engfuncs,
                                                abi::globalvars_t  *pGlobals )
 {

@@ -134,16 +134,23 @@ static void test_make_string_in_range()
 
 static void test_offset_int_range_check()
 {
-    // Synthetic pointers only — never dereferenced.
-    const char *base = reinterpret_cast<const char *>(
-        static_cast<std::uintptr_t>( 0x100000000ull ));
+    // The INT-range guard (OQ-6) only becomes reachable across a >2 GB pointer
+    // spread — a 64-bit address-space scenario.  On 32-bit (ILP32) a synthetic
+    // 4 GB base and multi-GB offsets wrap within the 32-bit pointer, so this
+    // case is exercised on 64-bit only (the production guard is width-agnostic).
+    if constexpr ( sizeof( std::uintptr_t ) >= 8 )
+    {
+        // Synthetic pointers only — never dereferenced.
+        const char *base = reinterpret_cast<const char *>(
+            static_cast<std::uintptr_t>( 0x100000000ull ));
 
-    CHECK( sv::StringPool::offset_in_int_range( base, base + 100 ));
-    CHECK( sv::StringPool::offset_in_int_range( base, base - 100 ));
-    CHECK( sv::StringPool::offset_in_int_range( base, base + 0x7FFFFFFF ));
-    CHECK( !sv::StringPool::offset_in_int_range( base, base + 0x90000000ull ));
-    CHECK( !sv::StringPool::offset_in_int_range(
-        base + 0x90000000ull, base )); // negative side past INT_MIN
+        CHECK( sv::StringPool::offset_in_int_range( base, base + 100 ));
+        CHECK( sv::StringPool::offset_in_int_range( base, base - 100 ));
+        CHECK( sv::StringPool::offset_in_int_range( base, base + 0x7FFFFFFF ));
+        CHECK( !sv::StringPool::offset_in_int_range( base, base + 0x90000000ull ));
+        CHECK( !sv::StringPool::offset_in_int_range(
+            base + 0x90000000ull, base )); // negative side past INT_MIN
+    }
 }
 
 int main()
