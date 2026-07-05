@@ -17,6 +17,7 @@
 
 #include <xash3dpp/abi/eiface.hpp>          // entity_state_t, string_t, edict_t
 #include <xash3dpp/abi/entity_state.hpp>    // entity_state_t, clientdata_t
+#include <xash3dpp/abi/event_state.hpp>     // event_state_t / event_info_t
 #include <xash3dpp/abi/weaponinfo.hpp>      // weapon_data_t
 #include <xash3dpp/networking/message_buf.hpp>
 
@@ -56,14 +57,22 @@ inline constexpr int k_svf_skiplocalhost  = 1 << 0; // SVF_SKIPLOCALHOST
 inline constexpr int k_svf_merge_visibility = 1 << 1; // SVF_MERGE_VISIBILITY
 
 // svc opcodes emitted by the snapshot + per-frame datagram (protocol.h).
+inline constexpr int k_svc_event               = 3;  // playback event queue
 inline constexpr int k_svc_time                = 7;  // [float] server time
 inline constexpr int k_svc_setangle            = 10; // [angle*3] absolute view
 inline constexpr int k_svc_clientdata          = 15; // [...] clientdata blob
+inline constexpr int k_svc_pings               = 17; // [bit][idx][ping][loss]*
 inline constexpr int k_svc_spawnbaseline       = 22; // signon baseline block
 inline constexpr int k_svc_addangle            = 38; // [angle] mover turn add
 inline constexpr int k_svc_packetentities      = 40;
 inline constexpr int k_svc_deltapacketentities = 41;
 inline constexpr int k_svc_choke               = 42; // choke marker
+
+// event/ping wire widths (protocol.h:103-110, const.h:658).
+inline constexpr int k_max_event_queue = ::xash::abi::k_max_event_queue; // 64
+inline constexpr int k_max_event_bits  = 10;       // 1024 events
+inline constexpr int k_max_client_bits = 5;        // 32 clients (idx field)
+inline constexpr int k_in_score        = 1 << 15;  // IN_SCORE (scoreboard held)
 
 // One instanced baseline: a classname-keyed template state shared by every
 // entity of that class (pfnCreateInstancedBaseline, sv_game.c:4425).
@@ -168,6 +177,27 @@ int create_instanced_baseline( SnapshotState &snap, ::xash::abi::string_t classn
 // pings ride the same message in later sub-slices.
 void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_index,
                                ::xash::networking::MessageBuf &msg ) noexcept;
+
+// SV_EmitEvents (sv_frame.c:371): drain cl's event queue into `msg` as an
+// svc_event block — resolve each event's packet_index against `to`'s ring
+// window, clamp the sent count to MAX_EVENT_QUEUE/2-1, and delta each event's
+// args against a null event_args_t.  The queue *producer*
+// (pfnPlaybackEvent → SV_PlaybackEventFull) is the S8↔S9/messaging seam; this
+// only serialises whatever the queue already holds (and drains it).
+void emit_events( ServerRuntime &rt, ServerClient &cl, ClientFrame &to,
+                  ::xash::networking::MessageBuf &msg ) noexcept;
+
+// SV_EmitPings (sv_frame.c:493): svc_pings — 25 bits (present / idx / ping /
+// packet_loss) per spawned client, terminated by a zero bit.  ping/loss come
+// from the 2s-cached SV_GetPlayerStats over each client's frame ring
+// (SV_CalcPing); the incoming-ack cursor is the netchan seam (see the .cpp).
+void emit_pings( ServerRuntime &rt, ::xash::networking::MessageBuf &msg ) noexcept;
+
+// SV_ShouldUpdatePing (sv_client.c:1293): HLTV proxies re-ping every 2s; regular
+// clients whenever the scoreboard (IN_SCORE) is held.  The HLTV path bumps
+// next_checkpingtime as a side effect, so SV_WriteEntitiesToClient computes this
+// once up front (before the gather) and passes the result to the emit.
+[[nodiscard]] bool should_update_ping( ServerRuntime &rt, ServerClient &cl ) noexcept;
 
 // SV_WriteClientdataToMessage (sv_frame.c:526): stamp cl's frame (senttime /
 // ping_time), emit svc_choke / fixangle (svc_setangle | svc_addangle), fill the

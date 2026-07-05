@@ -642,6 +642,230 @@ void create_baselines( ServerRuntime &rt ) noexcept
     }
 }
 
+// -----------------------------------------------------------------------------
+// Events + pings (the two datagram-riders SV_WriteEntitiesToClient appends).
+// -----------------------------------------------------------------------------
+
+void emit_events( ServerRuntime &rt, ServerClient &cl, ClientFrame &to,
+                  net::MessageBuf &msg ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    const ::xash::abi::event_args_t nullargs{};
+    ::xash::abi::event_state_t     &es = cl.events;
+
+    // Count queued events (index 0 ⇒ empty slot).
+    int ev_count = 0;
+    for ( int ev = 0; ev < k_max_event_queue; ++ev )
+        if ( es.ei[ev].index != 0 )
+            ++ev_count;
+
+    if ( ev_count == 0 )
+        return; // nothing to send
+
+    if ( ev_count >= k_max_event_queue / 2 )
+        ev_count = ( k_max_event_queue / 2 ) - 1;
+
+    // Resolve each event's packet_index against this frame's ring window, and
+    // strip the args the client re-derives (origin/angles unless flagged,
+    // velocity + ducking always).
+    for ( int i = 0; i < k_max_event_queue; ++i )
+    {
+        ::xash::abi::event_info_t &info = es.ei[i];
+        if ( info.index == 0 )
+            continue;
+
+        const int ent_index = info.entity_index;
+
+        int j = 0;
+        for ( ; j < to.num_entities; ++j )
+        {
+            const ::xash::abi::entity_state_t &state =
+                rt.snapshot.packet_entities[( to.first_entity + j ) %
+                                            rt.snapshot.num_client_entities];
+            if ( state.number == ent_index )
+                break;
+        }
+
+        if ( j < to.num_entities )
+        {
+            info.packet_index = static_cast<std::int16_t>( j );
+            info.args.ducking = 0;
+
+            if ( ( info.args.flags & ::xash::abi::k_fevent_origin ) == 0 )
+            {
+                info.args.origin[0] = info.args.origin[1] = info.args.origin[2] = 0.0f;
+            }
+            if ( ( info.args.flags & ::xash::abi::k_fevent_angles ) == 0 )
+            {
+                info.args.angles[0] = info.args.angles[1] = info.args.angles[2] = 0.0f;
+            }
+            info.args.velocity[0] = info.args.velocity[1] = info.args.velocity[2] = 0.0f;
+        }
+        else
+        {
+            // Couldn't find — point past the packet list and carry the entity.
+            info.packet_index  = static_cast<std::int16_t>( to.num_entities );
+            info.args.entindex = ent_index;
+        }
+    }
+
+    msg.write_byte( static_cast<std::uint8_t>( k_svc_event ));
+    msg.write_ubit_long( static_cast<std::uint32_t>( ev_count ), 5 );
+
+    int count = 0;
+    for ( int i = 0; i < k_max_event_queue; ++i )
+    {
+        ::xash::abi::event_info_t &info = es.ei[i];
+
+        if ( info.index == 0 )
+        {
+            info.packet_index = -1;
+            info.entity_index = -1;
+            continue;
+        }
+
+        // Only serialise while there is room in the clamped budget.
+        if ( count < ev_count )
+        {
+            msg.write_ubit_long( info.index, k_max_event_bits );
+
+            if ( info.packet_index == -1 )
+            {
+                msg.write_one_bit( 0 );
+            }
+            else
+            {
+                msg.write_one_bit( 1 );
+                msg.write_ubit_long( static_cast<std::uint32_t>( info.packet_index ),
+                                     k_max_entity_bits );
+
+                if ( std::memcmp( &nullargs, &info.args,
+                                  sizeof( ::xash::abi::event_args_t )) == 0 )
+                {
+                    msg.write_one_bit( 0 );
+                }
+                else
+                {
+                    msg.write_one_bit( 1 );
+                    rt.delta.write_delta_event( msg, &nullargs, &info.args );
+                }
+            }
+
+            if ( info.fire_time != 0.0f )
+            {
+                msg.write_one_bit( 1 );
+                msg.write_word(
+                    static_cast<std::uint16_t>( static_cast<int>( info.fire_time * 100.0f )));
+            }
+            else
+            {
+                msg.write_one_bit( 0 );
+            }
+        }
+
+        info.index        = 0;
+        info.packet_index = -1;
+        info.entity_index = -1;
+        ++count;
+    }
+}
+
+// SV_CalcPing (sv_client.c:1099): average the recent frame-ring ping samples
+// (set when the client acks each frame — the netchan receive seam).
+static int calc_ping( const ServerRuntime &rt, const ServerClient &cl ) noexcept
+{
+    if ( cl.fakeclient || cl.frames == nullptr )
+        return 0; // bots have no real ping
+
+    int back;
+    if ( rt.snapshot.update_backup <= 31 )
+    {
+        back = rt.snapshot.update_backup / 2;
+        if ( back <= 0 )
+            return 0;
+    }
+    else
+    {
+        back = 16;
+    }
+
+    float ping  = 0.0f;
+    int   count = 0;
+    for ( int i = 0; i < back; ++i )
+    {
+        const int          idx   = cl.incoming_acknowledged + ~i;
+        const ClientFrame &frame = cl.frames[idx & rt.snapshot.update_mask];
+        if ( frame.ping_time > 0.0f )
+        {
+            ping += frame.ping_time;
+            ++count;
+        }
+    }
+
+    if ( count > 0 )
+        return static_cast<int>(( ping / static_cast<float>( count )) * 1000.0f );
+    return 0;
+}
+
+// SV_GetPlayerStats (sv_client.c:1317): recompute ping/loss at most every 2s;
+// the legacy function-static cache is held per-client here (Q-2).
+static void get_player_stats( ServerRuntime &rt, ServerClient &cl, int &ping,
+                              int &packet_loss ) noexcept
+{
+    if ( rt.clients.realtime >= cl.next_checkpingtime )
+    {
+        cl.next_checkpingtime = rt.clients.realtime + 2.0;
+        cl.last_ping          = calc_ping( rt, cl );
+        cl.last_loss          = cl.packet_loss;
+    }
+
+    ping        = cl.last_ping;
+    packet_loss = cl.last_loss;
+}
+
+void emit_pings( ServerRuntime &rt, net::MessageBuf &msg ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    msg.write_byte( static_cast<std::uint8_t>( k_svc_pings ));
+
+    for ( int i = 0; i < rt.clients.maxclients; ++i )
+    {
+        ServerClient &cl = rt.clients.clients[i];
+        if ( cl.state != ClientState::Spawned )
+            continue;
+
+        int ping        = 0;
+        int packet_loss = 0;
+        get_player_stats( rt, cl, ping, packet_loss );
+
+        // 25 bits per client: present-bit, idx(5), ping(12), packet_loss(7).
+        msg.write_one_bit( 1 );
+        msg.write_ubit_long( static_cast<std::uint32_t>( i ), k_max_client_bits );
+        msg.write_ubit_long( static_cast<std::uint32_t>( ping ), 12 );
+        msg.write_ubit_long( static_cast<std::uint32_t>( packet_loss ), 7 );
+    }
+
+    msg.write_one_bit( 0 ); // end marker
+}
+
+bool should_update_ping( ServerRuntime &rt, ServerClient &cl ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( cl.hltv ) // FCL_HLTV_PROXY
+    {
+        if ( rt.clients.realtime < cl.next_checkpingtime )
+            return false;
+        cl.next_checkpingtime = rt.clients.realtime + 2.0;
+        return true;
+    }
+
+    // Regular clients: only while the scoreboard (IN_SCORE) is held down.
+    return ( cl.lastcmd.buttons & k_in_score ) != 0;
+}
+
 void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_index,
                                net::MessageBuf &msg ) noexcept
 {
@@ -651,6 +875,10 @@ void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_in
         return; // ring not allocated (pre-spawn) — nothing to send
 
     ClientFrame &frame = cl.frames[frame_index & rt.snapshot.update_mask];
+
+    // Computed before the gather (legacy sv_frame.c:621): the HLTV branch bumps
+    // next_checkpingtime as a side effect, which SV_EmitPings then observes.
+    const bool send_pings = should_update_ping( rt, cl );
 
     std::memset( rt.snapshot.sended, 0, sizeof( rt.snapshot.sended ));
     rt.level.hostflags &= ~k_svf_merge_visibility;
@@ -688,8 +916,9 @@ void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_in
     }
 
     emit_packet_entities( rt, cl, frame, msg );
-    // XASH3DPP-STUB(chunk6): SV_EmitEvents + SV_EmitPings ride this message in
-    // sub-slice 4.
+    emit_events( rt, cl, frame, msg );
+    if ( send_pings )
+        emit_pings( rt, msg );
 }
 
 void write_clientdata_to_message( ServerRuntime &rt, ServerClient &cl,

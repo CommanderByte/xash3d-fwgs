@@ -465,6 +465,134 @@ static void test_send_client_datagram()
 }
 
 // ---------------------------------------------------------------------------
+// SV_EmitEvents (S9 snapshot 4): drain the client event queue into an svc_event
+// block — packet_index resolution (found vs not-found), the null-args skip vs
+// the delta path, and the fire_time word.  The queue is seeded directly (its
+// producer, pfnPlaybackEvent, is a later seam).
+// ---------------------------------------------------------------------------
+
+static void test_emit_events()
+{
+    SpawnFixture fx( /*dedicated=*/false, /*maxclients=*/1 );
+
+    REQUIRE( sv::spawn_server( fx.rt, "parsetest", nullptr, false ));
+    fx.refresh_state();
+    REQUIRE( fx.st != nullptr );
+    sv::spawn_entities( fx.rt, *fx.maps.world() );
+    sv::activate_server( fx.rt, /*run_physics=*/true );
+
+    REQUIRE( fx.rt.snapshot.packet_entities != nullptr );
+
+    // A controlled two-entity ring window (numbers 1 and 2).
+    fx.rt.snapshot.packet_entities[0].number = 1;
+    fx.rt.snapshot.packet_entities[1].number = 2;
+    sv::ClientFrame to{};
+    to.first_entity = 0;
+    to.num_entities = 2;
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+
+    // Event A: fires from entity 2 (found at ring index 1), null args, no delay.
+    cl.events.ei[0].index        = 5;
+    cl.events.ei[0].entity_index = 2;
+    cl.events.ei[0].fire_time    = 0.0f;
+    // Event B: fires from entity 55 (not in the packet) → carries entindex plus
+    // a 0.5s fire delay (word 50).
+    cl.events.ei[3].index        = 9;
+    cl.events.ei[3].entity_index = 55;
+    cl.events.ei[3].fire_time    = 0.5f;
+
+    std::array<std::byte, 512> buf{};
+    xash::networking::MessageBuf msg{ buf };
+    sv::emit_events( fx.rt, cl, to, msg );
+    CHECK( !msg.overflowed() );
+
+    // The queue is drained after emit.
+    CHECK_EQ( static_cast<int>( cl.events.ei[0].index ), 0 );
+    CHECK_EQ( static_cast<int>( cl.events.ei[3].index ), 0 );
+
+    msg.reset();
+    CHECK_EQ( static_cast<int>( msg.read_byte() ), 3 );          // svc_event
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 5 )), 2 );   // ev_count
+
+    // Event A: index 5, found (packet_index 1), args match null, no fire_time.
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 10 )), 5 );
+    CHECK_EQ( msg.read_one_bit(), 1 );                           // packet_index present
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 13 )), 1 );  // ring slot j == 1
+    CHECK_EQ( msg.read_one_bit(), 0 );                           // args == null
+    CHECK_EQ( msg.read_one_bit(), 0 );                           // no fire_time
+
+    // Event B: index 9, not found (packet_index == num_entities), args differ.
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 10 )), 9 );
+    CHECK_EQ( msg.read_one_bit(), 1 );
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 13 )), 2 );  // == num_entities
+    CHECK_EQ( msg.read_one_bit(), 1 );                           // args delta follows
+
+    const abi::event_args_t nullargs{};
+    abi::event_args_t       out{};
+    fx.rt.delta.read_delta_event( msg, &nullargs, &out );
+    CHECK_EQ( out.entindex, 55 );
+
+    CHECK_EQ( msg.read_one_bit(), 1 );                           // fire_time present
+    CHECK_EQ( static_cast<int>( msg.read_word() ), 50 );         // 0.5 * 100
+}
+
+// ---------------------------------------------------------------------------
+// SV_EmitPings (S9 snapshot 4): svc_pings — a present-bit + idx/ping/loss per
+// spawned client, from the 2s-cached SV_GetPlayerStats over the frame ring.
+// ---------------------------------------------------------------------------
+
+static void test_emit_pings()
+{
+    SpawnFixture fx( /*dedicated=*/false, /*maxclients=*/1 );
+
+    REQUIRE( sv::spawn_server( fx.rt, "parsetest", nullptr, false ));
+    fx.refresh_state();
+    REQUIRE( fx.st != nullptr );
+    sv::spawn_entities( fx.rt, *fx.maps.world() );
+    sv::activate_server( fx.rt, /*run_physics=*/true );
+
+    REQUIRE( fx.rt.snapshot.update_backup == 16 );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    cl.state                 = sv::ClientState::Spawned;
+    cl.edict                 = fx.rt.arena.edict_num( 1 );
+    cl.fakeclient            = false;
+    cl.packet_loss           = 3;
+    cl.incoming_acknowledged = 10;
+    cl.next_checkpingtime    = 0.0; // force a recompute
+    REQUIRE( cl.frames != nullptr );
+
+    // Every ring frame reports 50ms → the average is 50ms regardless of `back`.
+    for ( int i = 0; i < fx.rt.snapshot.update_backup; ++i )
+        cl.frames[i].ping_time = 0.05f;
+
+    fx.rt.clients.realtime = 100.0; // >= next_checkpingtime → recompute
+
+    std::array<std::byte, 256> buf{};
+    xash::networking::MessageBuf msg{ buf };
+    sv::emit_pings( fx.rt, msg );
+    CHECK( !msg.overflowed() );
+
+    msg.reset();
+    CHECK_EQ( static_cast<int>( msg.read_byte() ), 17 );         // svc_pings
+    CHECK_EQ( msg.read_one_bit(), 1 );                           // client 0 present
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 5 )), 0 );   // idx 0
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 12 )), 50 ); // ping ms
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 7 )), 3 );   // packet_loss
+    CHECK_EQ( msg.read_one_bit(), 0 );                           // end marker
+
+    // The recompute stamped the per-client cache + bumped the 2s gate.
+    CHECK_EQ( cl.last_ping, 50 );
+    CHECK_EQ( cl.last_loss, 3 );
+    CHECK( cl.next_checkpingtime > 100.0 );
+
+    // Leave the slot free so the fixture teardown's client sweep is a no-op.
+    cl.state = sv::ClientState::Free;
+    cl.edict = nullptr;
+}
+
+// ---------------------------------------------------------------------------
 // Server as the MapLoader level-change executor: `map` drives the FSM, which
 // delegates to exec_load_level → full spawn/activate.
 // ---------------------------------------------------------------------------
@@ -558,6 +686,8 @@ int main()
     RUN_TEST( test_baselines_created );
     RUN_TEST( test_write_entities_to_client );
     RUN_TEST( test_send_client_datagram );
+    RUN_TEST( test_emit_events );
+    RUN_TEST( test_emit_pings );
     RUN_TEST( test_level_executor );
     RUN_TEST( test_no_executor_fallback );
 

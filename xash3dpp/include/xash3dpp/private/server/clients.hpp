@@ -15,6 +15,8 @@
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/abi/eiface.hpp>
+#include <xash3dpp/abi/event_state.hpp>
+#include <xash3dpp/abi/usercmd.hpp>
 #include <xash3dpp/networking/address.hpp>
 #include <xash3dpp/networking/message_buf.hpp>
 
@@ -185,6 +187,22 @@ struct ServerClient
     int                   delta_sequence = -1;      // clc_delta ack; -1 = no delta
     int                   chokecount     = 0;       // bandwidth-suppressed count
     bool                  local_weapons  = false;   // FCL_LOCAL_WEAPONS (cl_lw)
+
+    // Event queue + ping/latency (S9 snapshot 4).  `events` is drained by
+    // SV_EmitEvents each frame; its producer (pfnPlaybackEvent) is a later seam.
+    // lastcmd/next_checkpingtime/packet_loss back SV_ShouldUpdatePing + the
+    // 2s-cached SV_GetPlayerStats (last_ping/last_loss are that cache, held
+    // per-client for Q-2 instead of the legacy function-static array).
+    // incoming_acknowledged mirrors netchan.incoming_acknowledged — the netchan
+    // receive path updates it (XASH3DPP-STUB(S8-seam)); SV_CalcPing walks the
+    // frame ring backward from it.
+    ::xash::abi::event_state_t events              = {};  // cl->events
+    ::xash::abi::usercmd_t     lastcmd             = {};  // cl->lastcmd (buttons)
+    double                     next_checkpingtime  = 0.0; // cl->next_checkpingtime
+    int                        packet_loss         = 0;   // cl->packet_loss
+    int                        last_ping           = 0;   // GetPlayerStats cache
+    int                        last_loss           = 0;   // GetPlayerStats cache
+    int                        incoming_acknowledged = 0; // netchan mirror (S8-seam)
 };
 
 // --- the aggregate (svs.clients + svgame.msg + sv.multicast + filters/log) ---
