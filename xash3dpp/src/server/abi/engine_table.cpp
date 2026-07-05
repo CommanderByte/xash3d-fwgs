@@ -27,6 +27,8 @@
 #include <xash3dpp/private/server/clients.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
+#include <xash3dpp/private/server/lifecycle.hpp> // ServerRuntime (pfnRunPlayerMove)
+#include <xash3dpp/private/server/pmove.hpp>      // sv_run_cmd (pfnRunPlayerMove)
 #include <xash3dpp/private/server/snapshot.hpp>
 #include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/math.hpp>
@@ -1571,10 +1573,45 @@ abi::edict_t *pfn_create_fake_client( const char * )
     return nullptr;
 }
 
-void pfn_run_player_move( abi::edict_t *, const float *, float, float, float,
-                          unsigned short, abi::byte, abi::byte )
+// pfnRunPlayerMove (sv_game.c:3823): the game's fakeclient/bot mover.  Synthesize
+// a usercmd_t from the bot's intent, set the client's timebase, and run it through
+// the SV_RunCmd chain.  Only fakeclients are permitted (real clients move via
+// SV_ParseClientMove).  Legacy's sv.current_client save/restore is an S8/S9 seam
+// (current_client is not tracked; the pmove callbacks resolve their edict directly,
+// so the milestone bot path does not need it).
+void pfn_run_player_move( abi::edict_t *client, const float *viewangles,
+                          float fmove, float smove, float upmove,
+                          unsigned short buttons, abi::byte impulse,
+                          abi::byte msec )
 {
-    // XASH3DPP-STUB(chunk6): the pmove bridge lands in S8.
+    if ( g_bridge->runtime == nullptr || g_bridge->clients == nullptr )
+        return;
+    ServerRuntime &rt = *g_bridge->runtime;
+
+    ServerClient *cl = client_for_edict( *g_bridge->clients, client );
+    if ( cl == nullptr || !cl->fakeclient )
+        return; // only fakeclients allowed
+
+    cl->timebase = ( rt.level.time + rt.level.frametime ) -
+                   ( static_cast<double>( msec ) / 1000.0 );
+
+    abi::usercmd_t cmd = {};
+    if ( viewangles != nullptr )
+    {
+        cmd.viewangles[0] = viewangles[0];
+        cmd.viewangles[1] = viewangles[1];
+        cmd.viewangles[2] = viewangles[2];
+    }
+    cmd.forwardmove = fmove;
+    cmd.sidemove    = smove;
+    cmd.upmove      = upmove;
+    cmd.buttons     = buttons;
+    cmd.impulse     = impulse;
+    cmd.msec        = static_cast<std::int8_t>( msec );
+
+    const int seed = pfn_random_long( 0, 0x7fffffff ); // COM_RandomLong full range
+    sv_run_cmd( rt, *cl, cmd, seed );
+    cl->lastcmd = cmd;
 }
 
 int pfn_number_of_entities( void )

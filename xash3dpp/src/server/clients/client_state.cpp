@@ -18,12 +18,15 @@
 #include <xash3dpp/private/server/clients.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
+#include <xash3dpp/cmd_cvar/context.hpp>
+#include <xash3dpp/cmd_cvar/cvar.hpp>
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
+#include <xash3dpp/private/server/pmove.hpp> // sv_run_cmd (SV_ParseClientMove)
 #include <xash3dpp/private/server/string_pool.hpp>
 #include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -554,12 +557,53 @@ void execute_client_command( ServerRuntime &rt, ServerClient &cl,
 
 namespace {
 
+// SV_PlayerIsFrozen (sv_client.c:3279): a frozen player's movement commands are
+// zeroed but viewangles still read.
+[[nodiscard]] bool player_is_frozen( ServerRuntime &rt,
+                                     ::xash::abi::edict_t *player ) noexcept
+{
+    // sv_background_freeze on a background (menu) map — a listen-server/menu
+    // concern (OQ-4); rt.level.background is tracked, the cvar read best-effort.
+    if ( rt.level.background && rt.cvars != nullptr &&
+         rt.cvars->cvar_variable_value( "sv_background_freeze" ) != 0.0f )
+        return true;
+    // ENGINE_QUAKE_COMPATIBLE (host.features) short-circuits to not-frozen; the
+    // Q-12 ICompatPolicy seam is not wired into the server, so it never fires.
+    return ( EntityView( player ).flags() & ::xash::abi::k_fl_frozen ) != 0;
+}
+
+// SV_EstablishTimeBase (sv_client.c:1143): back-date cl.timebase so that after
+// replaying `dropped` catch-up commands plus the `numcmds` fresh ones the sim
+// lands at sv.time + sv.frametime.
+void establish_timebase( ServerRuntime &rt, ServerClient &cl,
+                         const ::xash::abi::usercmd_t *cmds, int dropped,
+                         int numbackup, int numcmds ) noexcept
+{
+    double runcmd_time = 0.0;
+    if ( dropped < 24 )
+    {
+        while ( dropped > numbackup )
+        {
+            runcmd_time = static_cast<double>( cl.lastcmd.msec ) / 1000.0;
+            dropped--;
+        }
+        while ( dropped > 0 )
+        {
+            const int cmdnum = dropped + numcmds - 1;
+            runcmd_time += static_cast<double>( cmds[cmdnum].msec ) / 1000.0;
+            dropped--;
+        }
+    }
+    for ( int i = numcmds - 1; i >= 0; --i )
+        runcmd_time += static_cast<double>( cmds[i].msec ) / 1000.0;
+
+    cl.timebase = rt.level.time + rt.level.frametime - runcmd_time;
+}
+
 // SV_ParseClientMove (sv_client.c:3305): decode the delta-compressed usercmd
 // chain (newest-first, each delta'd from the previous, starting from a null
-// cmd) and update the client's move bookkeeping.  The per-command simulation
-// (SV_EstablishTimeBase + the dropped-packet replay + SV_RunCmd → pmove) is the
-// deferred pmove-bridge seam; this fills lastcmd / packet_loss / ping so the
-// snapshot + latency paths observe a live client.
+// cmd), then establish the timebase and run each command through the pmove
+// chain (SV_RunCmd), updating lastcmd / packet_loss / ping.
 void parse_client_move( ServerRuntime &rt, ServerClient &cl,
                         net::MessageBuf &msg ) noexcept
 {
@@ -601,10 +645,62 @@ void parse_client_move( ServerRuntime &rt, ServerClient &cl,
     // the milestone.
     cl.packet_loss = packet_loss;
 
-    // XASH3DPP-STUB(chunk6-S9/pmove): the freeze/pause zeroing, the viewangle
-    // latch (v_angle = cmds[0].viewangles unless fixangle), SV_EstablishTimeBase,
-    // the net_drop replay, and SV_RunCmd (CmdStart → PlayerPreThink → PM_Move →
-    // touches → PlayerPostThink → CmdEnd) all land with the pmove bridge.
+    // freeze the player while a savegame is being restored (Chunk 8 seam).
+    if ( rt.level.loadgame )
+        return;
+
+    // Pause / frozen: hold movement but keep reading viewangles
+    // (sv_client.c:3360-3376).  CL_IsInGame() is true on a dedicated server;
+    // the listen-server "local client not yet active" case is the OQ-4
+    // client-state hook (assumed in-game here).
+    EntityView pv( cl.edict );
+    const bool frozen = player_is_frozen( rt, cl.edict );
+    if ( rt.level.paused || frozen )
+    {
+        for ( int i = 0; i < numcmds; ++i )
+        {
+            cmds[i].msec        = 0;
+            cmds[i].forwardmove = 0.0f;
+            cmds[i].sidemove    = 0.0f;
+            cmds[i].upmove      = 0.0f;
+            cmds[i].buttons     = 0;
+            if ( frozen )
+                cmds[i].impulse = 0;
+            pv.set_v_angle( ut::Vec3{ cmds[i].viewangles[0],
+                                      cmds[i].viewangles[1],
+                                      cmds[i].viewangles[2] } );
+        }
+    }
+    else if ( pv.fixangle() == 0 )
+    {
+        pv.set_v_angle( ut::Vec3{ cmds[0].viewangles[0], cmds[0].viewangles[1],
+                                  cmds[0].viewangles[2] } );
+    }
+
+    // SV_EstablishTimeBase.  net_drop drives the dropped-packet catch-up terms.
+    // XASH3DPP-STUB(S8-seam): net_drop = netchan.dropped - (numcmds-1) and the
+    // replay loops (re-run cl.lastcmd / the backup cmds when net_drop>0,
+    // sv_client.c:3385-3399) need the netchan.dropped mirror; net_drop is pinned
+    // to 0 here (the no-packet-loss path), so only the fresh-cmd loop runs.
+    int net_drop = 0;
+    establish_timebase( rt, cl, cmds, net_drop, numbackup, numcmds );
+
+    // Run each fresh command through the move chain, newest last.  The random
+    // seed is the netchan incoming sequence (minus the command's age).
+    const int slot = static_cast<int>( &cl - rt.clients.clients );
+    const int seq  = ( slot >= 0 && slot < k_max_clients )
+                         ? static_cast<int>(
+                               rt.clients.netchans[slot].incoming_sequence() )
+                         : 0;
+    for ( int i = numcmds - 1; i >= 0; --i )
+        sv_run_cmd( rt, cl, cmds[i], seq - i );
+
+    // Was the player kicked mid-run?  Then lastcmd / ping would be stale.
+    if ( cl.state == ClientState::Zombie )
+        return;
+
+    // XASH3DPP-STUB(chunk7): SV_ModelHandle studio animtime clamp
+    // (sv_client.c:3416-3423) needs the model cache.
 
     cl.lastcmd = cmds[0];
 

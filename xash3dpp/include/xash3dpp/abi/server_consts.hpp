@@ -45,6 +45,7 @@ inline constexpr int k_fl_godmode      = 1 << 6;
 inline constexpr int k_fl_onground     = 1 << 9;
 inline constexpr int k_fl_partialground = 1 << 10;
 inline constexpr int k_fl_waterjump    = 1 << 11;
+inline constexpr int k_fl_frozen       = 1 << 12; // player frozen (3rd-person cam)
 inline constexpr int k_fl_immune_water = 1 << 17;
 inline constexpr int k_fl_immune_slime = 1 << 18;
 inline constexpr int k_fl_immune_lava  = 1 << 19;

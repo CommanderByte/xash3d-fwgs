@@ -895,6 +895,58 @@ static void test_sv_run_cmd_zombie_skip()
     CHECK_EQ( g_err_calls, 0 );
 }
 
+// pfnRunPlayerMove (P4b): the game's fakeclient/bot mover — synthesize a cmd,
+// set timebase, drive SV_RunCmd through the installed engine table (reaching
+// bridge.runtime).  Only fakeclients are permitted.
+static void test_run_player_move_fakeclient()
+{
+    PhysFixture fx( /*dedicated=*/true, /*maxclients=*/4, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 4;
+    fx.st->pm_move_dx = 5.0f;
+    fx.rt.level.time      = 3.0;
+    fx.rt.level.frametime = 0.1f;
+
+    abi::edict_t     *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    cl.state      = sv::ClientState::Spawned;
+    cl.fakeclient = true;
+    cl.edict      = pl;
+
+    float va[3] = { 0.0f, 90.0f, 0.0f };
+    fx.rt.engine_table.pfnRunPlayerMove( pl, va, 320.0f, 0.0f, 0.0f,
+                                         /*buttons=*/0, /*impulse=*/0,
+                                         /*msec=*/16 );
+
+    CHECK_EQ( fx.st->cmd_start_calls, 1 );
+    CHECK_EQ( fx.st->pm_move_calls, 1 );
+    CHECK_EQ( static_cast<int>( cl.lastcmd.msec ), 16 );
+    // timebase synthesised to land the command at time+frametime:
+    // (3.0+0.1 - 0.016) + 0.016 == 3.1
+    CHECK( cl.timebase > 3.0999 && cl.timebase < 3.1001 );
+    CHECK( pl->v.origin[0] == 5.0f ); // FinishPMove copyback
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+// A non-fakeclient edict is rejected by pfnRunPlayerMove (real clients move via
+// SV_ParseClientMove).
+static void test_run_player_move_rejects_real_client()
+{
+    PhysFixture fx( /*dedicated=*/true, /*maxclients=*/4, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 4;
+
+    abi::edict_t     *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    cl.state      = sv::ClientState::Spawned;
+    cl.fakeclient = false; // real client
+    cl.edict      = pl;
+
+    float va[3] = { 0.0f, 0.0f, 0.0f };
+    fx.rt.engine_table.pfnRunPlayerMove( pl, va, 100.0f, 0.0f, 0.0f, 0, 0, 16 );
+
+    CHECK_EQ( fx.st->pm_move_calls, 0 ); // rejected
+    CHECK_EQ( g_err_calls, 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -920,6 +972,8 @@ int main()
     RUN_TEST( test_sv_run_cmd_msec_split );
     RUN_TEST( test_sv_run_cmd_touch );
     RUN_TEST( test_sv_run_cmd_zombie_skip );
+    RUN_TEST( test_run_player_move_fakeclient );
+    RUN_TEST( test_run_player_move_rejects_real_client );
 
     std::filesystem::remove_all( g_root );
 

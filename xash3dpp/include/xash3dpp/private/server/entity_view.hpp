@@ -81,6 +81,7 @@ public:
     void set_avelocity( const Vec3 &v ) noexcept { store_vec3( e_->v.avelocity, v ); }
     void set_basevelocity( const Vec3 &v ) noexcept { store_vec3( e_->v.basevelocity, v ); }
     void set_oldorigin( const Vec3 &v ) noexcept { store_vec3( e_->v.oldorigin, v ); }
+    void set_v_angle( const Vec3 &v ) noexcept { store_vec3( e_->v.v_angle, v ); }
 
     // --- scalars ---------------------------------------------------------
     [[nodiscard]] int solid() const noexcept { return e_->v.solid; }

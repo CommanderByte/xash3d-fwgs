@@ -35,6 +35,7 @@ class DeltaTables; // S9 — usercmd/event/entity_state delta tables (delta.hpp)
 
 namespace xash::server {
 
+struct ServerRuntime;   // lifecycle.hpp — the full sv/svs/svgame aggregate
 struct ClientMachinery; // S9 — svs.clients + svgame.msg + sv.multicast (clients.hpp)
 struct SnapshotState;   // S9 — svs.baselines + sv.instanced (snapshot.hpp)
 
@@ -62,6 +63,11 @@ struct EngineBridge
     // S7 lifecycle (null in pre-lifecycle fixtures: the precache slots
     // then return 0, the legacy no-server answer)
     PrecacheTables *precache = nullptr;             // @lifetime: engine
+
+    // The owning runtime — only the rare full-orchestration slots that must run
+    // a whole server operation reach it (pfnRunPlayerMove drives SV_RunCmd).
+    // Wired in load_progs; null in pre-lifecycle fixtures (those slots no-op).
+    ServerRuntime *runtime = nullptr;              // @lifetime: engine
 
     // pmove bridge (P3b): the single player-move working set the PM_* trace
     // callbacks reach, plus the pfnGetHullBounds player-hull table they index.
