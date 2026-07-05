@@ -224,7 +224,8 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `checkpoint.py` | record advisory intent | every commit / handoff / interruption |
 | `build.py` / `test.py` / `refresh_compile_db.py` | build, ctest, clangd DB | sweep-module, implement-audit, retriever, bisect, pre-pr |
 | `compliance_scan.py` | reviewer [M] checks as JSON | pre-pr, sweep-module, detail-audit, reviewer pre-pass |
-| `limits_scan.py` / `stub_scan.py` / `status_table.py` / `dep_scan.py` | limits, TODO/stubs, status table, dependency edges | limits-audit, plan-implementation, status-and-next, dependency-graph |
+| `limits_scan.py` / `stub_scan.py` / `status_table.py` / `dep_scan.py` | limits, TODO/stubs (`by_tag` + `--delta`), status table, dependency edges | limits-audit, plan-implementation, status-and-next, dependency-graph |
+| `crosswalk.py` | legacy↔xash3dpp symbol / file:line index (+ `--missing` unported set) | recon during implement / parity |
 | `finish_check.py` | the 9-section done checklist as data | finish-subsystem, pre-pr |
 | `workflow_sync.py` | drift gate over the whole workflow surface | after ANY workflow-surface edit |
 

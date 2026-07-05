@@ -25,6 +25,7 @@ from mcp.server.fastmcp import FastMCP  # noqa: E402
 import xtools  # noqa: E402
 from xtools import REPO, venv_python  # noqa: E402
 from xtools import buildtools, checks, proc, report, rules, scan, state  # noqa: E402
+from xtools import crosswalk as crosswalk_mod  # noqa: E402
 from xtools import sync as xsync  # noqa: E402
 from xtools import vsenv  # noqa: E402
 
@@ -40,7 +41,7 @@ mcp = FastMCP("xash-tools")
 
 _XTOOLS_DIR = Path(__file__).resolve().parent / "xtools"
 _RELOAD_ORDER = [xtools, proc, report, vsenv, rules, scan,
-                 buildtools, checks, state, xsync]
+                 buildtools, checks, crosswalk_mod, state, xsync]
 
 
 def _xtools_mtimes() -> dict[str, float]:
@@ -177,6 +178,20 @@ def stub_scan(subsystem: str, delta: bool = False) -> dict:
     retired stub offset by a new one)."""
     _maybe_reload()
     return checks.stub_scan(subsystem, delta=delta)
+
+
+@mcp.tool()
+def crosswalk(query: str = "", kind: str = "auto",
+              missing: bool = False) -> dict:
+    """Resolve a legacy C engine symbol or file:line to its xash3dpp C++ port.
+    `query` is a legacy symbol (SV_Multicast) or file:line (sv_game.c:4026).
+    Indexes the inline port annotations + the deep-dive recon docs; each hit
+    carries `source` + `confidence` (server resolves function-level; networking
+    / map_loader are file-level, so a hit there points at the porting TU).
+    missing=True lists deep-dive-documented symbols with no code port yet — the
+    still-to-port set (serves the pmove / parity phases)."""
+    _maybe_reload()
+    return crosswalk_mod.crosswalk(query, kind=kind, missing=missing)
 
 
 @mcp.tool()
