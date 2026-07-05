@@ -769,6 +769,132 @@ static void test_pm_init_client_move()
     CHECK_EQ( g_err_calls, 0 );
 }
 
+// ---------------------------------------------------------------------------
+// SV_RunCmd (P4): the per-usercmd player-move chain.
+// ---------------------------------------------------------------------------
+
+// The full chain fires in order, advances the timebase, passes the seed
+// through, and SV_FinishPMove copies the PM_Move-advanced origin back.
+static void test_sv_run_cmd_chain()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 1;
+    fx.st->pm_move_dx = 8.0f; // PM_Move nudges origin[0] by +8
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    const float   x0 = pl->v.origin[0];
+
+    sv::ServerClient cl;
+    cl.edict    = pl;
+    cl.state    = sv::ClientState::Spawned;
+    cl.timebase = 1.0;
+
+    abi::usercmd_t ucmd{};
+    ucmd.msec          = 20;
+    ucmd.viewangles[1] = 45.0f;
+
+    sv::sv_run_cmd( fx.rt, cl, ucmd, 0x1234 );
+
+    CHECK_EQ( fx.st->cmd_start_calls, 1 );
+    CHECK_EQ( fx.st->player_pre_think_calls, 1 );
+    CHECK_EQ( fx.st->pm_move_calls, 1 );
+    CHECK_EQ( fx.st->player_post_think_calls, 1 );
+    CHECK_EQ( fx.st->cmd_end_calls, 1 );
+    CHECK_EQ( static_cast<int>( fx.st->cmd_start_seed ), 0x1234 );
+    CHECK_EQ( fx.st->pm_move_server, 1 ); // PM_Move( pmove, /*server=*/true )
+
+    // timebase advanced by msec/1000; globals.frametime mirrors it.
+    CHECK( fx.rt.globals.frametime > 0.0199f && fx.rt.globals.frametime < 0.0201f );
+    CHECK( cl.timebase > 1.0199 && cl.timebase < 1.0201 );
+
+    // viewangle latch (no fixangle) → v_angle follows the command.
+    CHECK( pl->v.v_angle[1] == 45.0f );
+
+    // SV_FinishPMove copied the PM_Move-advanced origin back onto the edict.
+    CHECK( pl->v.origin[0] == x0 + 8.0f );
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+// msec > 50 splits into two half-length commands (impulse zeroed on the
+// second half so it can't double-fire); each half runs the full chain.
+static void test_sv_run_cmd_msec_split()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 1;
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient cl;
+    cl.edict    = pl;
+    cl.state    = sv::ClientState::Spawned;
+    cl.timebase = 0.0;
+
+    abi::usercmd_t ucmd{};
+    ucmd.msec    = 100; // > 50 → two 50 ms halves
+    ucmd.impulse = 7;
+
+    sv::sv_run_cmd( fx.rt, cl, ucmd, 0 );
+
+    CHECK_EQ( fx.st->cmd_start_calls, 2 );
+    CHECK_EQ( fx.st->pm_move_calls, 2 );
+    CHECK_EQ( fx.st->cmd_end_calls, 2 );
+    // timebase advanced by 2 × 50 ms.
+    CHECK( cl.timebase > 0.0999 && cl.timebase < 0.1001 );
+    // impulse was applied by the (first) half that carried it.
+    CHECK_EQ( pl->v.impulse, 7 );
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+// A touch staged by PM_Move dispatches through SV_Impact (pfnTouch), and the
+// client's real velocity is restored after the deltavelocity swap.
+static void test_sv_run_cmd_touch()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients    = 1;
+    fx.st->pm_move_inject_touch = 1;
+    fx.st->pm_move_touch_ent    = 0; // world physent (physents[0].info == 0)
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    pl->v.velocity[0] = 25.0f; // saved + restored around the touch loop
+
+    sv::ServerClient cl;
+    cl.edict = pl;
+    cl.state = sv::ClientState::Spawned;
+
+    abi::usercmd_t ucmd{};
+    ucmd.msec = 20;
+
+    const int touch0 = fx.st->touch_calls;
+    sv::sv_run_cmd( fx.rt, cl, ucmd, 0 );
+
+    // the injected touch reached SV_Impact → pfnTouch.
+    CHECK( fx.st->touch_calls > touch0 );
+    // velocity restored after the loop (deltavelocity was 111, not kept).
+    CHECK( pl->v.velocity[0] == 25.0f );
+    // numtouch reset for the next command.
+    CHECK_EQ( fx.rt.pmove->numtouch, 0 );
+    CHECK_EQ( g_err_calls, 0 );
+}
+
+// A kicked/zombie (or free) client is skipped entirely — no chain runs.
+static void test_sv_run_cmd_zombie_skip()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    fx.rt.clients.maxclients = 1;
+
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient cl;
+    cl.edict = pl;
+    cl.state = sv::ClientState::Zombie;
+
+    abi::usercmd_t ucmd{};
+    ucmd.msec = 20;
+    sv::sv_run_cmd( fx.rt, cl, ucmd, 0 );
+
+    CHECK_EQ( fx.st->cmd_start_calls, 0 );
+    CHECK_EQ( fx.st->pm_move_calls, 0 );
+    CHECK_EQ( g_err_calls, 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -790,6 +916,10 @@ int main()
     RUN_TEST( test_pm_box_physent );
     RUN_TEST( test_pm_stuck_touch );
     RUN_TEST( test_pm_init_client_move );
+    RUN_TEST( test_sv_run_cmd_chain );
+    RUN_TEST( test_sv_run_cmd_msec_split );
+    RUN_TEST( test_sv_run_cmd_touch );
+    RUN_TEST( test_sv_run_cmd_zombie_skip );
 
     std::filesystem::remove_all( g_root );
 

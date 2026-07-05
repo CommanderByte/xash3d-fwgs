@@ -18,6 +18,8 @@
 #include "fake_dll_state.hpp"
 
 #include <xash3dpp/abi/entity_state.hpp>
+#include <xash3dpp/abi/pm_defs.hpp> // playermove_t (P4 pfnPM_Move probe)
+#include <xash3dpp/abi/usercmd.hpp>
 #include <xash3dpp/abi/weaponinfo.hpp>
 
 #include <cstdio>
@@ -150,6 +152,53 @@ static void fake_think( abi::edict_t * )
 static void fake_blocked( abi::edict_t *, abi::edict_t * )
 {
     ++g_state.blocked_calls;
+}
+
+// P4 pmove-run chain (SV_RunCmd) callbacks.
+static void fake_cmd_start( const abi::edict_t *, const abi::usercmd_s *,
+                            unsigned int random_seed )
+{
+    ++g_state.cmd_start_calls;
+    g_state.cmd_start_seed = random_seed;
+}
+
+static void fake_cmd_end( const abi::edict_t * )
+{
+    ++g_state.cmd_end_calls;
+}
+
+static void fake_player_pre_think( abi::edict_t * )
+{
+    ++g_state.player_pre_think_calls;
+}
+
+static void fake_player_post_think( abi::edict_t * )
+{
+    ++g_state.player_post_think_calls;
+}
+
+// pfnPM_Move: the "motor".  Records the call, nudges origin[0] so the engine's
+// SV_FinishPMove copyback is observable, and optionally stages a touch the
+// SV_RunCmd dispatch loop must resolve to an edict + run through SV_Impact.
+static void fake_pm_move( abi::playermove_s *ppmove, abi::qboolean server )
+{
+    ++g_state.pm_move_calls;
+    g_state.pm_move_server = server;
+
+    auto *pm = reinterpret_cast<abi::playermove_t *>( ppmove );
+    if ( pm == nullptr )
+        return;
+
+    pm->origin[0] += g_state.pm_move_dx;
+
+    if ( g_state.pm_move_inject_touch )
+    {
+        pm->numtouch          = 1;
+        pm->touchindex[0]     = {};
+        pm->touchindex[0].ent = g_state.pm_move_touch_ent;
+        pm->touchindex[0].deltavelocity[0] = 111.0f;
+        pm->touchindex[0].fraction         = 0.5f;
+    }
 }
 
 // pfnServerActivate: the game DLL's per-map activation hook — records the
@@ -332,6 +381,11 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnServerActivate     = fake_server_activate;
     table->pfnServerDeactivate   = fake_server_deactivate;
     table->pfnStartFrame         = fake_start_frame;
+    table->pfnCmdStart           = fake_cmd_start;
+    table->pfnCmdEnd             = fake_cmd_end;
+    table->pfnPlayerPreThink     = fake_player_pre_think;
+    table->pfnPlayerPostThink    = fake_player_post_think;
+    table->pfnPM_Move            = fake_pm_move;
     table->pfnGetGameDescription = fake_game_description;
     table->pfnGetHullBounds      = fake_get_hull_bounds;
     table->pfnRegisterEncoders   = fake_register_encoders;

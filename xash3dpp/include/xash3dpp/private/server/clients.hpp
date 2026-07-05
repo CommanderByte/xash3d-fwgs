@@ -195,6 +195,16 @@ struct ServerClient
     double connecttime         = 0.0; // set on "begin"
     double timebase            = 0.0; // cl->timebase — SV_EstablishTimeBase (P4);
                                       // SV_SetupPMove reads pmove->time = timebase*1000
+
+    // SV_RunCmd speed-hack clock (sv_pmove.c:904).  SV_CheckCmdTimes — the
+    // producer that arms ignorecmdtime (sv_main.c:287) — is the S9 stub at
+    // physics.cpp:1768, so ignorecmdtime stays 0 and the guard is dormant
+    // until then; the fields are ported now so SV_RunCmd is byte-faithful.
+    double ignorecmdtime        = 0.0; // cl->ignorecmdtime (drop-cmds-until time)
+    double cmdtime              = 0.0; // cl->cmdtime (accumulated run time)
+    bool   ignorecmdtime_warned = false; // cl->ignorecmdtime_warned
+    int    ignorecmdtime_warns  = 0;     // cl->ignorecmdtime_warns
+
     double last_received       = 0.0; // netchan last_received mirror
     double next_messagetime    = 0.0;
     double next_messageinterval = 0.05;

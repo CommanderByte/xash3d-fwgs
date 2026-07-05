@@ -40,6 +40,7 @@ add_library(xash3dpp_server STATIC
     physics/pmove.cpp
     physics/pm_trace.cpp
     physics/init_client_move.cpp
+    physics/run_cmd.cpp
     clients/info_string.cpp
     clients/filter.cpp
     clients/log.cpp

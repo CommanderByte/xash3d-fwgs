@@ -17,9 +17,25 @@
 
 #include <cstddef>
 
+namespace xash::abi {
+struct edict_t; // fwd (edict.hpp)
+} // namespace xash::abi
+
 namespace xash::server {
 
 struct ServerRuntime;
+struct SvTrace; // world_trace.hpp — engine-internal trace_t (kernel result + ent)
+
+// SV_UpdateBaseVelocity (sv_phys.c:162): conveyor-belt momentum handshake —
+// fold a moving ground entity's velocity into the rider's basevelocity.
+// Exposed for the pmove run chain (PM_CheckMovingGround, run_cmd.cpp).
+void update_base_velocity( ServerRuntime &rt, ::xash::abi::edict_t *ent ) noexcept;
+
+// SV_Impact (sv_phys.c:299): two entities touched — dispatch both pfnTouch
+// directions (group-mask gated, SOLID_NOT suppressed).  Exposed for the pmove
+// run chain's touch dispatch (run_cmd.cpp).
+void sv_impact( ServerRuntime &rt, ::xash::abi::edict_t *e1,
+                ::xash::abi::edict_t *e2, const SvTrace &trace ) noexcept;
 
 // SV_UpdateMovevars (sv_main.c:189): mirror the sv_* physics cvars into
 // rt.movevars (and clamp sv_zmax).  `initialize` is the spawn-time fill —

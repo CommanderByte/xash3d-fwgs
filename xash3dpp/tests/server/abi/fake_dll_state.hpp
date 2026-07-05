@@ -48,6 +48,21 @@ struct State
     int think_calls;       // pfnThink invocations (SV_RunThink dispatch)
     int blocked_calls;     // pfnBlocked invocations (pusher obstruction)
 
+    // P4 pmove-run probes (SV_RunCmd chain).
+    int          cmd_start_calls;        // pfnCmdStart invocations
+    unsigned int cmd_start_seed;         // last random_seed pfnCmdStart received
+    int          cmd_end_calls;          // pfnCmdEnd invocations
+    int          player_pre_think_calls; // pfnPlayerPreThink invocations
+    int          player_post_think_calls;// pfnPlayerPostThink invocations
+    int          pm_move_calls;          // pfnPM_Move invocations
+    int          pm_move_server;         // last `server` flag PM_Move received
+    // Test-driven PM_Move behaviour: advance origin[0] by pm_move_dx (so the
+    // FinishPMove copyback is observable) and, when pm_move_inject_touch is set,
+    // stage one touch against physent pm_move_touch_ent.
+    float        pm_move_dx;
+    int          pm_move_inject_touch;
+    int          pm_move_touch_ent;
+
     // S9 client-lifecycle probes.
     int client_connect_calls;        // pfnClientConnect invocations
     int client_put_in_server_calls;  // pfnClientPutInServer invocations

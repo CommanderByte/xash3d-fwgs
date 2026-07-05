@@ -177,28 +177,9 @@ void check_velocity( ServerRuntime &rt, abi::edict_t *ent ) noexcept
     }
 }
 
-// SV_UpdateBaseVelocity (sv_phys.c:162): conveyor momentum handshake.
-void update_base_velocity( ServerRuntime &, abi::edict_t *ent ) noexcept
-{
-    EntityView v( ent );
-    if ( !fbit( v.flags(), abi::k_fl_onground ) )
-        return;
-
-    abi::edict_t *ground = v.groundentity();
-    if ( !valid_edict( ground ) )
-        return;
-
-    EntityView gv( ground );
-    if ( !fbit( gv.flags(), abi::k_fl_conveyor ) )
-        return;
-
-    Vec3 new_basevel = gv.movedir() * gv.speed();
-    if ( fbit( v.flags(), abi::k_fl_basevelocity ) )
-        new_basevel = new_basevel + v.basevelocity();
-
-    v.add_flags( abi::k_fl_basevelocity );
-    v.set_basevelocity( new_basevel );
-}
+// SV_UpdateBaseVelocity / SV_Impact are defined at namespace scope after this
+// anonymous block (physics.hpp exposes them for the pmove run chain,
+// run_cmd.cpp) — they need external linkage, so they can't live here.
 
 // ---------------------------------------------------------------------------
 // SV_TestEntityPosition (sv_phys.c:193)
@@ -257,43 +238,7 @@ void update_base_velocity( ServerRuntime &, abi::edict_t *ent ) noexcept
     return !ent->free;
 }
 
-// ---------------------------------------------------------------------------
-// SV_Impact (sv_phys.c:299): dispatch both touch functions
-// ---------------------------------------------------------------------------
-
-void sv_impact( ServerRuntime &rt, abi::edict_t *e1, abi::edict_t *e2,
-                const SvTrace &trace ) noexcept
-{
-    rt.globals.time = static_cast<float>( rt.level.time );
-
-    EntityView v1( e1 ), v2( e2 );
-
-    if ( ( ( v1.flags() | v2.flags() ) & abi::k_fl_killme ) != 0 )
-        return;
-
-    if ( v1.groupinfo() != 0 && v2.groupinfo() != 0 )
-    {
-        const bool intersect = ( v1.groupinfo() & v2.groupinfo() ) != 0;
-        if ( rt.move_env.group_op == GroupOp::And && !intersect )
-            return;
-        if ( rt.move_env.group_op == GroupOp::Nand && intersect )
-            return;
-    }
-
-    if ( v1.solid() != abi::k_solid_not )
-    {
-        copy_trace_to_global( rt, trace );
-        if ( rt.game.funcs().pfnTouch != nullptr )
-            rt.game.funcs().pfnTouch( e1, e2 );
-    }
-
-    if ( v2.solid() != abi::k_solid_not )
-    {
-        copy_trace_to_global( rt, trace );
-        if ( rt.game.funcs().pfnTouch != nullptr )
-            rt.game.funcs().pfnTouch( e2, e1 );
-    }
-}
+// (SV_Impact is defined at namespace scope after the anonymous block.)
 
 // ---------------------------------------------------------------------------
 // SV_AngularMove / SV_LinearMove (sv_phys.c:335 / :369)
@@ -1625,6 +1570,70 @@ void physics_entity( ServerRuntime &rt, abi::edict_t *ent ) noexcept
 }
 
 } // namespace
+
+// ---------------------------------------------------------------------------
+// SV_UpdateBaseVelocity / SV_Impact — namespace-scope (external linkage) so the
+// pmove run chain (run_cmd.cpp) can compose them; the definitions still reach
+// the anonymous-block helpers above (same TU).
+// ---------------------------------------------------------------------------
+
+// SV_UpdateBaseVelocity (sv_phys.c:162): conveyor momentum handshake.
+void update_base_velocity( ServerRuntime &, abi::edict_t *ent ) noexcept
+{
+    EntityView v( ent );
+    if ( !fbit( v.flags(), abi::k_fl_onground ) )
+        return;
+
+    abi::edict_t *ground = v.groundentity();
+    if ( !valid_edict( ground ) )
+        return;
+
+    EntityView gv( ground );
+    if ( !fbit( gv.flags(), abi::k_fl_conveyor ) )
+        return;
+
+    Vec3 new_basevel = gv.movedir() * gv.speed();
+    if ( fbit( v.flags(), abi::k_fl_basevelocity ) )
+        new_basevel = new_basevel + v.basevelocity();
+
+    v.add_flags( abi::k_fl_basevelocity );
+    v.set_basevelocity( new_basevel );
+}
+
+// SV_Impact (sv_phys.c:299): dispatch both touch functions.
+void sv_impact( ServerRuntime &rt, abi::edict_t *e1, abi::edict_t *e2,
+                const SvTrace &trace ) noexcept
+{
+    rt.globals.time = static_cast<float>( rt.level.time );
+
+    EntityView v1( e1 ), v2( e2 );
+
+    if ( ( ( v1.flags() | v2.flags() ) & abi::k_fl_killme ) != 0 )
+        return;
+
+    if ( v1.groupinfo() != 0 && v2.groupinfo() != 0 )
+    {
+        const bool intersect = ( v1.groupinfo() & v2.groupinfo() ) != 0;
+        if ( rt.move_env.group_op == GroupOp::And && !intersect )
+            return;
+        if ( rt.move_env.group_op == GroupOp::Nand && intersect )
+            return;
+    }
+
+    if ( v1.solid() != abi::k_solid_not )
+    {
+        copy_trace_to_global( rt, trace );
+        if ( rt.game.funcs().pfnTouch != nullptr )
+            rt.game.funcs().pfnTouch( e1, e2 );
+    }
+
+    if ( v2.solid() != abi::k_solid_not )
+    {
+        copy_trace_to_global( rt, trace );
+        if ( rt.game.funcs().pfnTouch != nullptr )
+            rt.game.funcs().pfnTouch( e2, e1 );
+    }
+}
 
 // ---------------------------------------------------------------------------
 // SV_Physics (sv_phys.c:1812)

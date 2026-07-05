@@ -50,4 +50,14 @@ void pm_clear_phys_ents( ServerRuntime &rt ) noexcept;
 // callbacks can reach them.  Called from load_progs after the pmove allocation.
 void sv_init_client_move( ServerRuntime &rt ) noexcept;
 
+// SV_RunCmd (sv_pmove.c:887): run one usercmd through the full player-move
+// chain — the speed-hack clock, the msec>50 split-recurse, then
+// pfnCmdStart → PM_CheckMovingGround → viewangle latch → pfnPlayerPreThink →
+// SV_PlayerRunThink → SetupPMove → pfnPM_Move → FinishPMove → touch dispatch
+// (deltavelocity → SV_Impact) → pfnPlayerPostThink → pfnCmdEnd.  `random_seed`
+// seeds the DLL's shared-RNG for this command.  Lag compensation (the
+// interpolant save/restore) is P5.  Defined in run_cmd.cpp.
+void sv_run_cmd( ServerRuntime &rt, ServerClient &cl,
+                 const ::xash::abi::usercmd_t &ucmd, int random_seed ) noexcept;
+
 } // namespace xash::server
