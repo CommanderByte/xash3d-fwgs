@@ -107,6 +107,14 @@ target_compile_definitions(test_spawn_server PRIVATE
 )
 add_dependencies(test_spawn_server fake_game_dll_full)
 
+# S15 milestone smoke — load the REAL retail valve/dlls/hl.dll and run one map
+# frame.  Asset-gated (XASH_HL_ROOT) + arch-gated (x86 only, hl.dll is 32-bit);
+# a SKIP is a pass, so this stays green on CI / x64 / machines without HL.  No
+# fake DLL: the game binary comes from the pointed-at Half-Life install.
+xash3dpp_add_test(test_hl_smoke SOURCE lifecycle/test_hl_smoke.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_filesystem
+         xash3dpp_map_loader xash3dpp_utilities cmd_cvar_test_stubs)
+
 # S8 — physics driver + fixed-step frame loop over the fake DLL + a spawned
 # world: settle frames, gravity, thinks, pusher linear move, Host_ServerFrame.
 xash3dpp_add_test(test_physics SOURCE physics/test_physics.cpp
