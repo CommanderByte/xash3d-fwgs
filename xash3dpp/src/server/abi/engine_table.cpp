@@ -1163,6 +1163,16 @@ void pfn_write_string( const char *s )
 
 void pfn_write_entity( int v )
 {
+    // pfnWriteEntity (sv_game.c:2837): an out-of-range entnumber is a Host_Error.
+    if ( g_bridge->arena != nullptr &&
+         ( v < 0 || v >= static_cast<int>( g_bridge->arena->num_entities() ) ) )
+    {
+        char buf[64];
+        std::snprintf( buf, sizeof( buf ),
+                       "pfnWriteEntity: invalid entnumber %i\n", v );
+        host_error( buf );
+        return;
+    }
     if ( g_bridge->clients != nullptr )
         message_write_entity( *g_bridge->clients, v );
 }

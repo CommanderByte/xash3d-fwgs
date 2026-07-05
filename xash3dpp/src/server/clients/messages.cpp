@@ -293,6 +293,15 @@ void message_end( EngineBridge &bridge ) noexcept
         return;
     }
 
+    // Backward-compat fixup (sv_game.c:2719-2724): an empty svc_finale /
+    // svc_cutscene system message gets a trailing null byte so the client reads
+    // an empty string instead of the next stream byte.  index < 0 == system.
+    if ( cm.message.index < 0 &&
+         ( cm.message.index == -k_svc_finale ||
+           cm.message.index == -k_svc_cutscene ) &&
+         cm.message.realsize == 0 )
+        cm.multicast.write_char( 0 ); // write null string
+
     // clamp dest into [MSG_BROADCAST, MSG_SPEC]
     int dest = cm.message.dest;
     if ( dest < k_msg_broadcast )
@@ -331,7 +340,12 @@ void message_write_long( ClientMachinery &cm, int v ) noexcept
 }
 void message_write_angle( ClientMachinery &cm, float v ) noexcept
 {
-    cm.multicast.write_bit_angle( v, 8 ); // 8-bit angle, byte-aligned
+    // pfnWriteAngle (sv_game.c:2794): a plain truncate, NOT a wrapped bit-angle.
+    // `((int)(v * 256 / 360)) & 255`, written as a char.  (svc_setangle uses the
+    // wrapped 16-bit MSG_WriteBitAngle form; this 8-bit game path does not — a
+    // negative angle must NOT be wrapped to [0,360) here.)
+    const int a = static_cast<int>( v * 256.0f / 360.0f ) & 255;
+    cm.multicast.write_char( static_cast<std::int8_t>( a ) );
     cm.message.realsize += 1;
 }
 void message_write_coord( ClientMachinery &cm, float v ) noexcept

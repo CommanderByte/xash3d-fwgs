@@ -179,6 +179,10 @@ void setup_clients( ServerRuntime &rt ) noexcept
     std::snprintf( buf, sizeof( buf ), "%d", mc );
     rt.cvars->cvar_full_set( "maxplayers", buf,
                              ::xash::cmd_cvar::FCVAR_LATCH );
+    // XASH3DPP-STUB(chunk6): legacy ClearBits(sv_maxclients.flags, FCVAR_CHANGED)
+    // after the latch write (sv_init.c:833) — cvar_full_set leaves FCVAR_CHANGED
+    // set; needs a cmd_cvar clear-changed accessor.  Low impact (nothing polls
+    // that bit at the milestone); tracked with the S10 inventory.
 
     const std::size_t floor = static_cast<std::size_t>( mc ) + 1;
     rt.arena.set_reserved( floor );      // alloc floor tracks maxclients + 1
@@ -240,6 +244,20 @@ bool spawn_server( ServerRuntime &rt, const char *mapname,
         }
         std::snprintf( cmd, sizeof( cmd ), "exec maps/%s_load.cfg\n", mapname );
         rt.cvars->cbuf_add_text( cmd );
+
+        // let's not have any servers with no name (sv_init.c:970-971): default an
+        // empty hostname to the game description (legacy falls back to FS_Title;
+        // the game_dir is the closest engine-side equivalent here).
+        const char *hn = rt.cvars->cvar_variable_string( "hostname" );
+        if ( hn == nullptr || hn[0] == '\0' )
+        {
+            const char *desc = rt.game.funcs().pfnGetGameDescription != nullptr
+                                   ? rt.game.funcs().pfnGetGameDescription()
+                                   : nullptr;
+            rt.cvars->cvar_set( "hostname", ( desc != nullptr && desc[0] != '\0' )
+                                                ? desc
+                                                : rt.cfg.game_dir );
+        }
     }
 
     // memset( &sv, 0 ) — wipe the per-level structure, then re-stamp.
@@ -413,7 +431,11 @@ void activate_server( ServerRuntime &rt, bool run_physics ) noexcept
     // host.movevars_changed / HPAK_FlushHostQueue / Mod_FreeUnused steps stay
     // S9/host seams.
     rt.level.hostflags = 0;
-    std::memcpy( &rt.oldmovevars, &rt.movevars, sizeof( rt.movevars ) );
+    // memset( &svgame.oldmovevars, 0 ) (sv_init.c:644): zero the delta baseline
+    // so the next SV_UpdateMovevars emits a FULL movevars delta to clients after
+    // activate (legacy pairs this with host.movevars_changed = true).  A memcpy
+    // here would make oldmovevars == movevars and suppress that initial delta.
+    std::memset( &rt.oldmovevars, 0, sizeof( rt.oldmovevars ) );
 
     set_server_state( rt, ServerState::Active );
 }

@@ -117,6 +117,13 @@ bool Server::exec_load_level( std::string_view map, bool background ) noexcept
     char name[64]; // MAX_QPATH-class stripped map name
     copy_name( name, sizeof( name ), map );
 
+    // SV_SetStringArrayMode( false ) (sv_init.c:1105): force the string pool
+    // back to the STATIC half before spawn so this level's entity strings land
+    // there.  deactivate_server empties the pool but leaves it in dynamic mode,
+    // so without this the 2nd+ map's entity string_t's would be written into —
+    // and later clobbered in — the dynamic (runtime-churn) half.
+    rt.strings.set_dynamic( false );
+
     if ( !spawn_server( rt, name, nullptr, background ) )
         return false;
 

@@ -1305,7 +1305,12 @@ void water_move( ServerRuntime &rt, abi::edict_t *ent ) noexcept
     const int   waterlevel = v.waterlevel();
     const int   watertype  = v.watertype();
     const int   flags      = v.flags();
-    const float now        = static_cast<float>( rt.level.time );
+    // Q-18: the timers compare/store against the DOUBLE server clock (legacy
+    // uses `sv.time` directly — float field promoted to double for the compare,
+    // `sv.time + Nf` computed in double then rounded once on the float store).
+    // A pre-rounded float clock here would do the arithmetic in single precision
+    // and drift by a ULP, flipping a drown/lava boundary a frame early/late.
+    const double now       = rt.level.time;
 
     if ( ( flags & ( abi::k_fl_immune_water | abi::k_fl_godmode ) ) == 0 )
     {
@@ -1319,12 +1324,12 @@ void water_move( ServerRuntime &rt, abi::edict_t *ent ) noexcept
                 if ( dmg < 15.0f )
                     dmg = 10.0f; // quake1 original code
                 v.set_dmg( dmg );
-                v.set_pain_finished( now + 1.0f );
+                v.set_pain_finished( static_cast<float>( now + 1.0f ) );
             }
         }
         else
         {
-            v.set_air_finished( now + 12.0f );
+            v.set_air_finished( static_cast<float>( now + 12.0f ) );
             v.set_dmg( 2.0f );
         }
     }
@@ -1336,7 +1341,7 @@ void water_move( ServerRuntime &rt, abi::edict_t *ent ) noexcept
             // XASH3DPP-STUB(chunk6-S9): EntityWaterExit splash sound.
             v.set_flags( flags & ~abi::k_fl_inwater );
         }
-        v.set_air_finished( now + 12.0f );
+        v.set_air_finished( static_cast<float>( now + 12.0f ) );
         return;
     }
 
@@ -1344,13 +1349,14 @@ void water_move( ServerRuntime &rt, abi::edict_t *ent ) noexcept
     {
         if ( ( flags & ( abi::k_fl_immune_lava | abi::k_fl_godmode ) ) == 0 &&
              v.dmgtime() < now )
-            v.set_dmgtime( v.radsuit_finished() < now ? now + 0.2f : now + 1.0f );
+            v.set_dmgtime( static_cast<float>(
+                v.radsuit_finished() < now ? now + 0.2f : now + 1.0f ) );
     }
     else if ( watertype == ml::k_contents_slime )
     {
         if ( ( flags & ( abi::k_fl_immune_slime | abi::k_fl_godmode ) ) == 0 &&
              v.dmgtime() < now && v.radsuit_finished() < now )
-            v.set_dmgtime( now + 1.0f );
+            v.set_dmgtime( static_cast<float>( now + 1.0f ) );
     }
 
     if ( !fbit( flags, abi::k_fl_inwater ) )
