@@ -5,6 +5,7 @@
 // the standard engine options, fill HostArgs, then call Host::Main.
 // No engine logic lives here.
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/platform/platform.hpp>
 
@@ -52,6 +53,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 int main(int argc, char** argv)
 {
 #endif
+    // The process's first thread IS the engine main thread.  Register the
+    // role before ANY engine call: assert_thread_role(Main) is fatal on an
+    // Unknown thread, so an unregistered production main would abort at the
+    // first asserted entry point (QN prerequisite; test mains do the same).
+    xash::core::register_thread_role(xash::core::ThreadRole::Main);
+
     xash::HostArgs args;
 
     args.argc    = argc;
