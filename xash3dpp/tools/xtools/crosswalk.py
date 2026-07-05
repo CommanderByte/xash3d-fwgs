@@ -37,10 +37,12 @@ _STYLE_A = re.compile(
     r"(?:\s*-\s*(\d+))?\s*\)")
 # Style B: file-header "Legacy reference:" banner (file-level).
 _STYLE_B = re.compile(r"//\s*Legacy(?:\s+reference)?:\s*(.+)")
-# Style D (networking): "// Legacy <Symbol>" — symbol, no file/line. The
-# lookahead keeps "Legacy reference:" (Style B) out; captured symbols are then
-# filtered through _looks_legacy so prose words ("Legacy behavior") drop.
-_STYLE_D = re.compile(r"//\s*Legacy\s+(?!reference\b)([A-Za-z_]\w+)")
+# Style D (networking): "// Legacy <Symbol>" or "// Legacy: <Symbol>" — symbol,
+# no file/line.  The lookahead keeps "Legacy reference:" (Style B) out; captured
+# symbols are then filtered through _looks_legacy so prose ("Legacy behavior")
+# drops.  The optional colon covers the "// Legacy: Delta_CompareField" form.
+_STYLE_D = re.compile(
+    r"//\s*Legacy(?:\s*:\s*|\s+)(?!reference\b)([A-Za-z_]\w+)")
 # Style E: a bare legacy symbol as the FIRST token of a comment-first line,
 # with no file:line and no "Legacy" keyword — the "// SV_LinkEdict" doc /
 # section-divider form that sits directly above the porting definition (often a
@@ -48,6 +50,19 @@ _STYLE_D = re.compile(r"//\s*Legacy\s+(?!reference\b)([A-Za-z_]\w+)")
 # finds a real signature below, so prose that merely opens with a symbol
 # ("// SV_Foo returns false here") is rejected as a citation, not a port.
 _STYLE_E = re.compile(r"^\s*//+\s*([A-Za-z_]\w*)")
+# Style F: a port attributed after an intro marker — an em-dash ("// clipnodes
+# — Mod_LoadClipnodes", the map_loader convention) or an explicit "port of"
+# phrase ("// tick() — port of Host_CalcFPS").  Captures the legacy symbol(s)
+# right after the marker, handling "A + B" / "A / B" multi-port lines.  The
+# em-dash (U+2014, NOT an ASCII hyphen) and the "port of" phrase are the
+# precision signals that keep mid-prose mentions ("the returned WorldData",
+# "the legacy Q_min") out; like E it indexes only when a signature follows.
+_STYLE_F_PORTOF = re.compile(
+    r"\bport(?:ed|s)?\s+of\s+([A-Za-z_]\w+)(?:\s*[/+]\s*([A-Za-z_]\w+))?")
+# An optional "legacy" word may sit between the em-dash and the symbol
+# ("// test_baseline — legacy Delta_TestBaseline", the delta-codec convention).
+_STYLE_F_DASH = re.compile(
+    "—\\s*(?:[Ll]egacy\\s+)?([A-Za-z_]\\w+)(?:\\s*[+/]\\s*([A-Za-z_]\\w+))?")
 # Deep-dive prose: Symbol (file.c:line[-range]) anywhere in a recon doc.
 _DEEP_DIVE = re.compile(
     r"\b([A-Za-z_]\w+)\s*\(\s*([\w./]+\.c)\s*:\s*(\d+)(?:\s*-\s*(\d+))?\s*\)")
@@ -169,6 +184,15 @@ def _index_rows(rows: list, rel: str) -> list[dict]:
             if cpp_sym and conf in ("high", "symbol"):
                 entries.append(_entry(me.group(1), None, None, rel, cpp_sym,
                                       cpp_line, "code-symbol", "symbol"))
+        mf = _STYLE_F_PORTOF.search(raw) or _STYLE_F_DASH.search(raw)
+        if mf:
+            syms = [g for g in mf.groups() if g and _looks_legacy(g)]
+            if syms:
+                cpp_sym, cpp_line, conf = _next_def(rows, i)
+                if cpp_sym and conf in ("high", "symbol"):
+                    for s in syms:
+                        entries.append(_entry(s, None, None, rel, cpp_sym,
+                                              cpp_line, "code-symbol", "symbol"))
     return entries
 
 

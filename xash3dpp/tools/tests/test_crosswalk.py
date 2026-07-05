@@ -22,6 +22,8 @@ from xtools.crosswalk import (  # noqa: E402
     _looks_legacy, _match_fileline, _match_symbol, _missing, _next_def,
     _parse_header)
 
+_EM = "—"  # em-dash intro used by the map_loader / delta-codec port lines
+
 
 def _rows(*lines: str):
     """(lineno, code_only, raw) with // comments blanked out of code_only, as
@@ -47,6 +49,12 @@ class Grammars(unittest.TestCase):
 
     def test_style_d_rejects_reference_header(self):
         self.assertIsNone(_STYLE_D.search("// Legacy reference: engine/foo.c"))
+
+    def test_style_d_colon_form(self):
+        # "// Legacy: Delta_CompareField" (delta codec) — colon separator.
+        self.assertEqual(
+            _STYLE_D.search("// Legacy: Delta_CompareField integers").group(1),
+            "Delta_CompareField")
 
     def test_deep_dive(self):
         hit = _DEEP_DIVE.findall("maps SV_FreeEdict (sv_game.c:1004) then")[0]
@@ -129,6 +137,46 @@ class StyleE(unittest.TestCase):
         self.assertEqual(_index_rows(rows, "x.cpp"), [])
         # and the regex itself keeps only the first comment token.
         self.assertEqual(_STYLE_E.search("  // SV_Foo bar").group(1), "SV_Foo")
+
+
+class StyleF(unittest.TestCase):
+    """The em-dash / "port of" intro form: `// hint — Mod_LoadX`."""
+
+    def test_dash_intro_resolves(self):
+        rows = _rows(f"// clipnodes {_EM} Mod_LoadClipnodes (widen to 32-bit)",
+                     "void WorldDataFill::clipnodes() {")
+        entries = _index_rows(rows, "bsp_hulls.cpp")
+        got = [(e["legacy_symbol"], e["cpp_symbol"], e["source"])
+               for e in entries]
+        self.assertIn(
+            ("Mod_LoadClipnodes", "WorldDataFill::clipnodes", "code-symbol"),
+            got)
+
+    def test_dash_intro_skips_legacy_word(self):
+        # "// test_baseline — legacy Delta_TestBaseline" (delta codec).
+        rows = _rows(f"// test_baseline {_EM} legacy Delta_TestBaseline",
+                     "int DeltaTables::test_baseline() {")
+        syms = [e["legacy_symbol"] for e in _index_rows(rows, "d.cpp")]
+        self.assertEqual(syms, ["Delta_TestBaseline"])  # not "legacy"
+
+    def test_port_of_intro(self):
+        rows = _rows(f"// tick() {_EM} port of Host_CalcFPS from host.c",
+                     "double calc_fps() {")
+        syms = [e["legacy_symbol"] for e in _index_rows(rows, "clock.cpp")]
+        self.assertEqual(syms, ["Host_CalcFPS"])
+
+    def test_multi_symbol_line(self):
+        rows = _rows(f"// setup {_EM} Mod_SetupSubmodels + Mod_SetupHull",
+                     "void setup_submodels() {")
+        syms = sorted(e["legacy_symbol"] for e in _index_rows(rows, "h.cpp"))
+        self.assertEqual(syms, ["Mod_SetupHull", "Mod_SetupSubmodels"])
+
+    def test_mid_prose_after_dash_is_not_a_port(self):
+        # first token after the em-dash is prose ("the"), so nothing indexes —
+        # this is the "// current world — the returned WorldData" noise case.
+        rows = _rows(f"// current world {_EM} the returned WorldData is const",
+                     "const WorldData *world() {")
+        self.assertEqual(_index_rows(rows, "m.hpp"), [])
 
 
 class Header(unittest.TestCase):
