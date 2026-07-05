@@ -14,6 +14,7 @@
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
+#include <xash3dpp/networking/message_buf.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/server/server.hpp>
 
@@ -23,6 +24,7 @@
 
 #include "../../test_helpers.hpp"
 
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -47,6 +49,16 @@ static const char *k_delta_lst =
     "event_t gamedll Game_EventEncode\n"
     "{\n"
     "    DEFINE_DELTA( entindex, DT_INTEGER, 11, 1.0 )\n"
+    "}\n"
+    "entity_state_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( origin[0], DT_SIGNED | DT_FLOAT, 16, 8.0 ),\n"
+    "    DEFINE_DELTA( sequence, DT_INTEGER, 8, 1.0 )\n"
+    "}\n"
+    "entity_state_player_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( origin[0], DT_SIGNED | DT_FLOAT, 16, 8.0 ),\n"
+    "    DEFINE_DELTA( sequence, DT_INTEGER, 8, 1.0 )\n"
     "}\n";
 
 // worldspawn + one linkable entity (both LINK exports the fake DLL provides).
@@ -279,6 +291,80 @@ static void test_baselines_created()
 }
 
 // ---------------------------------------------------------------------------
+// SV_WriteEntitiesToClient (S9 snapshot 2): the per-client gather + circular
+// ring + SV_EmitPacketEntities delta.  Drives a spawned client through both the
+// full-pack (delta_sequence -1) and delta (svc_deltapacketentities) headers and
+// pins the ring bookkeeping (sorted numbers, frame first_entity/num_entities).
+// ---------------------------------------------------------------------------
+
+static void test_write_entities_to_client()
+{
+    SpawnFixture fx( /*dedicated=*/false, /*maxclients=*/1 );
+
+    REQUIRE( sv::spawn_server( fx.rt, "parsetest", nullptr, false ));
+    fx.refresh_state();
+    REQUIRE( fx.st != nullptr );
+    sv::spawn_entities( fx.rt, *fx.maps.world() );
+    sv::activate_server( fx.rt, /*run_physics=*/true );
+
+    // setup_clients allocated the ring + per-client frames (SP → backup 16).
+    REQUIRE( fx.rt.snapshot.packet_entities != nullptr );
+    CHECK_EQ( fx.rt.snapshot.update_backup, 16 );
+    CHECK_EQ( fx.rt.snapshot.num_client_entities, 1 * 16 * 256 );
+
+    // Present a spawned client in slot 0 bound to the reserved edict 1.
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    cl.state          = sv::ClientState::Spawned;
+    cl.edict          = fx.rt.arena.edict_num( 1 );
+    cl.delta_sequence = -1; // no delta → full packetentities
+    REQUIRE( cl.frames != nullptr );
+
+    std::array<std::byte, 4096> buf{};
+    xash::networking::MessageBuf msg{ buf };
+
+    fx.st->setup_visibility_calls = 0;
+    fx.st->add_to_full_pack_calls = 0;
+    sv::write_entities_to_client( fx.rt, cl, /*frame_index=*/0, msg );
+
+    CHECK( !msg.overflowed() );
+    CHECK_EQ( fx.st->setup_visibility_calls, 1 );
+    // world(0) excluded; spawned client(1) + info_player_start(2) accepted.
+    CHECK_EQ( fx.st->add_to_full_pack_calls, 2 );
+
+    // The frame recorded both states into the ring, sorted by number.
+    const sv::ClientFrame &frame = cl.frames[0];
+    CHECK_EQ( frame.num_entities, 2 );
+    CHECK_EQ( frame.first_entity, 0 );
+    CHECK_EQ( fx.rt.snapshot.next_client_entities, 2 );
+    CHECK_EQ( fx.rt.snapshot.packet_entities[0].number, 1 );
+    CHECK_EQ( fx.rt.snapshot.packet_entities[1].number, 2 );
+
+    // Wire header: svc_packetentities + (num_entities-1) in 11 bits.
+    msg.reset();
+    CHECK_EQ( static_cast<int>( msg.read_byte() ), 40 );
+    CHECK_EQ( static_cast<int>( msg.read_ubit_long( 11 )), frame.num_entities - 1 );
+
+    // Second frame acking frame 0 → svc_deltapacketentities + delta_sequence.
+    std::array<std::byte, 4096> buf2{};
+    xash::networking::MessageBuf msg2{ buf2 };
+    cl.delta_sequence = 0;
+    sv::write_entities_to_client( fx.rt, cl, /*frame_index=*/1, msg2 );
+
+    CHECK( !msg2.overflowed() );
+    CHECK_EQ( cl.frames[1].num_entities, 2 );
+    CHECK_EQ( cl.frames[1].first_entity, 2 );          // ring advanced
+    CHECK_EQ( fx.rt.snapshot.next_client_entities, 4 );
+    msg2.reset();
+    CHECK_EQ( static_cast<int>( msg2.read_byte() ), 41 );
+    CHECK_EQ( static_cast<int>( msg2.read_ubit_long( 11 )), cl.frames[1].num_entities - 1 );
+    CHECK_EQ( static_cast<int>( msg2.read_byte() ), 0 ); // acked delta_sequence
+
+    // Leave the slot free so the fixture teardown's client sweep is a no-op.
+    cl.state = sv::ClientState::Free;
+    cl.edict = nullptr;
+}
+
+// ---------------------------------------------------------------------------
 // Server as the MapLoader level-change executor: `map` drives the FSM, which
 // delegates to exec_load_level → full spawn/activate.
 // ---------------------------------------------------------------------------
@@ -370,6 +456,7 @@ int main()
     RUN_TEST( test_spawn_activate_deactivate );
     RUN_TEST( test_activate_no_physics );
     RUN_TEST( test_baselines_created );
+    RUN_TEST( test_write_entities_to_client );
     RUN_TEST( test_level_executor );
     RUN_TEST( test_no_executor_fallback );
 

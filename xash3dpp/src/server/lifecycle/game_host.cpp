@@ -276,7 +276,7 @@ void unload_progs( ServerRuntime &rt ) noexcept
     rt.arena.shutdown();
     rt.arena.set_private_releaser( nullptr, nullptr );
     rt.precache.shutdown();
-    snapshot_free_baselines( rt ); // Z_Free svs.baselines (sv_game.c:5194)
+    snapshot_shutdown( rt ); // Z_Free svs.baselines + packet_entities + frames
 
     rt.game.unload(); // COM_FreeLibrary
 

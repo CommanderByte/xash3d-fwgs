@@ -25,6 +25,7 @@ namespace xash::server {
 
 struct EngineBridge; // fwd — messaging free fns reach it for arena/game/state
 struct ServerRuntime;
+struct ClientFrame;  // fwd (snapshot.hpp) — the per-client delta frames ring
 
 // --- protocol / capacity constants (protocol.h / server.h, wire-frozen) -----
 inline constexpr int         k_max_clients        = 32;   // 1<<MAX_CLIENT_BITS
@@ -174,6 +175,15 @@ struct ServerClient
     std::byte   datagram[k_client_stage_bytes] = {};
     std::size_t reliable_bits = 0;
     std::size_t datagram_bits = 0;
+
+    // Snapshot delta state (S9 completion).  `frames` is a pool-allocated ring
+    // of SV_UPDATE_BACKUP ClientFrame (snapshot_alloc_ring owns it; nullptr
+    // until maxclients is latched).  pViewEntity overrides the vis origin for
+    // spectators/portals (nullptr ⇒ the DLL uses the client edict).
+    ClientFrame          *frames         = nullptr; // cl->frames[SV_UPDATE_BACKUP]
+    ::xash::abi::edict_t *view_entity    = nullptr; // cl->pViewEntity
+    int                   delta_sequence = -1;      // clc_delta ack; -1 = no delta
+    int                   chokecount     = 0;       // bandwidth-suppressed count
 };
 
 // --- the aggregate (svs.clients + svgame.msg + sv.multicast + filters/log) ---

@@ -59,6 +59,8 @@ struct State
     // S9 snapshot-pipeline probes.
     int create_baseline_calls;   // pfnCreateBaseline invocations
     int create_instanced_calls;  // pfnCreateInstancedBaselines invocations
+    int setup_visibility_calls;  // pfnSetupVisibility invocations
+    int add_to_full_pack_calls;  // pfnAddToFullPack invocations
 
     // Every pfnKeyValue the double receives (class/key/value snapshot) — the
     // parse test reads these back to pin the quirk transforms.

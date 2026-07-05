@@ -180,16 +180,18 @@ void setup_clients( ServerRuntime &rt ) noexcept
     rt.cvars->cvar_full_set( "maxplayers", buf,
                              ::xash::cmd_cvar::FCVAR_LATCH );
 
-    // XASH3DPP-STUB(chunk6-S9): SV_UPDATE_BACKUP, svs.clients /
-    // packet_entities realloc, NET_Config — the snapshot ring + client array
-    // land with S9.
-
     const std::size_t floor = static_cast<std::size_t>( mc ) + 1;
     rt.arena.set_reserved( floor );      // alloc floor tracks maxclients + 1
     rt.arena.set_num_entities( floor );  // svgame.numEntities = maxclients + 1
     rt.bridge.max_clients = mc;
     rt.globals.maxClients = mc;
     rt.clients.maxclients = mc; // S9 — svs.clients active range / SV_Multicast
+
+    // SV_UPDATE_BACKUP + svs.packet_entities realloc + per-client frames rings
+    // (sv_init.c:821-827).  Sized from maxclients; freed in snapshot_shutdown.
+    // XASH3DPP-STUB(chunk6-S9): svs.clients realloc + NET_Config land with the
+    // full client array / netchan send path.
+    ( void )snapshot_alloc_ring( rt );
 }
 
 bool spawn_server( ServerRuntime &rt, const char *mapname,

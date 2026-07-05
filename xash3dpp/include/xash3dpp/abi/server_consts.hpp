@@ -81,6 +81,11 @@ inline constexpr int k_ef_invlight   = 16;      // get lighting from ceiling
 inline constexpr int k_ef_nointerp   = 32;      // don't interpolate the next frame
 inline constexpr int k_ef_fullbright = 1 << 27; // just get fullbright
 
+// common/const.h :120/:121 — snapshot-visibility effects bits (the game DLL
+// sets these; the per-client entity gather reads them, sv_frame.c:120-139).
+inline constexpr int k_ef_merge_visibility = 1 << 29; // portal/env_sky vis merge
+inline constexpr int k_ef_request_phs      = 1 << 30; // pack against PHS not PVS
+
 // HLSDK trace type (low byte of the pfnTraceLine/SV_Move `type` argument;
 // the high byte is the ignore-transparent flag)
 inline constexpr int k_move_normal     = 0; // dont_ignore_monsters

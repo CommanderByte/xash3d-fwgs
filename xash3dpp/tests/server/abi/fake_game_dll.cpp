@@ -261,6 +261,39 @@ static void fake_create_instanced_baselines( void )
     g_state.engfuncs->pfnCreateInstancedBaseline( 7, &base );
 }
 
+// S9 snapshot gather: pfnSetupVisibility hands the engine the client's PVS/PHS
+// (here NULL ⇒ fullvis, the simplest deterministic set); pfnAddToFullPack does
+// BOTH the vis test and the entity_state_t fill and returns 1 to include.
+static void fake_setup_visibility( abi::edict_t *, abi::edict_t *,
+                                   unsigned char **pvs, unsigned char **pas )
+{
+    ++g_state.setup_visibility_calls;
+    if ( pvs != nullptr )
+        *pvs = nullptr; // fullvis
+    if ( pas != nullptr )
+        *pas = nullptr;
+}
+
+static int fake_add_to_full_pack( abi::entity_state_t *state, int e,
+                                  abi::edict_t *ent, abi::edict_t *, int, int player,
+                                  unsigned char * )
+{
+    ++g_state.add_to_full_pack_calls;
+    if ( state == nullptr || ent == nullptr )
+        return 0;
+    std::memset( state, 0, sizeof( *state ));
+    state->number     = e;
+    state->entityType = abi::k_entity_normal;
+    state->modelindex = ent->v.modelindex;
+    ( void )player;
+    for ( int i = 0; i < 3; ++i )
+    {
+        state->origin[i] = ent->v.origin[i];
+        state->angles[i] = ent->v.angles[i];
+    }
+    return 1; // include every entity offered
+}
+
 static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
 {
     std::memset( table, 0, sizeof( *table ));
@@ -284,6 +317,8 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnClientDisconnect       = fake_client_disconnect;
     table->pfnCreateBaseline           = fake_create_baseline;
     table->pfnCreateInstancedBaselines = fake_create_instanced_baselines;
+    table->pfnSetupVisibility          = fake_setup_visibility;
+    table->pfnAddToFullPack            = fake_add_to_full_pack;
 }
 
 static void fake_game_shutdown( void )
