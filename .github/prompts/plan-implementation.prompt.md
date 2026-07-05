@@ -131,6 +131,11 @@ item to `not-started`.
 
 ## Step 6 — Highlight risks and open decisions
 
+Include a Q-22 line in the plan: which planned state is invariant-bearing
+(→ RAII class with the pool-owned `create_<thing>` + dual-`operator delete`
+idiom) vs orchestration (→ free functions over the narrowest sub-aggregate),
+per `decisions-architecture.md §LIFECYCLE_MODEL`.
+
 Before finishing, scan the boundary spec's **Open questions** section and the
 stubbed function list for any items that require a design decision before they
 can be coded.  Flag:

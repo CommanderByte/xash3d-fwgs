@@ -26,10 +26,11 @@ apply judgment where an item says `needs-judgment` or a finding is marked
 ```
 *(MCP: xash-tools tool `finish_check` — same data.)*
 
-This emits the canonical 9-section done checklist (boundary spec, limits,
-stats, nodiscard, naming, tests + macros, architecture docs + threading,
-ctest run, compat/satellite) as `pass | fail | needs-judgment` items — the
-same checklist the `finish-subsystem` prompt reports, from one source.
+This emits the canonical 10-section done checklist (boundary spec, limits
+(QO-classified), stats, nodiscard, naming, tests + macros, architecture docs
++ threading, ctest run, compat/satellite, lifecycle + annotation discipline
+(Q-22/QN)) as `pass | fail | needs-judgment` items — the same checklist the
+`finish-subsystem` prompt reports, from one source.
 
 - Report each item as `[x]` (pass) or `[ ]` (fail), with the evidence line.
 - For every `needs-judgment` item, do the judgment now by reading the cited

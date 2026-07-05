@@ -35,6 +35,11 @@ When in doubt about whether a behaviour is an engine contract or an artifact, wr
 
 ## Test style (match existing files exactly)
 
+Construct pool-owned objects the way production does — through their
+`create_<thing>` factories (Q-22), never by reimplementing allocation in the
+test. Register `ThreadRole::Main` in `main()` so thread asserts stay
+meaningful.
+
 ```cpp
 // xash3dpp — <module> tests
 // Covers: <comma-separated list of functions>

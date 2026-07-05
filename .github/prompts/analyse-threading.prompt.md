@@ -30,6 +30,12 @@ For each item record:
 
 ## Step 2 — Classify each hazard
 
+> QN (decisions-style §ANNOTATION_DISCIPLINE) makes assert expectations
+> binding: "documents-but-never-asserts is non-compliant" — a main-thread
+> contract stated in headers without `assert_thread_role` at the public
+> mutating entries is itself a finding, and `@thread-safety:` is required on
+> public headers of subsystems with any off-main surface.
+
 For every mutable-shared item from Step 1, classify it:
 
 | Class | Description |

@@ -292,7 +292,11 @@ Describe the most important operations (methods, free functions) with:
 
 Describe how instances are created, transferred, and destroyed. Note who owns
 the memory (pool-allocated, stack, unique_ptr, etc.) and what cleanup order
-is required.
+is required. Name the Q-22 shape explicitly where it applies: pool-owned
+classes (`create_<thing>` factory + operator-delete pair), pimpl exceptions,
+orchestrator free functions, documented module statics (the Q-2 exception
+table pattern), and the QN annotations readers should trust
+(`@lifetime:`, `@thread-safety:`).
 
 ## Threading model
 

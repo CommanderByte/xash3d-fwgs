@@ -9,7 +9,7 @@ model: claude-haiku-4-5-20251001
 
 # Done Checklist: `$ARGUMENTS`
 
-The canonical 9-section checklist is computed by the repo tool (single
+The canonical 10-section checklist is computed by the repo tool (single
 source, shared with pre-pr Phase 1):
 
 ```powershell

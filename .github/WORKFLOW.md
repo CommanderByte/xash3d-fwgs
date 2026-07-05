@@ -195,6 +195,19 @@ migrate-to-memory          ← if allocations aren't pool-backed yet
 analyse-modernization      ← optional, after compliance is clean
 ```
 
+**Chunk 6B retrofit-wave variant** (one session per subsystem, dependency
+order per the 6B chunk body in `implementation-plan.md`): the same pipeline
+plus — a SoC lens (PUBLIC/PRIVATE link split minimal post-refactor; no
+foreign types leaking into public headers without cause), a doc-sync step
+(boundary spec + `docs/architecture/<module>/` refreshed where structure
+changed), parity gates re-run for networking (suite + spot-audit),
+map_loader (Q-18 goldens), and server (both arches + the hl.dll smoke
+actually RUN with `XASH_HL_ROOT`, not SKIP-green). Every `candidate-*`
+finding is adjudicated as exactly one of fix ·
+compliance-allow(reason) · false-positive (fix the rule + snippet test) ·
+deferred-with-owner(tag). Scope fence: structural/style conformance only —
+no `XASH3DPP-STUB` backlog implementation.
+
 ---
 
 ## Commit discipline
@@ -226,7 +239,7 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `compliance_scan.py` | reviewer [M] checks as JSON | pre-pr, sweep-module, detail-audit, reviewer pre-pass |
 | `limits_scan.py` / `stub_scan.py` / `status_table.py` / `dep_scan.py` | limits, TODO/stubs (`by_tag` + `--delta`), status table, dependency edges | limits-audit, plan-implementation, status-and-next, dependency-graph |
 | `crosswalk.py` | legacy↔xash3dpp symbol / file:line index (+ `--missing` unported set) | recon during implement / parity |
-| `finish_check.py` | the 9-section done checklist as data | finish-subsystem, pre-pr |
+| `finish_check.py` | the 10-section done checklist as data (item 2 QO-classified; item 10 = Q-22/QN lifecycle+annotation gate) | finish-subsystem, pre-pr |
 | `workflow_sync.py` | drift gate over the whole workflow surface | after ANY workflow-surface edit |
 
 ---

@@ -36,18 +36,29 @@ argument to scan all of `xash3dpp/`.) The tool parses every
 - `unused` — limits with zero `limits::<name>` references (dead-limit
   candidates)
 
-## Step 2 — Classify the candidates
+## Step 2 — Classify the candidates (QO CONSTANT_PLACEMENT)
 
-For each `magic`/`shadow` hit, decide **Yes / No / N/A**:
+Classify each `magic`/`shadow` hit per the QO decision table
+(`decisions-style.md §CONSTANT_PLACEMENT`) — `limits.hpp` is one of four
+homes, not the default answer:
 
-- **N/A** — not a tunable limit: mathematical constants, powers of 2 in bit
-  ops, loop counts over fixed structure (RGB channels), offsets/sentinels.
-- **N/A (wire-frozen)** — protocol discriminators and codec parameters that
-  belong as `static constexpr` in the protocol header that uses them (LZSS
-  window, packet magic), NOT in `limits.hpp`.
-- **N/A** — literals only in test files (already excluded by the tool).
-- **Yes** — a genuine tunable size/count → belongs in `limits.hpp` under the
-  subsystem group with the `XASH_LIMIT_<NAME>` override pattern.
+- **N/A** — not a constant worth naming: mathematical constants, powers of 2
+  in bit ops, loop counts over fixed structure (RGB channels),
+  offsets/sentinels; or literals only in test files (already excluded).
+- **frozen** — ABI/wire-frozen values (opcodes, protocol discriminators,
+  codec parameters, struct dims): vendored `k_*` / `static constexpr` beside
+  the ABI or protocol header that uses them (LZSS window, packet magic) —
+  NOT `limits.hpp`, never tunable.
+- **belongs-in-limits** — structural capacity whose change requires
+  re-init/realloc (array dims, pool caps, ring sizes) → `limits.hpp` under
+  the subsystem group with the `XASH_LIMIT_<NAME>` override pattern
+  (compile-time override only).
+- **belongs-as-cvar** — a behavioral tunable (rate, timeout, speed, toggle)
+  masquerading as a constant → recommend a cvar (legacy-family prefix +
+  snake_case; `dev_*` for developer knobs), not a limit.
+- **ceiling+dial** — an operator-sized capacity → BOTH: ceiling in
+  `limits.hpp` + a cvar dial clamped ≤ ceiling (the legacy
+  `MAX_CLIENTS`/`sv_maxclients` pattern).
 
 For each `unused` limit, verify by search that it is genuinely dead (it may
 be referenced from CMake or reserved by a boundary spec for the next chunk —
@@ -65,9 +76,9 @@ Limits Audit — $ARGUMENTS
 limits.hpp entries: <N>
 
 Missing limits (magic numbers not in limits.hpp):
-| File | Line | Literal | Suggested name | Suggested group |
-|------|------|---------|----------------|-----------------|
-| ...  |      |         |                |                 |
+| File | Line | Literal | QO class | Suggested name | Suggested home |
+|------|------|---------|----------|----------------|----------------|
+| ...  |      |         | limits / cvar / ceiling+dial / frozen | | |
 (or "None found ✓")
 
 Warnings on existing limits:
