@@ -1026,10 +1026,19 @@ def _subsystem_test_names(sub: str) -> list[str]:
 # --------------------------------------------------------------------------- #
 
 def dep_scan() -> dict:
-    """Dependency edges from InitParams fields and cross-namespace refs."""
+    """Dependency edges from InitParams fields and cross-namespace refs,
+    plus (D-1, 2026-07-06) the CMake target link graph and the
+    cross-subsystem include-direction census.  Include direction is the
+    layer-model acceptance criterion — CMake tolerates static-lib link
+    cycles, so link edges alone under-report (see
+    docs/design/layer-model.md; note the diagnostics headers are core-pathed
+    but hosted in platform, so a platform -> core include edge is expected
+    and documented)."""
     edges: set[tuple[str, str]] = set()
     subs = resolve_scope(None)
     ns_rx = re.compile(r"(?:::)?xash::(%s)::" % "|".join(subs))
+    inc_rx = re.compile(r"\s*#\s*include\s*<xash3dpp/(?:private/)?(\w+)/")
+    inc_edges: set[tuple[str, str]] = set()
     for sub in subs:
         for path in subsystem_files(sub):
             for _, code, _ in code_lines(path):
@@ -1037,6 +1046,9 @@ def dep_scan() -> dict:
                     target = m.group(1)
                     if target != sub:
                         edges.add((sub, target))
+                im = inc_rx.match(code)
+                if im and im.group(1) in subs and im.group(1) != sub:
+                    inc_edges.add((sub, im.group(1)))
     inits = []
     for path in sorted(INCLUDE.rglob("*.hpp")):
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -1045,8 +1057,31 @@ def dep_scan() -> dict:
     cycles = sorted(
         "%s <-> %s" % (a, b) for a, b in edges if (b, a) in edges and a < b
     )
+    # Target-level link edges from src/*/CMakeLists.txt (comments stripped).
+    link_edges: set[tuple[str, str]] = set()
+    for cml in sorted(SRC.glob("*/CMakeLists.txt")):
+        text = re.sub(r"#[^\n]*", "",
+                      cml.read_text(encoding="utf-8", errors="replace"))
+        for m in re.finditer(
+                r"target_link_libraries\s*\(\s*(xash3dpp_\w+)([^)]*)\)", text):
+            src_target = m.group(1)
+            for dep in re.findall(r"xash3dpp_\w+", m.group(2)):
+                if dep != src_target:
+                    link_edges.add((src_target, dep))
+    link_cycles = sorted(
+        "%s <-> %s" % (a, b) for a, b in link_edges
+        if (b, a) in link_edges and a < b
+    )
+    include_cycles = sorted(
+        "%s <-> %s" % (a, b) for a, b in inc_edges
+        if (b, a) in inc_edges and a < b
+    )
     return {
         "edges": sorted(["%s -> %s" % e for e in edges]),
         "init_params": inits,
         "cycles": cycles,
+        "link_edges": sorted(["%s -> %s" % e for e in link_edges]),
+        "link_cycles": link_cycles,
+        "include_edges": sorted(["%s -> %s" % e for e in inc_edges]),
+        "include_cycles": include_cycles,
     }

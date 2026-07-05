@@ -13,7 +13,11 @@ target_include_directories(xash3dpp_abi
 
 target_compile_features(xash3dpp_abi PUBLIC cxx_std_20)
 
+# PRIVATE: engine_funcs.cpp calls into host/core, but no abi public header
+# exposes their types (engine_context_accessor.hpp forward-declares only).
+# The accessor STATE lives in xash3dpp_host — the link is one-way abi → host
+# (D-1 dependency hardening, 2026-07-06; see docs/design/layer-model.md).
 target_link_libraries(xash3dpp_abi
-    PUBLIC  xash3dpp_core
-    PUBLIC  xash3dpp_host
+    PRIVATE xash3dpp_core
+    PRIVATE xash3dpp_host
 )

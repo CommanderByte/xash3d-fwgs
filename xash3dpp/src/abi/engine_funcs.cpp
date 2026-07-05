@@ -19,32 +19,13 @@
 #include <xash3dpp/host/engine_context.hpp>
 #include <xash3dpp/host/host.hpp>
 
-#include <atomic>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 
-// ---------------------------------------------------------------------------
-// Singleton accessor (the documented exception to "no global accessor")
-// ---------------------------------------------------------------------------
-
-namespace xash::abi {
-
-namespace {
-    std::atomic<EngineContext *> g_engine_ctx { nullptr };
-} // anonymous namespace
-
-void set_current_engine_context( EngineContext *ctx ) noexcept
-{
-    g_engine_ctx.store( ctx, std::memory_order_release );
-}
-
-EngineContext *current_engine_context() noexcept
-{
-    return g_engine_ctx.load( std::memory_order_acquire );
-}
-
-} // namespace xash::abi
+// The singleton accessor's STATE lives in xash3dpp_host
+// (src/host/engine_context_accessor.cpp) — the host owns its lifecycle.
+// This shim only reads it (D-1 dependency hardening, 2026-07-06).
 
 // ---------------------------------------------------------------------------
 // GAME_EXPORT direct-export symbols

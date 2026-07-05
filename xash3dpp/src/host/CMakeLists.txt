@@ -1,6 +1,7 @@
 add_library(xash3dpp_host STATIC
     host.cpp
     engine_context.cpp
+    engine_context_accessor.cpp
 )
 
 target_include_directories(xash3dpp_host
@@ -20,5 +21,7 @@ target_link_libraries(xash3dpp_host
     PRIVATE
         xash3dpp_platform
         xash3dpp_cmd_cvar
-        xash3dpp_abi
+        # xash3dpp_abi intentionally NOT linked: the accessor state the host
+        # sets lives in THIS target (engine_context_accessor.cpp); the abi
+        # shim target consumes it one-way (abi → host).  D-1, 2026-07-06.
 )

@@ -503,6 +503,39 @@ static void test_oom_handler()
     destroy_pool(h);
 }
 
+static void test_payload_size_guard()
+{
+    // AllocHeader stores payload_size as uint32_t: any request above
+    // UINT32_MAX must be rejected through the OOM path BEFORE reaching the
+    // allocator — silent truncation would corrupt free/realloc accounting.
+    // On 32-bit targets size_t cannot exceed UINT32_MAX; nothing to test.
+    if constexpr (sizeof(std::size_t) > sizeof(std::uint32_t))
+    {
+        set_oom_handler(oom_callback);
+        PoolHandle h = create_pool("payload_guard");
+
+        const std::size_t just_over = static_cast<std::size_t>(UINT32_MAX) + 1u;
+        g_oom_size = 0;
+        g_oom_pool = k_null_pool;
+        CHECK(mem_alloc(h, just_over) == nullptr);
+        CHECK(g_oom_size == just_over);
+        CHECK(g_oom_pool == h);
+
+        // realloc path: rejection must leave the original block intact.
+        void* p = mem_alloc(h, 16);
+        REQUIRE(p != nullptr);
+        static_cast<char*>(p)[0] = 42;
+        g_oom_size = 0;
+        CHECK(mem_realloc(h, p, just_over) == nullptr);
+        CHECK(g_oom_size == just_over);
+        CHECK(static_cast<char*>(p)[0] == 42);
+
+        mem_free(p);
+        set_oom_handler(nullptr);
+        destroy_pool(h);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Pool name edge cases
 // ---------------------------------------------------------------------------
@@ -803,6 +836,7 @@ int main()
     RUN_TEST( test_pool_config_future_strategies );
 
     RUN_TEST( test_oom_handler );
+    RUN_TEST( test_payload_size_guard );
 
     RUN_TEST( test_pool_name_truncation );
     RUN_TEST( test_pool_name_null );

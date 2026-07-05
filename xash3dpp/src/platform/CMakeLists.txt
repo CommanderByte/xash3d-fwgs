@@ -33,8 +33,6 @@ else()
 endif()
 
 # Mandatory files present on every platform.
-# Note: logging lives in xash3dpp_core (see src/core/) — platform/ holds only
-# OS abstraction.
 # os_socket.cpp: Android uses the POSIX implementation (XASH_PLATFORM_SUBDIR=posix);
 # Win32 and POSIX each have their own.  Android-specific socket additions belong in
 # android/os_socket.cpp (not compiled here; see that file's header comment).
@@ -47,8 +45,21 @@ set(XASH_PLATFORM_SRC
     ${XASH_PLATFORM_CRASH_SRC}
 )
 
+# Diagnostics tier (D-1 dependency hardening, 2026-07-06): the log and
+# thread-role implementations are HOSTED here so the base layer is
+# self-contained — platform's console/crash/sockets assert thread roles, and
+# the default log sink is platform console.  Files stay under src/core/ and
+# keep the xash::core namespace + <xash3dpp/core/...> header paths; only
+# target membership moved.  This removes the historical core ⇄ platform link
+# cycle (see docs/design/layer-model.md).
+set(XASH_DIAGNOSTICS_SRC
+    ${PROJECT_SOURCE_DIR}/src/core/log.cpp
+    ${PROJECT_SOURCE_DIR}/src/core/thread_role.cpp
+)
+
 add_library(xash3dpp_platform STATIC
     ${XASH_PLATFORM_SRC}
+    ${XASH_DIAGNOSTICS_SRC}
 )
 
 target_include_directories(xash3dpp_platform
@@ -58,13 +69,11 @@ target_include_directories(xash3dpp_platform
 # C++23 is required for std::expected<T,E> (introduced with the sockets layer).
 target_compile_features(xash3dpp_platform PUBLIC cxx_std_23)
 
-# xash3dpp_utilities is used internally for path normalisation (PRIVATE — not
-# leaked into xash3dpp_platform's public API).
-# xash3dpp_core supplies XASH_FATAL / core::logf used by the inline
-# assert_main_thread() helper in <xash3dpp/private/core/assert_main.hpp>.
-# (core has a reciprocal PRIVATE link on platform for log.cpp → console::write;
-# the two static archives resolve each other at final link time.)
-target_link_libraries(xash3dpp_platform PRIVATE xash3dpp_utilities xash3dpp_core)
+# xash3dpp_utilities is used internally for path normalisation and the log
+# formatter (PRIVATE — not leaked into xash3dpp_platform's public API).
+# The diagnostics tier (log/assert/thread-role) is hosted IN this target, so
+# platform does not link core — the layer graph is one-way (core → platform).
+target_link_libraries(xash3dpp_platform PRIVATE xash3dpp_utilities)
 
 # Win32: link Winsock2 for the sockets layer.
 if(WIN32)

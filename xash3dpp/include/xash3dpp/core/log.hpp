@@ -70,10 +70,21 @@ using LogCallback = void ( * )( LogLevel level,
 //           if the text does not already end with one.
 void log( LogLevel level, std::string_view tag, std::string_view text ) noexcept;
 
+// Portability: [[gnu::format]] is GCC/Clang-only — MSVC has no equivalent
+// attribute and warns (C5030) on unknown ones.  XASH_PRINTF_FORMAT(fmt_idx,
+// first_arg) applies the format check where supported and compiles away
+// elsewhere.  (D-1 dependency hardening, 2026-07-06.)
+#if defined(__GNUC__) || defined(__clang__)
+#   define XASH_PRINTF_FORMAT( fmt_idx, first_arg ) \
+        [[gnu::format( printf, fmt_idx, first_arg )]]
+#else
+#   define XASH_PRINTF_FORMAT( fmt_idx, first_arg )
+#endif
+
 // Emit a printf-style log message.  No heap allocation — uses a fixed-size
 // stack buffer (see log.cpp for the exact size).  Messages that exceed the
 // buffer are silently truncated with a "..." suffix.
-[[gnu::format( printf, 3, 4 )]]
+XASH_PRINTF_FORMAT( 3, 4 )
 void logf( LogLevel level, std::string_view tag, const char *fmt, ... ) noexcept;
 
 // va_list variant for wrappers that already have a vararg list.

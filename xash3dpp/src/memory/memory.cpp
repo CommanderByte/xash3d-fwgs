@@ -156,6 +156,15 @@ void* mem_alloc(PoolHandle pool, std::size_t size) noexcept
 {
     if (size == 0) return nullptr;
 
+    // AllocHeader stores payload_size as uint32_t — reject requests the
+    // header cannot represent (silent truncation would corrupt the free /
+    // realloc accounting).  Unreachable on 32-bit targets (size_t is 32-bit).
+    if (size > static_cast<std::size_t>(UINT32_MAX))
+    {
+        if (auto h = g_oom_handler.load(std::memory_order_acquire)) h(size, pool);
+        return nullptr;
+    }
+
     PoolBucket* b = bucket_of(pool);
     // Acquire-load the slot state.  If not Active, treat as untracked; the
     // acquire also ensures do_alloc / ctx written by create_pool are visible.
@@ -200,6 +209,13 @@ void* mem_realloc(PoolHandle pool, void* ptr, std::size_t new_size) noexcept
 {
     if (!ptr)      return mem_alloc(pool, new_size);
     if (!new_size) { mem_free(ptr); return nullptr; }
+
+    // payload_size is uint32_t — same representability guard as mem_alloc.
+    if (new_size > static_cast<std::size_t>(UINT32_MAX))
+    {
+        if (auto h = g_oom_handler.load(std::memory_order_acquire)) h(new_size, pool);
+        return nullptr;  // original block still intact
+    }
 
     // Guard against overflow in the raw-size calculation.
     {

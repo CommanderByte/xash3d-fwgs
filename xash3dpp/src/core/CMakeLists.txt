@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.16)
 
-# xash3dpp_core — cross-cutting diagnostic and threading primitives.
+# xash3dpp_core — engine-tier primitives (clock, error codes).
 #
 # Provides:
-#   • <xash3dpp/core/log.hpp>          — LogLevel, log/logf, callback hook
-#   • <xash3dpp/core/assert.hpp>       — XASH_ASSERT, XASH_FATAL macros
-#   • <xash3dpp/core/thread_role.hpp>  — ThreadRole registry + assertion
-#   • <xash3dpp/private/core/assert_main.hpp> — legacy main-thread wrapper
+#   • <xash3dpp/core/clock.hpp>        — frame clock + timing cvars
+#   • <xash3dpp/core/error.hpp>        — ErrorCode enum + helpers
 #
-# Layering: sits above xash3dpp_platform (uses platform::console::write as the
-#           default log sink).  Every subsystem above core may link this lib;
-#           it is the recommended first-touch dependency for all C++ code.
+# The DIAGNOSTICS TIER (log.cpp, thread_role.cpp — the implementations behind
+# <xash3dpp/core/log.hpp>, <xash3dpp/core/assert.hpp>,
+# <xash3dpp/core/thread_role.hpp>, <xash3dpp/private/core/assert_main.hpp>)
+# is COMPILED INTO xash3dpp_platform so the base layer is self-contained
+# (D-1 dependency hardening, 2026-07-06): platform's console/crash/sockets
+# use the assert/thread-role helpers, and the default log sink is platform
+# console — hosting those TUs there removes the historical core ⇄ platform
+# link cycle.  The headers keep their xash3dpp/core/ paths and the xash::core
+# namespace — only target membership moved.  See docs/design/layer-model.md.
+#
+# Layering: core sits ABOVE platform (one-way: core → platform).
 
 add_library(xash3dpp_core STATIC
-    log.cpp
-    thread_role.cpp
     error.cpp
     clock.cpp
 )
@@ -25,6 +29,5 @@ target_include_directories(xash3dpp_core
 
 target_compile_features(xash3dpp_core PUBLIC cxx_std_20)
 
-# log.cpp calls platform::console::write — PRIVATE because the public API
-# (core::log) does not expose any platform types.
+# clock/error use the diagnostics tier, which is hosted in platform.
 target_link_libraries(xash3dpp_core PRIVATE xash3dpp_platform)
