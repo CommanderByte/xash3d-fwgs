@@ -27,7 +27,8 @@ ALLOW_RE = re.compile(r"compliance-allow\(\s*([\w\-, ]+?)\s*\)")
 # g_* file-scope definition shape (mirrors di-global-ref's definition
 # exclusion) with the name captured — used to propagate a definition-line
 # compliance-allow to every use of that global (6B S2 refinement).
-_G_DEF_RX = re.compile(r"^(?:static\s+)?[\w:<>*&\s]+\s(g_\w+)\s*(?:=|;|\{)")
+_G_DEF_RX = re.compile(
+    r"^(?:static\s+)?[\w:<>*&\s]+\s(g_\w+)\s*(?:\[[^\]]*\]\s*)*(?:=|;|\{)")
 
 
 def _rel(p: Path) -> str:

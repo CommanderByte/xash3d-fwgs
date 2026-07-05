@@ -280,6 +280,12 @@ class AnnotationRules(unittest.TestCase):
         m = _G_DEF_RX.match("std::atomic<LogCallback> g_log_callback{ nullptr };")
         self.assertIsNotNone(m)
         self.assertEqual(m.group(1), "g_log_callback")
+        # Array globals are definitions too (6B S2 def-shape fix).
+        m = _G_DEF_RX.match("AssetManagerHandle g_handles[2];")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), "g_handles")
+        self.assertTrue(_hits("mutable-global", "AssetManagerHandle g_handles[2];"))
+        self.assertFalse(_hits("di-global-ref", "AssetManagerHandle g_handles[2];"))
         # A use is not a definition.
         self.assertIsNone(_G_DEF_RX.match("    g_jni.env = env;"))
 
