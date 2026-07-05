@@ -149,7 +149,7 @@ ______________________________________________________________________
 **Complexity note**: The `enginefuncs_t` table is 159 function pointers and `entvars_t` layout is byte-exact frozen — highest ABI risk in the entire rewrite. Getting `sv_game.c` to load and call a real HL game DLL without crashing is the integration milestone; `entvars_t` layout must be ABI-exact at the boundary even if internal entity storage differs.\
 **ABI surfaces touched**: `engine/eiface.h`, `engine/edict.h` — **FROZEN Game DLL ABI**\
 **Deliverable**: Dedicated server starts, loads HL `dlls/hl.dll`, runs a single map frame; server ctest green — **dedicated-server milestone**\
-**Session ladder** (one green commit + checkpoint per step; slice order refined by S2 `plan-implementation` 2026-07-04 — world before bridge so the trace-family enginefuncs slots bind real code): S1 scaffold ✅ → S2 plan-implementation ✅ → S3 map_loader `phs` module (Q-19, golden-gated) ✅ → S4 edict arena + string pool + vendored ABI headers (Q-20) ✅ → S5 world interaction (areanodes/link/move/contents/lightstyles; SetAbsBox as injected seam) ✅ → S6 game-DLL bridge (enginefuncs ×159, DLL_FUNCTIONS resolution, in-tree fake-DLL test double) ✅ → S7 lifecycle (spawn/activate/changelevel seams, EngineContext wiring) ✅ → S8 frame loop + sv_phys + pmove bridge ◑ *(landed+reconciled+gated 2026-07-04; sv_pmove bridge + sv_move.c locomotion deferred)* → S9 clients/messaging/satellites (OQ-8 stub markers) ◑ *(landed+reconciled+gated 2026-07-04 — built in parallel with S8 in isolated worktrees; snapshot/delta pipeline + the S8↔S9 frame-loop seam deferred, see checkpoint S8+S9-parallel-reconcile)* → S10 sweep-module → S11 analyse-threading (OQ-9) → S12 document-architecture → S13 legacy-parity audit → S14 finish-subsystem + pre-pr → S15 hl.dll milestone smoke (needs a local HL install — user-provided)
+**Session ladder** (one green commit + checkpoint per step; slice order refined by S2 `plan-implementation` 2026-07-04 — world before bridge so the trace-family enginefuncs slots bind real code): S1 scaffold ✅ → S2 plan-implementation ✅ → S3 map_loader `phs` module (Q-19, golden-gated) ✅ → S4 edict arena + string pool + vendored ABI headers (Q-20) ✅ → S5 world interaction (areanodes/link/move/contents/lightstyles; SetAbsBox as injected seam) ✅ → S6 game-DLL bridge (enginefuncs ×159, DLL_FUNCTIONS resolution, in-tree fake-DLL test double) ✅ → S7 lifecycle (spawn/activate/changelevel seams, EngineContext wiring) ✅ → S8 frame loop + sv_phys + pmove bridge ✅ *(landed+reconciled+gated 2026-07-04; pmove bridge P1–P4 complete 2026-07-05 — SV_RunCmd drives both bot + real-client paths; P5 lag-comp + sv_move.c locomotion deferred to the S10 inventory)* → S9 clients/messaging/satellites (OQ-8 stub markers) ◑ *(landed+reconciled+gated 2026-07-04 — built in parallel with S8 in isolated worktrees; snapshot/delta pipeline + the S8↔S9 frame-loop seam substantially complete; the residual client/messaging backlog is catalogued in the S10 deferred-stub inventory)* → S10 sweep-module ✅ *(2026-07-05 — compliance clean (0 findings after the world_hooks thread-assert fix); the 149-marker deferral backlog consolidated into the "Chunk 6 — deferred stub inventory" section above)* → S11 analyse-threading (OQ-9) → S12 document-architecture → S13 legacy-parity audit → S14 finish-subsystem + pre-pr → S15 hl.dll milestone smoke (needs a local HL install — user-provided)
 
 **S8/S9 completion sequence** *(decided 2026-07-05, after the parallel-agent landing)*: S8/S9 landed their independent bulk but deferred the interdependent pieces. Remaining Chunk-6 order — **(1)** S9 snapshot/delta pipeline (frames ring `SV_UPDATE_BACKUP`, baselines, `AddToFullPack`/`SetupVisibility`, `entity_state_t` delta) — biggest gap, unblocks the send; **(2)** the S8↔S9 seam splice — wire `Host_ServerFrame`'s client/net steps + the ~11 marked `S8-seam` stubs + the `clc_move`/usercmd parse path; **(3)** the pmove bridge *last* (`sv_pmove.c` 1014 L + port `engine/common/pm_trace.c` 889 L + `pm_surface.c` 382 L + vendor `playermove_t`/`physent_t` from `pm_shared/pm_defs.h`). **The pmove bridge is NOT blocked on Chunk 11**: `PM_Move` is the game DLL's `NEW_DLL_FUNCTIONS` export (mods statically link `pm_shared`; repo-root `pm_shared/` is headers only), and the trace family is engine code composing over the Chunk-5 kernel. Chunk 11 owns only the client-prediction path (`cl_pmove.c`) + the both-paths determinism test; pmove *parity validation* ticks at S15/Chunk 11 (needs a real `PM_Move`). The shared `pm_trace`/`pm_surface` family likely lands in the `physics` subsystem (reused by Chunk 11's client path), not `src/server/` — settle at implementation time. **Snapshot-pipeline progress (step 1)**: 1a scaffold ✅ (`ae286fb1`) → 1b `SV_CreateBaseline` fill + instanced baselines ✅ (`aec40d29`) → 2 `SV_WriteEntitiesToClient` gather + `packet_entities` ring + `SV_EmitPacketEntities` delta-merge + per-client frames ring ✅ (`f43900e3`) → 3 `SV_WriteClientdataToMessage` + `SV_SendClientDatagram` datagram body (svc_time + clientdata/weapondata delta + entities) ✅ → 3b signon buffer (`sv.signon`, `MAX_INIT_MSG`) + the `SV_CreateBaseline` signon-write half (`svc_spawnbaseline` + per-edict baseline deltas + instanced list) ✅ → 4 `SV_EmitEvents` + `SV_EmitPings` datagram-riders — complete `SV_WriteEntitiesToClient`'s per-frame body (svc_event queue drain + packet_index resolution + args delta; svc_pings from the 2s-cached `SV_GetPlayerStats`/`SV_CalcPing` over the frame ring) ✅. **Snapshot/delta pipeline substantially complete.** Deferred to the **S8↔S9 seam splice** (each lacks its producer/destination until then): the event *producer* (`pfnPlaybackEvent`/`SV_PlaybackEventFull` fills `cl.events`), `SV_UpdateToReliableMessages`'s reliable fan-out (`sv.reliable_datagram` → per-client `netchan.message`), and the Netchan transmit + choke/rate send-gate. All wire encoding rides the existing networking `DeltaTables`. **Seam-splice progress (step 2)**: the networking foundation is decided — the host owns the single `NetworkContext` + its UDP sockets (`EngineContext` declares `networking` ahead of `server`); the server holds a non-owning `rt.net` handle and pulls its server socket each frame (the "host-routes" model — *not* a fresh register decision, it follows Q-2/Q-4 + the committed `IOobSink` seam). The messaging seam is a functional bidirectional netchan loop as of `41bc9d2f`: **A** ✅ (`d3b3f8b9`) `ServerInitParams.net` DI + `read_packets` connectionless ingress routing OOB → `handle_connectionless`, replies via a `NetworkContext`-backed `IOobSink`, wired into `host_server_frame`; **B** ✅ (`b7c4f192`) per-client `Netchan` + `Netchan_Setup` at connect / `Netchan_Clear` at drop, backed by new `NetworkContext::protocol_driver()`/`fragment_pool()` accessors; **C** ✅ (`1421fd91`) in-session demux (`Netchan_Process` + `SV_ExecuteClientMessage` clc loop + `SV_ParseClientMove` usercmd decode filling lastcmd/packet_loss/ping) — also fixed two latent bugs (connect wiping `cl.frames`; missing `usercmd_t` in the fixture `delta.lst`); **D** ✅ (`a7943b8e`) `SV_SendClientMessages` send-gate + `send_client_datagram`→`transmit_bits`→`send_packet`, wired into `host_server_frame`; **E** ✅ (`41bc9d2f`) `SV_UpdateToReliableMessages` reliable broadcast fan-out. **F** ✅ (`a2ab0011`) the event producer (`pfnPlaybackEvent`/`SV_PlaybackEventFull` fills `cl.events` — unreliable queue `FEV_UPDATE` slot-merge + `FEV_RELIABLE` `svc_event_reliable` staging into `cl.reliable` via `write_delta_event`; a new non-owning `EngineBridge::delta` carries the tables; the recipient PHS cull + groupinfo filter ride the same `S8-seam` visibility gate as `SV_Multicast`), consumed by the existing `emit_events`. **The entire S8↔S9 messaging + event seam is now complete** — a bidirectional netchan loop plus the closed event producer→consumer path. Remaining Chunk-6 work before the frame loop is fully fleshed: the **pmove bridge** (`SV_RunCmd`, ordered last). Deferred seams inside the landed slices are marked `XASH3DPP-STUB(chunk6-S9)` / `XASH3DPP-STUB(S8-seam)`: command checksum, freeze/pause + `SV_RunCmd` (pmove), `SV_CalcClientTime` unlag, `host_limitlocal`/`sv_failuretime` send-gates, `FCL_RESEND_USERINFO`/`MOVEVARS` resends, the unreliable `sv.datagram` per-client append, the recipient PHS/groupinfo cull (`SV_CheckClientVisiblity`, shared with `SV_Multicast`), and fragment reassembly.
 
@@ -301,6 +301,66 @@ ______________________________________________________________________
   `/analyse-subsystem` pass before writing any code. Live boundary-spec
   open questions are indexed in the **OQ crosswalk** in
   `docs/design/decisions-architecture.md`.
+
+______________________________________________________________________
+
+## Chunk 6 (server) — deferred stub inventory *(S10 feature-complete gate, 2026-07-05)*
+
+The server is structurally **feature-complete for the dedicated milestone**: it
+loads the game DLL, spawns + activates a level, runs the fixed-step frame loop
+(sv_phys movetypes/pushers + the pmove bridge P1–P4), and drives clients over a
+bidirectional netchan loop. The remaining behaviour is **milestone-trimmed under
+OQ-8** — every trim carries an inline `XASH3DPP-STUB(<tag>)` / `TODO(<tag>)`
+marker naming its owner. **Live source of truth: `stub_scan server`** (149
+markers at this gate; `--delta` for per-commit churn). The buckets below group
+them by *what unblocks them* so each future chunk picks up its inheritance:
+
+- **Server S9 completion — client/messaging + the S8↔S9 frame-splice (~90, tags
+  `chunk6-S9` / `S8-seam` / generic `chunk6`)** — the largest bucket, all
+  landed-but-deferred seams: the multicast/sound message pipeline
+  (`pfnEmitSound`/`pfnEmitAmbientSound`/`pfnParticleEffect`/`SV_BuildSoundMsg`),
+  per-client messages (`pfnClientPrintf`/`pfnSetView`/`pfnCrosshairAngle`/
+  `pfnFadeClientVolume`), the `net_encode` delta tables
+  (`pfnDeltaSet/UnsetField*`, `pfnRegisterEncoders`), voice matrices, player
+  stats/auth-ids/physinfo, the `net_drop` dropped-packet replay + command
+  checksum + `SV_CalcClientTime` unlag (`client_state.cpp`), the recipient
+  PVS/PHS visibility cull (`messages.cpp`, shared with `SV_Multicast`), the
+  water-splash sounds + physFuncs override hooks + `SV_CheckCmdTimes` speed-hack
+  clock (`physics.cpp`), and the `spawn.cpp` S9 resource/log/datagram setup.
+  Not milestone-blocking against the fake DLL; completes the real-client surface.
+- **Chunk 7 — content pipeline (~12, tags `chunk7` / `chunk7/OQ-2` / generic)** —
+  everything gated on the model cache + miptex: studio extradata
+  (`pfnGetModelPtr`/`GetBonePosition`/`GetAttachment`/`pfnModelFrames`), the
+  group-(c) surface/texture trace (`pfnTraceTexture` + PM_TraceTexture/Surface),
+  studio hitbox hulls (`clip.cpp`/`pmove.cpp`, OQ-2), the `SV_ModelHandle`
+  studio animtime clamp (`client_state.cpp`), and `LUMP_LIGHTING`
+  (`light.cpp` `SV_LightForEntity`).
+- **Chunk 8 — save/restore (~6, tags `chunk8` / `chunk6-S8`)** — the executor
+  stubs `Server::exec_load_game`/`exec_change_level`, the save symbol↔ordinal
+  table (`pfnFunctionFromName`/`NameForFunction`), and the
+  `physFuncs.SV_LoadEntities`/`SV_CreateEntity` override hooks.
+- **Chunk 9 — sound (~4, tag `chunk9` + sound-adjacent `chunk6`)** —
+  `PM_PlaySound`→`SV_StartSound`, the sentence-sequence files
+  (`pfnSequenceGet`/`PickSentence`), and `pfnGetApproxWavePlayLen`.
+- **Chunk 12 — client / listen-server (2, tag `chunk12`)** —
+  `CL_DisableVisibility()` fold into fullvis (needs the client-state hook).
+- **Cross-cutting engine-integration residue (~15, mostly `chunk6-S7`/generic)** —
+  the engine cvar-registry unification (`pfnCVarGetPointer`/`GetFloat`
+  fall-through), the `Cbuf`/command-context surface (`pfnServerCommand`/
+  `ServerExecute`/`CmdArgs/Argv/Argc`/`AddServerCommand`), the filesystem file
+  ops (`pfnLoadFileForMe`/`FreeFile`/`CompareFileTime`/`GetFileSize`), the
+  `sv_move.c` locomotion family (`SV_MoveToOrigin`/`CheckBottom`/`WalkMove`/
+  `MoveToss` — explicitly deferred at S8), the `COM_RandomLong`/`Float` idtech-RNG
+  parity port (two xorshift stubs to unify — `engine_table.cpp` + `init_client_move.cpp`),
+  `SV_PortalCSG` trace elongation, and the OQ-7 HLMODS compat nudge
+  (routes to a future server `ICompatPolicy`, Q-12).
+- **P5 pmove lag-compensation** *(deferred by plan)* — `SV_SetupMoveInterpolant`/
+  `SV_RestoreMoveInterpolant` are no-ops in `run_cmd.cpp`; pmove *parity* ticks
+  at S15 / Chunk 11 (needs a real `PM_Move`).
+
+None of these block the S15 dedicated-server smoke test against a real
+`hl.dll`; they are the post-milestone completion backlog, inherited by the
+chunk named in each bucket.
 
 ______________________________________________________________________
 

@@ -3,11 +3,15 @@
 
 #include <xash3dpp/private/server/world_hooks.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
+
 namespace xash::server {
 
 void GameWorldHooks::set_abs_box( ::xash::abi::edict_t *ent ) noexcept
 {
-    // pfnSetAbsBox (SetObjectCollisionBox) — engine has no fallback.
+    // pfnSetAbsBox (SetObjectCollisionBox) — engine has no fallback.  Runs on
+    // the SV_LinkEdict path (server is main-thread-only, OQ-9).
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     if ( game_ != nullptr && game_->funcs().pfnSetAbsBox != nullptr )
         game_->funcs().pfnSetAbsBox( ent );
 }
