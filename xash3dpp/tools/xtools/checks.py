@@ -720,7 +720,8 @@ _BOUNDARY_HEADINGS = ["Responsibility", "ABI", "Interface", "Dependencies",
                       "Owned state", "Quirks"]
 
 
-def finish_check(subsystem: str, run_tests: bool = False) -> dict:
+def finish_check(subsystem: str, run_tests: bool = False,
+                 arch: str = "x64") -> dict:
     [sub] = resolve_scope(subsystem)
     items: list[dict] = []
 
@@ -780,12 +781,13 @@ def finish_check(subsystem: str, run_tests: bool = False) -> dict:
          "%d macro-convention issues" % len(macro_issues)])
 
     # 7 architecture docs + threading
-    arch = DOCS / "architecture" / sub
-    arch_ok = (arch / "README.md").is_file() or any(arch.glob("*.md")) if arch.is_dir() else False
+    arch_dir = DOCS / "architecture" / sub
+    arch_ok = (arch_dir / "README.md").is_file() or any(arch_dir.glob("*.md")) \
+        if arch_dir.is_dir() else False
     thr = (DOCS / "threading-analysis" / ("%s-threading.md" % sub)).is_file()
-    if not thr and arch.is_dir():
+    if not thr and arch_dir.is_dir():
         thr = any("hreading" in p.read_text(encoding="utf-8", errors="replace")
-                  for p in arch.glob("*.md"))
+                  for p in arch_dir.glob("*.md"))
     add(7, "Architecture docs + threading",
         "pass" if arch_ok and thr else ("needs-judgment" if arch_ok else "fail"),
         ["architecture docs: %s" % arch_ok, "threading documented: %s" % thr])
@@ -797,7 +799,7 @@ def finish_check(subsystem: str, run_tests: bool = False) -> dict:
         names = _subsystem_test_names(sub)
         if names:
             rx = "^(%s)$" % "|".join(sorted(names))
-            result = run_test(filter_regex=rx)
+            result = run_test(filter_regex=rx, arch=arch)
             ok = result["failed"] == 0 and result["total"] == len(names)
             add(8, "Tests pass", "pass" if ok else "fail",
                 "%d/%d passed (%d registered)" % (

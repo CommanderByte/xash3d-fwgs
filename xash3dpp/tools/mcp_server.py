@@ -63,23 +63,27 @@ def _maybe_reload() -> None:
 
 @mcp.tool()
 def build(preset: str = "debug", configure: bool = False,
-          target: str = "") -> dict:
+          target: str = "", arch: str = "x64") -> dict:
     """Build xash3dpp via the VS2022-bundled cmake. Returns parsed errors,
-    counts, and a log tail."""
+    counts, and a log tail. arch: x64 (default) | x86 — x86 drives the 32-bit
+    chain (configure preset debug-msvc-x86, build/Debug-x86) for loading the
+    retail 32-bit GoldSrc dlls/hl.dll (S15 milestone)."""
     _maybe_reload()
     return buildtools.build(preset=preset, configure=configure,
-                            target=target or None)
+                            target=target or None, arch=arch)
 
 
 @mcp.tool()
-def test(filter: str = "", preset: str = "debug") -> dict:
+def test(filter: str = "", preset: str = "debug", arch: str = "x64") -> dict:
     """Run ctest (optionally filtered with -R `filter`). Returns pass/fail
     breakdown; failed tests carry their output block, an `assert_tail` (the
     focused assertion/abort message window — the XASH_ASSERT / REQUIRE / CHECK
     line, so exit-3 aborts are diagnosable without a re-run), and a decoded
-    exit code (STATUS_BREAKPOINT, ACCESS_VIOLATION, ...) when recognizable."""
+    exit code (STATUS_BREAKPOINT, ACCESS_VIOLATION, ...) when recognizable.
+    arch: x64 (default) | x86 — x86 runs the 32-bit suite (test preset
+    debug-x86); build that arch first."""
     _maybe_reload()
-    return buildtools.test(filter_regex=filter, preset=preset)
+    return buildtools.test(filter_regex=filter, preset=preset, arch=arch)
 
 
 @mcp.tool()
@@ -169,11 +173,13 @@ def workflow_sync(stage: int = 2) -> dict:
 
 
 @mcp.tool()
-def finish_check(subsystem: str, run_tests: bool = False) -> dict:
+def finish_check(subsystem: str, run_tests: bool = False,
+                 arch: str = "x64") -> dict:
     """The 9-section finish-subsystem done checklist as
-    pass/fail/needs-judgment items."""
+    pass/fail/needs-judgment items. arch: x64 (default) | x86 selects which
+    build the run_tests ctest pass targets (build that arch first)."""
     _maybe_reload()
-    return checks.finish_check(subsystem, run_tests=run_tests)
+    return checks.finish_check(subsystem, run_tests=run_tests, arch=arch)
 
 
 @mcp.tool()

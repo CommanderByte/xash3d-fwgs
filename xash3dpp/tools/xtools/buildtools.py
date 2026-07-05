@@ -19,26 +19,60 @@ _MSVC_ERR = re.compile(r"^(.*?)\((\d+)(?:,\d+)?\)\s*:\s*(?:fatal )?error (C\d+)\
 _WARN_RX = re.compile(r"warning C\d+|(?<!\w)warning:")
 
 
+# (configuration, architecture) -> (configure preset, build/test preset,
+# binaryDir under build/).  The retail GoldSrc dlls (hl.dll) are 32-bit, so
+# the S15 milestone smoke needs the x86 chain; the presets mirror
+# CMakePresets.json.  `preset` names the configuration axis (debug/release),
+# `arch` the width axis — orthogonal, matching CMake's own model.
+_BUILD_MATRIX = {
+    ("debug",   "x64"): ("debug-msvc",     "debug",     "Debug"),
+    ("debug",   "x86"): ("debug-msvc-x86", "debug-x86", "Debug-x86"),
+    ("release", "x64"): ("release-msvc",   "release",   "Release"),
+}
+_ARCHES = {"x64": "x64", "amd64": "x64", "x86": "x86", "win32": "x86"}
+
+
+def _resolve(preset: str, arch: str) -> tuple[str, str, str]:
+    """Map a (configuration, architecture) pair to
+    (configure preset, build/test preset, binaryDir stem under build/).
+
+    `preset` names the configuration (``debug``/``release``) but also tolerates
+    a full build-preset name carrying an ``-x86`` suffix (e.g. ``debug-x86``),
+    from which the architecture is inferred — so the older
+    ``--preset debug-x86`` form keeps working.  Unknown pairs fall back to the
+    x64 variant of the configuration, else ``debug`` x64."""
+    cfg = (preset or "debug").strip().lower()
+    a = _ARCHES.get((arch or "x64").strip().lower(), (arch or "x64").strip().lower())
+    if cfg.endswith("-x86"):
+        cfg, a = cfg[:-4], "x86"
+    for key in ((cfg, a), (cfg, "x64"), ("debug", "x64")):
+        if key in _BUILD_MATRIX:
+            return _BUILD_MATRIX[key]
+    return _BUILD_MATRIX[("debug", "x64")]
+
+
 def build(preset: str = "debug", configure: bool = False,
-          target: str | None = None) -> dict:
+          target: str | None = None, arch: str = "x64") -> dict:
     cmake = cmake_path()
+    cfg_preset, build_preset, bdir = _resolve(preset, arch)
+    width = "x86" if bdir.endswith("-x86") else "x64"
     configured = False
     log: list[str] = []
-    if configure or not (XPP / "build" / "Debug" / "CMakeCache.txt").is_file():
-        rc, lines, _ = run([str(cmake), "--preset", "debug-msvc"], cwd=XPP)
+    if configure or not (XPP / "build" / bdir / "CMakeCache.txt").is_file():
+        rc, lines, _ = run([str(cmake), "--preset", cfg_preset], cwd=XPP)
         log += lines
         configured = True
         if rc != 0:
-            return _build_result(preset, configured, rc, log, 0.0)
-    cmd = [str(cmake), "--build", "--preset", preset]
+            return _build_result(build_preset, configured, rc, log, 0.0, width)
+    cmd = [str(cmake), "--build", "--preset", build_preset]
     if target:
         cmd += ["--target", target]
     rc, lines, duration = run(cmd, cwd=XPP)
     log += lines
-    return _build_result(preset, configured, rc, log, duration)
+    return _build_result(build_preset, configured, rc, log, duration, width)
 
 
-def _build_result(preset, configured, rc, log, duration) -> dict:
+def _build_result(preset, configured, rc, log, duration, arch="x64") -> dict:
     errors = []
     for line in log:
         if _ERROR_RX.search(line):
@@ -51,6 +85,7 @@ def _build_result(preset, configured, rc, log, duration) -> dict:
                                "text": line.strip()[:200]})
     return {
         "preset": preset,
+        "arch": arch,
         "configured": configured,
         "exit_code": rc,
         "errors": errors[:50],
@@ -174,9 +209,12 @@ def _assert_tail(output: list[str], limit: int = 8) -> list[str]:
     return nonempty[-limit:]
 
 
-def test(filter_regex: str = "", preset: str = "debug") -> dict:
+def test(filter_regex: str = "", preset: str = "debug",
+         arch: str = "x64") -> dict:
     ctest = ctest_path()
-    cmd = [str(ctest), "--preset", preset, "--output-on-failure"]
+    _, test_preset, bdir = _resolve(preset, arch)
+    width = "x86" if bdir.endswith("-x86") else "x64"
+    cmd = [str(ctest), "--preset", test_preset, "--output-on-failure"]
     if filter_regex:
         cmd += ["-R", filter_regex]
     rc, lines, duration = run(cmd, cwd=XPP)
@@ -207,7 +245,7 @@ def test(filter_regex: str = "", preset: str = "debug") -> dict:
         if decoded:
             ft["exit_decode"] = decoded
     return {
-        "preset": preset, "filter": filter_regex,
+        "preset": test_preset, "arch": width, "filter": filter_regex,
         "exit_code": rc, "total": total, "passed": passed,
         "failed": failed, "skipped": skipped,
         "failed_tests": failed_tests, "duration_s": round(duration, 1),

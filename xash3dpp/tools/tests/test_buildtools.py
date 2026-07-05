@@ -20,7 +20,49 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from xtools.buildtools import (  # noqa: E402
-    _assert_tail, _decode_exit, _failed_output_blocks)
+    _assert_tail, _decode_exit, _failed_output_blocks, _resolve)
+
+
+class Resolve(unittest.TestCase):
+    """(configuration, architecture) -> (configure, build/test, binaryDir)."""
+
+    def test_default_is_debug_x64(self):
+        self.assertEqual(_resolve("debug", "x64"),
+                         ("debug-msvc", "debug", "Debug"))
+
+    def test_debug_x86(self):
+        self.assertEqual(_resolve("debug", "x86"),
+                         ("debug-msvc-x86", "debug-x86", "Debug-x86"))
+
+    def test_release_x64(self):
+        # fixes the old latent bug: release now configures release-msvc into
+        # build/Release, not debug-msvc into build/Debug.
+        self.assertEqual(_resolve("release", "x64"),
+                         ("release-msvc", "release", "Release"))
+
+    def test_arch_aliases_normalize(self):
+        self.assertEqual(_resolve("debug", "win32"), _resolve("debug", "x86"))
+        self.assertEqual(_resolve("debug", "amd64"), _resolve("debug", "x64"))
+
+    def test_suffixed_preset_infers_arch(self):
+        # the older `--preset debug-x86` form keeps working with arch left x64.
+        self.assertEqual(_resolve("debug-x86", "x64"),
+                         _resolve("debug", "x86"))
+
+    def test_case_and_whitespace_tolerant(self):
+        self.assertEqual(_resolve("  Debug ", " X86 "),
+                         _resolve("debug", "x86"))
+
+    def test_unknown_pair_falls_back(self):
+        # unknown arch for a known configuration -> that configuration's x64.
+        self.assertEqual(_resolve("release", "sparc"),
+                         _resolve("release", "x64"))
+        # entirely unknown -> debug x64.
+        self.assertEqual(_resolve("nonsense", "nonsense"),
+                         _resolve("debug", "x64"))
+
+    def test_empty_inputs_default(self):
+        self.assertEqual(_resolve("", ""), _resolve("debug", "x64"))
 
 
 class AssertTail(unittest.TestCase):

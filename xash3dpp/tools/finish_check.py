@@ -17,11 +17,14 @@ def main() -> int:
     ap.add_argument("subsystem")
     ap.add_argument("--run-tests", action="store_true",
                     help="also run ctest -R test_<subsystem>")
+    ap.add_argument("--arch", default="x64", choices=["x64", "x86"],
+                    help="which build the --run-tests ctest pass targets")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     def run():
-        data = finish_check(args.subsystem, run_tests=args.run_tests)
+        data = finish_check(args.subsystem, run_tests=args.run_tests,
+                            arch=args.arch)
         clean = all(i["status"] == "pass" for i in data["items"])
         return clean, data
 
