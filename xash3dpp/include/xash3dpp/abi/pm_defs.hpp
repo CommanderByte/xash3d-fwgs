@@ -32,6 +32,20 @@ inline constexpr int k_max_physents  = 600; // room for all world entities
 inline constexpr int k_max_moveents  = 64;
 inline constexpr int k_max_clip_planes = 5;
 
+// legacy: pm_shared/pm_defs.h :23-32 — PM_PlayerTrace / PM_TraceLine flags.
+// The DLL passes these to the trace callbacks; the trace family branches on
+// them (PM_WORLD_ONLY stops after physents[0], the *_IGNORE flags skip
+// entity classes).
+inline constexpr int k_pm_normal        = 0x00000000;
+inline constexpr int k_pm_studio_ignore = 0x00000001; // skip studio models
+inline constexpr int k_pm_studio_box    = 0x00000002; // box-trace non-complex studio
+inline constexpr int k_pm_glass_ignore  = 0x00000004; // skip non-normal rendermode
+inline constexpr int k_pm_world_only    = 0x00000008; // trace against the world only
+inline constexpr int k_pm_custom_ignore = 0x00000010; // skip SOLID_CUSTOM
+// PM_TraceLine `flags` selector: physents vs any-visible ent list.
+inline constexpr int k_pm_traceline_physentsonly = 0;
+inline constexpr int k_pm_traceline_anyvisible   = 1;
+
 // Opaque engine types referenced only through pointers in the host-callback
 // function-pointer table below.  They never appear by value, so an incomplete
 // declaration is ABI-sufficient (a pointer slot is a pointer slot); the pmove

@@ -140,9 +140,11 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
                    sizeof( pe->name ));
     }
 
-    // TODO(pmove-P3): bind pe->model / pe->studiomodel to the opaque brush/
-    // studio handles the trace family clips against.  P2 leaves them null and
-    // uses the model type only to select mins/maxs below.
+    // pe->model / pe->studiomodel stay null by design: the P3 trace family
+    // (pm_trace.cpp) resolves a physent's brush submodel through the arena +
+    // IModelResolver (pe->info -> edict -> modelindex), not an opaque engine
+    // handle, so nothing needs to be stashed here.  The model type still
+    // selects mins/maxs below.
     pe->model = pe->studiomodel = nullptr;
 
     switch ( ed->v.solid )
@@ -163,13 +165,14 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
         copy_vec3( pe->maxs, ed->v.maxs );
         break;
     case abi::k_solid_custom:
-        // TODO(pmove-P3): pe->model = brush ? handle : null;
-        //                 pe->studiomodel = studio ? handle : null.
+        // handles stay null (resolved via the arena at trace time — see above);
+        // pm_trace.cpp routes SOLID_CUSTOM to the S8 physics-interface sweep.
         copy_vec3( pe->mins, ed->v.mins );
         copy_vec3( pe->maxs, ed->v.maxs );
         break;
     default:
-        // TODO(pmove-P3): pe->studiomodel = studio ? handle : null.
+        // studio handle stays null → the trace family takes the bbox fallback
+        // until the Chunk 7 hitbox provider (OQ-2).
         copy_vec3( pe->mins, ed->v.mins );
         copy_vec3( pe->maxs, ed->v.maxs );
         break;
