@@ -12,9 +12,12 @@
 //     host_sleeptime_debug, sys_timescale, sys_ticrate) — registered via
 //     CmdCvarContext at init() time.
 //
-// Threading: Clock is read by the renderer thread (Chunk 10) without locking;
-// the four time fields are std::atomic<double> so concurrent reads are safe.
-// Only the main thread writes (via tick()).
+// Threading: Clock is main-thread only for mutators (init/shutdown/set_frame_rate_gate
+// must assert ThreadRole::Main). Observers (realtime/frametime/etc.) are safe from
+// any thread — time fields are std::atomic<double>. The renderer thread (Chunk 10)
+// reads without locking.
+//
+// @thread-safety: main-thread mutators; any-thread observers.
 
 #include <atomic>
 #include <cstdint>
@@ -39,7 +42,7 @@ struct ClockInitParams
 {
     // Required: cvar registry the clock registers its timing cvars on.
     // Non-owning; must outlive the Clock.
-    cmd_cvar::CmdCvarContext *cmd_cvar = nullptr;
+    cmd_cvar::CmdCvarContext *cmd_cvar = nullptr;  // @lifetime: engine-context-owned; outlives Clock
 
     // Server mode flag — selects the FPS gate policy used in tick():
     //   true  → sys_ticrate governs frame rate  (legacy: Host_CalcFPS dedicated branch)

@@ -27,7 +27,7 @@ target_include_directories(xash3dpp_core
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
-target_compile_features(xash3dpp_core PUBLIC cxx_std_20)
+target_compile_features(xash3dpp_core PUBLIC cxx_std_23)
 
 # clock/error use the diagnostics tier, which is hosted in platform.
 target_link_libraries(xash3dpp_core PRIVATE xash3dpp_platform)

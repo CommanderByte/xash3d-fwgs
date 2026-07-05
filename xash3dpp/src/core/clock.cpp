@@ -4,6 +4,7 @@
 
 #include <xash3dpp/core/clock.hpp>
 #include <xash3dpp/core/assert.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/cmd_cvar/cvar.hpp>
 #include <xash3dpp/limits.hpp>
@@ -66,13 +67,14 @@ Clock &Clock::operator=(Clock &&) noexcept = default;
 
 bool Clock::init( const ClockInitParams &p ) noexcept
 {
+    assert_thread_role( ThreadRole::Main );
     Impl &s = *impl_;
     if ( s.initialised ) return true;
 
     s.cmd_cvar  = p.cmd_cvar;
     s.dedicated = p.dedicated;
 
-    const double now = platform::get_time();
+    const double now = ::xash::platform::get_time();
     s.starttime_.store         ( now, std::memory_order_relaxed );
     s.realtime_.store          ( now, std::memory_order_relaxed );
     s.oldtime             = now;
@@ -104,6 +106,7 @@ bool Clock::init( const ClockInitParams &p ) noexcept
 
 void Clock::shutdown() noexcept
 {
+    assert_thread_role( ThreadRole::Main );
     Impl &s = *impl_;
     if ( !s.initialised ) return;
 
@@ -127,6 +130,7 @@ void Clock::shutdown() noexcept
 
 void Clock::set_frame_rate_gate( bool (*fn)() noexcept ) noexcept
 {
+    assert_thread_role( ThreadRole::Main );
     impl_->gate_fn = fn;
 }
 
@@ -151,13 +155,13 @@ static double calc_fps( const Clock::Impl &s ) noexcept
     if ( s.cv_fps_override && s.cv_fps_override->abi.value != 0.0f )
     {
         // fps_override: hard ceiling (legacy MAX_FPS_HARD = 1000)
-        const double fps = ( maxfps == 0.0 ) ? limits::max_fps_hard : maxfps;
-        return std::clamp( fps, limits::min_fps, limits::max_fps_hard );
+        const double fps = ( maxfps == 0.0 ) ? ::xash::limits::max_fps_hard : maxfps;
+        return std::clamp( fps, ::xash::limits::min_fps, ::xash::limits::max_fps_hard );
     }
 
     // Normal client: soft ceiling (legacy MAX_FPS_SOFT = 200)
     if ( maxfps == 0.0 ) return 0.0;  // 0 = uncapped
-    return std::clamp( maxfps, limits::min_fps, limits::max_fps_soft );
+    return std::clamp( maxfps, ::xash::limits::min_fps, ::xash::limits::max_fps_soft );
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +173,7 @@ bool Clock::tick() noexcept
     Impl &s = *impl_;
     XASH_ASSERT( s.initialised );
 
-    const double now    = platform::get_time();
+    const double now    = ::xash::platform::get_time();
     const double raw_dt = now - s.oldtime;
     s.oldtime           = now;
 
@@ -187,7 +191,7 @@ bool Clock::tick() noexcept
     const double fps = calc_fps( s );
     if ( fps > 0.0 )
     {
-        const double bounded_fps = std::clamp( fps, limits::min_fps, limits::max_fps_hard );
+        const double bounded_fps = std::clamp( fps, ::xash::limits::min_fps, ::xash::limits::max_fps_hard );
         // Dedicated adds +1 fps to target to avoid being fractionally early;
         // this matches the legacy dedicated-server behaviour.
         const double target_ft = s.dedicated
@@ -197,10 +201,10 @@ bool Clock::tick() noexcept
         if ( elapsed < target_ft * scale )
         {
             // Frame budget not reached; sleep to avoid busy-spinning.
-            const int sleep_ms = s.cv_sleeptime
-                ? static_cast<int>( s.cv_sleeptime->abi.value ) : 1;
+            const std::int32_t sleep_ms = s.cv_sleeptime
+                ? static_cast<std::int32_t>( s.cv_sleeptime->abi.value ) : 1;
             if ( sleep_ms > 0 )
-                platform::sleep( static_cast<unsigned>( sleep_ms ) );
+                ::xash::platform::sleep( static_cast<std::uint32_t>( sleep_ms ) );
             return false;
         }
     }
@@ -210,13 +214,13 @@ bool Clock::tick() noexcept
     s.last_frame_realtime = new_realtime;
 
     s.realframetime_.store(
-        std::clamp( frame_dt, limits::min_frametime, limits::max_frametime ),
+        std::clamp( frame_dt, ::xash::limits::min_frametime, ::xash::limits::max_frametime ),
         std::memory_order_relaxed );
 
     // pureframetime: raw (unscaled) wall-clock time this frame took.
     // Used by autosleep budget accounting in future refinements.
     s.pureframetime_.store(
-        std::clamp( raw_dt, limits::min_frametime, limits::max_frametime ),
+        std::clamp( raw_dt, ::xash::limits::min_frametime, ::xash::limits::max_frametime ),
         std::memory_order_relaxed );
 
     // host_framerate override: singleplayer-no-demo only (OQ-11 gate).
@@ -229,7 +233,7 @@ bool Clock::tick() noexcept
         ft = static_cast<double>( s.cv_framerate->abi.value ) * scale;
     }
     s.frametime_.store(
-        std::clamp( ft, limits::min_frametime, limits::max_frametime ),
+        std::clamp( ft, ::xash::limits::min_frametime, ::xash::limits::max_frametime ),
         std::memory_order_relaxed );
 
     s.framecount_.fetch_add( 1, std::memory_order_relaxed );

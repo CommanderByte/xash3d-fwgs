@@ -32,7 +32,7 @@ namespace {
 
 // Single optional callback.  Written once from the main thread; thereafter
 // only read.  Relaxed ordering is safe: see file header.
-std::atomic<LogCallback> g_log_callback{ nullptr };
+std::atomic<LogCallback> g_log_callback{ nullptr };  // compliance-allow(mutable-global, di-global-ref): diagnostics-layer atomic callback — the log seam is deliberately global (no context exists at log time); G-1 extension hook (log_set_callback)
 
 // Level abbreviations for the "[tag][LEVEL]:" prefix.
 const char *level_tag( LogLevel level ) noexcept
@@ -86,7 +86,7 @@ void emit( LogLevel level, std::string_view tag,
     std::string_view full_line{ buf, end };
 
     // Default sink: platform console.
-    platform::console::write( full_line );
+    ::xash::platform::console::write( full_line );
 
     // Optional callback (body only, without the prefix and newline).
     LogCallback cb = g_log_callback.load( std::memory_order_relaxed );

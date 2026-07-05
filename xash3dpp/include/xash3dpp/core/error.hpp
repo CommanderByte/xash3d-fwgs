@@ -5,6 +5,8 @@
 // This file is intentionally minimal during Chunk 3.  New error codes are
 // appended at the end as each subsystem comes online; numeric values are
 // committed (diagnostic logs include the integer value).
+//
+// @thread-safety: read-only enumeration (no synchronization needed).
 
 #include <cstdint>
 

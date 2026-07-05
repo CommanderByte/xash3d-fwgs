@@ -26,6 +26,8 @@
 // Typical usage:
 //   core::log(LogLevel::Warning, "filesystem", "path too long");
 //   core::logf(LogLevel::Error, "memory", "pool overflow at %zu", bytes);
+//
+// @thread-safety: callable from any thread (diagnostics seam, no synchronization).
 
 #include <string_view>
 #include <cstdarg>       // va_list, va_start, va_end

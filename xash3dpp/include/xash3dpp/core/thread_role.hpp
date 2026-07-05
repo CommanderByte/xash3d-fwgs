@@ -35,6 +35,10 @@
 //       xash::core::assert_thread_role(xash::core::ThreadRole::NetIO);
 //       // ... safe to touch NetIO-only state ...
 //   }
+//
+// @thread-safety: thread-local storage; each thread has its own role. register_thread_role()
+// must be called exactly once from the target thread; current_thread_role() / assert_thread_role()
+// are safe from any thread.
 
 namespace xash::core {
 

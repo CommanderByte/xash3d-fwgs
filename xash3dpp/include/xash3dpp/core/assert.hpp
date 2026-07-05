@@ -29,6 +29,8 @@
 //   • On MSVC /EHs-c-, assert() uses _invoke_watson which is inconsistent.
 //   • assert() provides no diagnostic log call.
 //   • XASH_ASSERT replaces it completely.
+//
+// @thread-safety: macro-only; safe from any thread (relies on core::logf for thread-safe output).
 
 #include <xash3dpp/core/log.hpp>    // core::log, LogLevel
 
