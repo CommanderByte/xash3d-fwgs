@@ -42,6 +42,7 @@ add_library(xash3dpp_server STATIC
     clients/log.cpp
     clients/messages.cpp
     clients/client_state.cpp
+    clients/net_io.cpp
     clients/query.cpp
     clients/snapshot.cpp
 )
@@ -62,5 +63,6 @@ target_link_libraries(xash3dpp_server
     PRIVATE xash3dpp_core
     PRIVATE xash3dpp_platform      # S6 — dynlib load, time
     # Added as the slices land (see server-boundary.md Dependencies):
-    # (networking netchan/master_list usage widens in S9)
+    # (networking netchan/master_list usage widens in S9; net_io.cpp bridges
+    #  the host-owned NetworkContext — get_packet / send_packet)
 )

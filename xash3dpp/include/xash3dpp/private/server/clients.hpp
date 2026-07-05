@@ -296,6 +296,13 @@ struct IOobSink
                                     ::xash::networking::NetAddress from,
                                     std::int32_t challenge ) noexcept;
 
+// SV_ReadPackets (sv_main.c:375), connectionless portion: drain rt.net's
+// server socket for one frame; dispatch each OOB (leading -1) datagram to
+// handle_connectionless, replying through a NetworkContext-backed OOB sink
+// (Netchan_OutOfBandPrint).  In-session netchan traffic is the Slice-C seam.
+// No-op when rt.net is null (offline server / unit fixtures).
+void read_packets( ServerRuntime &rt ) noexcept;
+
 // SV_ConnectionlessPacket dispatch (subset): tokenizes `text` (already past
 // the -1 marker) and routes getchallenge / connect / ping.  Replies through
 // `sink`.  Returns true when the packet was recognised.

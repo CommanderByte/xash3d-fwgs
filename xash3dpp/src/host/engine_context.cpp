@@ -127,6 +127,7 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
         sp.cvars        = &cmd_cvar;
         sp.fs           = &filesystem;
         sp.maps         = &map_loader;
+        sp.net          = &networking;
         sp.dedicated    = p.dedicated;
         sp.developer    = p.developer;
         // game_dll / game_dir + the Q-5 host_error hook are resolved by the

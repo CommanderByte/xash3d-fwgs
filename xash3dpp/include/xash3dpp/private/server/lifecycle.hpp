@@ -37,6 +37,7 @@
 namespace xash::cmd_cvar { class CmdCvarContext; }
 namespace xash::filesystem { class Filesystem; }
 namespace xash { class MapLoader; }
+namespace xash::networking { class NetworkContext; }
 
 namespace xash::server {
 
@@ -137,6 +138,7 @@ struct ServerRuntime
     ::xash::cmd_cvar::CmdCvarContext *cvars = nullptr; // optional pre-S7b
     ::xash::filesystem::Filesystem   *fs    = nullptr; // required by load_progs
     ::xash::MapLoader                *maps  = nullptr; // S7b spawn path
+    ::xash::networking::NetworkContext *net = nullptr; // S9 packet I/O (read_packets)
 
     // Owned game binding (legacy svgame equivalents).
     ::xash::memory::PoolHandle game_pool;   // svgame.mempool

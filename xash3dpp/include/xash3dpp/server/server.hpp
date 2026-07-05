@@ -24,6 +24,7 @@
 
 namespace xash::cmd_cvar { class CmdCvarContext; }
 namespace xash::filesystem { class Filesystem; }
+namespace xash::networking { class NetworkContext; }
 
 namespace xash::server {
 
@@ -60,6 +61,12 @@ struct ServerInitParams
     ::xash::filesystem::Filesystem   *fs    = nullptr; // @lifetime: engine
     ::xash::MapLoader                *maps  = nullptr; // @lifetime: engine
 
+    // Networking (Q-4) — the host owns the single NetworkContext + its UDP
+    // sockets (EngineContext); the server holds this non-owning handle and
+    // pulls its server-socket datagrams each frame (read_packets).  nullptr →
+    // an offline server (spawn/physics run; no packet I/O — test fixtures).
+    ::xash::networking::NetworkContext *net = nullptr; // @lifetime: engine
+
     // SV_InitGame → SV_LoadProgs dll path + the active game folder.
     const char *game_dll = "";  // @lifetime: engine
     const char *game_dir = "";  // @lifetime: engine
@@ -74,8 +81,8 @@ struct ServerInitParams
     void ( *host_error )( void *ctx, const char *msg ) = nullptr;
     void  *host_error_ctx                              = nullptr;
 
-    // TODO(chunk6-S9): ITrustOracle seam (cmd_cvar D2), networking, host
-    // feature flags + ICompatPolicy (Q-12), the frame-rate gate (host OQ-11).
+    // TODO(chunk6-S9): ITrustOracle seam (cmd_cvar D2), host feature flags +
+    // ICompatPolicy (Q-12), the frame-rate gate (host OQ-11).
 };
 
 // ---------------------------------------------------------------------------

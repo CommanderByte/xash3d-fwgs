@@ -1759,9 +1759,15 @@ void host_server_frame( ServerRuntime &rt, double host_frametime ) noexcept
         rt.level.frametime = static_cast<float>( host_frametime );
     rt.globals.frametime = rt.level.frametime;
 
-    // XASH3DPP-STUB(chunk6-S9): SV_CheckCmdTimes / SV_ReadPackets /
-    // SV_RequestMissingResources / SV_CheckTimeouts — the client-facing
-    // ingress steps land with the client machinery.
+    // Client-facing ingress: SV_ReadPackets drains the shared NetworkContext's
+    // server socket and routes connectionless traffic into the connection state
+    // machine (OOB replies leave through the same context).  A null rt.net
+    // (offline server) makes this a no-op.
+    read_packets( rt );
+
+    // XASH3DPP-STUB(chunk6-S9): SV_CheckCmdTimes (speed-hack clock) /
+    // SV_RequestMissingResources (upload sweep) / SV_CheckTimeouts — land with
+    // the in-session receive path (client realtime + last_received ageing).
 
     sv_update_movevars( rt, false );
 

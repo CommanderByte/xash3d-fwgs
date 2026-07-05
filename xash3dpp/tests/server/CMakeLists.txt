@@ -128,3 +128,10 @@ target_compile_definitions(test_client_state PRIVATE
     FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
 )
 add_dependencies(test_client_state fake_game_dll_full)
+
+# S9 seam — the server ↔ networking I/O bridge (SV_ReadPackets connectionless
+# ingress + Netchan_OutOfBandPrint egress) over a real NetworkContext driven by
+# a fake IPlatformSockets.  No game DLL / map needed — getchallenge only touches
+# the challenge salt + realtime.
+xash3dpp_add_test(test_net_io SOURCE clients/test_net_io.cpp
+    LIBS xash3dpp_server xash3dpp_core xash3dpp_networking xash3dpp_platform)

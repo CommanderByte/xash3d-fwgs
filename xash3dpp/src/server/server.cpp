@@ -72,6 +72,7 @@ bool Server::init( const ServerInitParams &params )
     rt.cvars = params.cvars;
     rt.fs    = params.fs;
     rt.maps  = params.maps;
+    rt.net   = params.net;
 
     // The game DLL loads lazily at the first SV_SpawnServer (legacy
     // SV_InitGame) — init only wires the dependencies.
