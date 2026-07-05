@@ -505,6 +505,80 @@ at header scope pollute every including TU.
 
 ______________________________________________________________________
 
+### ANNOTATION_DISCIPLINE (QN): the annotation matrix and thread-assert policy
+
+> **Status**: ✅ DECIDED (2026-07-06; backfilled by **Chunk 6B**)
+
+**Context**: The conventions defined several annotations (`@lifetime:` Q-9,
+`@pre-reserved:` Q-13, `// Pre:`/`// Post:` Q-15, `// SAFETY:` Q-16,
+`@thread-safety:` threading-model Rule 5) but adoption was imitation-driven
+and lumpy: `@thread-safety:` lived almost entirely in one header, networking
+documented threading intent it never asserted at runtime, the host
+orchestrator carried no thread assertions at all, and `// Post:` had zero
+uses repo-wide.
+
+**Decision — the matrix** (normative copy in
+`.github/instructions/xash3dpp.instructions.md`):
+
+| Marker | Required on |
+|--------|-------------|
+| `@lifetime:` | every raw pointer/reference member and stored view (`span`/`string_view`) whose referent outlives the expression |
+| `@thread-safety:` | every public class/interface header of a subsystem with any off-main surface or internal synchronisation |
+| `@pre-reserved: <LIMIT>` | hot-path `vector`/`deque` members (Q-13, unchanged) |
+| `// Pre:` | non-trivial preconditions not expressible in types (Q-15, unchanged) |
+| `// SAFETY:` | every `reinterpret_cast`, sanctioned pointer pun, and Q-16 `const_cast` wrapper outside vendored-ABI layout-pin TUs |
+| `// Post:` | **RETIRED** — zero uses repo-wide; postconditions live in return types, `[[nodiscard]]`, and asserts |
+
+**Thread-assert policy**: *documents-but-never-asserts is non-compliant.*
+Every public mutating entry point of a main-thread-only subsystem opens with
+`assert_thread_role(ThreadRole::Main)` — orchestrators included.
+Pure-function namespaces and state-free utilities are exempt. Prerequisite:
+`register_thread_role(ThreadRole::Main)` must be wired on the real
+production entry paths (launcher, host init, test mains) before asserts are
+meaningful.
+
+**Exemption markers** — so coverage can reach a true 100%: a one-line
+`// @annotation-exempt: <pure-namespace|abi-pod|fnptr-table|cold-value-type>`
+on the type or namespace declares the category. Coverage tooling counts it
+as satisfied-by-exemption; reviewers judge marker truthfulness. Coverage is
+always reported **with denominators** (annotated + exempted / total
+required), never as raw counts.
+
+**Scope**: state-bearing types only; the matrix does not apply to ABI-frozen
+vendored PODs beyond the `abi-pod` exemption marker.
+
+______________________________________________________________________
+
+### CONSTANT_PLACEMENT (QO): compile-time limits vs runtime cvars vs frozen constants
+
+> **Status**: ✅ DECIDED (2026-07-06)
+
+**Context**: named constants had three homes (vendored `k_*` ABI values,
+`limits.hpp` `XASH_LIMIT_*`, cvars) but only implicit practice for choosing
+among them — and no written form of the legacy engine's own fourth pattern,
+the compile-time ceiling with a runtime dial (`MAX_CLIENTS` +
+`sv_maxclients`).
+
+**Decision table**:
+
+| Kind | Home | Tunable |
+|------|------|---------|
+| ABI/wire-frozen (opcodes, protocol sizes, struct dims) | vendored `k_*` beside the ABI | never |
+| Structural capacity — changing requires re-init/realloc (array dims, pool caps, ring sizes) | `limits.hpp` `XASH_LIMIT_*` | compile-time override only |
+| Behavioral tunable (rates, timeouts, speeds, toggles) | cvar, flags per role | runtime |
+| Operator-sized capacity | **ceiling in `limits.hpp` + cvar dial clamped ≤ ceiling** | both, by design |
+
+**Naming rider**: new cvars use the legacy family prefix + snake_case
+(`sv_` / `net_` / `host_` / …), `dev_*` for developer/debug knobs;
+legacy-mirrored cvars and commands keep their exact legacy names (parity).
+
+**Enforcement**: the `limits-audit` prompt classifies findings as
+*belongs-in-limits / belongs-as-cvar / frozen*; `finish_check` item 2
+machine-classifies wire/ABI-frozen constants instead of resurfacing them as
+perpetual needs-judgment.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 ### 4.1 Must happen before Chunk 2
@@ -540,3 +614,7 @@ All rules in this document apply from the first line of any new subsystem or tes
   intentional game-console output; never `printf`/`fprintf`/`std::cout` (QI)
 - Copy/move semantics per category table (QJ)
 - Standard test macro set (QK)
+- The annotation matrix + thread-assert policy + exemption markers (QN);
+  `// Post:` is retired — do not introduce it
+- Constant placement per the QO table (frozen `k_*` / `limits.hpp` / cvar /
+  ceiling+dial); new-cvar naming per the QO rider (QO)

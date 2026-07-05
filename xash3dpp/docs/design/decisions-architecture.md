@@ -186,7 +186,7 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
-All 21 questions (Q-1 … Q-21) are decided.
+All 22 questions (Q-1 … Q-22) are decided.
 
 ### Question index
 
@@ -202,7 +202,7 @@ All 21 questions (Q-1 … Q-21) are decided.
 | Q-8 | STRING_VIEW_BOUNDARY | Q-18 | PM_FP_MODEL |
 | Q-9 | OWNERSHIP | Q-19 | PHS_PLACEMENT |
 | Q-10 | PLUGIN_VERSION | Q-20 | EDICT_STORE |
-| Q-21 | EXTENSION_POSTURE | — | — |
+| Q-21 | EXTENSION_POSTURE | Q-22 | LIFECYCLE_MODEL |
 
 File order is historical — Q-14 appears before Q-13 below; do not renumber.
 
@@ -931,6 +931,67 @@ violation ever slips a review.
 
 ______________________________________________________________________
 
+### LIFECYCLE_MODEL (Q-22): classes with invariants, pool-owned allocation, narrowest-state signatures
+
+> **Status**: ✅ DECIDED (2026-07-06; applied retroactively by **Chunk 6B**,
+> the full-retrofit wave)
+
+**Context**: The register regulated subsystem *packaging* (Q-1..Q-4) but not
+internal shape — whether a subsystem's internals are encapsulated classes or
+free functions over a runtime aggregate was unregulated, and the completed
+subsystems diverged (networking/cmd_cvar encapsulated; server procedural per
+its parity-first sanction). Pool accounting was likewise idiomatic but
+unwritten: the tree already ships the preferred pool-owned-class shape
+(`File`, `ISearchBackend`) without a rule naming it. The long-term goals
+(Q-21) need lifecycle clarity, visible read/write sets, and complete pool
+accounting.
+
+**Decision**:
+
+1. **State with invariants lives in a class with an RAII lifecycle.**
+   Free-functions-over-aggregate style is reserved for **orchestrators**
+   (frame loops, lifecycle sequencing, ABI dispatch tables). This refines
+   Q-1's subsystem-level criterion down into subsystem internals; Q-1's
+   packaging rules are unchanged.
+2. **Pool-owned-class idiom (canonical)**: a `create_<thing>` factory
+   holding the injected `PoolHandle` constructs via `pool_new<T>`; the class
+   overrides **both** `operator delete` overloads (unsized + sized) routing
+   to `mem_free`; a plain `std::unique_ptr<T>` (default deleter) then owns
+   it. Precedents: filesystem `File` + `ISearchBackend`; references:
+   `memory.hpp` `PoolDeleter` note, `architecture/memory/typed-helpers.md`.
+3. **Class-scoped `operator new` is forbidden** — it cannot carry the
+   injected handle, forcing a global or thread-local pool, which violates
+   the Q-2 no-globals DI model.
+4. **Smart-pointer policy**: `std::make_unique<T>` is banned except for
+   pimpl `Impl` (Q-3/Q-9 unchanged). `std::unique_ptr<T>` with the default
+   deleter is allowed exactly when `T` carries the `operator delete` pair
+   and construction went through a `pool_new` factory.
+5. **Alignment**: `pool_new<T>` requires `alignof(T) ≤ 8` — the pool
+   `AllocHeader` guarantees only ≥8-byte payload alignment. Enforced by a
+   `static_assert` in `pool_new`. If aligned allocation ever lands, the
+   aligned-`operator delete` overload set must be revisited with it.
+6. **Narrowest-state signatures**: free functions over aggregates take the
+   smallest sub-aggregate they touch; whole-aggregate parameters are
+   reserved for orchestrators. (Elevates extension-goals P-5 to binding.)
+7. **Naming riders**: pool-factory verb is `create_<thing>` (the lone
+   `make_os_file` outlier renames at its 6B session); methods promoted from
+   legacy-echo free functions drop the now-redundant subsystem prefix
+   (`sv_run_cmd` → `ClientMachinery::run_cmd`) with the rename recorded in
+   the **crosswalk** so parity greppability survives; pool display names are
+   subsystem-prefixed snake_case when a subsystem owns several.
+8. **Promotion safety**: classes promoted from aggregates whose storage is
+   self-bound (buffers bound into owning-struct storage, back-pointers)
+   preserve **address stability** — copy/move deleted per QJ unless an
+   explicit rebind path exists.
+
+**Enforcement**: compliance rules `class-operator-new` (blocker),
+`make-unique-outside-pimpl`, `operator-delete-pairing`, and the revised
+`unique-ptr-nonpimpl`; detail-audit CHECK-LIFECYCLE; reviewer charter §14.
+Applies to all new code; the completed subsystems are brought into
+conformance by Chunk 6B.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 All open questions are decided. This section records when each rule applies.
@@ -1000,6 +1061,13 @@ These rules apply from the first line of any new subsystem:
   introspection via typed surfaces, narrowest-state signatures over runtime
   aggregates, experimental features as Q-11 satellites; boundary specs carry
   an "Extension axes" section (Q-21)
+- Lifecycle model: state with invariants → RAII class; orchestrators may
+  stay free functions; pool-owned classes use the `create_<thing>` factory +
+  dual-`operator delete` idiom; class `operator new` forbidden;
+  `make_unique` only for pimpl `Impl`; `unique_ptr<T>` default deleter only
+  over the operator-delete pair; `alignof(T) ≤ 8` for `pool_new`;
+  narrowest-state signatures; promoted-method renames recorded in the
+  crosswalk (Q-22)
 
 ______________________________________________________________________
 

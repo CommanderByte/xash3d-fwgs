@@ -269,7 +269,7 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `PROMPT-GUIDE.md` | Frontmatter spec, tool tiers, adapters, and model selection for all `.prompt.md` files |
 | `AGENT-SETUP.md` | Per-framework setup matrix, human quickstart, env overrides, dormancy recovery |
 | `instructions/xash3dpp.instructions.md` | Mandatory C++ patterns and conventions for `xash3dpp/` |
-| `xash3dpp/docs/design/decisions-architecture.md` | Structural paradigms: ownership, error returns, interfaces (Q-1 through Q-21) + the OQ crosswalk |
+| `xash3dpp/docs/design/decisions-architecture.md` | Structural paradigms: ownership, error returns, interfaces (Q-1 through Q-22) + the OQ crosswalk |
 | `xash3dpp/docs/design/decisions-style.md` | Naming, `[[nodiscard]]`, logging, test conventions (QA through QM) |
 | `xash3dpp/tools/README.md` | The deterministic tooling: scripts, MCP tools, envelope, state conventions |
 

@@ -39,6 +39,7 @@ ______________________________________________________________________
 | G-2 | **Game ABI v2** — a multithreading-suitable engine↔game interface, with a reworked HL SDK to match | P-3, P-5 (+ the Q-20 seam) |
 | G-3 | **Dedicated debug thread** — live inspection without stalling the sim | P-1, P-2, P-4 |
 | G-4 | **Expanded in-game debugging** — richer introspection, overlays, tooling | P-4 (+ Chunk 12/13 frontends) |
+| G-5 | **Scripting runtime** — tooling-first embedded scripting; gameplay/modding later | P-1, P-3, P-4, P-6, P-7 |
 
 ### G-1 — In-engine MCP service
 
@@ -116,6 +117,46 @@ data the MCP service and debug thread read.
   consume the same typed surfaces (P-4). No frontend grows a private backdoor
   into subsystem internals.
 
+### G-5 — Scripting runtime (tooling first)
+
+An embedded scripting runtime, welcomed into the engine in two stages:
+**(a) tooling first** — debug automation, scripted test scenarios, console
+scripting on the cold path; **(b) gameplay/modding later**, alongside the
+modernized game ABI (G-2), with its own promotion brief.
+
+- **Hard constraints** (encoded now so the runtime pick cannot box us in):
+  engine targets stay `/EHs-c- /GR-` — the VM lives in an **isolated-island
+  satellite** static lib with its own flags, behind `noexcept` binding shims;
+  no exception (or longjmp across engine RAII) ever unwinds an engine frame.
+  The runtime must expose a **complete allocator hook** bridgeable to the
+  memory pools (accounting per pool at minimum; note pools guarantee only
+  ≥8-byte payload alignment — no aligned-alloc API). Cold-path-only until
+  proven; deterministic-hardenable for the warm path (fixed hash seeds,
+  explicit RNG seeding, no reliance on unspecified iteration order); MSVC
+  x64 + x86; permissive license; active upstream.
+- **What already exists**: cmd_cvar reserved the affordances —
+  `CvarWriteSource::Script`, `CvarType`, the `CvarDesc`/`CommandDesc`
+  snapshots, the `ParamSpec` slot — plus `ITrustOracle` (untrusted-source
+  gating), `ICvarObserver`, `core::log_set_callback` (REPL capture),
+  `Filesystem::load_file`/`search`, and platform dynlib. Script surface v0 =
+  `cmd_add`/`cbuf_*`/`cvar_*` + those seams, all P-4-conformant.
+- **Runtime shortlist** (researched + adversarially verified, 2026-07-06;
+  final pick via a prototype spike recorded in
+  `scripting-runtime-brief.md`): **Lua 5.4 built as C** (front-runner —
+  complete `lua_Alloc` with per-VM userdata and type-coded stats, no JIT,
+  VM-per-thread, longjmp discipline required: raw C API binding, no RAII
+  across error paths), **QuickJS-ng** (verified-complete per-VM allocator,
+  return-code error model, spec-deterministic iteration order),
+  **AngelScript** (cleanest error model + best C++ binding ergonomics;
+  allocator is global/size-only — its spike derisks per-VM accounting).
+  Quirrel was eliminated by verification (its mandatory compiler lib
+  requires C++ exceptions); add **Luau** as a fourth candidate iff
+  untrusted-mod sandboxing becomes a warm-path requirement.
+- **Non-goals now**: no runtime pick, no bindings, no implementation, no
+  MCP transport coupling (G-1 stays separate). The satellite target name
+  `xash3dpp_script` is reserved, decided-not-built (`xash3dpp_http`
+  precedent, Q-11).
+
 ______________________________________________________________________
 
 ## 3. Shared primitives and door rules
@@ -178,6 +219,12 @@ missing; they do not reach around them.
 > `entvars_t` access stays confined per Q-20 regardless of how convenient a
 > debug dump would be.
 
+Stats note: **collection** stays compile-gated per the three-tier model (no
+runtime booleans on increments — deliberate); what is runtime is the
+query/report side (`stats()` snapshots, query commands, the future
+MCP/debug-thread consumers). Runtime-switchable deep-stats collection is an
+explicit revisit trigger, never drift.
+
 ### P-5 — Narrowest-state signatures
 
 Free functions over a runtime aggregate take the smallest sub-aggregate they
@@ -188,8 +235,8 @@ prerequisite for both snapshotting state (P-2) and scheduling tick phases in
 parallel (G-2), and the main structural antidote to god-aggregate drift.
 
 > **Door rule**: applies to all new free functions over aggregates. Existing
-> server signatures migrate under the §4.2-style "when next touched" rule or
-> in the paired post-milestone sweep (§4).
+> signatures migrate in **Chunk 6B** (the scheduled full-retrofit wave, §4).
+> Elevated to a binding standard by Q-22.
 
 ### P-6 — Services are satellites
 
@@ -202,6 +249,34 @@ engine never links *toward* a service.
 > boundary-spec time; an experiment that only works with tentacles into a
 > subsystem's privates is redesigned before it lands.
 
+### P-7 — Pool-owned classes with RAII lifecycle
+
+State with invariants lives in a class with an RAII lifecycle;
+free-functions-over-aggregate style is reserved for orchestrators. Pool-owned
+classes follow the canonical idiom the tree already ships (`File`,
+`ISearchBackend`; `memory.hpp` `PoolDeleter` note): a `create_<thing>`
+factory holding the injected `PoolHandle` constructs via `pool_new<T>`; the
+class overrides **both** `operator delete` overloads routing to `mem_free`;
+a plain `std::unique_ptr<T>` then owns it.
+
+> **Door rule**: class-scoped `operator new` is forbidden (it cannot carry
+> the injected handle — it would force a global/TLS pool, violating Q-2).
+> `std::make_unique<T>` stays banned except for pimpl `Impl`.
+> `pool_new<T>` requires `alignof(T) ≤ 8` (the pools guarantee only ≥8-byte
+> payload alignment). Binding rules and the full smart-pointer policy: Q-22.
+
+### P-8 — Annotation discipline
+
+The QN annotation matrix (`@lifetime:` / `@thread-safety:` /
+`@pre-reserved:` / `// Pre:` / `// SAFETY:`; `// Post:` retired) plus
+thread-role assertion coverage, applied uniformly — "documents-but-never-
+asserts is non-compliant."
+
+> **Door rule**: applies to all new code from QN's adoption; the completed
+> subsystems are backfilled by Chunk 6B. Coverage is measured with
+> denominators (annotated + `@annotation-exempt:`-marked / total required),
+> never raw counts.
+
 ______________________________________________________________________
 
 ## 4. Per-chunk hooks
@@ -211,7 +286,8 @@ at that chunk's boundary-spec / plan-implementation step:
 
 | Chunk | Hook |
 |-------|------|
-| 6 (post-milestone slice) | Pair the deferred S9-completion backlog with the P-5 narrowest-state sweep — same files, one churn, parity gates re-run once |
+| 6 (post-milestone) | The deferred S9-completion backlog stays chunk-inherited (unchanged); the structural half of the old pairing moved to Chunk 6B |
+| **6B — hardening retrofit** | Every completed subsystem brought to Q-22/QN/QO conformance (lifecycle promotion, pool routing, annotation backfill, thread asserts, P-5 narrowest-state sweep); parity-gated subsystems behaviour-preserving with gates re-run; scope-fenced against the stub backlog |
 | 7 — content | Worker pool + `JobToken` land ⇒ design the P-1 inbox as part of the same queue family; content loaders stay context-first (P-3) |
 | 8 — save | The field-map serializer is state→bytes machinery; **consider** shaping it for reuse by debug dumps / snapshots (P-2/P-4) — do not contort it if parity says otherwise |
 | 9 — sound | First production MPSC queue (audio commands) — validates the P-1 queue family |
