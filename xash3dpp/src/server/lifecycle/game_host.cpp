@@ -156,9 +156,11 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
         static_cast<std::size_t>( rt.persistent.maxclients ) + 1;
     bool ok = rt.arena.init( rt.game_pool, rt.cfg.max_edicts, reserved );
 
-    // XASH3DPP-STUB(chunk6): svs.static_entities / svs.baselines
-    // allocation needs the vendored entity_state_t — S9 (tracked in the
-    // implementation-plan follow-ups).
+    // svs.baselines: Z_Calloc(entity_state_t * max_edicts) (sv_game.c:5342).
+    // svs.static_entities (pfnMakeStatic) remains a later snapshot sub-slice.
+    if ( ok )
+        ok = snapshot_alloc_baselines( rt );
+    rt.bridge.snapshot = &rt.snapshot; // pfnCreateInstancedBaseline reaches here
 
     if ( ok )
         ok = rt.precache.init( rt.game_pool );
@@ -274,6 +276,7 @@ void unload_progs( ServerRuntime &rt ) noexcept
     rt.arena.shutdown();
     rt.arena.set_private_releaser( nullptr, nullptr );
     rt.precache.shutdown();
+    snapshot_free_baselines( rt ); // Z_Free svs.baselines (sv_game.c:5194)
 
     rt.game.unload(); // COM_FreeLibrary
 

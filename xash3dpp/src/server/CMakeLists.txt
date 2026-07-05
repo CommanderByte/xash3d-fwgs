@@ -43,6 +43,7 @@ add_library(xash3dpp_server STATIC
     clients/messages.cpp
     clients/client_state.cpp
     clients/query.cpp
+    clients/snapshot.cpp
 )
 
 target_include_directories(xash3dpp_server

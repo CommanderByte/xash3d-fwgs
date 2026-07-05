@@ -56,6 +56,10 @@ struct State
     int client_disconnect_calls;     // pfnClientDisconnect invocations
     int client_connect_should_reject; // when set, pfnClientConnect returns 0
 
+    // S9 snapshot-pipeline probes.
+    int create_baseline_calls;   // pfnCreateBaseline invocations
+    int create_instanced_calls;  // pfnCreateInstancedBaselines invocations
+
     // Every pfnKeyValue the double receives (class/key/value snapshot) — the
     // parse test reads these back to pin the quirk transforms.
     struct KvdRecord

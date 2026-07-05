@@ -27,6 +27,7 @@
 #include <xash3dpp/private/server/clients.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
+#include <xash3dpp/private/server/snapshot.hpp>
 #include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/math.hpp>
 #include <xash3dpp/utilities/string.hpp>
@@ -1913,11 +1914,15 @@ void pfn_set_group_mask( int mask, int op )
                                                : GroupOp::And );
 }
 
-int pfn_create_instanced_baseline( int, abi::entity_state_s * )
+int pfn_create_instanced_baseline( int classname, abi::entity_state_t *baseline )
 {
-    // XASH3DPP-STUB(chunk6): instanced baselines land in S9; legacy
-    // failure value is 0.
-    return 0;
+    // SV_CreateInstancedBaseline (sv_game.c:4425): append the classname-keyed
+    // template to sv.instanced.  Null bridge/snapshot ⇒ legacy no-server 0.
+    if ( g_bridge == nullptr || g_bridge->snapshot == nullptr )
+        return 0;
+    return create_instanced_baseline( *g_bridge->snapshot,
+                                      static_cast<abi::string_t>( classname ),
+                                      baseline );
 }
 
 void pfn_cvar_direct_set( abi::cvar_t *var, const char *value )

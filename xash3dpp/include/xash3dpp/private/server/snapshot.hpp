@@ -58,6 +58,10 @@ struct SnapshotState
 // cleared by the per-level sv memset).
 void snapshot_reset( ServerRuntime &rt ) noexcept;
 
+// SV_UnloadProgs baseline free (sv_game.c:5194 Z_Free svs.baselines).  MUST run
+// before game_pool destruction — the pool asserts on outstanding allocations.
+void snapshot_free_baselines( ServerRuntime &rt ) noexcept;
+
 // SV_CreateBaseline fill half (sv_init.c:459-508): per valid edict set
 // number/entityType, call the game DLL's pfnCreateBaseline to fill the state,
 // track last_valid_baseline; then pfnCreateInstancedBaselines.  The signon
@@ -68,7 +72,7 @@ void create_baselines( ServerRuntime &rt ) noexcept;
 // pfnCreateInstancedBaseline callback (engine_table, eiface.hpp:369): append a
 // classname-keyed template to sv.instanced[]; returns the new index, or the cap
 // when full (legacy silently ignores past MAX_CUSTOM_BASELINES).
-int create_instanced_baseline( ServerRuntime &rt, ::xash::abi::string_t classname,
+int create_instanced_baseline( SnapshotState &snap, ::xash::abi::string_t classname,
                                const ::xash::abi::entity_state_t *baseline ) noexcept;
 
 } // namespace xash::server

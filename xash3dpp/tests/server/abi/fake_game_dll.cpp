@@ -17,6 +17,8 @@
 
 #include "fake_dll_state.hpp"
 
+#include <xash3dpp/abi/entity_state.hpp>
+
 #include <cstdio>
 #include <cstring>
 
@@ -229,6 +231,36 @@ static void fake_client_disconnect( abi::edict_t * )
     ++g_state.client_disconnect_calls;
 }
 
+// S9 snapshot: the DLL fills each entity_state_t baseline (there is no engine-
+// side SV_FillEntityState).  Minimal parity: number + model + origin/angles.
+static void fake_create_baseline( int player, int eindex, abi::entity_state_t *state,
+                                  abi::edict_t *ent, int playermodel,
+                                  abi::vec3_t, abi::vec3_t )
+{
+    ++g_state.create_baseline_calls;
+    if ( state == nullptr || ent == nullptr )
+        return;
+    state->number     = eindex;
+    state->modelindex = player ? playermodel : ent->v.modelindex;
+    for ( int i = 0; i < 3; ++i )
+    {
+        state->origin[i] = ent->v.origin[i];
+        state->angles[i] = ent->v.angles[i];
+    }
+}
+
+// pfnCreateInstancedBaselines: register one template so the roundtrip
+// (DLL -> pfnCreateInstancedBaseline -> sv.instanced) is observable.
+static void fake_create_instanced_baselines( void )
+{
+    ++g_state.create_instanced_calls;
+    if ( g_state.engfuncs == nullptr )
+        return;
+    abi::entity_state_t base = {};
+    base.modelindex = 42;
+    g_state.engfuncs->pfnCreateInstancedBaseline( 7, &base );
+}
+
 static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
 {
     std::memset( table, 0, sizeof( *table ));
@@ -250,6 +282,8 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnClientCommand          = fake_client_command;
     table->pfnClientUserInfoChanged  = fake_client_userinfo_changed;
     table->pfnClientDisconnect       = fake_client_disconnect;
+    table->pfnCreateBaseline           = fake_create_baseline;
+    table->pfnCreateInstancedBaselines = fake_create_instanced_baselines;
 }
 
 static void fake_game_shutdown( void )

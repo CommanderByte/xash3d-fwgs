@@ -209,7 +209,7 @@ struct TYPEDESCRIPTION
 
 // Opaque across the boundary — only pointers cross in these tables.
 struct delta_s;          // net_encode delta field list
-struct entity_state_s;   // vendored fully in S9 (snapshot pipeline)
+struct entity_state_t;   // vendored fully in S9 (snapshot pipeline)
 struct weapon_data_s;
 struct playermove_s;     // vendored fully in S8 (pmove bridge)
 struct clientdata_s;
@@ -366,7 +366,7 @@ struct enginefuncs_t
     void     ( *pfnDeltaSetFieldByIndex )( delta_t *pFields, int fieldNumber );
     void     ( *pfnDeltaUnsetFieldByIndex )( delta_t *pFields, int fieldNumber );
     void     ( *pfnSetGroupMask )( int mask, int op );
-    int      ( *pfnCreateInstancedBaseline )( int classname, entity_state_s *baseline );
+    int      ( *pfnCreateInstancedBaseline )( int classname, entity_state_t *baseline );
     void     ( *pfnCvar_DirectSet )( cvar_t *var, const char *value );
     void     ( *pfnForceUnmodified )( FORCE_TYPE type, float *mins, float *maxs, const char *filename );
     void     ( *pfnGetPlayerStats )( const edict_t *pClient, int *ping, int *packet_loss );
@@ -453,8 +453,8 @@ struct DLL_FUNCTIONS
     char  ( *pfnPM_FindTextureType )( char *name );
     void  ( *pfnSetupVisibility )( edict_t *pViewEntity, edict_t *pClient, unsigned char **pvs, unsigned char **pas );
     void  ( *pfnUpdateClientData )( const edict_t *ent, int sendweapons, clientdata_s *cd );
-    int   ( *pfnAddToFullPack )( entity_state_s *state, int e, edict_t *ent, edict_t *host, int hostflags, int player, unsigned char *pSet );
-    void  ( *pfnCreateBaseline )( int player, int eindex, entity_state_s *baseline, edict_t *entity, int playermodelindex, vec3_t player_mins, vec3_t player_maxs );
+    int   ( *pfnAddToFullPack )( entity_state_t *state, int e, edict_t *ent, edict_t *host, int hostflags, int player, unsigned char *pSet );
+    void  ( *pfnCreateBaseline )( int player, int eindex, entity_state_t *baseline, edict_t *entity, int playermodelindex, vec3_t player_mins, vec3_t player_maxs );
     void  ( *pfnRegisterEncoders )( void );
     int   ( *pfnGetWeaponData )( edict_t *player, weapon_data_s *info );
 

@@ -242,6 +242,43 @@ static void test_activate_no_physics()
 }
 
 // ---------------------------------------------------------------------------
+// SV_CreateBaseline fill (S9 snapshot 1b): activate populates svs.baselines via
+// the game DLL's pfnCreateBaseline, and the instanced-baseline round-trip
+// (DLL → pfnCreateInstancedBaselines → pfnCreateInstancedBaseline → sv.instanced).
+// ---------------------------------------------------------------------------
+
+static void test_baselines_created()
+{
+    SpawnFixture fx( /*dedicated=*/false, /*maxclients=*/1 );
+
+    REQUIRE( sv::spawn_server( fx.rt, "parsetest", nullptr, false ));
+    fx.refresh_state();
+    REQUIRE( fx.st != nullptr );
+
+    // Allocated at load_progs (sized max_edicts), zeroed at spawn.
+    REQUIRE( fx.rt.snapshot.baselines != nullptr );
+    CHECK_EQ( fx.rt.snapshot.baseline_count, 64 );
+
+    sv::spawn_entities( fx.rt, *fx.maps.world() );
+
+    fx.st->create_baseline_calls  = 0;
+    fx.st->create_instanced_calls = 0;
+    sv::activate_server( fx.rt, /*run_physics=*/true );
+
+    // The client slot (entnum 1, a reserved player edict) always gets a
+    // baseline; the engine stamps `number` before the DLL fills the state.
+    CHECK( fx.st->create_baseline_calls >= 1 );
+    CHECK_EQ( fx.rt.snapshot.baselines[1].number, 1 );
+
+    // pfnCreateInstancedBaselines ran once; the DLL registered one template,
+    // which round-tripped through the engine callback into sv.instanced.
+    CHECK_EQ( fx.st->create_instanced_calls, 1 );
+    CHECK_EQ( fx.rt.snapshot.num_instanced, 1 );
+    CHECK_EQ( static_cast<int>( fx.rt.snapshot.instanced[0].classname ), 7 );
+    CHECK_EQ( fx.rt.snapshot.instanced[0].baseline.modelindex, 42 );
+}
+
+// ---------------------------------------------------------------------------
 // Server as the MapLoader level-change executor: `map` drives the FSM, which
 // delegates to exec_load_level → full spawn/activate.
 // ---------------------------------------------------------------------------
@@ -332,6 +369,7 @@ int main()
     RUN_TEST( test_dedicated_clamp );
     RUN_TEST( test_spawn_activate_deactivate );
     RUN_TEST( test_activate_no_physics );
+    RUN_TEST( test_baselines_created );
     RUN_TEST( test_level_executor );
     RUN_TEST( test_no_executor_fallback );
 

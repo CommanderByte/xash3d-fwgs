@@ -248,7 +248,8 @@ bool spawn_server( ServerRuntime &rt, const char *mapname,
     rt.level.background  = background;
 
     // XASH3DPP-STUB(chunk6-S9): signon/datagram/multicast sizebuf inits +
-    // svs.baselines / static_entities memset — need vendored entity_state_t.
+    // svs.static_entities memset (send sub-slice).
+    snapshot_reset( rt ); // svs.baselines cleared per level (sv_init.c:995)
 
     // Gamemode consistency + skill clamp (console cvars; globals stamped).
     if ( rt.cvars != nullptr )
@@ -396,8 +397,10 @@ void activate_server( ServerRuntime &rt, bool run_physics ) noexcept
     for ( int i = 0; i < num_frames; ++i )
         sv_physics( rt );
 
-    // XASH3DPP-STUB(chunk6-S9): SV_CreateBaseline / SV_CreateResourceList /
-    // SV_TransferConsistencyInfo / per-client Netchan_Clear.
+    // SV_CreateBaseline fill (sv_init.c:622): populate baselines for delta.
+    create_baselines( rt );
+    // XASH3DPP-STUB(chunk6-S9): SV_CreateResourceList /
+    // SV_TransferConsistencyInfo / per-client Netchan_Clear (send sub-slice).
 
     rt.globals.changelevel = 0; // svgame.globals->changelevel = false
 
