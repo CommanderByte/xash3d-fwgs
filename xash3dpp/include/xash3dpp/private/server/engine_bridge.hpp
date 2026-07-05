@@ -18,6 +18,7 @@
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/abi/eiface.hpp>
+#include <xash3dpp/abi/pm_defs.hpp> // playermove_t (pmove bridge, P3b)
 #include <xash3dpp/map_loader/phs.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
@@ -61,6 +62,13 @@ struct EngineBridge
     // S7 lifecycle (null in pre-lifecycle fixtures: the precache slots
     // then return 0, the legacy no-server answer)
     PrecacheTables *precache = nullptr;             // @lifetime: engine
+
+    // pmove bridge (P3b): the single player-move working set the PM_* trace
+    // callbacks reach, plus the pfnGetHullBounds player-hull table they index.
+    // Both wired by SV_InitClientMove (load_progs); null before then, so the
+    // pmove callbacks degrade to their clear-trace / no-op defaults.
+    ::xash::abi::playermove_t                 *pmove         = nullptr; // @lifetime: engine
+    const ::xash::map_loader::HullBoundsTable *player_bounds = nullptr; // @lifetime: engine
 
     // S9 clients/messaging (null in pre-S9 fixtures: RegUserMsg / MessageBegin
     // / Write* / GetPlayerUserId then degrade to their legacy no-server value)

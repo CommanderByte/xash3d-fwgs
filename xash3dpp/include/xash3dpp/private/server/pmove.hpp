@@ -43,4 +43,11 @@ void sv_finish_pmove( ServerRuntime &rt, ServerClient &cl ) noexcept;
 // deactivate; a no-op when rt.pmove is unallocated).
 void pm_clear_phys_ents( ServerRuntime &rt ) noexcept;
 
+// SV_InitClientMove (sv_pmove.c:442): initialise rt.pmove (server flag,
+// movevars, hull-bounds table) and install the ~30-entry PM_* callback table
+// the game DLL's PM_Move invokes, then call the DLL's pfnPM_Init.  Registers
+// rt.pmove + the hull-bounds table on the engine bridge so the context-free
+// callbacks can reach them.  Called from load_progs after the pmove allocation.
+void sv_init_client_move( ServerRuntime &rt ) noexcept;
+
 } // namespace xash::server

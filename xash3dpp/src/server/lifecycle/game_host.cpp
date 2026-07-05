@@ -203,8 +203,7 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
 
     // SV_InitClientMove (sv_game.c:5358): enumerate the hull bounds the trace
     // kernel needs and allocate the single player-move working set (legacy
-    // Mod_Init allocates svgame.pmove once; freed in unload_progs).  The PM_*
-    // callback table it exposes is wired by the P3 trace family.
+    // Mod_Init allocates svgame.pmove once; freed in unload_progs).
     rt.hull_bounds = query_hull_bounds( rt.game.funcs());
     rt.pmove       = ::xash::memory::pool_ptr<::xash::abi::playermove_t>(
         ::xash::memory::pool_new<::xash::abi::playermove_t>( rt.game_pool ));
@@ -215,6 +214,11 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
         unload_progs( rt );
         return false;
     }
+
+    // Install the PM_* callback table into rt.pmove and run the DLL's pfnPM_Init
+    // (the pmove bridge P3b).  The bridge (install_engine_bridge) is already
+    // wired, so the context-free callbacks can reach rt.pmove afterwards.
+    sv_init_client_move( rt );
 
     // Delta_Init (sv_game.c:5360) — legacy hard-errors from inside
     // Delta_Load when delta.lst is unreadable.

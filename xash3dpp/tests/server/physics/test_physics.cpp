@@ -27,7 +27,9 @@
 
 #include "../../test_helpers.hpp"
 
+#include <cstddef>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -712,6 +714,61 @@ static void test_pm_stuck_touch()
     CHECK_EQ( g_err_calls, 0 );
 }
 
+// SV_InitClientMove (P3b): load_progs installs the PM_* callback table into
+// rt.pmove; the collision slots are wired and reachable through the installed
+// pointers, deferred slots are non-null stubs.
+static void test_pm_init_client_move()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    abi::playermove_t &pm = *fx.rt.pmove;
+
+    CHECK_EQ( static_cast<int>( pm.server ), 1 );
+    CHECK( pm.movevars == &fx.rt.movevars );
+    CHECK_EQ( static_cast<int>( pm.runfuncs ), 0 );
+    // hull-bounds table copied in (pfnGetHullBounds enumeration).
+    CHECK( pm.player_mins[0][2] == fx.rt.hull_bounds[0].mins.z );
+    CHECK( pm.player_maxs[1][2] == fx.rt.hull_bounds[1].maxs.z );
+
+    // collision-critical slots wired; deferred slots are non-null stubs.
+    CHECK( pm.PM_PlayerTrace != nullptr );
+    CHECK( pm.PM_PointContents != nullptr );
+    CHECK( pm.PM_StuckTouch != nullptr );
+    CHECK( pm.PM_TraceModel != nullptr );
+    CHECK( pm.PM_PlaybackEventFull != nullptr );
+    CHECK( pm.PM_TraceTexture != nullptr );
+    CHECK( pm.PM_TraceSurface != nullptr );
+
+    // functional call through the installed pointer: gather the world, then
+    // PM_PointContents at X<128 → water (hull-0), reaching the bridge.
+    abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    sv::ServerClient cl;
+    cl.edict = pl;
+    abi::usercmd_t ucmd{};
+    ucmd.msec = 50;
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+
+    float p[3]     = { 0.0f, 0.0f, 0.0f };
+    int   truecont = 0;
+    CHECK_EQ( pm.PM_PointContents( p, &truecont ), ml::k_contents_water );
+    // group-c stub: no surface until Chunk 7.
+    CHECK( pm.PM_TraceTexture( 0, p, p ) == nullptr );
+
+    // PM_TraceModel must fill ONLY the shared trace_t/pmtrace_t prefix — the
+    // engine trace_t is smaller, so a whole-struct copy would overflow the
+    // caller's buffer (abi-watchdog).  Fill a pmtrace_t-sized buffer with a
+    // sentinel and assert every byte past offsetof(ent) survives the call.
+    alignas( abi::pmtrace_t ) unsigned char tbuf[sizeof( abi::pmtrace_t )];
+    std::memset( tbuf, 0xAB, sizeof( tbuf ) );
+    float ms[3] = { 200.0f, 0.0f, 0.0f };
+    float me[3] = { 0.0f, 0.0f, 0.0f };
+    (void)pm.PM_TraceModel( &pm.physents[0], ms, me,
+                            reinterpret_cast<abi::trace_t *>( tbuf ) );
+    for ( std::size_t i = offsetof( abi::pmtrace_t, ent ); i < sizeof( tbuf );
+          ++i )
+        CHECK_EQ( static_cast<int>( tbuf[i] ), 0xAB ); // untouched past prefix
+    CHECK_EQ( g_err_calls, 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -732,6 +789,7 @@ int main()
     RUN_TEST( test_pm_player_trace_world );
     RUN_TEST( test_pm_box_physent );
     RUN_TEST( test_pm_stuck_touch );
+    RUN_TEST( test_pm_init_client_move );
 
     std::filesystem::remove_all( g_root );
 
