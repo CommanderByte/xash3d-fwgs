@@ -73,8 +73,10 @@ def build(preset: str = "debug", configure: bool = False,
 @mcp.tool()
 def test(filter: str = "", preset: str = "debug") -> dict:
     """Run ctest (optionally filtered with -R `filter`). Returns pass/fail
-    breakdown; failed tests carry their output block and a decoded exit
-    code (STATUS_BREAKPOINT, ACCESS_VIOLATION, ...) when recognizable."""
+    breakdown; failed tests carry their output block, an `assert_tail` (the
+    focused assertion/abort message window — the XASH_ASSERT / REQUIRE / CHECK
+    line, so exit-3 aborts are diagnosable without a re-run), and a decoded
+    exit code (STATUS_BREAKPOINT, ACCESS_VIOLATION, ...) when recognizable."""
     _maybe_reload()
     return buildtools.test(filter_regex=filter, preset=preset)
 

@@ -149,6 +149,31 @@ def _last_test_log_section(lines: list[str], name: str) -> list[str]:
     return section[-40:]
 
 
+# Signatures that mark the diagnostic line in a failed test's output.  The
+# in-tree harness (tests/test_helpers.hpp) prints "FATAL [file:line]" /
+# "FAIL [file:line]" on REQUIRE/CHECK failure; CRT / XASH_ASSERT aborts print an
+# assertion or abort message just before dying (exit 3).
+_ASSERT_RX = re.compile(
+    r"FATAL \[|FAIL \[|\[FAIL\]|assert|abort|terminate|"
+    r"unhandled exception|sanitizer|runtime error|panic|fatal error",
+    re.IGNORECASE)
+
+
+def _assert_tail(output: list[str], limit: int = 8) -> list[str]:
+    """The most diagnostic slice of a failed test's output: a window at the
+    first assertion/abort signature if present, else the last few non-empty
+    lines.  Surfaces the actual message (the XASH_ASSERT / REQUIRE / CHECK
+    text) so a bare exit-3 abort no longer needs a manual unpiped re-run."""
+    nonempty = [ln for ln in output if ln.strip()]
+    if not nonempty:
+        return []
+    for i, line in enumerate(nonempty):
+        if _ASSERT_RX.search(line):
+            start = max(0, i - 2)  # a little lead-in for context
+            return nonempty[start:start + limit]
+    return nonempty[-limit:]
+
+
 def test(filter_regex: str = "", preset: str = "debug") -> dict:
     ctest = ctest_path()
     cmd = [str(ctest), "--preset", preset, "--output-on-failure"]
@@ -175,6 +200,9 @@ def test(filter_regex: str = "", preset: str = "debug") -> dict:
         if not any(l.strip() for l in output):
             output = _last_test_log_section(lines, ft["name"])
         ft["output"] = output
+        tail = _assert_tail(output)
+        if tail:
+            ft["assert_tail"] = tail
         decoded = _decode_exit("\n".join(output + [ft["reason"]]))
         if decoded:
             ft["exit_decode"] = decoded
