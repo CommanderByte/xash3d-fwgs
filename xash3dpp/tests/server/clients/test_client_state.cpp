@@ -117,6 +117,11 @@ struct CaptureSink final : sv::IOobSink
 // open_udp just hands back a valid-looking handle and the rest are inert.
 struct FakeSockets final : IPlatformSockets
 {
+    // captured outbound datagram (for the send-path test).
+    int             sendto_calls = 0;
+    net::NetAddress last_dest{};
+    std::size_t     last_len = 0;
+
     net::Result<OsSocket> open_udp( IpFamily, std::uint16_t,
                                     std::string_view ) noexcept override
     {
@@ -126,10 +131,13 @@ struct FakeSockets final : IPlatformSockets
     {
         return std::unexpected( net::NetError::NotInitialised );
     }
-    net::Result<std::size_t> sendto( const OsSocket &, std::span<const std::byte>,
-                                     const net::NetAddress & ) noexcept override
+    net::Result<std::size_t> sendto( const OsSocket &, std::span<const std::byte> data,
+                                     const net::NetAddress &to ) noexcept override
     {
-        return std::unexpected( net::NetError::NotInitialised );
+        ++sendto_calls;
+        last_dest = to;
+        last_len  = data.size();
+        return data.size();
     }
     net::Result<std::size_t> recvfrom( const OsSocket &, std::span<std::byte>,
                                        net::NetAddress & ) noexcept override
@@ -186,6 +194,9 @@ struct ConnFixture
         // (Netchan_Setup pulls the driver + fragment pool from here).
         REQUIRE( net_ctx.init( net::NetworkInitParams{ .sockets   = &net_sockets,
                                                        .dedicated = true } ) );
+        // open the server socket so send_packet reaches the fake sendto.
+        REQUIRE( net_ctx.config( /*multiplayer=*/true, /*change_port=*/false )
+                     .has_value() );
 
         ( void )ctx.cvar_get_or_create( "sv_maxclients", "1", 0 );
 
@@ -478,6 +489,42 @@ static void test_execute_client_message()
     CHECK( cl.state == sv::ClientState::Spawned ); // survived (no clc_bad drop)
 }
 
+// ---------------------------------------------------------------------------
+// SV_SendClientMessages: a connecting client flagged for a reply transmits a
+// keepalive packet through its netchan out to the NetworkContext (the empty,
+// no-datagram-body path — no delta tables required).
+// ---------------------------------------------------------------------------
+static void test_send_client_keepalive()
+{
+    ConnFixture fx;
+    CaptureSink sink;
+    const net::NetAddress from = client_adr();
+
+    const std::uint32_t window =
+        static_cast<std::uint32_t>( fx.rt.clients.realtime / 5 );
+    const std::int32_t chal =
+        sv::compute_challenge( fx.rt.persistent.challenge_salt, from, window );
+    const int slot = sv::connect_client(
+        fx.rt, from, 49, chal,
+        "\\qport\\27015\\uuid\\0123456789abcdef0123456789abcdef",
+        "\\name\\SendPlayer", sink );
+    REQUIRE( slot == 0 );
+
+    // Still cs_connected (not spawned): SV_ReadPackets would flag a reply.
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    cl.send_net_message = true;
+
+    fx.net_sockets.sendto_calls = 0;
+    sv::send_client_messages( fx.rt );
+
+    // exactly one wire packet went out to the client, netchan advanced, flag
+    // consumed.
+    CHECK( fx.net_sockets.sendto_calls == 1 );
+    CHECK( fx.net_sockets.last_dest == from );
+    CHECK( fx.rt.clients.netchans[0].outgoing_sequence() > 1 );
+    CHECK( !cl.send_net_message );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -490,6 +537,7 @@ int main()
     RUN_TEST( test_fake_connect );
     RUN_TEST( test_netchan_setup_and_clear );
     RUN_TEST( test_execute_client_message );
+    RUN_TEST( test_send_client_keepalive );
 
     std::filesystem::remove_all( g_root );
     std::printf( "server_client_state: %d passed, %d failed\n", g_pass, g_fail );

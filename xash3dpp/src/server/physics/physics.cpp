@@ -1775,7 +1775,9 @@ void host_server_frame( ServerRuntime &rt, double host_frametime ) noexcept
     if ( !sv_run_game_frame( rt, sv_fps ) )
         return; // the zero-physics-frames early-return quirk
 
-    // XASH3DPP-STUB(chunk6-S9): SV_SendClientMessages — the snapshot send.
+    // SV_SendClientMessages: flush each client's snapshot / keepalive through
+    // its netchan (send-rate + bandwidth-choke gated) to the NetworkContext.
+    send_client_messages( rt );
 
     sv_prep_world_frame( rt );
 

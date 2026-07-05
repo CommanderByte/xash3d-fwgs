@@ -215,6 +215,8 @@ struct ServerClient
     int                   delta_sequence = -1;      // clc_delta ack; -1 = no delta
     int                   chokecount     = 0;       // bandwidth-suppressed count
     bool                  local_weapons  = false;   // FCL_LOCAL_WEAPONS (cl_lw)
+    bool                  send_net_message = false;  // FCL_SEND_NET_MESSAGE (due this frame)
+    bool                  skip_net_message = false;  // FCL_SKIP_NET_MESSAGE (changelevel)
 
     // Event queue + ping/latency (S9 snapshot 4).  `events` is drained by
     // SV_EmitEvents each frame; its producer (pfnPlaybackEvent) is a later seam.

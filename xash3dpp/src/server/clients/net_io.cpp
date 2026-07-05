@@ -161,6 +161,12 @@ void read_packets( ServerRuntime &rt ) noexcept
                 static_cast<int>( cm.netchans[slot].incoming_acknowledged() );
             cl->last_received = cm.netchans[slot].last_received();
 
+            // FCL_SEND_NET_MESSAGE (SV_ReadPackets): reply at end of frame for
+            // the single-player/local client or any non-spawned client; spawned
+            // MP clients ride the next_messagetime send-rate gate instead.
+            if ( cm.maxclients == 1 || cl->state != ClientState::Spawned )
+                cl->send_net_message = true;
+
             if ( cl->frames != nullptr && cl->state != ClientState::Zombie )
                 execute_client_message( rt, *cl, in_msg, sink );
         }

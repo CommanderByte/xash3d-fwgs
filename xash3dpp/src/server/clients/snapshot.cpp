@@ -18,9 +18,11 @@
 #include <xash3dpp/cmd_cvar/context.hpp>           // sv_instancedbaseline read
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/networking/networking.hpp>       // NetworkContext::send_packet
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 
+#include <array>
 #include <cstdlib>  // std::qsort
 #include <cstring>
 #include <span>
@@ -1011,6 +1013,38 @@ void write_clientdata_to_message( ServerRuntime &rt, ServerClient &cl,
     msg.write_one_bit( 0 ); // clientdata blob end marker
 }
 
+namespace {
+
+// One client datagram body (legacy MAX_DATAGRAM) + the framed wire packet.
+inline constexpr std::size_t k_max_datagram = 16384; // net_ws.h MAX_DATAGRAM
+inline constexpr std::size_t k_wire_max     = 65536; // NET_MAX_MESSAGE
+
+// Netchan_TransmitBits + NET_SendPacket: frame `unreliable` (the datagram body,
+// `bits` long) plus the netchan's reliable queue into a wire packet and hand it
+// to the host-owned NetworkContext, addressed to the client.  Advances the
+// bandwidth-choke cleartime by the bytes sent.  No-op when offline (rt.net null).
+void transmit_client( ServerRuntime &rt, ServerClient &cl, int slot,
+                      std::span<const std::byte> unreliable,
+                      std::size_t bits ) noexcept
+{
+    if ( rt.net == nullptr )
+        return;
+
+    net::Netchan                     &nc = rt.clients.netchans[slot];
+    std::array<std::byte, k_wire_max> out;
+    const auto sent =
+        nc.transmit_bits( unreliable, bits, std::span<std::byte>{ out } );
+    if ( !sent )
+        return;
+
+    nc.update_choke( rt.clients.realtime, *sent );
+    ( void )rt.net->send_packet( net::SocketKind::Server,
+                                 std::span<const std::byte>{ out.data(), *sent },
+                                 cl.adr );
+}
+
+} // namespace
+
 void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
                            net::MessageBuf &msg ) noexcept
 {
@@ -1034,8 +1068,84 @@ void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
     }
     cl.datagram_bits = 0;
 
-    // XASH3DPP-STUB(chunk6): Netchan_TransmitBits( &cl.netchan, ... ) — the send
-    // seam the host frame loop drives (S8↔S9 splice).
+    // Netchan_TransmitBits: frame the built body + the reliable queue into a
+    // wire packet and send it to the client through the host NetworkContext.
+    const int slot = static_cast<int>( &cl - rt.clients.clients );
+    transmit_client( rt, cl, slot,
+                     msg.data().first( ( msg.num_bits_written() + 7 ) / 8 ),
+                     msg.num_bits_written() );
+}
+
+void send_client_messages( ServerRuntime &rt ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( rt.level.state == ServerState::Dead )
+        return;
+
+    // XASH3DPP-STUB(chunk6-S9): SV_UpdateToReliableMessages — the reliable
+    // fan-out (sv.reliable_datagram → per-client netchan message) + the
+    // FCL_RESEND_USERINFO / MOVEVARS resends land in the reliable slice.
+
+    ClientMachinery &cm        = rt.clients;
+    const double     realtime  = cm.realtime;
+    const double     frametime = static_cast<double>( rt.level.frametime );
+
+    for ( int i = 0; i < cm.maxclients; ++i )
+    {
+        ServerClient &cl = cm.clients[i];
+
+        // legacy `state <= cs_zombie`: the xash3dpp enum is reordered, so the
+        // two terminal states (Free / Zombie) are tested explicitly.
+        if ( cl.state == ClientState::Free || cl.state == ClientState::Zombie ||
+             cl.fakeclient )
+            continue;
+
+        if ( cl.skip_net_message ) // FCL_SKIP_NET_MESSAGE (SV_SkipUpdates)
+        {
+            cl.skip_net_message = false;
+            continue;
+        }
+
+        // XASH3DPP-STUB(chunk6-S9): host_limitlocal + NET_IsLocalAddress force
+        // send (listen-server local client) — dedicated has no local client.
+
+        if ( cl.state == ClientState::Spawned )
+        {
+            const double until = cl.next_messagetime - ( realtime + frametime );
+            if ( until <= 0.0 || until > 2.0 ) // due now, or a hosed clock
+                cl.send_net_message = true;
+        }
+
+        // XASH3DPP-STUB(chunk6-S9): reliable-overflow drop (MSG_CheckOverflow on
+        // netchan.message) + the sv_failuretime "stop sending" gate.
+
+        if ( !cl.send_net_message )
+            continue;
+
+        net::Netchan &nc = cm.netchans[i];
+        if ( !nc.can_packet( realtime, cl.state == ClientState::Spawned ) )
+        {
+            cl.chokecount++; // bandwidth choke active — skip this frame
+            continue;
+        }
+
+        cl.next_messagetime = realtime + frametime + cl.next_messageinterval;
+        cl.send_net_message = false;
+
+        if ( cl.state == ClientState::Spawned )
+        {
+            std::array<std::byte, k_max_datagram> body;
+            net::MessageBuf msg{ std::span<std::byte>{ body } };
+            send_client_datagram(
+                rt, cl, static_cast<int>( nc.outgoing_sequence() ), msg );
+        }
+        else
+        {
+            // keepalive: flush the reliable queue with an empty datagram body.
+            transmit_client( rt, cl, i, {}, 0 );
+        }
+    }
 }
 
 } // namespace xash::server

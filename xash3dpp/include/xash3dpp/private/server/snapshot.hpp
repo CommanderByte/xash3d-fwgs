@@ -217,4 +217,12 @@ void write_clientdata_to_message( ServerRuntime &rt, ServerClient &cl,
 void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
                            ::xash::networking::MessageBuf &msg ) noexcept;
 
+// SV_SendClientMessages (sv_frame.c:820): the per-frame send driver — the
+// send-rate gate (next_messagetime for spawned clients / bandwidth choke via
+// Netchan_CanPacket), then either SV_SendClientDatagram (spawned) or an empty
+// keepalive transmit (connecting), each framed by the client's netchan and sent
+// through the host NetworkContext to cl.adr.  Driven by Host_ServerFrame.  The
+// reliable fan-out (SV_UpdateToReliableMessages) is a separate seam.
+void send_client_messages( ServerRuntime &rt ) noexcept;
+
 } // namespace xash::server
