@@ -24,6 +24,11 @@ SEV_ORDER = {"blocker": 3, "warning": 2, "note": 1}
 # can audit the full list.
 ALLOW_RE = re.compile(r"compliance-allow\(\s*([\w\-, ]+?)\s*\)")
 
+# g_* file-scope definition shape (mirrors di-global-ref's definition
+# exclusion) with the name captured — used to propagate a definition-line
+# compliance-allow to every use of that global (6B S2 refinement).
+_G_DEF_RX = re.compile(r"^(?:static\s+)?[\w:<>*&\s]+\s(g_\w+)\s*(?:=|;|\{)")
+
 
 def _rel(p: Path) -> str:
     try:
@@ -218,6 +223,16 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
             lines = list(code_lines(path))
             file_texts[path] = "\n".join(code for _, code, _ in lines)
             has_extern_c = 'extern "C"' in file_texts[path]
+            # di-global-ref: a g_* DEFINITION carrying a compliance-allow
+            # marker sanctions every reference to that name in the file —
+            # the definition is the adjudication point; per-use markers
+            # would be pure noise (6B S2 refinement).  Map name → def raw
+            # line so the use-site's allow-context inherits the marker.
+            g_def_allows: dict[str, str] = {}
+            for _dl, _dc, _dr in lines:
+                dm = _G_DEF_RX.match(_dc)
+                if dm and ALLOW_RE.search(_dr):
+                    g_def_allows[dm.group(1)] = _dr
             for rule in active:
                 if scope not in rule.scopes:
                     continue
@@ -236,14 +251,19 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
                     # run on the RAW line — suppression markers (@pre-reserved:,
                     # @lifetime:, SAFETY:) live in comments the code view blanks.
                     subject = raw if rule.match_raw else code
-                    if rx.search(subject) and not (ex and ex.search(raw)):
+                    m = rx.search(subject)
+                    if m and not (ex and ex.search(raw)):
                         # Stash the allow-context (flagged line + its preceding
                         # comment block); _filter_allows does the marker match
                         # uniformly with the structured checks.
+                        ctx = _allow_context(lines, idx)
+                        if rule.check == "di-global-ref" \
+                                and m.group(0) in g_def_allows:
+                            ctx = ctx + "\n" + g_def_allows[m.group(0)]
                         violations.append(_violation(
                             rule.check, rule.severity, path, lineno, raw,
                             rule.hint, rule.source_ref, rule.candidate,
-                            allow_ctx=_allow_context(lines, idx)))
+                            allow_ctx=ctx))
         # structured checks, per subsystem
         if "hpp-under-src" in structured:
             src_dir = SRC / sub

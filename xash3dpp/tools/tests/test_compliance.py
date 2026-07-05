@@ -22,7 +22,7 @@ from pathlib import Path
 # Make the sibling `xtools` package importable (tools/ is tests/'s parent).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from xtools.checks import (_DECL_RX, _allow_context,  # noqa: E402
+from xtools.checks import (_DECL_RX, _G_DEF_RX, _allow_context,  # noqa: E402
                            _decl_args_are_bare_ids, _filter_allows, _violation)
 from xtools.rules import RULES  # noqa: E402
 
@@ -262,6 +262,26 @@ class AnnotationRules(unittest.TestCase):
             "int snprintf( char *buf, std::size_t size, const char *fmt, ... ) noexcept;"))
         self.assertFalse(_decl_args_are_bare_ids("int f();"))
         self.assertFalse(_decl_args_are_bare_ids("int f( Config );"))
+
+    def test_prereserve_skips_function_declarations(self):
+        # A declaration RETURNING a container is not a member needing
+        # @pre-reserved: (the paren keeps it out).
+        self.assertFalse(_hits(
+            "prereserve-annotation",
+            "[[nodiscard]] std::vector<std::string> list_directory( std::string_view path ) noexcept;"))
+        self.assertTrue(_hits("prereserve-annotation",
+                              "    std::vector<Slot> slots_;"))
+
+    def test_g_def_rx_captures_global_name(self):
+        # di-global-ref definition-allow propagation keys on this capture.
+        m = _G_DEF_RX.match("JniState g_jni;")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), "g_jni")
+        m = _G_DEF_RX.match("std::atomic<LogCallback> g_log_callback{ nullptr };")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), "g_log_callback")
+        # A use is not a definition.
+        self.assertIsNone(_G_DEF_RX.match("    g_jni.env = env;"))
 
     def test_prereserve_suppression_matches_raw(self):
         # Regression for the exclude-on-code bug: the @pre-reserved: marker

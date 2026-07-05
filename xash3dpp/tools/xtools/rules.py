@@ -301,7 +301,10 @@ RULES: list[Rule] = [
     Rule(
         check="prereserve-annotation",
         severity="warning",
-        pattern=r"std::(vector|deque)\s*<[^;]*;\s*$",
+        # `[^;(]` keeps function declarations RETURNING a container out —
+        # only member/variable declarations are pre-reserve territory
+        # (6B S2 false-positive fix: `std::vector<std::string> list_directory(...)`).
+        pattern=r"std::(vector|deque)\s*<[^;(]*;\s*$",
         scopes=("include",),
         exclude_line_re=r"@pre-reserved:",
         hint="hot-path container members need '// @pre-reserved: <LIMIT>' + .reserve() in init (Q-13); cold/warm-path exempt — judge",
