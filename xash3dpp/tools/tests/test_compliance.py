@@ -33,13 +33,18 @@ def _rule(check: str):
     raise KeyError(check)
 
 
-def _hits(check: str, line: str) -> bool:
-    """True when `line` trips the named regex rule, honoring exclude_line_re
-    (mirrors the regex-rule scan in checks.compliance_scan)."""
+def _hits(check: str, line: str, raw: str | None = None) -> bool:
+    """True when a line trips the named regex rule (mirrors the regex-rule
+    scan in checks.compliance_scan): `line` is the comment-stripped code,
+    `raw` the full source line (defaults to `line`).  Patterns match code
+    (raw when the rule sets match_raw); exclude_line_re always matches RAW —
+    suppression markers live in comments."""
     r = _rule(check)
+    raw = line if raw is None else raw
     rx = re.compile(r.pattern)
     ex = re.compile(r.exclude_line_re) if r.exclude_line_re else None
-    return bool(rx.search(line)) and not (ex and ex.search(line))
+    subject = raw if r.match_raw else line
+    return bool(rx.search(subject)) and not (ex and ex.search(raw))
 
 
 class RawCstring(unittest.TestCase):
@@ -182,6 +187,117 @@ class AllowContext(unittest.TestCase):
         self.assertEqual(len(allowed), 1)
         self.assertEqual(allowed[0]["excerpt"], "return (unsigned int)seed;")
         self.assertNotIn("\n", allowed[0]["excerpt"])  # single clean line
+
+
+class LifecycleRules(unittest.TestCase):
+    """Q-22 LIFECYCLE_MODEL rules (2026-07-06 wave)."""
+
+    def test_class_operator_new_flagged(self):
+        self.assertTrue(_hits(
+            "class-operator-new",
+            "    static void *operator new( std::size_t n );"))
+        self.assertTrue(_hits(
+            "class-operator-new",
+            "void *Thing::operator new( std::size_t n ) {"))
+
+    def test_operator_delete_not_flagged(self):
+        self.assertFalse(_hits(
+            "class-operator-new",
+            "    static void operator delete( void *p ) noexcept;"))
+
+    def test_make_unique_nonimpl_flagged_impl_exempt(self):
+        self.assertTrue(_hits(
+            "make-unique-outside-pimpl",
+            "    auto chan = std::make_unique<Netchan>( cfg );"))
+        self.assertFalse(_hits(
+            "make-unique-outside-pimpl",
+            "    impl_ = std::make_unique<Impl>();"))
+
+
+class AnnotationRules(unittest.TestCase):
+    """QN ANNOTATION_DISCIPLINE rules (2026-07-06 wave)."""
+
+    def test_post_retired_matches_comment_content(self):
+        # match_raw rule: the pattern must hit the RAW line (comment text).
+        code = ""  # comments are blanked from the code view
+        raw = "    // Post: the buffer is flushed"
+        self.assertTrue(_hits("post-annotation-retired", code, raw))
+
+    def test_unsafe_cast_needs_safety_comment(self):
+        code = "    auto *e = reinterpret_cast<edict_t *>( p );"
+        self.assertTrue(_hits("unsafe-cast-safety-comment", code, code))
+        annotated = code + "  // SAFETY: ABI slot contract, layout pinned"
+        self.assertFalse(_hits("unsafe-cast-safety-comment", code, annotated))
+
+    def test_lifetime_annotation_member_flag_and_suppress(self):
+        code = "    Filesystem *fs_ = nullptr;"
+        self.assertTrue(_hits("lifetime-annotation", code, code))
+        annotated = code + "  // @lifetime: engine"
+        self.assertFalse(_hits("lifetime-annotation", code, annotated))
+        exempt = code + "  // @annotation-exempt: cold-value-type"
+        self.assertFalse(_hits("lifetime-annotation", code, exempt))
+
+    def test_prereserve_suppression_matches_raw(self):
+        # Regression for the exclude-on-code bug: the @pre-reserved: marker
+        # lives in a trailing comment, which the code view blanks — the
+        # exclusion must therefore run on the RAW line or it never fires.
+        code = "    std::vector<Slot> slots_;"
+        raw = code + "  // @pre-reserved: XASH_LIMIT_NET_SLOTS"
+        self.assertTrue(_hits("prereserve-annotation", code, code))
+        self.assertFalse(_hits("prereserve-annotation", code, raw))
+
+
+class OperatorDeletePairing(unittest.TestCase):
+    @staticmethod
+    def _lines(*raws: str):
+        return [(i, raw, raw) for i, raw in enumerate(raws, start=1)]
+
+    def test_single_overload_flagged(self):
+        from xtools.checks import _operator_delete_pairing_issues
+        issues = _operator_delete_pairing_issues(self._lines(
+            "class File {",
+            "    static void operator delete( void *p ) noexcept;",
+            "};"))
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0][1], 2)  # lineno of the first overload
+
+    def test_both_overloads_pass(self):
+        from xtools.checks import _operator_delete_pairing_issues
+        issues = _operator_delete_pairing_issues(self._lines(
+            "class File {",
+            "    static void operator delete( void *p ) noexcept;",
+            "    static void operator delete( void *p, std::size_t ) noexcept;",
+            "};"))
+        self.assertEqual(issues, [])
+
+    def test_no_overloads_pass(self):
+        from xtools.checks import _operator_delete_pairing_issues
+        self.assertEqual(_operator_delete_pairing_issues(
+            self._lines("class Plain {", "};")), [])
+
+
+class MutatorDefRx(unittest.TestCase):
+    """The broadened thread-assert definition matcher (QN wave)."""
+
+    def _m(self, line: str) -> bool:
+        from xtools.checks import _MUTATOR_DEF_RX
+        return bool(_MUTATOR_DEF_RX.match(line))
+
+    def test_void_method_still_matches(self):
+        self.assertTrue(self._m("void CmdCvarContext::init( const P &p ) {"))
+
+    def test_nonvoid_method_matches(self):
+        self.assertTrue(self._m("bool Netchan::process( MessageBuf &b ) {"))
+
+    def test_free_function_mutator_matches(self):
+        self.assertTrue(self._m(
+            "bool spawn_server( ServerRuntime &rt, const char *map ) noexcept {"))
+
+    def test_indented_call_not_matched(self):
+        self.assertFalse(self._m("        spawn_server( rt, map );"))
+
+    def test_return_statement_not_matched(self):
+        self.assertFalse(self._m("    return load( x );"))
 
 
 if __name__ == "__main__":

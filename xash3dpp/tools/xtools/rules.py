@@ -9,6 +9,12 @@ agent judgment (possible false positives); they are reported with
 
 Scopes: "src", "include", "tests". `exclude_subsystems` skips whole
 subsystems (documented exceptions); `exclude_path_re` skips files.
+
+Matching surfaces: `pattern` runs against the comment-stripped code line
+(or the RAW line when `match_raw=True` — for rules about comment content,
+e.g. retired annotations).  `exclude_line_re` always runs against the RAW
+line, because suppression markers (`@pre-reserved:`, `@lifetime:`,
+`// SAFETY:`) live in comments.
 """
 
 from __future__ import annotations
@@ -20,15 +26,16 @@ from dataclasses import dataclass, field
 class Rule:
     check: str
     severity: str  # blocker | warning | note
-    pattern: str  # regex applied to comment-stripped code lines
+    pattern: str  # regex applied to comment-stripped code (raw if match_raw)
     scopes: tuple[str, ...]
     hint: str
     source_ref: str
     exclude_subsystems: tuple[str, ...] = ()
     exclude_path_re: str = ""
-    exclude_line_re: str = ""  # hit suppressed if this also matches the line
+    exclude_line_re: str = ""  # hit suppressed if this matches the RAW line
     candidate: bool = False
     sets: tuple[str, ...] = ("all",)  # membership: all / prepr / detail
+    match_raw: bool = False  # pattern runs on the raw line (comment rules)
 
 
 RULES: list[Rule] = [
@@ -181,10 +188,74 @@ RULES: list[Rule] = [
         severity="warning",
         pattern=r"std::unique_ptr\s*<\s*(?!Impl\b)",
         scopes=("include",),
-        hint="unique_ptr is for pimpl Impl only; owned objects use pools (reviewer §11)",
-        source_ref="reviewer §11; sweep OWNERSHIP",
+        # pool_ptr<T> (unique_ptr<T, PoolDeleter>) IS the sanctioned ownership
+        # vocabulary — not a finding.
+        exclude_line_re=r"PoolDeleter",
+        hint="unique_ptr<T> is for pimpl Impl OR a pool-owned class (T carries "
+             "the operator-delete pair and is built via a pool_new factory) — "
+             "verify T qualifies (Q-22)",
+        source_ref="reviewer §11; sweep OWNERSHIP; Q-22 LIFECYCLE_MODEL",
         candidate=True,
         sets=("all", "detail"),
+    ),
+    Rule(
+        check="class-operator-new",
+        severity="blocker",
+        pattern=r"\boperator\s+new\b",
+        scopes=("src", "include"),
+        exclude_subsystems=("memory",),
+        hint="class-scoped operator new is forbidden — pool-owned classes use "
+             "the create_<thing> factory + operator delete idiom (Q-22)",
+        source_ref="Q-22 LIFECYCLE_MODEL; reviewer §14; detail CHECK-LIFECYCLE",
+        sets=("all", "prepr", "detail"),
+    ),
+    Rule(
+        check="make-unique-outside-pimpl",
+        severity="warning",
+        pattern=r"std::make_unique\s*<\s*(?!Impl\b)",
+        scopes=("src",),
+        exclude_subsystems=("memory",),
+        hint="make_unique is for pimpl Impl only; pool-owned objects are built "
+             "by a create_<thing> factory via pool_new (Q-22)",
+        source_ref="Q-22 LIFECYCLE_MODEL; detail CHECK-LIFECYCLE",
+        candidate=True,
+        sets=("all", "detail"),
+    ),
+    Rule(
+        check="post-annotation-retired",
+        severity="note",
+        pattern=r"//\s*Post:",
+        scopes=("src", "include"),
+        hint="// Post: is retired (QN) — postconditions live in return types, "
+             "[[nodiscard]], and asserts",
+        source_ref="QN ANNOTATION_DISCIPLINE; detail CHECK-ANNOTATIONS",
+        match_raw=True,
+        sets=("all", "detail"),
+    ),
+    Rule(
+        check="unsafe-cast-safety-comment",
+        severity="warning",
+        pattern=r"\breinterpret_cast\s*<",
+        scopes=("src",),
+        exclude_line_re=r"SAFETY:",
+        hint="reinterpret_cast needs a // SAFETY: comment naming the invariant "
+             "(QN; Q-16 pattern) — ABI-bridge puns included",
+        source_ref="QN ANNOTATION_DISCIPLINE; detail CHECK-ANNOTATIONS",
+        candidate=True,
+        sets=("detail",),
+    ),
+    Rule(
+        check="lifetime-annotation",
+        severity="warning",
+        # Raw-pointer / reference / stored-view member declarations in headers.
+        pattern=r"^\s*[A-Za-z_][\w:<>,\s]*(?:[*&]\s*|std::(?:span|string_view)\s*<[^;]*>\s+)\w+_?\s*(=\s*[\w:]+)?;\s*$",
+        scopes=("include",),
+        exclude_line_re=r"@lifetime:|@annotation-exempt:",
+        hint="raw pointer/reference/view members need '// @lifetime: <owner>' "
+             "or an @annotation-exempt marker (QN, Q-9)",
+        source_ref="QN ANNOTATION_DISCIPLINE; sweep OWNERSHIP; detail CHECK-ANNOTATIONS",
+        candidate=True,
+        sets=("detail",),
     ),
     Rule(
         check="pimpl-default-header",
@@ -247,6 +318,7 @@ STRUCTURED_CHECKS = [
     "thread-assert",  # mutator lookahead (reviewer §7; pre-pr Phase 2; sweep TH-Role)
     "ns-qualify",  # sibling-namespace qualification (sweep NS_QUALIFY)
     "test-macros",  # test_helpers.hpp usage (sweep TEST_MACROS)
+    "operator-delete-pairing",  # both operator delete overloads (Q-22; detail CHECK-LIFECYCLE)
 ]
 
 # [J] areas compliance_scan deliberately does NOT cover — reported back so
@@ -265,4 +337,8 @@ JUDGMENT_CHECKS = [
 
 MUTATOR_NAMES = (
     "init|shutdown|reset|flush|clear|add|remove|register|unregister|set_\\w+|update_\\w+"
+    # QN wave (2026-07-06): the mutating verbs the 6B retrofit measures —
+    # candidate-judged, so const-path or leaf-helper matches stay judgeable.
+    "|send|transmit|write_\\w+|spawn\\w*|activate\\w*|deactivate\\w*|run_\\w+"
+    "|process|connect|disconnect|drop_\\w+|load\\w*|unload\\w*|start|stop"
 )

@@ -142,30 +142,29 @@ def _checkpoint_summary(head: str) -> dict:
 # plan / register parsers (tolerant by design)
 # --------------------------------------------------------------------------- #
 
-_CHUNK_RX = re.compile(r"^### Chunk (\d+) — (.+?)\s*$", re.MULTILINE)
+# Chunk headings carry an optional letter suffix (Chunk 6B — the hardening
+# retrofit wave); (num, suffix) sorts 6 < 6B < 7.
+_CHUNK_RX = re.compile(r"^### Chunk (\d+)([A-Z]?) — (.+?)\s*$", re.MULTILINE)
 
 
-def plan_summary() -> dict:
-    try:
-        text = _PLAN.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {"updated": "", "chunks": [], "next_todo_chunk": None,
-                "status_drift": ["implementation-plan.md unreadable"],
-                "stub_debt": []}
-    m = re.search(r"Updated:\s*([0-9-]+)", text)
-    updated = m.group(1) if m else ""
+def _chunk_status(title: str) -> str:
+    if "✅ DONE" in title:
+        return "done"
+    if "tombstone" in title.lower():
+        return "tombstone"
+    if "IN PROGRESS" in title.upper():
+        return "in-progress"
+    return "todo"
+
+
+def _parse_chunks(text: str) -> list[dict]:
+    """Chunk headings + per-section metadata from plan text.  Pure —
+    unit-tested against fixture text."""
     chunks = []
     matches = list(_CHUNK_RX.finditer(text))
     for i, cm in enumerate(matches):
-        num, title = int(cm.group(1)), cm.group(2)
-        if "✅ DONE" in title:
-            status = "done"
-        elif "tombstone" in title.lower():
-            status = "tombstone"
-        elif "IN PROGRESS" in title.upper():
-            status = "in-progress"
-        else:
-            status = "todo"
+        num, suffix, title = int(cm.group(1)), cm.group(2), cm.group(3)
+        status = _chunk_status(title)
         section_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         section = text[cm.end():section_end]
         sub = None
@@ -182,10 +181,25 @@ def plan_summary() -> dict:
             sub = subs_all[0] if subs_all else None
         name = re.sub(r"\s*(✅ DONE|\*\(tombstone\)\*|\*\(.*?\)\*)\s*", " ",
                       title).strip().strip("—").strip()
-        chunks.append({"num": num, "name": name, "status": status,
+        chunks.append({"num": num, "suffix": suffix,
+                       "label": "%d%s" % (num, suffix),
+                       "name": name, "status": status,
                        "subsystem": sub, "subsystems": subs_all})
+    return chunks
+
+
+def plan_summary() -> dict:
+    try:
+        text = _PLAN.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"updated": "", "chunks": [], "next_todo_chunk": None,
+                "status_drift": ["implementation-plan.md unreadable"],
+                "stub_debt": []}
+    m = re.search(r"Updated:\s*([0-9-]+)", text)
+    updated = m.group(1) if m else ""
+    chunks = _parse_chunks(text)
     next_todo = None
-    for c in sorted(chunks, key=lambda c: c["num"]):
+    for c in sorted(chunks, key=lambda c: (c["num"], c["suffix"])):
         if c["status"] in ("todo", "in-progress") and c["subsystem"]:
             boundary = DOCS / "boundaries" / ("%s-boundary.md" % c["subsystem"])
             src_dir = SRC / c["subsystem"]
@@ -220,14 +234,9 @@ def plan_summary() -> dict:
             "stub_debt": stub_debt}
 
 
-def ladder_summary() -> dict | None:
-    """Parse the in-progress chunk's **Session ladder** line: per-step ✅
-    ticks.  Returns None when no ladder line exists (chunks without a
-    committed ladder)."""
-    try:
-        text = _PLAN.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
+def _ladder_from_text(text: str) -> dict | None:
+    """First **Session ladder** line in `text` → per-step ✅ ticks.  Pure —
+    unit-tested."""
     m = re.search(r"\*\*Session ladder\*\*[^\n]*", text)
     if not m:
         return None
@@ -246,6 +255,36 @@ def ladder_summary() -> dict | None:
     done_nums = [s["num"] for s in steps if s["done"]]
     return {"steps": steps,
             "highest_done": ("S%d" % max(done_nums)) if done_nums else None}
+
+
+def _scoped_ladder(text: str) -> dict | None:
+    """The ACTIVE chunk's ladder: in-progress chunks first, then todo chunks
+    (plan order), then a whole-file fallback.  Scoping matters once several
+    chunks carry ladder lines (Chunk 6 done + Chunk 6B in progress) — the
+    old first-in-file match would mis-attribute.  Pure — unit-tested."""
+    matches = list(_CHUNK_RX.finditer(text))
+    sections: list[tuple[str, str]] = []
+    for i, cm in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        sections.append((_chunk_status(cm.group(3)), text[cm.end():end]))
+    for want in ("in-progress", "todo"):
+        for status, section in sections:
+            if status == want:
+                ladder = _ladder_from_text(section)
+                if ladder:
+                    return ladder
+    return _ladder_from_text(text)
+
+
+def ladder_summary() -> dict | None:
+    """Parse the active chunk's **Session ladder** line: per-step ✅ ticks.
+    Returns None when no ladder line exists (chunks without a committed
+    ladder)."""
+    try:
+        text = _PLAN.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    return _scoped_ladder(text)
 
 
 def ladder_drift(cps: dict, ladder: dict | None) -> str | None:
@@ -501,27 +540,29 @@ def suggested_next(git: dict, plan: dict, gates: dict, oqs: list[dict],
                 "command": "read decisions-architecture.md §3a; decide %s"
                            % ", ".join("%s#%s" % (o["doc"], o["oq"]) for o in oqs),
                 "reason": "%d open OQs block scaffold for chunk %s (%s)%s"
-                          % (len(oqs), nxt.get("num"), nxt.get("subsystem"),
-                             last_note)}
+                          % (len(oqs), nxt.get("label") or nxt.get("num"),
+                             nxt.get("subsystem"), last_note)}
     if nxt and not nxt.get("recon_done"):
         return {"rule": "recon-missing",
                 "action": "run the recon pass for the next chunk",
                 "command": "analyse-subsystem %s" % nxt.get("subsystem"),
                 "reason": "chunk %s (%s) has no boundary spec yet%s"
-                          % (nxt.get("num"), nxt.get("subsystem"), last_note)}
+                          % (nxt.get("label") or nxt.get("num"),
+                             nxt.get("subsystem"), last_note)}
     if nxt:
         if not nxt.get("scaffolded"):
             action, command = ("scaffold the next chunk",
                                "scaffold-subsystem %s" % nxt.get("subsystem"))
         else:
             action = "continue chunk %s (%s) per the WORKFLOW pipeline" % (
-                nxt.get("num"), nxt.get("subsystem"))
+                nxt.get("label") or nxt.get("num"), nxt.get("subsystem"))
             command = "plan-implementation %s / implement + write-unit-tests" \
                 % nxt.get("subsystem")
         return {"rule": "next-chunk-step", "action": action,
                 "command": command,
                 "reason": "gates green; next chunk %s (%s)%s"
-                          % (nxt.get("num"), nxt.get("subsystem"), last_note)}
+                          % (nxt.get("label") or nxt.get("num"),
+                             nxt.get("subsystem"), last_note)}
     return {"rule": "next-chunk-step", "action": "all chunks done or plan "
             "unparseable — read the implementation plan",
             "command": "xash3dpp/docs/implementation-plan.md",

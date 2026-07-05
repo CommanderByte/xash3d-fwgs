@@ -182,7 +182,12 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
     INTRODUCED, dropping ones whose flagged line is unchanged from that base.
     Removes the "pre-existing finding surfaced only because my edit pulled the
     file into the slice scan" noise.
+
+    checks="annotation-coverage" returns the QN coverage report (per-subsystem
+    denominators) instead of a violation list — the 6B backfill measure.
     """
+    if checks == "annotation-coverage":
+        return annotation_coverage(subsystem)
     files_ignored: list[str] = []
     if files is not None:
         groups, files_ignored = _group_files(files)
@@ -195,7 +200,8 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
         active = [r for r in RULES if checks in r.sets]
         structured = list(STRUCTURED_CHECKS)
         if checks == "prepr":
-            structured = ["hpp-under-src", "thread-assert", "test-macros"]
+            structured = ["hpp-under-src", "thread-assert", "test-macros",
+                          "operator-delete-pairing"]
     else:
         explicit = {c.strip() for c in checks.split(",") if c.strip()}
         active = [r for r in RULES if r.check in explicit]
@@ -224,9 +230,13 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
                 rx = re.compile(rule.pattern)
                 ex = re.compile(rule.exclude_line_re) if rule.exclude_line_re else None
                 for idx, (lineno, code, raw) in enumerate(lines):
-                    if not code.strip():
+                    if not (code.strip() or rule.match_raw):
                         continue
-                    if rx.search(code) and not (ex and ex.search(code)):
+                    # match_raw rules target comment content; exclusions always
+                    # run on the RAW line — suppression markers (@pre-reserved:,
+                    # @lifetime:, SAFETY:) live in comments the code view blanks.
+                    subject = raw if rule.match_raw else code
+                    if rx.search(subject) and not (ex and ex.search(raw)):
                         # Stash the allow-context (flagged line + its preceding
                         # comment block); _filter_allows does the marker match
                         # uniformly with the structured checks.
@@ -260,6 +270,8 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
             violations.extend(_scan_ns_qualify(sub, sub_files, file_texts))
         if "test-macros" in structured:
             violations.extend(_scan_test_macros(sub))
+        if "operator-delete-pairing" in structured:
+            violations.extend(_scan_operator_delete_pairing(sub_files))
 
     # Inline compliance-allow markers for the structured checks (and a no-op
     # re-check + _raw strip for the regex-rule hits, which filtered inline).
@@ -362,27 +374,169 @@ def _scan_nodiscard(sub: str) -> list[dict]:
     return out
 
 
+# Mutator DEFINITIONS at statement start: return-type token(s) then an
+# optionally class-qualified mutator name.  The leading-type requirement keeps
+# indented CALLS (no type prefix) out; control-flow keywords are excluded
+# explicitly.  Broadened from void-only methods (QN wave, 2026-07-06): any
+# return type, and free-function mutators too — the server's public entries
+# are free functions over ServerRuntime.  Findings stay candidates.
+_MUTATOR_DEF_RX = re.compile(
+    r"^\s*(?!return\b|else\b|case\b|if\b|while\b|for\b|switch\b)"
+    r"(?:[\w:<>*&\[\],]+\s+)+"
+    r"((?:\w[\w:]*::)?(?:%s))\s*\(" % MUTATOR_NAMES)
+
+
 def _scan_thread_assert(sub: str) -> list[dict]:
-    """Mutator method definitions whose first statements lack
-    assert_thread_role. Skips pure-function subsystems by the caller's
-    judgment — findings are candidates."""
+    """Mutator definitions whose first statements lack assert_thread_role.
+    Skips pure-function subsystems by the caller's judgment — findings are
+    candidates."""
     out = []
-    rx = re.compile(r"^\s*void\s+\w[\w:]*::(%s)\s*\(" % MUTATOR_NAMES)
     src_dir = SRC / sub
     if not src_dir.is_dir():
         return out
     for path in sorted(src_dir.rglob("*.cpp")):
         lines = list(code_lines(path))
         for i, (lineno, code, raw) in enumerate(lines):
-            if rx.match(code):
+            if _MUTATOR_DEF_RX.match(code):
                 lookahead = " ".join(c for _, c, _ in lines[i:i + 6])
-                if "assert_thread_role" not in lookahead:
+                if "assert_thread_role" not in lookahead \
+                        and "assert_main_thread" not in lookahead:
                     out.append(_violation(
                         "thread-assert", "warning", path, lineno, raw,
                         "main-thread mutator should open with assert_thread_role(ThreadRole::Main) (TH-Role)",
                         "reviewer §7; pre-pr Phase 2; sweep TH-Role",
                         candidate=True, allow_ctx=_allow_context(lines, i)))
     return out
+
+
+_OP_DELETE_RX = re.compile(r"\boperator\s+delete\s*\(([^)]*)\)")
+
+
+def _operator_delete_pairing_issues(
+        lines: list[tuple[int, str, str]]) -> list[tuple[int, int, str]]:
+    """(index, lineno, raw) for the first `operator delete` in a file that
+    declares one overload form but not both (unsized `void*` + sized
+    `void*, std::size_t`).  File-granular — headers here declare at most one
+    pool-owned class.  Pure over code_lines tuples — unit-tested."""
+    unsized = sized = 0
+    first: tuple[int, int, str] | None = None
+    for idx, (lineno, code, raw) in enumerate(lines):
+        m = _OP_DELETE_RX.search(code)
+        if not m:
+            continue
+        if first is None:
+            first = (idx, lineno, raw)
+        if "size_t" in m.group(1):
+            sized += 1
+        else:
+            unsized += 1
+    if first is not None and (unsized == 0 or sized == 0):
+        return [first]
+    return []
+
+
+def _scan_operator_delete_pairing(files: list[Path]) -> list[dict]:
+    out = []
+    for path in files:
+        lines = list(code_lines(path))
+        for idx, lineno, raw in _operator_delete_pairing_issues(lines):
+            out.append(_violation(
+                "operator-delete-pairing", "warning", path, lineno, raw,
+                "pool-owned classes override BOTH operator delete overloads "
+                "(unsized + sized) so the default unique_ptr deleter is "
+                "correct (Q-22)",
+                "Q-22 LIFECYCLE_MODEL; detail CHECK-LIFECYCLE",
+                allow_ctx=_allow_context(lines, idx)))
+    return out
+
+
+def _rule_pattern(check: str) -> str:
+    for r in RULES:
+        if r.check == check:
+            return r.pattern
+    raise KeyError(check)
+
+
+_ANNOT_EXEMPT_RX = re.compile(r"@annotation-exempt:")
+
+
+def annotation_coverage(subsystem: str | None) -> dict:
+    """Per-subsystem QN annotation coverage WITH DENOMINATORS — the Chunk 6B
+    "backfill complete" measure and finish_check item-10 data source.
+
+    required-counts are heuristic (the same patterns as the candidate rules);
+    a site counts as satisfied when annotated OR carrying an
+    `@annotation-exempt:` marker (line, preceding comment block, or anywhere
+    file-scope).  `// Pre:` is reported as raw usage — no denominator is
+    derivable for preconditions."""
+    subs = resolve_scope(subsystem)
+    life_rx = re.compile(_rule_pattern("lifetime-annotation"))
+    vec_rx = re.compile(_rule_pattern("prereserve-annotation"))
+    cast_rx = re.compile(r"\breinterpret_cast\s*<|\bconst_cast\s*<")
+    out: dict[str, dict] = {}
+    for sub in subs:
+        cnt: dict[str, dict] = {m: {"required": 0, "annotated": 0, "exempt": 0}
+                                for m in ("lifetime", "pre_reserved", "safety",
+                                          "thread_assert", "thread_safety")}
+        pre_uses = 0
+        files = subsystem_files(sub)
+        for path in files:
+            scope = _scope_of(path)
+            lines = list(code_lines(path))
+            file_exempt = any(_ANNOT_EXEMPT_RX.search(r) for _, _, r in lines)
+
+            def _mark(slot: dict, tag: str, idx: int) -> None:
+                slot["required"] += 1
+                ctx = _allow_context(lines, idx)
+                if tag in ctx:
+                    slot["annotated"] += 1
+                elif file_exempt or _ANNOT_EXEMPT_RX.search(ctx):
+                    slot["exempt"] += 1
+
+            for idx, (lineno, code, raw) in enumerate(lines):
+                if "// Pre:" in raw:
+                    pre_uses += 1
+                if scope == "include":
+                    if life_rx.search(code):
+                        _mark(cnt["lifetime"], "@lifetime:", idx)
+                    if vec_rx.search(code):
+                        _mark(cnt["pre_reserved"], "@pre-reserved:", idx)
+                if scope == "src":
+                    if cast_rx.search(code):
+                        _mark(cnt["safety"], "SAFETY:", idx)
+                    if _MUTATOR_DEF_RX.match(code):
+                        slot = cnt["thread_assert"]
+                        slot["required"] += 1
+                        lookahead = " ".join(c for _, c, _ in lines[idx:idx + 6])
+                        ctx = _allow_context(lines, idx)
+                        if "assert_thread_role" in lookahead \
+                                or "assert_main_thread" in lookahead:
+                            slot["annotated"] += 1
+                        elif file_exempt or _ANNOT_EXEMPT_RX.search(ctx) \
+                                or "compliance-allow(thread-assert" in ctx:
+                            slot["exempt"] += 1
+        # @thread-safety: is a per-PUBLIC-header contract, not per-line
+        ts = cnt["thread_safety"]
+        for path in files:
+            if path.suffix != ".hpp" or str(PRIVATE) in str(path):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            ts["required"] += 1
+            if "@thread-safety:" in text:
+                ts["annotated"] += 1
+            elif _ANNOT_EXEMPT_RX.search(text):
+                ts["exempt"] += 1
+        for slot in cnt.values():
+            req = slot["required"]
+            slot["coverage_pct"] = (
+                round(100.0 * (slot["annotated"] + slot["exempt"]) / req, 1)
+                if req else 100.0)
+        cnt["pre_uses"] = pre_uses
+        out[sub] = cnt
+    return {"subsystems": subs, "coverage": out,
+            "note": "denominators are heuristic (candidate-rule patterns); "
+                    "@annotation-exempt: counts as satisfied-by-exemption; "
+                    "// Pre: is raw usage (no denominator derivable)."}
 
 
 def _scan_ns_qualify(sub: str, files: list[Path],
