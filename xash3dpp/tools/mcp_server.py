@@ -175,7 +175,7 @@ def workflow_sync(stage: int = 2) -> dict:
 @mcp.tool()
 def finish_check(subsystem: str, run_tests: bool = False,
                  arch: str = "x64") -> dict:
-    """The 9-section finish-subsystem done checklist as
+    """The 10-section finish-subsystem done checklist (item 10 = Q-22/QN lifecycle+annotation gate; item 2 QO-classified) as
     pass/fail/needs-judgment items. arch: x64 (default) | x86 selects which
     build the run_tests ctest pass targets (build that arch first)."""
     _maybe_reload()
@@ -234,8 +234,13 @@ def markdown_lint(paths: list[str]) -> dict:
     """Lint markdown files with the repo's pymarkdownlnt config. Paths are
     repo-relative."""
     abs_paths = [str(REPO / p) for p in paths]
+    # --config must be explicit: pymarkdown's discovery is cwd-relative and
+    # cwd is the REPO ROOT, so xash3dpp/.pymarkdown.json was silently ignored
+    # (md013 etc. fired despite being disabled).  Fixed 2026-07-06 (B2).
+    config = REPO / "xash3dpp" / ".pymarkdown.json"
     proc = subprocess.run(
-        [str(venv_python()), "-m", "pymarkdown", "scan", *abs_paths],
+        [str(venv_python()), "-m", "pymarkdown", "--config", str(config),
+         "scan", *abs_paths],
         stdin=subprocess.DEVNULL,  # never inherit the MCP stdio pipe
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         cwd=str(REPO), timeout=300,

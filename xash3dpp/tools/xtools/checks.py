@@ -893,14 +893,22 @@ def finish_check(subsystem: str, run_tests: bool = False,
     else:
         add(1, "Boundary spec", "fail", "%s not found" % _rel(boundary))
 
-    # 2 limits
+    # 2 limits — QO-classified: wire/ABI-frozen literals (lines referencing a
+    # vendored k_* constant, or abi/ paths) are machine-exempt per
+    # CONSTANT_PLACEMENT (QO); only unclassified literals need judgment.
     lim = limits_scan(sub)
     group_present = any(sub in l["group"] for l in lim["limits"])
-    magic_n = len(lim["magic"]) + len(lim["shadow"])
-    add(2, "limits.hpp",
-        "pass" if magic_n == 0 else "needs-judgment",
+    hits = lim["magic"] + lim["shadow"]
+    frozen = [h for h in hits
+              if re.search(r"\bk_\w+", h["context"]) or "/abi/" in h["file"]]
+    unclassified = [h for h in hits if h not in frozen]
+    add(2, "limits.hpp (QO)",
+        "pass" if not unclassified else "needs-judgment",
         ["limits group present: %s" % group_present,
-         "%d magic/shadow literal candidates (classify per exemptions)" % magic_n])
+         "%d QO-frozen literals (machine-exempt: k_* refs / abi/ paths)"
+         % len(frozen),
+         "%d unclassified magic/shadow candidates (classify per QO: "
+         "limits / cvar / frozen)" % len(unclassified)])
 
     # 3 stats
     sub_files = subsystem_files(sub)
@@ -974,9 +982,26 @@ def finish_check(subsystem: str, run_tests: bool = False,
         ["%d compat/socket violations" % len(hard),
          "Q-11 verdict in boundary spec: %s" % q11])
 
+    # 10 lifecycle & annotation discipline (Q-22/QN)
+    q22 = compliance_scan(sub, checks="class-operator-new,"
+                                      "operator-delete-pairing,"
+                                      "make-unique-outside-pimpl,thread-assert")
+    hard10 = [v for v in q22["violations"]
+              if not v["severity"].startswith("candidate-")]
+    cand10 = len(q22["violations"]) - len(hard10)
+    cov = annotation_coverage(sub)["coverage"][sub]
+    low = ["%s %.0f%%" % (m, cov[m]["coverage_pct"])
+           for m in ("lifetime", "thread_safety", "pre_reserved", "safety",
+                     "thread_assert")
+           if cov[m]["coverage_pct"] < 100.0]
+    add(10, "Lifecycle & annotation discipline (Q-22/QN)",
+        "fail" if hard10 else ("needs-judgment" if (cand10 or low) else "pass"),
+        ["%d hard violations, %d candidates" % (len(hard10), cand10),
+         "coverage below 100%%: %s" % (", ".join(low) if low else "none")])
+
     passed = sum(1 for i in items if i["status"] == "pass")
     return {"subsystem": sub, "items": items,
-            "summary": "%d/9 pass, %d need judgment, %d fail" % (
+            "summary": "%d/10 pass, %d need judgment, %d fail" % (
                 passed,
                 sum(1 for i in items if i["status"] == "needs-judgment"),
                 sum(1 for i in items if i["status"] == "fail"))}
