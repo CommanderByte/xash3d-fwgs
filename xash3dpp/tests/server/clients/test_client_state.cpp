@@ -24,6 +24,7 @@
 
 #include "../../test_helpers.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
@@ -47,6 +48,15 @@ static int g_pass = 0, g_fail = 0;
 static std::filesystem::path g_root;
 
 static const char *k_delta_lst =
+    // usercmd_t is required by clc_move parsing (read_delta_usercmd); a real
+    // HL delta.lst defines it — this mirrors the minimal codec-test block.
+    "usercmd_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( msec, DT_BYTE, 8, 1.0 ),\n"
+    "    DEFINE_DELTA( buttons, DT_SHORT, 16, 1.0 ),\n"
+    "    DEFINE_DELTA( forwardmove, DT_SIGNED | DT_FLOAT, 16, 8.0 ),\n"
+    "    DEFINE_DELTA( viewangles[1], DT_ANGLE, 16, 1.0 )\n"
+    "}\n"
     "event_t gamedll Game_EventEncode\n"
     "{\n"
     "    DEFINE_DELTA( entindex, DT_INTEGER, 11, 1.0 )\n"
@@ -407,6 +417,67 @@ static void test_netchan_setup_and_clear()
     CHECK( nc.reliable_length_bits() == 0 );
 }
 
+// ---------------------------------------------------------------------------
+// SV_ExecuteClientMessage: the clc_* opcode stream (delta / move / nop) updates
+// delta_sequence, packet_loss, and lastcmd from a demuxed client message.
+// ---------------------------------------------------------------------------
+static void test_execute_client_message()
+{
+    ConnFixture fx;
+    CaptureSink sink;
+    const net::NetAddress from = client_adr();
+
+    // Drive a client all the way to cs_spawned (netchan + frames ring armed).
+    const std::uint32_t window =
+        static_cast<std::uint32_t>( fx.rt.clients.realtime / 5 );
+    const std::int32_t chal =
+        sv::compute_challenge( fx.rt.persistent.challenge_salt, from, window );
+    const int slot = sv::connect_client(
+        fx.rt, from, 49, chal,
+        "\\qport\\27015\\uuid\\0123456789abcdef0123456789abcdef",
+        "\\name\\MsgPlayer", sink );
+    REQUIRE( slot == 0 );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    sv::execute_client_command( fx.rt, cl, "new", sink );
+    sv::execute_client_command( fx.rt, cl, "spawn", sink );
+    sv::execute_client_command( fx.rt, cl, "begin", sink );
+    REQUIRE( cl.state == sv::ClientState::Spawned );
+    REQUIRE( cl.frames != nullptr );
+
+    // Craft one client message: clc_delta(9), clc_move(loss=7, one usercmd),
+    // clc_nop.  The move rides a real delta-usercmd written by the codec.
+    std::array<std::byte, 256> buf{};
+    net::MessageBuf            w{ std::span<std::byte>{ buf } };
+    w.write_byte( static_cast<std::uint8_t>( sv::k_clc_delta ) );
+    w.write_byte( 9 );
+
+    w.write_byte( static_cast<std::uint8_t>( sv::k_clc_move ) );
+    w.write_byte( 0 ); // checksum (skipped in this milestone)
+    w.write_byte( 7 ); // packet_loss
+    w.write_byte( 0 ); // numbackup
+    w.write_byte( 1 ); // numcmds
+    const abi::usercmd_t nullcmd = {};
+    abi::usercmd_t       cmd      = {};
+    cmd.msec        = 20;
+    cmd.buttons     = 0x0004;
+    cmd.forwardmove = 100.0f;
+    fx.rt.delta.write_delta_usercmd( w, &nullcmd, &cmd );
+
+    w.write_byte( static_cast<std::uint8_t>( sv::k_clc_nop ) );
+
+    net::MessageBuf r;
+    r.rebind_read(
+        std::span<const std::byte>{ buf.data(), w.num_bytes_written() } );
+    sv::execute_client_message( fx.rt, cl, r, sink );
+
+    CHECK( cl.delta_sequence == 9 );               // clc_delta observed
+    CHECK( cl.packet_loss == 7 );                  // clc_move header
+    CHECK_EQ( static_cast<int>( cl.lastcmd.msec ), 20 );
+    CHECK_EQ( static_cast<int>( cl.lastcmd.buttons ), 4 );
+    CHECK( cl.state == sv::ClientState::Spawned ); // survived (no clc_bad drop)
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -418,6 +489,7 @@ int main()
     RUN_TEST( test_connect_validation );
     RUN_TEST( test_fake_connect );
     RUN_TEST( test_netchan_setup_and_clear );
+    RUN_TEST( test_execute_client_message );
 
     std::filesystem::remove_all( g_root );
     std::printf( "server_client_state: %d passed, %d failed\n", g_pass, g_fail );

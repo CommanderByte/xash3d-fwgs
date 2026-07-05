@@ -42,6 +42,17 @@ inline constexpr std::size_t k_max_info_string    = 256;  // MAX_INFO_STRING
 inline constexpr std::size_t k_max_serverinfo     = 512;  // MAX_SERVERINFO_STRING
 inline constexpr int         k_protocol_version   = 49;   // PROTOCOL_VERSION
 inline constexpr int         k_challenge_window_s = 5;    // CHALLENGE_WINDOW_SECONDS
+
+// clc_* client-message opcodes (protocol.h :85-96, wire-frozen).
+inline constexpr int         k_clc_nop            = 1;
+inline constexpr int         k_clc_move           = 2;
+inline constexpr int         k_clc_stringcmd      = 3;
+inline constexpr int         k_clc_delta          = 4;
+
+// usercmd backup ring (protocol.h): CMD_BACKUP entries, CMD_MASK for indexing.
+inline constexpr int         k_cmd_backup         = 64;
+inline constexpr int         k_cmd_mask           = 63;
+
 inline constexpr std::size_t k_client_stage_bytes = 1024; // per-client reliable/dgram
                                                           // (S8's netchan owns
                                                           // the full-size buffers)
@@ -350,6 +361,16 @@ bool handle_connectionless( ServerRuntime &rt,
 // build is an S8/send seam (see the .cpp).
 void execute_client_command( ServerRuntime &rt, ServerClient &cl,
                              const char *cmd, IOobSink &sink ) noexcept;
+
+// SV_ExecuteClientMessage (sv_client.c:3634): parse one demuxed (post-netchan)
+// client message — frame-ping bookkeeping, then the clc_* opcode loop
+// (nop / delta / move / stringcmd; unsupported opcodes drop the client, matching
+// legacy clc_bad).  Drives SV_ParseClientMove (usercmd delta decode →
+// lastcmd/packet_loss/ping) and forwards stringcmds to execute_client_command.
+// The per-command pmove run (SV_RunCmd) is the deferred pmove-bridge seam.
+void execute_client_message( ServerRuntime &rt, ServerClient &cl,
+                             ::xash::networking::MessageBuf &msg,
+                             IOobSink &sink ) noexcept;
 
 // SV_UserinfoChanged (sv_client.c:1805) — name fixups (trim / console /
 // empty / dedupe) + rate/updaterate; then pfnClientUserInfoChanged.

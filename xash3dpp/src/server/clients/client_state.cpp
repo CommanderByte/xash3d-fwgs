@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <span>
 
 namespace xash::server {
 
@@ -298,11 +299,16 @@ int connect_client( ServerRuntime &rt, net::NetAddress from, int protocol,
 
     const int slot = static_cast<int>( newcl - cm.clients );
 
-    // a1ba quirk: preserve physinfo across the wipe.
+    // a1ba quirk: preserve physinfo across the wipe.  Also carry the
+    // pre-allocated snapshot frames ring (setup_clients/snapshot_alloc_ring owns
+    // one per slot); the wipe would otherwise null the pointer and leak the ring
+    // — and the snapshot send path needs cl.frames live for a connected client.
     char saved_physinfo[k_max_info_string];
     std::memcpy( saved_physinfo, newcl->physinfo, sizeof( saved_physinfo ) );
+    ClientFrame *saved_frames = newcl->frames;
     *newcl = ServerClient{};
     std::memcpy( newcl->physinfo, saved_physinfo, sizeof( newcl->physinfo ) );
+    newcl->frames = saved_frames;
 
     newcl->adr        = from;
     newcl->qport      = qport;
@@ -541,6 +547,150 @@ void execute_client_command( ServerRuntime &rt, ServerClient &cl,
         // trims that hang off this path).
         if ( rt.game.funcs().pfnClientCommand != nullptr && cl.edict != nullptr )
             rt.game.funcs().pfnClientCommand( cl.edict );
+    }
+}
+
+// --- client message (clc_*) parse -------------------------------------------
+
+namespace {
+
+// SV_ParseClientMove (sv_client.c:3305): decode the delta-compressed usercmd
+// chain (newest-first, each delta'd from the previous, starting from a null
+// cmd) and update the client's move bookkeeping.  The per-command simulation
+// (SV_EstablishTimeBase + the dropped-packet replay + SV_RunCmd → pmove) is the
+// deferred pmove-bridge seam; this fills lastcmd / packet_loss / ping so the
+// snapshot + latency paths observe a live client.
+void parse_client_move( ServerRuntime &rt, ServerClient &cl,
+                        net::MessageBuf &msg ) noexcept
+{
+    ClientFrame *frame =
+        cl.frames != nullptr
+            ? &cl.frames[cl.incoming_acknowledged & rt.snapshot.update_mask]
+            : nullptr;
+
+    ( void )msg.read_byte();                    // checksum1
+    const int packet_loss = static_cast<int>( msg.read_byte() );
+    const int numbackup   = static_cast<int>( msg.read_byte() );
+    const int numcmds     = static_cast<int>( msg.read_byte() );
+    const int totalcmds   = numcmds + numbackup;
+
+    if ( totalcmds < 0 || totalcmds >= k_cmd_mask )
+    {
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "server",
+                            "SV_ParseClientMove: %s sending too many commands %d",
+                            cl.name, totalcmds );
+        drop_client( rt, cl, false );
+        return;
+    }
+
+    ::xash::abi::usercmd_t        cmds[k_cmd_backup] = {};
+    const ::xash::abi::usercmd_t  nullcmd            = {};
+    const ::xash::abi::usercmd_t *from               = &nullcmd;
+    for ( int i = totalcmds - 1; i >= 0; --i )
+    {
+        rt.delta.read_delta_usercmd( msg, from, &cmds[i] );
+        from = &cmds[i];
+    }
+
+    if ( cl.state != ClientState::Spawned )
+        return;
+
+    // XASH3DPP-STUB(chunk6-S9): command checksum (CRC32_BlockSequence over the
+    // post-checksum bytes keyed by netchan.incoming_sequence; skipped for local
+    // clients, mismatch ⇒ ignore-not-drop) — an anti-tamper guard, not core to
+    // the milestone.
+    cl.packet_loss = packet_loss;
+
+    // XASH3DPP-STUB(chunk6-S9/pmove): the freeze/pause zeroing, the viewangle
+    // latch (v_angle = cmds[0].viewangles unless fixangle), SV_EstablishTimeBase,
+    // the net_drop replay, and SV_RunCmd (CmdStart → PlayerPreThink → PM_Move →
+    // touches → PlayerPostThink → CmdEnd) all land with the pmove bridge.
+
+    cl.lastcmd = cmds[0];
+
+    // Latency arrives ~½ a client frame late (sv_client.c:3414).
+    if ( frame != nullptr )
+    {
+        frame->ping_time -= static_cast<float>(
+            static_cast<double>( cl.lastcmd.msec ) * 0.5 / 1000.0 );
+        if ( frame->ping_time < 0.0f )
+            frame->ping_time = 0.0f;
+    }
+}
+
+} // namespace
+
+void execute_client_message( ServerRuntime &rt, ServerClient &cl,
+                             net::MessageBuf &msg, IOobSink &sink ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( cl.frames == nullptr )
+        return; // ASSERT(cl->frames) — no snapshot ring yet
+
+    ClientMachinery &cm = rt.clients;
+
+    // Frame-ping bookkeeping (sv_client.c:3643): the acked frame's round-trip
+    // minus the send interval; zeroed on the first frame and through the 2s
+    // signon settle.
+    ClientFrame &frame =
+        cl.frames[cl.incoming_acknowledged & rt.snapshot.update_mask];
+    frame.ping_time = static_cast<float>( cm.realtime - frame.senttime -
+                                          cl.next_messageinterval );
+    if ( frame.senttime == 0.0 )
+        frame.ping_time = 0.0f;
+    if ( ( cm.realtime - cl.connection_started ) < 2.0 && frame.ping_time > 0.0f )
+        frame.ping_time = 0.0f;
+
+    // XASH3DPP-STUB(chunk6-S9): SV_CalcClientTime unlag latency sample.
+    cl.delta_sequence = -1; // no delta unless a clc_delta arrives
+
+    bool move_issued = false;
+    while ( cl.state != ClientState::Zombie )
+    {
+        if ( msg.overflowed() )
+        {
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "server",
+                                "incoming overflow for %s", cl.name );
+            drop_client( rt, cl, false );
+            return;
+        }
+        if ( msg.num_bits_left() < 8 )
+            break; // end of message
+
+        const int c = static_cast<int>( msg.read_byte() );
+        switch ( c )
+        {
+        case k_clc_nop:
+            break;
+        case k_clc_delta:
+            cl.delta_sequence = static_cast<int>( msg.read_byte() );
+            break;
+        case k_clc_move:
+            if ( move_issued )
+                return; // second clc_move in one packet ⇒ cheat (quirk 28)
+            move_issued = true;
+            parse_client_move( rt, cl, msg );
+            break;
+        case k_clc_stringcmd:
+        {
+            char cmd[k_max_usermsg_length];
+            msg.read_string( std::span<char>{ cmd } );
+            execute_client_command( rt, cl, cmd, sink );
+            if ( cl.state == ClientState::Zombie )
+                return; // disconnect command
+            break;
+        }
+        default:
+            // clc_resourcelist / fileconsistency / voicedata / requestcvarvalue
+            // (2) are OQ-8 trims (SV_SendResources / voice / cvar-query are
+            // stubbed, so the server never elicits them at this milestone).  Any
+            // unsupported opcode drops the client, matching legacy clc_bad.
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "server",
+                                "%s: clc_bad (%d)", cl.name, c );
+            drop_client( rt, cl, false );
+            return;
+        }
     }
 }
 

@@ -98,6 +98,7 @@ void read_packets( ServerRuntime &rt ) noexcept
     // Drain the server socket for this frame (SV_ReadPackets loop): get_packet
     // returns an error once the loopback ring + OS socket are empty.
     std::array<std::byte, k_net_max_message> buf;
+    net::MessageBuf in_msg; // process() rebinds this to view each datagram
     for ( ;; )
     {
         net::NetAddress from{};
@@ -122,10 +123,50 @@ void read_packets( ServerRuntime &rt ) noexcept
             continue;
         }
 
-        // XASH3DPP-STUB(chunk6-S9/Slice-C): in-session netchan demux — match
-        // the client by base address + qport (NAT port-rewrite), Netchan_Process,
-        // then SV_ExecuteClientMessage (clc_move / clc_stringcmd / clc_delta).
-        // Lands with the per-client Netchan (Slice B) + usercmd parse (Slice C).
+        // In-session (sequenced) datagram: match a connected client by source
+        // address, demux through its netchan, then run the client-message
+        // opcode stream (SV_ReadPackets, sv_main.c:375).
+        ClientMachinery &cm   = rt.clients;
+        ServerClient    *cl   = nullptr;
+        int              slot = -1;
+        for ( int i = 0; i < cm.maxclients; ++i )
+        {
+            ServerClient &c = cm.clients[i];
+            if ( c.state == ClientState::Free || c.fakeclient )
+                continue;
+            if ( !net::compare_base( from, c.adr ) )
+                continue;
+            cl   = &c;
+            slot = i;
+            break;
+        }
+        if ( cl == nullptr )
+            continue; // unknown peer — drop
+
+        // NAT routers rewrite the source port between datagrams; adopt the new
+        // one so the send path targets the live endpoint.
+        if ( cl->adr.port != from.port )
+            cl->adr.port = from.port;
+
+        // Netchan_Process demuxes the payload into in_msg (rebound to view the
+        // datagram, positioned after the header) and advances ack/sequence
+        // state; a stale / duplicate / malformed packet returns false and is
+        // silently dropped.
+        if ( cm.netchans[slot].process( pkt, in_msg ) )
+        {
+            // Mirror the netchan receive state onto the client for the snapshot
+            // + timeout paths (incoming_acknowledged drives SV_CalcPing;
+            // last_received drives SV_CheckTimeouts).
+            cl->incoming_acknowledged =
+                static_cast<int>( cm.netchans[slot].incoming_acknowledged() );
+            cl->last_received = cm.netchans[slot].last_received();
+
+            if ( cl->frames != nullptr && cl->state != ClientState::Zombie )
+                execute_client_message( rt, *cl, in_msg, sink );
+        }
+
+        // XASH3DPP-STUB(chunk6-S9): Netchan_CopyNormalFragments / CopyFileFragments
+        // reassembly (large reliable messages + file-upload downloads = OQ-8 trims).
     }
 }
 
