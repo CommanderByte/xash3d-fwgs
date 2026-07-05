@@ -22,7 +22,7 @@ from pathlib import Path
 # Make the sibling `xtools` package importable (tools/ is tests/'s parent).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from xtools.checks import _filter_allows  # noqa: E402
+from xtools.checks import _allow_context, _filter_allows, _violation  # noqa: E402
 from xtools.rules import RULES  # noqa: E402
 
 
@@ -128,6 +128,60 @@ class AllowHatch(unittest.TestCase):
         kept, allowed = _filter_allows([v])
         self.assertEqual(kept, [])
         self.assertEqual(len(allowed), 1)
+
+
+class AllowContext(unittest.TestCase):
+    """`_allow_context`: the flagged line plus its contiguous preceding `//`
+    comment block (so a marker on the doc-comment above a finding is honored)."""
+
+    @staticmethod
+    def _lines(*raws: str):
+        # code_lines yields (lineno, code, raw); a // comment line has code=""
+        # (blanked), everything else keeps its text as `code` for adjacency.
+        out = []
+        for i, raw in enumerate(raws, start=1):
+            code = "" if raw.lstrip().startswith("//") else raw
+            out.append((i, code, raw))
+        return out
+
+    def test_flagged_line_only(self):
+        lines = self._lines("    foo( bar );")
+        self.assertEqual(_allow_context(lines, 0), "    foo( bar );")
+
+    def test_preceding_comment_block_included(self):
+        lines = self._lines(
+            "    // reason line one",
+            "    // compliance-allow(int-width): ABI unsigned int",
+            "    foo( (unsigned int)x );")
+        ctx = _allow_context(lines, 2)
+        self.assertIn("compliance-allow(int-width)", ctx)
+        self.assertIn("(unsigned int)x", ctx)
+
+    def test_preceding_code_line_stops_the_walk(self):
+        # a non-comment line above the flag ends the block: a marker further up
+        # (separated by code) must NOT leak in.
+        lines = self._lines(
+            "    // compliance-allow(int-width): far above",
+            "    int y = 0;",
+            "    foo( (unsigned int)x );")
+        ctx = _allow_context(lines, 2)
+        self.assertNotIn("compliance-allow", ctx)
+
+    def test_routes_via_violation_allow_ctx(self):
+        # end-to-end: a marker in the preceding comment block, threaded through
+        # _violation(allow_ctx=...) → _filter_allows, exempts the finding and
+        # the allow entry reports the CLEAN flagged-line excerpt (not the ctx).
+        lines = self._lines(
+            "    // compliance-allow(int-width): ABI unsigned int",
+            "    return (unsigned int)seed;")
+        v = _violation("int-width", "warning", Path("x.cpp"), 2,
+                       lines[1][2], "hint", "ref", candidate=True,
+                       allow_ctx=_allow_context(lines, 1))
+        kept, allowed = _filter_allows([v])
+        self.assertEqual(kept, [])
+        self.assertEqual(len(allowed), 1)
+        self.assertEqual(allowed[0]["excerpt"], "return (unsigned int)seed;")
+        self.assertNotIn("\n", allowed[0]["excerpt"])  # single clean line
 
 
 if __name__ == "__main__":

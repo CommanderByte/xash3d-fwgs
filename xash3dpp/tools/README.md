@@ -118,4 +118,9 @@ c:\git\xash3d-fwgs\.venv\Scripts\python.exe -m unittest discover -s xash3dpp\too
 
 Stdlib-only, no pip step — the same contract as the CLI scripts. The
 `compliance-allow(<check-id>)` marker is honored by every `[M]` check
-(regex rules and the structured heuristics alike).
+(regex rules and the structured heuristics alike), either on the flagged
+line itself **or** on the contiguous `//` comment block directly above it —
+so the natural "document the exemption above the line" form works, not only
+a trailing comment. (A finding on an inner line of a multi-line statement
+has code, not its comment block, directly above it; there the marker must
+sit on the flagged line.)

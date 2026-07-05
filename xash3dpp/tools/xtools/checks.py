@@ -15,8 +15,13 @@ SEV_ORDER = {"blocker": 3, "warning": 2, "note": 1}
 
 # Inline exemption for ABI-forced constructs the rules can't know about:
 #   <flagged code>  // compliance-allow(<check-id>[, <check-id>]): <rationale>
-# The marker must sit on the flagged line (comment side); every allow is
-# reported in the scan result so pre-pr can audit the full list.
+# The marker is honored either on the flagged line itself OR on the contiguous
+# block of `//` comment lines directly above it (the doc-comment attached to
+# the construct) — so annotating above a single-line finding works, not only
+# the trailing-comment form.  (A finding on an inner line of a multi-line
+# statement is not preceded by its comment block, so there the marker must sit
+# on the flagged line.)  Every allow is reported in the scan result so pre-pr
+# can audit the full list.
 ALLOW_RE = re.compile(r"compliance-allow\(\s*([\w\-, ]+?)\s*\)")
 
 
@@ -27,7 +32,22 @@ def _rel(p: Path) -> str:
         return p.as_posix()
 
 
-def _violation(check, severity, path, line, excerpt, hint, rule_ref, candidate=False):
+def _allow_context(lines: list[tuple[int, str, str]], idx: int) -> str:
+    """The text a compliance-allow marker may live in to exempt the finding on
+    lines[idx]: the flagged line's raw text plus the contiguous block of `//`
+    comment lines immediately above it.  code_lines / code_lines_from_text yield
+    every physical line (comments blanked from `code` but kept in `raw`), so
+    list-index adjacency is exact.  Pure — unit-tested."""
+    parts = [lines[idx][2]]
+    j = idx - 1
+    while j >= 0 and lines[j][2].lstrip().startswith("//"):
+        parts.append(lines[j][2])
+        j -= 1
+    return "\n".join(parts)
+
+
+def _violation(check, severity, path, line, excerpt, hint, rule_ref,
+               candidate=False, allow_ctx=None):
     return {
         "check": check,
         "severity": ("candidate-" + severity) if candidate else severity,
@@ -36,18 +56,19 @@ def _violation(check, severity, path, line, excerpt, hint, rule_ref, candidate=F
         "excerpt": excerpt.strip()[:200],
         "hint": hint,
         "rule_ref": rule_ref,
-        # Full raw line kept for the inline compliance-allow pass
-        # (_filter_allows); stripped from the returned envelope.
-        "_raw": excerpt,
+        # Text searched for a compliance-allow marker (_filter_allows); the
+        # flagged line by default, or the flagged line + its preceding comment
+        # block when the caller passes allow_ctx.  Stripped from the envelope.
+        "_raw": allow_ctx if allow_ctx is not None else excerpt,
     }
 
 
 def _filter_allows(violations: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Honor inline `// compliance-allow(<check>)` markers for the structured
-    checks (the regex-rule loop already filters its own hits inline).  A
-    violation whose stashed `_raw` line carries a marker naming its check is
-    moved to the allows list; `_raw` is stripped from every kept violation so
-    it never leaks into the envelope."""
+    """Honor `// compliance-allow(<check>)` markers uniformly: a violation whose
+    stashed `_raw` (the flagged line, plus its preceding comment block when the
+    producer supplied one) carries a marker naming its check is moved to the
+    allows list.  `_raw` is stripped from every kept violation so it never leaks
+    into the envelope; the allow entry reports the clean flagged-line excerpt."""
     kept: list[dict] = []
     allowed: list[dict] = []
     for v in violations:
@@ -55,7 +76,7 @@ def _filter_allows(violations: list[dict]) -> tuple[list[dict], list[dict]]:
         m = ALLOW_RE.search(raw)
         if m and v["check"] in {c.strip() for c in m.group(1).split(",")}:
             allowed.append({"check": v["check"], "file": v["file"],
-                            "line": v["line"], "excerpt": raw.strip()[:200]})
+                            "line": v["line"], "excerpt": v["excerpt"]})
         else:
             kept.append(v)
     return kept, allowed
@@ -202,21 +223,17 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
                     continue
                 rx = re.compile(rule.pattern)
                 ex = re.compile(rule.exclude_line_re) if rule.exclude_line_re else None
-                for lineno, code, raw in lines:
+                for idx, (lineno, code, raw) in enumerate(lines):
                     if not code.strip():
                         continue
                     if rx.search(code) and not (ex and ex.search(code)):
-                        allow = ALLOW_RE.search(raw)
-                        if allow and rule.check in {
-                                c.strip() for c in allow.group(1).split(",")}:
-                            allows.append({"check": rule.check,
-                                           "file": _rel(path),
-                                           "line": lineno,
-                                           "excerpt": raw.strip()[:200]})
-                            continue
+                        # Stash the allow-context (flagged line + its preceding
+                        # comment block); _filter_allows does the marker match
+                        # uniformly with the structured checks.
                         violations.append(_violation(
                             rule.check, rule.severity, path, lineno, raw,
-                            rule.hint, rule.source_ref, rule.candidate))
+                            rule.hint, rule.source_ref, rule.candidate,
+                            allow_ctx=_allow_context(lines, idx)))
         # structured checks, per subsystem
         if "hpp-under-src" in structured:
             src_dir = SRC / sub
@@ -364,7 +381,7 @@ def _scan_thread_assert(sub: str) -> list[dict]:
                         "thread-assert", "warning", path, lineno, raw,
                         "main-thread mutator should open with assert_thread_role(ThreadRole::Main) (TH-Role)",
                         "reviewer §7; pre-pr Phase 2; sweep TH-Role",
-                        candidate=True))
+                        candidate=True, allow_ctx=_allow_context(lines, i)))
     return out
 
 
