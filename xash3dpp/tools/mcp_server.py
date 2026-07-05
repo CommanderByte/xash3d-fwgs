@@ -93,27 +93,34 @@ def refresh_compile_db() -> dict:
 @mcp.tool()
 def compliance_scan(subsystem: str = "", checks_set: str = "all",
                     min_severity: str = "note", slice: bool = False,
-                    files: str = "") -> dict:
+                    files: str = "", baseline: bool = False) -> dict:
     """Mechanical convention scan (reviewer [M] checks). checks_set: all |
     prepr | detail | comma-list of check ids. candidate-* findings need
     judgment. ABI-forced constructs carry inline compliance-allow markers,
     echoed in the result's `allows` list. slice=True scans the current
     change set (slice_diff default base) instead of a subsystem — slices
     cross subsystem boundaries; `files` (comma-list of repo-relative
-    paths) scans exactly those."""
+    paths) scans exactly those. baseline=True (implies the slice change set)
+    keeps only findings the change INTRODUCED — drops pre-existing findings in
+    files merely pulled into the scan; adds `baseline_suppressed` to the
+    result."""
     _maybe_reload()
     file_list = None
-    if slice:
+    baseline_base = ""
+    if slice or baseline:
         diff = state.slice_diff()
         if "error" in diff:
             return {"error": diff["error"]}
         file_list = [f["path"] for f in diff["files"]] + diff["untracked"]
+        if baseline:
+            baseline_base = diff["base"]
     elif files:
         file_list = [f for f in files.split(",") if f.strip()]
     elif not subsystem:
         return {"error": "give a subsystem, files, or slice=True"}
     return checks.compliance_scan(subsystem or None, checks=checks_set,
-                                  min_severity=min_severity, files=file_list)
+                                  min_severity=min_severity, files=file_list,
+                                  baseline_base=baseline_base)
 
 
 @mcp.tool()

@@ -111,19 +111,56 @@ def _group_files(paths: list[str]) -> tuple[list[tuple[str, list[Path]]],
     return sorted(by_sub.items()), ignored
 
 
+def _base_excerpts(rels: list[str], base_ref: str) -> dict[str, set[str]]:
+    """{repo-rel path: set of stripped[:200] lines} for each file's base-commit
+    version.  Files absent at base (added by the slice) are omitted, so all of
+    their findings count as introduced."""
+    from . import state  # git plumbing lives in the state layer
+    out: dict[str, set[str]] = {}
+    for rel in rels:
+        rc, lines = state._git(["show", "%s:%s" % (base_ref, rel)])
+        if rc != 0:
+            continue
+        out[rel] = {ln.strip()[:200] for ln in lines if ln.strip()}
+    return out
+
+
+def _introduced_findings(findings: list[dict],
+                         base_excerpts: dict[str, set[str]]) -> list[dict]:
+    """Keep only findings whose flagged line text is absent from the file's base
+    version — i.e. the change introduced or modified that line.  Matched by line
+    CONTENT (the `excerpt`, == `_violation`'s raw.strip()[:200]), not line
+    number, so an unrelated edit that merely shifts a pre-existing finding does
+    not resurface it.  Findings whose excerpt is a file name, not a code line
+    (hpp-under-src, naming-file-case), are always kept — a line set cannot
+    confirm those pre-existed."""
+    out: list[dict] = []
+    for f in findings:
+        base = base_excerpts.get(f["file"])
+        if base is not None and f.get("excerpt", "") in base:
+            continue
+        out.append(f)
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # compliance_scan
 # --------------------------------------------------------------------------- #
 
 def compliance_scan(subsystem: str | None, checks: str = "all",
                     min_severity: str = "note",
-                    files: list[str] | None = None) -> dict:
+                    files: list[str] | None = None,
+                    baseline_base: str = "") -> dict:
     """Run the [M] ruleset over one subsystem (or all).
 
     checks: "all" | "prepr" | "detail" | comma-list of check ids.
     files: explicit repo-relative paths (a slice_diff change set) —
     overrides subsystem discovery so gates cover exactly what a slice
     touched, wherever it lives (the S7a cvar_ops.cpp gap).
+    baseline_base: a git ref (with `files`) — keep only findings the change
+    INTRODUCED, dropping ones whose flagged line is unchanged from that base.
+    Removes the "pre-existing finding surfaced only because my edit pulled the
+    file into the slice scan" noise.
     """
     files_ignored: list[str] = []
     if files is not None:
@@ -220,6 +257,16 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
         in_slice = {_rel(p) for _, ps in groups for p in ps}
         violations = [v for v in violations if v["file"] in in_slice]
 
+    baseline_suppressed = 0
+    if files is not None and baseline_base:
+        rels = sorted({_rel(p) for _, ps in groups for p in ps})
+        base_ex = _base_excerpts(rels, baseline_base)
+        kept_v = _introduced_findings(violations, base_ex)
+        kept_a = _introduced_findings(allows, base_ex)
+        baseline_suppressed = (len(violations) - len(kept_v)) \
+            + (len(allows) - len(kept_a))
+        violations, allows = kept_v, kept_a
+
     threshold = SEV_ORDER.get(min_severity, 1)
     violations = [
         v for v in violations
@@ -245,6 +292,9 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
     }
     if files is not None:
         out["files_ignored"] = files_ignored
+    if baseline_base:
+        out["baseline_base"] = baseline_base
+        out["baseline_suppressed"] = baseline_suppressed
     return out
 
 

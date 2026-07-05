@@ -25,6 +25,9 @@ def main() -> int:
     ap.add_argument("--slice", action="store_true",
                     help="scan the current slice: changed + untracked files "
                          "from slice_diff's default base")
+    ap.add_argument("--baseline", action="store_true",
+                    help="with the slice change set, keep only findings the "
+                         "change introduced (drop pre-existing in touched files)")
     ap.add_argument("--checks", default="all",
                     help="all | prepr | detail | comma-list of check ids")
     ap.add_argument("--min-severity", default="note",
@@ -36,19 +39,23 @@ def main() -> int:
         # Scope mistakes are execution errors (exit 2 via the cli_main
         # exception path), never "findings present".
         files = None
-        if args.slice:
+        baseline_base = ""
+        if args.slice or args.baseline:
             from xtools.state import slice_diff
             diff = slice_diff()
             if "error" in diff:
                 raise RuntimeError(diff["error"])
             files = [f["path"] for f in diff["files"]] + diff["untracked"]
+            if args.baseline:
+                baseline_base = diff["base"]
         elif args.files:
             files = [f for f in args.files.split(",") if f.strip()]
         elif not args.subsystem:
             raise RuntimeError("give a subsystem, --files, or --slice")
 
         data = compliance_scan(args.subsystem or None, checks=args.checks,
-                               min_severity=args.min_severity, files=files)
+                               min_severity=args.min_severity, files=files,
+                               baseline_base=baseline_base)
         hard = data["counts"]["blocker"] + data["counts"]["warning"] \
             + data["counts"]["note"] - data["counts"]["candidate"]
         return hard == 0 and not data["violations"], data
@@ -56,6 +63,9 @@ def main() -> int:
     def human(data):
         print("scanned %d files in %s (checks=%s)" % (
             data["files_scanned"], ", ".join(data["subsystems"]), data["checks"]))
+        if data.get("baseline_base"):
+            print("baseline vs %s: %d pre-existing finding(s) suppressed" % (
+                data["baseline_base"][:12], data["baseline_suppressed"]))
         if data.get("files_ignored"):
             print("ignored %d non-scannable input(s): %s" % (
                 len(data["files_ignored"]),
