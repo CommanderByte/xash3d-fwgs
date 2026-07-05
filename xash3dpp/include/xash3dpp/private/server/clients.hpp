@@ -34,6 +34,7 @@ struct ClientFrame;  // fwd (snapshot.hpp) — the per-client delta frames ring
 inline constexpr int         k_max_clients        = 32;   // 1<<MAX_CLIENT_BITS
 inline constexpr int         k_max_user_messages  = 197;  // MAX_USER_MESSAGES
 inline constexpr int         k_svc_bad            = 0;
+inline constexpr int         k_svc_event_reliable = 21;   // SV_PlaybackReliableEvent
 inline constexpr int         k_svc_temp_entity    = 23;
 inline constexpr int         k_svc_lastmsg        = 59;   // user msgs start here
 inline constexpr int         k_max_usermsg_length = 2048; // MAX_USERMSG_LENGTH
@@ -318,6 +319,18 @@ void message_write_entity( ClientMachinery &cm, int v ) noexcept;
 int sv_multicast( EngineBridge &bridge, int dest, const float *origin,
                   ::xash::abi::edict_t *ent, bool usermessage,
                   bool filter ) noexcept;
+
+// SV_PlaybackEventFull (sv_game.c:4026): the pfnPlaybackEvent producer.  Builds
+// the event args, then for every eligible client either bypasses the queue with
+// a reliable svc_event_reliable (FEV_RELIABLE) or fills the per-client event
+// ring (cl.events) that SV_EmitEvents drains into each snapshot.  Bridge-driven
+// (the pfn slot reaches g_bridge); no-op until clients + precache are wired.
+void playback_event_full( EngineBridge &bridge, int flags,
+                          const ::xash::abi::edict_t *invoker,
+                          std::uint16_t eventindex, float delay,
+                          const float *origin, const float *angles,
+                          float fparam1, float fparam2, int iparam1, int iparam2,
+                          int bparam1, int bparam2 ) noexcept;
 
 // ===========================================================================
 // Connection state machine (host/packet-driven — free fns over ServerRuntime)

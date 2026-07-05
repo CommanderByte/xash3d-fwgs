@@ -1713,11 +1713,16 @@ unsigned short pfn_precache_event( int, const char *psz )
     return static_cast<unsigned short>( g_bridge->precache->event_index( psz ));
 }
 
-void pfn_playback_event( int, const abi::edict_t *, unsigned short, float,
-                         float *, float *, float, float, int, int, int, int )
+void pfn_playback_event( int flags, const abi::edict_t *invoker,
+                         unsigned short eventindex, float delay, float *origin,
+                         float *angles, float fparam1, float fparam2,
+                         int iparam1, int iparam2, int bparam1, int bparam2 )
 {
-    // XASH3DPP-STUB(chunk6): SV_PlaybackEventFull (FEV_* routing) lands
-    // in S9.
+    if ( g_bridge == nullptr )
+        return;
+    playback_event_full( *g_bridge, flags, invoker, eventindex, delay, origin,
+                         angles, fparam1, fparam2, iparam1, iparam2, bparam1,
+                         bparam2 );
 }
 
 // --- fat visibility (S3 PHS / map_loader PVS) --------------------------------

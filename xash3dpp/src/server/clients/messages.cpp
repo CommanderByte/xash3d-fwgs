@@ -15,10 +15,14 @@
 
 #include <xash3dpp/private/server/clients.hpp>
 
+#include <xash3dpp/abi/server_consts.hpp>       // FEV_*, k_max_events, k_fl_ducking
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
+#include <xash3dpp/networking/delta.hpp>         // DeltaTables::write_delta_event
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
+#include <xash3dpp/private/server/entity_view.hpp> // invoker entvars (origin/angles/…)
+#include <xash3dpp/private/server/snapshot.hpp>  // k_max_event_bits/queue (shared w/ emit_events)
 #include <xash3dpp/utilities/string.hpp>
 
 #include <cstring>
@@ -470,6 +474,251 @@ int sv_multicast( EngineBridge &bridge, int dest, const float *origin,
 
     cm.multicast.reset();
     return numsends;
+}
+
+// --- SV_PlaybackEventFull ----------------------------------------------------
+
+namespace {
+
+// SV_PlaybackReliableEvent (sv_game.c:1185): svc_event_reliable + the event
+// index + an optional delay word + null-compressed args, staged straight into
+// the client's reliable buffer (bypassing the unreliable event queue).  The
+// frame loop drains cl.reliable into the netchan (the S8-seam staging model).
+void playback_reliable_event( EngineBridge &bridge, ServerClient &cl,
+                              std::uint16_t eventindex, float delay,
+                              const ::xash::abi::event_args_t &args ) noexcept
+{
+    if ( bridge.delta == nullptr )
+        return; // delta tables not wired yet (pre-load_progs fixtures)
+
+    std::byte       scratch[64] = {};
+    net::MessageBuf w( { scratch, sizeof( scratch ) } );
+
+    w.write_byte( static_cast<std::uint8_t>( k_svc_event_reliable ) );
+    w.write_ubit_long( eventindex, k_max_event_bits );
+
+    if ( delay != 0.0f )
+    {
+        w.write_one_bit( 1 );
+        w.write_word(
+            static_cast<std::uint16_t>( static_cast<int>( delay * 100.0f ) ) );
+    }
+    else
+    {
+        w.write_one_bit( 0 );
+    }
+
+    // reliable events use plain null-compression (delta vs a zeroed args), not
+    // the per-frame delta baseline the unreliable emit path uses.
+    const ::xash::abi::event_args_t nullargs{};
+    bridge.delta->write_delta_event( w, &nullargs, &args );
+
+    stage_append( cl.reliable, k_client_stage_bytes, cl.reliable_bits, w.data(),
+                  w.num_bits_written() );
+}
+
+} // namespace
+
+void playback_event_full( EngineBridge &bridge, int flags,
+                          const ::xash::abi::edict_t *invoker_raw,
+                          std::uint16_t eventindex, float delay,
+                          const float *origin, const float *angles,
+                          float fparam1, float fparam2, int iparam1, int iparam2,
+                          int bparam1, int bparam2 ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( ( flags & ::xash::abi::k_fev_client ) != 0 )
+        return; // "someone stupid joke" — a client-only event fired on the server
+
+    // No active server / precache table (pre-lifecycle fixtures): drop silently.
+    if ( bridge.clients == nullptr || bridge.precache == nullptr )
+        return;
+
+    // out-of-bounds event index
+    if ( eventindex < 1 || eventindex >= ::xash::abi::k_max_events )
+    {
+        bridge_error( bridge, "SV_PlaybackEvent: invalid eventindex\n" );
+        return;
+    }
+
+    // event must be precached
+    if ( bridge.precache->event_name( eventindex )[0] == '\0' )
+    {
+        bridge_error( bridge, "SV_PlaybackEvent: event was not precached\n" );
+        return;
+    }
+
+    ::xash::abi::event_args_t args{};
+
+    if ( origin != nullptr &&
+         !( origin[0] == 0.0f && origin[1] == 0.0f && origin[2] == 0.0f ) )
+    {
+        args.origin[0] = origin[0];
+        args.origin[1] = origin[1];
+        args.origin[2] = origin[2];
+        args.flags |= ::xash::abi::k_fevent_origin;
+    }
+
+    if ( angles != nullptr &&
+         !( angles[0] == 0.0f && angles[1] == 0.0f && angles[2] == 0.0f ) )
+    {
+        args.angles[0] = angles[0];
+        args.angles[1] = angles[1];
+        args.angles[2] = angles[2];
+        args.flags |= ::xash::abi::k_fevent_angles;
+    }
+
+    args.fparam1 = fparam1;
+    args.fparam2 = fparam2;
+    args.iparam1 = iparam1;
+    args.iparam2 = iparam2;
+    args.bparam1 = bparam1;
+    args.bparam2 = bparam2;
+
+    // The PVS point is the invoker eye (origin + view_ofs); with no invoker it
+    // falls back to the supplied origin.  Only the FEV_GLOBAL null-origin guard
+    // reads it here — the per-client PHS cull is stubbed (see below).
+    float pvspoint[3] = { 0.0f, 0.0f, 0.0f };
+    int   invoker_index;
+
+    // Reading the invoker's entvars must go through the EntityView facade; the
+    // ABI hands us a const edict but every access below is read-only.
+    EntityView invoker( const_cast<::xash::abi::edict_t *>( invoker_raw ) );
+
+    if ( invoker.valid() ) // SV_IsValidEdict
+    {
+        const auto io = invoker.origin();
+        const auto vo = invoker.view_ofs();
+        pvspoint[0] = io.x + vo.x;
+        pvspoint[1] = io.y + vo.y;
+        pvspoint[2] = io.z + vo.z;
+
+        invoker_index =
+            bridge.arena != nullptr ? bridge.arena->index_of( invoker_raw ) : 0;
+        args.entindex = invoker_index;
+        args.ducking  = ( invoker.flags() & ::xash::abi::k_fl_ducking ) ? 1 : 0;
+
+        // origin/angles are transmitted only for reliable events; fill them from
+        // the invoker when the caller did not state them.
+        if ( ( args.flags & ::xash::abi::k_fevent_origin ) == 0 )
+        {
+            args.origin[0] = io.x;
+            args.origin[1] = io.y;
+            args.origin[2] = io.z;
+        }
+        if ( ( args.flags & ::xash::abi::k_fevent_angles ) == 0 )
+        {
+            const auto ia  = invoker.angles();
+            args.angles[0] = ia.x;
+            args.angles[1] = ia.y;
+            args.angles[2] = ia.z;
+        }
+    }
+    else
+    {
+        pvspoint[0]   = args.origin[0];
+        pvspoint[1]   = args.origin[1];
+        pvspoint[2]   = args.origin[2];
+        args.entindex = 0;
+        invoker_index = -1;
+    }
+
+    if ( ( flags & ::xash::abi::k_fev_global ) == 0 && pvspoint[0] == 0.0f &&
+         pvspoint[1] == 0.0f && pvspoint[2] == 0.0f )
+        return; // a non-global event with no origin — ignored
+
+    // FEV_NOTHOST/FEV_HOSTONLY only make sense when the invoker is a spawned
+    // client; legacy clears them (with a warning) otherwise.
+    if ( ( flags & ( ::xash::abi::k_fev_nothost | ::xash::abi::k_fev_hostonly ) ) !=
+         0 )
+    {
+        const ServerClient *icl = client_for_edict( *bridge.clients, invoker_raw );
+        if ( icl == nullptr || icl->state != ClientState::Spawned )
+        {
+            flags &= ~::xash::abi::k_fev_nothost;
+            flags &= ~::xash::abi::k_fev_hostonly;
+        }
+    }
+
+    flags |= ::xash::abi::k_fev_server; // it's a server event
+    if ( delay < 0.0f )
+        delay = 0.0f; // fixup negative delays
+
+    // XASH3DPP-STUB(S8-seam): the recipient PHS cull — Mod_FatPVS(FATPHS) +
+    // SV_CheckClientVisiblity, plus the groupinfo/groupop group-mask filter —
+    // needs the per-client view leaf the frame loop will cache each tick.  Until
+    // then, exactly like SV_Multicast (messages.cpp), events fan to every
+    // eligible (spawned, non-fake) client (legacy "NULL mask → visible").  Both
+    // paths ride the same future snapshot/PVS gate.
+
+    ClientMachinery &cm = *bridge.clients;
+    for ( int slot = 0; slot < cm.maxclients; ++slot )
+    {
+        ServerClient &cl = cm.clients[slot];
+
+        if ( cl.state != ClientState::Spawned || cl.edict == nullptr ||
+             cl.fakeclient )
+            continue;
+
+        // FEV_NOTHOST: skip the invoker's own client when it predicts weapons
+        // locally.  Legacy also matches sv.current_client, which is not tracked
+        // yet (engine_table.cpp:1873) — the edict==invoker half is the case that
+        // matters for a listen host and is well-defined here.
+        if ( ( flags & ::xash::abi::k_fev_nothost ) != 0 &&
+             cl.edict == invoker_raw && cl.local_weapons )
+            continue; // will be played on the client side
+
+        if ( ( flags & ::xash::abi::k_fev_hostonly ) != 0 && cl.edict != invoker_raw )
+            continue; // send only to the invoker
+
+        // reliable event: skip the queue, stage it directly
+        if ( ( flags & ::xash::abi::k_fev_reliable ) != 0 )
+        {
+            playback_reliable_event( bridge, cl, eventindex, delay, args );
+            continue;
+        }
+
+        // unreliable event: store in the per-client queue (drained by emit_events)
+        ::xash::abi::event_state_t &es       = cl.events;
+        int                         bestslot = -1;
+
+        if ( ( flags & ::xash::abi::k_fev_update ) != 0 )
+        {
+            for ( int j = 0; j < k_max_event_queue; ++j )
+            {
+                if ( es.ei[j].index == eventindex && invoker_index != -1 &&
+                     invoker_index == es.ei[j].entity_index )
+                {
+                    bestslot = j;
+                    break;
+                }
+            }
+        }
+
+        if ( bestslot == -1 )
+        {
+            for ( int j = 0; j < k_max_event_queue; ++j )
+            {
+                if ( es.ei[j].index == 0 )
+                {
+                    bestslot = j;
+                    break;
+                }
+            }
+        }
+
+        if ( bestslot == -1 )
+            continue; // queue full for this client
+
+        ::xash::abi::event_info_t &ei = es.ei[bestslot];
+        ei.index        = eventindex;
+        ei.fire_time    = delay;
+        ei.entity_index = static_cast<std::int16_t>( invoker_index );
+        ei.packet_index = -1;
+        ei.flags        = flags;
+        ei.args         = args;
+    }
 }
 
 } // namespace xash::server

@@ -15,6 +15,7 @@
 #include <xash3dpp/platform/os_socket.hpp>
 #include <xash3dpp/platform/platform_sockets.hpp>
 #include <xash3dpp/private/server/clients.hpp>
+#include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
@@ -558,6 +559,109 @@ static void test_reliable_fanout()
     CHECK( fx.rt.clients.reliable_datagram.num_bytes_written() == 0 );
 }
 
+// Drive slot 0 to cs_spawned (netchan + frames ring + player edict all armed) —
+// the common prologue for the event-producer tests.
+static void connect_and_spawn( ConnFixture &fx, CaptureSink &sink,
+                               const net::NetAddress &from, const char *userinfo )
+{
+    const std::uint32_t window =
+        static_cast<std::uint32_t>( fx.rt.clients.realtime / 5 );
+    const std::int32_t chal =
+        sv::compute_challenge( fx.rt.persistent.challenge_salt, from, window );
+    const int slot = sv::connect_client(
+        fx.rt, from, 49, chal,
+        "\\qport\\27015\\uuid\\0123456789abcdef0123456789abcdef", userinfo, sink );
+    REQUIRE( slot == 0 );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    sv::execute_client_command( fx.rt, cl, "new", sink );
+    sv::execute_client_command( fx.rt, cl, "spawn", sink );
+    sv::execute_client_command( fx.rt, cl, "begin", sink );
+    REQUIRE( cl.state == sv::ClientState::Spawned );
+    REQUIRE( cl.edict != nullptr );
+}
+
+// ---------------------------------------------------------------------------
+// SV_PlaybackEventFull: an unreliable event fills the invoker client's event
+// queue (drained later by SV_EmitEvents); the caller-omitted origin is filled
+// from the invoker, FEV_UPDATE merges a re-fire into the same slot, and a
+// client-only (FEV_CLIENT) event is rejected without touching the queue.
+// ---------------------------------------------------------------------------
+static void test_playback_event_unreliable()
+{
+    ConnFixture fx;
+    CaptureSink sink;
+    connect_and_spawn( fx, sink, client_adr(), "\\name\\EvPlayer" );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+
+    // Give the invoker a real origin so the non-global null-origin guard passes
+    // and the invoker-origin fill path is exercised.
+    sv::EntityView( cl.edict ).set_origin( { 32.0f, -64.0f, 128.0f } );
+
+    const int ev = fx.rt.precache.event_index( "events/test.sc" );
+    REQUIRE( ev >= 1 );
+
+    // FEV_CLIENT is a client-side-only event: the server drops it.
+    sv::playback_event_full( fx.rt.bridge, abi::k_fev_client, cl.edict,
+                             static_cast<std::uint16_t>( ev ), 0.0f, nullptr,
+                             nullptr, 0, 0, 0, 0, 0, 0 );
+    CHECK( cl.events.ei[0].index == 0 ); // nothing queued
+
+    // A plain unreliable event lands in slot 0, carrying the params, delay, and
+    // (since the caller passed no origin) the invoker's origin.
+    sv::playback_event_full( fx.rt.bridge, 0, cl.edict,
+                             static_cast<std::uint16_t>( ev ), 0.5f, nullptr,
+                             nullptr, 1.5f, 0.0f, 7, 0, 1, 0 );
+
+    const abi::event_info_t &ei = cl.events.ei[0];
+    CHECK( ei.index == static_cast<std::uint16_t>( ev ) );
+    CHECK( ei.entity_index == 1 ); // player edict index
+    CHECK( ei.packet_index == -1 );
+    CHECK( ei.fire_time == 0.5f );
+    CHECK( ei.args.entindex == 1 );
+    CHECK( ei.args.iparam1 == 7 );
+    CHECK( ei.args.fparam1 == 1.5f );
+    CHECK( ei.args.bparam1 == 1 );
+    CHECK( ei.args.origin[0] == 32.0f );  // filled from the invoker
+    CHECK( ei.args.origin[2] == 128.0f );
+    CHECK( cl.events.ei[1].index == 0 );  // exactly one slot used
+
+    // FEV_UPDATE re-fire from the same invoker merges into the same slot.
+    sv::playback_event_full( fx.rt.bridge, abi::k_fev_update, cl.edict,
+                             static_cast<std::uint16_t>( ev ), 1.0f, nullptr,
+                             nullptr, 9.0f, 0.0f, 0, 0, 0, 0 );
+    CHECK( cl.events.ei[0].fire_time == 1.0f );   // updated in place
+    CHECK( cl.events.ei[0].args.fparam1 == 9.0f );
+    CHECK( cl.events.ei[1].index == 0 );          // still only one slot
+}
+
+// ---------------------------------------------------------------------------
+// SV_PlaybackEventFull + FEV_RELIABLE: the event bypasses the queue and stages
+// an svc_event_reliable straight into the client's reliable buffer.
+// ---------------------------------------------------------------------------
+static void test_playback_event_reliable()
+{
+    ConnFixture fx;
+    CaptureSink sink;
+    connect_and_spawn( fx, sink, client_adr(), "\\name\\RelEvPlayer" );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    sv::EntityView( cl.edict ).set_origin( { 1.0f, 2.0f, 3.0f } );
+
+    const int ev = fx.rt.precache.event_index( "events/reliable.sc" );
+    REQUIRE( ev >= 1 );
+
+    REQUIRE( cl.reliable_bits == 0 );
+    sv::playback_event_full( fx.rt.bridge, abi::k_fev_reliable, cl.edict,
+                             static_cast<std::uint16_t>( ev ), 0.25f, nullptr,
+                             nullptr, 0, 0, 0, 0, 0, 0 );
+
+    // The reliable path staged bytes into cl.reliable and left the queue empty.
+    CHECK( cl.reliable_bits > 0 );
+    CHECK( cl.events.ei[0].index == 0 );
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -572,6 +676,8 @@ int main()
     RUN_TEST( test_execute_client_message );
     RUN_TEST( test_send_client_keepalive );
     RUN_TEST( test_reliable_fanout );
+    RUN_TEST( test_playback_event_unreliable );
+    RUN_TEST( test_playback_event_reliable );
 
     std::filesystem::remove_all( g_root );
     std::printf( "server_client_state: %d passed, %d failed\n", g_pass, g_fail );

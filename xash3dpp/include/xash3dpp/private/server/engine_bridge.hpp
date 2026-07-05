@@ -28,6 +28,10 @@
 #include <xash3dpp/private/server/world_links.hpp>
 #include <xash3dpp/private/server/world_trace.hpp>
 
+namespace xash::networking {
+class DeltaTables; // S9 — usercmd/event/entity_state delta tables (delta.hpp)
+}
+
 namespace xash::server {
 
 struct ClientMachinery; // S9 — svs.clients + svgame.msg + sv.multicast (clients.hpp)
@@ -65,6 +69,10 @@ struct EngineBridge
     // S9 snapshot pipeline — svs.baselines + sv.instanced.  pfnCreateInstanced-
     // Baseline reaches this to append; null in pre-lifecycle fixtures.
     SnapshotState *snapshot = nullptr;              // @lifetime: engine
+
+    // S9 delta tables (usercmd/event/entity_state).  SV_PlaybackReliableEvent
+    // null-compresses event args through this; null until load_progs wires it.
+    ::xash::networking::DeltaTables *delta = nullptr; // @lifetime: engine
 
     // Misc allocations the ABI forces on the engine (cvar string
     // replacements); typically the svgame mempool equivalent.

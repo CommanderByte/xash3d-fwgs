@@ -59,6 +59,20 @@ inline constexpr int k_fl_customentity = 1 << 29; // beam entities
 inline constexpr int k_fl_killme       = 1 << 30; // const.h:56 — marked for death
 inline constexpr int k_fl_dormant      = static_cast<int>( 1U << 31 ); // no updates to client
 
+// common/event_flags.h — pfnPlaybackEvent flags (game DLL → SV_PlaybackEventFull).
+// Wire/ABI-frozen: the game passes these numerals to the engine.
+inline constexpr int k_fev_nothost  = 1 << 0; // skip local host
+inline constexpr int k_fev_reliable = 1 << 1; // bypass queue → reliable datagram
+inline constexpr int k_fev_global   = 1 << 2; // send to everybody (no PAS/PVS cull)
+inline constexpr int k_fev_update   = 1 << 3; // merge with a matching queued event
+inline constexpr int k_fev_hostonly = 1 << 4; // send only to the invoker
+inline constexpr int k_fev_server   = 1 << 5; // stamped on: created on the server
+inline constexpr int k_fev_client   = 1 << 6; // client-side only (server rejects)
+
+// protocol.h :110 — MAX_EVENTS == (1 << MAX_EVENT_BITS) == 1024 (the HL limit).
+// The event precache index is bounds-checked against this before send.
+inline constexpr int k_max_events = 1 << 10;
+
 // common/mod_local.h :34 — the world model always lives at precache slot 1.
 inline constexpr int k_world_index = 1;
 

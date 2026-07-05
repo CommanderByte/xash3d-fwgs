@@ -111,6 +111,7 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     rt.bridge.host_error     = rt.cfg.host_error;
     rt.bridge.host_error_ctx = rt.cfg.host_error_ctx;
     rt.bridge.clients        = &rt.clients; // S9 — messaging pfn slots reach it
+    rt.bridge.delta          = &rt.delta;   // S9 — reliable-event null-compression
     install_engine_bridge( &rt.bridge );
 
     // S9: bind the multicast scratch buffer + reset per-client staging.
