@@ -165,6 +165,20 @@ note that the function itself disappears, list the number of call sites that
 change, and show a before/after example. Prioritise by call-site count — a
 helper called in 20 places is a bigger win than one called once.
 
+### 2-K  Extension posture (Q-21)
+
+Read `xash3dpp/docs/design/extension-goals.md` and flag violations of its
+door rules — these are modernization findings even when the code is
+otherwise idiomatic C++:
+
+| Pattern | Door rule violated |
+|---------|--------------------|
+| New file-scope mutable state / singleton outside the subsystem's documented ABI exceptions ("Module statics" table) | P-3 context-first |
+| Function reachable from DLL callbacks or service frontends that reads state from a global instead of a context parameter | P-3 context-first |
+| Free function taking a whole runtime aggregate while reading/writing only one sub-aggregate (orchestrators exempt) | P-5 narrowest-state |
+| Debug/introspection code reaching into subsystem internals where a typed surface (`EntityView`, observers, stats tiers) exists or should be extended | P-4 typed surfaces |
+| Cross-thread state access not using an inbox / published-snapshot design | P-1 / P-2 |
+
 ---
 
 ## Step 3 — Prioritise
@@ -176,6 +190,10 @@ Group findings into three tiers:
 | **High** | Removes a safety hazard (shared mutable buffer, manual lifetime, naked owning pointer) or eliminates significant boilerplate in a hot call path; or deletes a helper function that is now entirely redundant (category 2-J) |
 | **Medium** | Improves readability/type-safety with low risk (enum class, nullptr, std::array, optional) |
 | **Low** | Cosmetic improvement, debatable style gain, or requires touching frozen ABI |
+
+**Extension bump (Q-21)**: a finding that also opens or protects a door in
+`xash3dpp/docs/design/extension-goals.md` is promoted **one tier** and tagged
+`[EXT:G-n]` / `[EXT:P-n]` so the extension-relevant backlog is filterable.
 
 ---
 

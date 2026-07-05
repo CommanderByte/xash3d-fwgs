@@ -42,6 +42,10 @@ Everything else is internal and free to redesign.
 
 ## Step 4 — Write the boundary spec
 
+Read `xash3dpp/docs/design/extension-goals.md` first — the template's
+"Extension axes" section evaluates this subsystem against its goals (G-n)
+and primitives (P-n), per Q-21.
+
 Create `xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md` with the following sections:
 
 ```markdown
@@ -74,6 +78,14 @@ candidate. Record the verdict (same target / separate target) with one-line rati
 | Candidate feature | Score (0-5) | Verdict |
 |-------------------|-------------|---------|
 | ...               | ...         | ...     |
+
+## Extension axes (Q-21)
+Evaluate this subsystem against `docs/design/extension-goals.md`: which goals
+(G-1..G-4) or primitives (P-1..P-6) does it touch, and what seam shape must
+this boundary provide or protect? A reasoned "none apply" is a valid answer.
+| Goal / primitive | Applies? | Required seam or door |
+|------------------|----------|-----------------------|
+| ...              | ...      | ...                   |
 
 ## Open questions
 Things that need a design decision before implementation can start.

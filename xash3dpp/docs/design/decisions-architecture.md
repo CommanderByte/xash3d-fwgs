@@ -186,7 +186,7 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
-All twenty questions (Q-1 … Q-20) are decided.
+All 21 questions (Q-1 … Q-21) are decided.
 
 ### Question index
 
@@ -202,6 +202,7 @@ All twenty questions (Q-1 … Q-20) are decided.
 | Q-8 | STRING_VIEW_BOUNDARY | Q-18 | PM_FP_MODEL |
 | Q-9 | OWNERSHIP | Q-19 | PHS_PLACEMENT |
 | Q-10 | PLUGIN_VERSION | Q-20 | EDICT_STORE |
+| Q-21 | EXTENSION_POSTURE | — | — |
 
 File order is historical — Q-14 appears before Q-13 below; do not renumber.
 
@@ -883,6 +884,53 @@ binding/arena flavor behind this seam — never a Chunk 6 concern.
 
 ______________________________________________________________________
 
+### EXTENSION_POSTURE (Q-21): long-term extension goals are a binding review axis
+
+> **Status**: ✅ DECIDED (2026-07-05; full requirements in `extension-goals.md`)
+
+**Context**: The rewrite's long-term purpose includes experimental features
+beyond GoldSrc parity: an in-engine MCP service, a multithreading-suitable
+game ABI ("v2") with a reworked HL SDK, a dedicated debug thread, and
+expanded in-game debugging (G-1 … G-4 in `extension-goals.md`). None is
+scheduled, and parity-first chunks legitimately keep legacy-shaped cores
+while the frozen ABI demands it (Q-20). But everyday rewrite decisions can
+silently close the doors those features need — a new file-scope global, a
+context-less entry point, a debug backdoor that bypasses typed surfaces, a
+whole-runtime function signature. The threading model already contains the
+enabling rules (§8.1 context parameters, §9 Rule 3 compute/commit, Rule 4 no
+new globals); what was missing was a named requirements register and workflow
+hooks binding work to it.
+
+**Decision**: `docs/design/extension-goals.md` is the binding requirements
+document for extension posture. Concretely:
+
+- **Boundary specs** include an **"Extension axes (Q-21)"** section
+  evaluating the subsystem against the goals (G-1 … G-4) and primitives
+  (P-1 … P-6); a reasoned "none apply" is a valid answer.
+- **Modernization audits** tag findings that open or protect a door
+  (`[EXT:G-n]` / `[EXT:P-n]`) and promote them one priority tier.
+- **The door rules bind new code** (see §4.3): context-first entry points
+  with no new file-scope mutable state beyond documented ABI exceptions
+  (P-3); off-main access only via the inbox / published-snapshot patterns
+  (P-1, P-2); introspection through typed surfaces, never backdoors (P-4);
+  narrowest-state signatures for free functions over runtime aggregates
+  (P-5); experimental features placed as satellite targets per the Q-11
+  test (P-6).
+- **Feature design stays out of scope until promoted**: a goal enters
+  `implementation-plan.md` only through its own design brief
+  (`pm-determinism-decision.md` is the precedent); ABI v2 additionally
+  captures the existing SDK-rework prototype's constraints as brief input.
+- **Parity precedence**: inside a parity-gated subsystem, byte-exact GoldSrc
+  behaviour wins over a door rule; the deviation is recorded in
+  `extension-goals.md` as known door-debt.
+
+Enforcement is by the workflow surface (the `analyse-subsystem` and
+`analyse-modernization` prompts carry the hooks) and reviewer attention at
+the normal gates; no automated scanner rule yet — add one if a door
+violation ever slips a review.
+
+______________________________________________________________________
+
 ## 4. Application Schedule
 
 All open questions are decided. This section records when each rule applies.
@@ -946,6 +994,12 @@ These rules apply from the first line of any new subsystem:
   internals go through the zero-cost typed accessor facade; raw
   `entvars_t`/`edict_t` access only in the ABI shim, pmove bridge, and save
   serializer (Q-20)
+- Extension posture: the `extension-goals.md` door rules — context-first
+  entry points (no new file-scope mutable state beyond documented ABI
+  exceptions), off-main access only via inbox / published-snapshot patterns,
+  introspection via typed surfaces, narrowest-state signatures over runtime
+  aggregates, experimental features as Q-11 satellites; boundary specs carry
+  an "Extension axes" section (Q-21)
 
 ______________________________________________________________________
 

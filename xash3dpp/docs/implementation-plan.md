@@ -302,6 +302,16 @@ ______________________________________________________________________
   open questions are indexed in the **OQ crosswalk** in
   `docs/design/decisions-architecture.md`.
 
+- **Extension posture (Q-21)** — the long-term experimental goals (in-engine
+  MCP service, multithreading-suitable game ABI v2 + HL SDK rework, dedicated
+  debug thread, expanded in-game debugging) are catalogued in
+  `design/extension-goals.md`; its door rules bind new code via Q-21 and are
+  hooked into the `analyse-subsystem` / `analyse-modernization` prompts.
+  Feature work itself is **unscheduled** — promotion to a chunk requires its
+  own design brief; see the doc's per-chunk hook table (worker-pool inbox at
+  Chunk 7, per-body `PhysicsContext` at Chunk 11, thread-model decision
+  before Chunk 12, `RenderFrame` as the snapshot reference at Chunk 13).
+
 ______________________________________________________________________
 
 ## Chunk 6 (server) — deferred stub inventory *(S10 feature-complete gate, 2026-07-05)*
