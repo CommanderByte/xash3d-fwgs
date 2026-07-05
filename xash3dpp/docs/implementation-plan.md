@@ -441,3 +441,14 @@ they don't get lost; pick up opportunistically or when the trigger fires):
   in the pipeline diagram, session-scoping/token-budget section, tooling
   section). Fully specified in the approved hardening plan; gate =
   `tools/workflow_sync.py` (full stage) exit 0.
+- **`xash3dpp_script` satellite** *(reserved 2026-07-06, decided-not-built —
+  the xash3dpp_http precedent)* — the G-5 scripting runtime target; built
+  only after the spike in `design/scripting-runtime-brief.md` picks the
+  runtime (verified shortlist: Lua 5.4-as-C / QuickJS-ng / AngelScript).
+  Companion build work when it lands: the `xash3dpp_allow_exceptions(target)`
+  flag-REPLACE helper (also the tidy for the pre-existing D9025
+  default-`/EHsc` noise) and the first `xash3dpp/3rdparty/` vendoring.
+- **`TODO(net-base)` transport-types layer** *(deferred 2026-07-06, D-1)* —
+  `platform/os_socket.hpp` re-exports networking types (layer inversion; see
+  `design/layer-model.md` §2). Trigger: the first satellite needing sockets
+  without networking (likely the G-5 spike or the G-1 MCP transport).
