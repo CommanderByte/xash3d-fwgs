@@ -29,9 +29,9 @@ except for the magic-static build number cached by `build::number()`.
 - **Dual API** for string/path operations: a raw `(char*, size_t)` form for
   engine-internal hot paths, and a `std::string`-returning form for callers that
   prefer the convenience.
-- **Zero external dependencies**: `xash3dpp_utilities` links only the C++20
-  standard library. It does not link `xash3dpp_memory` or any other xash3dpp
-  target.
+- **Zero external dependencies**: `xash3dpp_utilities` links only the C++
+  standard library (target declares `cxx_std_23`). It does not link
+  `xash3dpp_memory` or any other xash3dpp target.
 - **Legacy fidelity**: each function preserves the observable contract of its
   `Q_*` / `COM_*` predecessor. Legacy function names and numeric outputs are
   documented in every header.
@@ -52,6 +52,13 @@ except for the magic-static build number cached by `build::number()`.
 - `GameInfo` and `parse_gameinfo_txt` live in namespace `xash`, not
   `xash::utilities`. `gameinfo_parser.hpp` depends on the package-root
   `xash3dpp/gameinfo.hpp`.
+
+## Threading
+
+The module is thread-agnostic: pure functions plus caller-owned value types,
+no global mutable state (see the boundary spec's Threading section). Every
+public header carries a `@thread-safety:` contract line (QN). Nothing here
+asserts a thread role — utilities sit below the subsystems that have one.
 
 ## Relationship to legacy code
 

@@ -350,7 +350,7 @@ void for_each_pool(void (*fn)(PoolStats, void*), void* userdata) noexcept
     }
 }
 
-void set_oom_handler(void (*handler)(std::size_t, PoolHandle) noexcept) noexcept
+void set_oom_handler(void (*handler)(std::size_t, PoolHandle) noexcept) noexcept // compliance-allow(thread-assert): atomic release-store — callable from any thread; memory sits below platform (no ThreadRole dependency)
 {
     g_oom_handler.store(handler, std::memory_order_release);
 }

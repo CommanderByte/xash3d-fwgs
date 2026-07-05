@@ -4,6 +4,8 @@
 //
 // Uses a reflection-style descriptor table so callers can describe struct
 // field layouts without writing custom swap loops.
+//
+// @thread-safety: pure functions over caller-owned buffers — safe from any thread.
 
 #include <cstdint>
 #include <cstddef>

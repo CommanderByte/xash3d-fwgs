@@ -17,6 +17,10 @@
 // compatible with the legacy uint32_t poolhandle_t from common/xash3d_types.h
 // so that renderer and physics plugin ABIs can still receive function pointers
 // that satisfy the pool-flavoured signatures from ref_api_t / physint_t.
+//
+// @thread-safety: alloc/free/realloc and all counters are atomic-backed —
+// safe from any thread; create_pool/destroy_pool/set_oom_handler are equally
+// atomic but intended for the init window (see memory-boundary.md §Threading).
 
 #include <xash3dpp/memory/stats.hpp>
 
@@ -117,6 +121,11 @@ void set_oom_handler(void (*handler)(std::size_t requested, PoolHandle pool) noe
 template<typename T, typename... Args>
 [[nodiscard]] T* pool_new(PoolHandle pool, Args&&... args) noexcept
 {
+    // AllocHeader guarantees only 8-byte payload alignment; an over-aligned T
+    // would need an aligned-alloc API plus the aligned operator-delete pair
+    // (neither exists today — see architecture/memory/typed-helpers.md).
+    static_assert(alignof(T) <= 8,
+                  "pool_new<T>: alignof(T) > 8 unsupported — AllocHeader guarantees 8-byte payload alignment (Q-22)");
     void* p = mem_alloc(pool, sizeof(T));
     if (!p) return nullptr;
     return ::new(p) T(static_cast<Args&&>(args)...);

@@ -5,6 +5,8 @@
 // Pure text transforms: no filesystem or OS dependency.
 // For scanning the game directory tree, use Filesystem::scan_game_directories().
 // For writing gameinfo.txt, call serialise_gameinfo() then Filesystem::write_file().
+//
+// @thread-safety: pure text transforms — safe from any thread.
 
 #include <xash3dpp/gameinfo.hpp>
 

@@ -4,6 +4,8 @@
 //
 // Used by plugin loaders (filesystem, renderer, game DLL) to resolve and
 // validate their export tables after dlopen/LoadLibrary.
+//
+// @thread-safety: pure functions over caller-owned tables — safe from any thread.
 
 #include <cstddef>
 #include <span>

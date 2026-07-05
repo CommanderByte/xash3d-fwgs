@@ -22,7 +22,8 @@ from pathlib import Path
 # Make the sibling `xtools` package importable (tools/ is tests/'s parent).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from xtools.checks import _allow_context, _filter_allows, _violation  # noqa: E402
+from xtools.checks import (_DECL_RX, _allow_context,  # noqa: E402
+                           _decl_args_are_bare_ids, _filter_allows, _violation)
 from xtools.rules import RULES  # noqa: E402
 
 
@@ -236,6 +237,31 @@ class AnnotationRules(unittest.TestCase):
         self.assertFalse(_hits("lifetime-annotation", code, annotated))
         exempt = code + "  // @annotation-exempt: cold-value-type"
         self.assertFalse(_hits("lifetime-annotation", code, exempt))
+
+    def test_lifetime_annotation_ignores_statements(self):
+        # Inline bodies live in headers: statement keywords are not members
+        # (`return *this;` used to match the raw-pointer-member shape).
+        for line in (
+            "        return *this;",
+            "        delete *it;",
+            "        throw *err;",
+        ):
+            self.assertFalse(_hits("lifetime-annotation", line), line)
+
+    def test_nodiscard_decl_rx_skips_explicit_ctor(self):
+        # A constructor is not a discardable-return declaration.
+        self.assertFalse(
+            _DECL_RX.match("    explicit Atlas( int size ) noexcept;"))
+
+    def test_nodiscard_initializer_heuristic(self):
+        # Local variable init inside an inline header body — not a decl.
+        self.assertTrue(
+            _decl_args_are_bare_ids("    std::string result( s );"))
+        # Real declarations: params carry types (or PascalCase type names).
+        self.assertFalse(_decl_args_are_bare_ids(
+            "int snprintf( char *buf, std::size_t size, const char *fmt, ... ) noexcept;"))
+        self.assertFalse(_decl_args_are_bare_ids("int f();"))
+        self.assertFalse(_decl_args_are_bare_ids("int f( Config );"))
 
     def test_prereserve_suppression_matches_raw(self):
         # Regression for the exclude-on-code bug: the @pre-reserved: marker

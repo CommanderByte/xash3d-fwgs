@@ -492,7 +492,7 @@ std::optional<Tokenizer::Token> Tokenizer::next() noexcept
     return Token{ std::string_view{ buf_.data(), static_cast<std::size_t>( len ) }, quoted };
 }
 
-void Tokenizer::reset( const char *data ) noexcept
+void Tokenizer::reset( const char *data ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — instance confined to its owner's thread
 {
     cursor_ = data;
     buf_[0] = '\0';

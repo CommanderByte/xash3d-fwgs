@@ -1,6 +1,8 @@
 ﻿#pragma once
 // xash3dpp — file path utilities
 // Legacy reference: public/crtlib.h  (COM_FileBase, COM_FileExtension, …)
+//
+// @thread-safety: pure functions — safe from any thread.
 
 #include <cstddef>
 #include <string>

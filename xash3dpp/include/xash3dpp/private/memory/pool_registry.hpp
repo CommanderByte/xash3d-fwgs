@@ -52,7 +52,7 @@ struct PoolBucket
     void* (*do_alloc  )(std::size_t size,                void* ctx) noexcept = nullptr;
     void  (*do_free   )(void*       ptr,                 void* ctx) noexcept = nullptr;
     void* (*do_realloc)(void*       ptr, std::size_t sz, void* ctx) noexcept = nullptr;
-    void*                                                            ctx      = nullptr;
+    void*                                                            ctx      = nullptr;  // @lifetime: strategy backend — set/cleared with the do_* pointers by create_pool/destroy_pool
 };
 
 inline constexpr std::uint32_t kMaxPools = static_cast<std::uint32_t>(xash::limits::memory_pool_max);

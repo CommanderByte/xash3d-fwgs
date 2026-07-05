@@ -6,6 +6,8 @@
 // Here we wrap them in value types so the compiler can reason about alignment
 // and we avoid the raw-pointer aliasing issues in the legacy code.
 //
+// @thread-safety: value types + pure operations — safe from any thread.
+//
 // NOTE: The legacy matrixlib.c depends on common/com_model.h for bone/
 // attachment types.  This module does NOT import com_model.h; bone-aware
 // helpers belong in the content-loaders or server subsystem.

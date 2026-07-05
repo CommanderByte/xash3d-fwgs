@@ -27,6 +27,13 @@ T* pool_new(PoolHandle pool, Args&&... args) noexcept;
 All allocation counter effects of `mem_alloc` apply. Because exceptions are
 disabled (`/EHs-c-`), placement new must not throw; use `noexcept` constructors.
 
+**Alignment (Q-22)**: `pool_new<T>` `static_assert`s `alignof(T) <= 8`. The
+`AllocHeader` prefix guarantees only 8-byte payload alignment, and there is no
+aligned-alloc API. If aligned allocation ever lands, every pool-owned class
+must also gain the *aligned* `operator delete` overload pair — the compiler
+selects the aligned form for over-aligned types, and an unsized/unaligned-only
+pair would silently free through the wrong path.
+
 ______________________________________________________________________
 
 ## `pool_delete<T>`

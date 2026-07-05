@@ -4,6 +4,8 @@
 //
 // Replaces the macro soup with constexpr functions and function templates.
 // The underlying scalar type is still float (vec_t) to match the SDK ABI.
+//
+// @thread-safety: pure constexpr math — safe from any thread.
 
 #include <cmath>
 #include <cstring>

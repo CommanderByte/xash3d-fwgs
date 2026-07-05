@@ -6,6 +6,7 @@
 
 #include <xash3dpp/utilities/build.hpp>
 #include <array>
+#include <cstdint>
 
 namespace xash::utilities::build {
 
@@ -23,7 +24,7 @@ int number_from_date( std::string_view iso_date ) noexcept
 
     const auto digit = []( char c ) noexcept -> int {
         const int value = c - '0';
-        return static_cast<unsigned>( value ) <= 9 ? value : -1;
+        return static_cast<std::uint32_t>( value ) <= 9u ? value : -1;
     };
 
     const int y0 = digit( iso_date[0] ), y1 = digit( iso_date[1] ),

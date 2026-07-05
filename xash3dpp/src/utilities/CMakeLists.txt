@@ -14,7 +14,7 @@ target_include_directories(xash3dpp_utilities
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
-target_compile_features(xash3dpp_utilities PUBLIC cxx_std_20)
+target_compile_features(xash3dpp_utilities PUBLIC cxx_std_23)
 
 # miniz: vendored deflate/zlib/ZIP — add once 3rdparty is populated
 # target_link_libraries(xash3dpp_utilities PUBLIC miniz)

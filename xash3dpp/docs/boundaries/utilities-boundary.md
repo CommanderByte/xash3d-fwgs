@@ -1,4 +1,8 @@
-# Public Utilities Boundary Spec
+# Utilities Boundary Spec
+
+> Ports the legacy `public/` utility library. Renamed from
+> `public-utilities-boundary.md` (6B S1) to the canonical
+> `<subsystem>-boundary.md` form.
 
 ## Responsibility
 
@@ -105,3 +109,34 @@ ______________________________________________________________________
 1. **`miniz` vendor strategy.** Should `xash3dpp/3rdparty/` carry its own miniz copy, or depend on a system zlib with a miniz compatibility shim? Either way, the ZIP-read API surface used by filesystem must be decided before the filesystem module is implemented.
 1. **`getopt` necessity.** The rewrite will target C++17; `std::span` + a small argument parser might replace `getopt` entirely. Confirm whether any external tool or game DLL calls `getopt` directly (unlikely, but should be verified).
 1. **Thread safety of `Q_timestamp`.** It uses `localtime` internally via a static buffer in some implementations. If the rewrite targets a multi-threaded host, this must be replaced with `localtime_r`/`localtime_s`.
+
+______________________________________________________________________
+
+## Threading
+
+The xash3dpp port is thread-agnostic by construction: every entry point is a
+pure function or a method on a caller-owned value type (`Tokenizer`, `Atlas`,
+`Crc32Hasher`, `Md5Hasher`, `utfstate_t`). There is no global mutable state
+(the `build::number()` magic-static is initialise-once, read-only after).
+Per QN, each public header carries a `@thread-safety:` contract line;
+instance types are confined to their owner's thread, and the two mutator
+methods (`Atlas::clear`, `Tokenizer::reset`) carry
+`compliance-allow(thread-assert)` markers — a thread-role assert would be
+false precision on a subsystem with no thread affinity of its own.
+
+## Constant classification (QO)
+
+The literals in this module are **algorithm constants, frozen** — CRC32
+polynomial/init values (IEEE 802.3), MD5 round constants and shifts, UTF
+decode-state masks, codepage tables, date-digit ranges. They are not tunable
+capacities (limits.hpp) nor behavioural knobs (cvars); per QO they stay as
+in-code constants next to the algorithms that define them. `ATLAS_MAX_SIZE`
+is the one structural capacity and already lives in `limits.hpp`
+(`atlas_max_size`, ABI-frozen at 1024).
+
+## Q-11 satellite verdict
+
+Not a satellite candidate: no compat variance, no policy injection, no
+protocol variants — a single concrete implementation serving every consumer
+(Q-11 score 0). Interfaces are deliberately absent (Q-22 seam rule: no
+speculative `I*` seams in a pure-function library).

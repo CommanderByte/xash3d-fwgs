@@ -4,6 +4,9 @@
 //
 // ATLAS_MAX_SIZE mirrors limits::atlas_max_size (ABI-constrained: matches the legacy
 // struct layout; changing it is a breaking serialisation change).
+//
+// @thread-safety: thread-agnostic value type — confine each Atlas instance
+// to its owner's thread.
 
 #include <xash3dpp/limits.hpp>
 

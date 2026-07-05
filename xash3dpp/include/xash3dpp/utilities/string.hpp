@@ -4,12 +4,17 @@
 //
 // Replaces Q_strncpy, Q_strlen, Q_strcmp/stricmp, Q_snprintf, Q_atoi/atof,
 // COM_ParseFileSafe, COM_StripColors, matchpattern_with_separator, etc.
+//
+// @thread-safety: free functions are pure — safe from any thread; Tokenizer
+// is a thread-agnostic value type — confine each instance to its owner's thread.
+// Stats: no hot-path counters — stats exempt (pure utility library).
 
 #include <xash3dpp/limits.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdarg>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -82,8 +87,8 @@ inline void to_lower( std::string& s ) noexcept
 
 // Bounded snprintf — always null-terminates; returns chars written (< size).
 // Legacy: Q_snprintf / Q_vsnprintf
-int snprintf( char *buf, std::size_t size, const char *fmt, ... ) noexcept;
-int vsnprintf( char *buf, std::size_t size, const char *fmt, std::va_list args ) noexcept;
+int snprintf( char *buf, std::size_t size, const char *fmt, ... ) noexcept;                    // compliance-allow(nodiscard-missing): C-stdlib mirror — legacy call sites discard the count (Q_snprintf parity)
+int vsnprintf( char *buf, std::size_t size, const char *fmt, std::va_list args ) noexcept;    // compliance-allow(nodiscard-missing): C-stdlib mirror — legacy call sites discard the count (Q_vsnprintf parity)
 
 // Convert string to int / float / float[n].
 // Legacy: Q_atoi, Q_atof, Q_atov
@@ -112,7 +117,7 @@ void        strip_colors( const char *in, char *out ) noexcept;
                     bool            wildcard_least_one = false ) noexcept;
 
 // Tokeniser flags — mirror legacy PFILE_* values for compat.
-enum class TokenFlags : unsigned
+enum class TokenFlags : std::uint32_t
 {
     None                  = 0,
     NoBracketsAsToken     = 1u << 0,
@@ -127,15 +132,15 @@ enum class TokenFlags : unsigned
 // Bitwise operators so flags can be composed without casts.
 constexpr TokenFlags operator|( TokenFlags a, TokenFlags b ) noexcept
 {
-    return static_cast<TokenFlags>( static_cast<unsigned>( a ) | static_cast<unsigned>( b ) );
+    return static_cast<TokenFlags>( static_cast<std::uint32_t>( a ) | static_cast<std::uint32_t>( b ) );
 }
 constexpr TokenFlags operator&( TokenFlags a, TokenFlags b ) noexcept
 {
-    return static_cast<TokenFlags>( static_cast<unsigned>( a ) & static_cast<unsigned>( b ) );
+    return static_cast<TokenFlags>( static_cast<std::uint32_t>( a ) & static_cast<std::uint32_t>( b ) );
 }
 constexpr TokenFlags operator~( TokenFlags a ) noexcept
 {
-    return static_cast<TokenFlags>( ~static_cast<unsigned>( a ) );
+    return static_cast<TokenFlags>( ~static_cast<std::uint32_t>( a ) );
 }
 constexpr TokenFlags &operator|=( TokenFlags &a, TokenFlags b ) noexcept { return a = a | b; }
 constexpr TokenFlags &operator&=( TokenFlags &a, TokenFlags b ) noexcept { return a = a & b; }

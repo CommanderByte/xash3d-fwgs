@@ -4,6 +4,8 @@
 //
 // build_vcs.cpp is generated at configure/link time from VCS state.
 // All other symbols are computed from it at startup.
+//
+// @thread-safety: immutable after static init — safe from any thread.
 
 #include <string_view>
 

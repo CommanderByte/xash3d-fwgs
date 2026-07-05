@@ -14,7 +14,7 @@ Atlas::Atlas( int size ) noexcept
 {
 }
 
-void Atlas::clear() noexcept
+void Atlas::clear() noexcept // compliance-allow(thread-assert): thread-agnostic value type — instance confined to its owner's thread
 {
     m_allocated.fill( 0 );
     m_max_height = 0;

@@ -6,4 +6,4 @@ target_include_directories(xash3dpp_memory
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
-target_compile_features(xash3dpp_memory PUBLIC cxx_std_20)
+target_compile_features(xash3dpp_memory PUBLIC cxx_std_23)

@@ -185,3 +185,14 @@ All configurable limits for the rewrite's memory subsystem live in
 |----------|---------|---------------|-------|
 | `memory_pool_max` | `128` | `XASH_LIMIT_MEMORY_POOL_MAX` | Max simultaneously active named pools |
 | `memory_pool_name_len` | `64` | `XASH_LIMIT_MEMORY_POOL_NAME_LEN` | Max bytes in a `PoolBucket::name` buffer (including null terminator) |
+
+______________________________________________________________________
+
+## Q-11 satellite verdict
+
+Not a satellite candidate: one concrete allocator implementation serving every
+consumer (Q-11 score 0). The `AllocStrategy` enum tags future backends
+(Arena/Slab) as data, not as interface seams — per the Q-22 seam rule no `I*`
+interface exists until a second real backend lands. Threading is documented in
+the architecture pages (atomic counters; see `@thread-safety:` in
+`memory.hpp`).

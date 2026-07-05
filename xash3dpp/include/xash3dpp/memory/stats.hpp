@@ -3,6 +3,8 @@
 //
 // PoolStats lives in its own header so debug/profiling consumers can include
 // just the stats view without dragging in the full pool API.
+//
+// @thread-safety: POD snapshot value type — safe to copy across threads.
 
 #include <cstddef>
 

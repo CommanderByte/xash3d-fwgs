@@ -348,9 +348,22 @@ def _scan_enum_kprefix(files: list[Path]) -> list[dict]:
 
 _DECL_RX = re.compile(
     r"^\s*(?:virtual\s+)?"
-    r"(?!.*\b(void|return|if|for|while|switch|else|using|typedef|namespace|template|class|struct|enum|friend|operator|static_assert|delete|default)\b)"
+    r"(?!.*\b(void|return|if|for|while|switch|else|using|typedef|namespace|template|class|struct|enum|friend|operator|static_assert|delete|default|explicit)\b)"
     r"(?:const\s+)?[A-Za-z_][\w:<>,*&\s]*?\s+&?(\w+)\s*\([^;{}]*\)\s*(?:const\s*)?(?:noexcept[^;{]*)?;\s*$"
 )
+
+
+def _decl_args_are_bare_ids(code: str) -> bool:
+    """True when every parenthesized argument is a bare snake_case identifier —
+    a variable initializer (`std::string result( s );`) inside an inline body,
+    not a declaration (C++ parameters carry a type; repo naming makes types
+    PascalCase, so lowercase-only args can't be unnamed-param types).  Empty
+    parens stay a declaration.  6B S1 false-positive fix."""
+    m = re.search(r"\(([^()]*)\)", code)
+    if not m or not m.group(1).strip():
+        return False
+    parts = [p.strip() for p in m.group(1).split(",")]
+    return all(re.fullmatch(r"[a-z_]\w*", p) for p in parts)
 
 
 def _scan_nodiscard(sub: str) -> list[dict]:
@@ -364,7 +377,8 @@ def _scan_nodiscard(sub: str) -> list[dict]:
             prev = ""
             for lineno, code, raw in code_lines(path):
                 if _DECL_RX.match(code) and "[[nodiscard]]" not in code \
-                        and "[[nodiscard]]" not in prev and "operator" not in code:
+                        and "[[nodiscard]]" not in prev and "operator" not in code \
+                        and not _decl_args_are_bare_ids(code):
                     out.append(_violation(
                         "nodiscard-missing", "warning", path, lineno, raw,
                         "[[nodiscard]] is the default for non-void returns (QA)",
@@ -914,8 +928,11 @@ def finish_check(subsystem: str, run_tests: bool = False,
     sub_files = subsystem_files(sub)
     joined = "\n".join(p.read_text(encoding="utf-8", errors="replace")
                        for p in sub_files if p.suffix == ".hpp")
+    # Accessor spelling varies (`stats()`, `get_stats(handle)`) — any
+    # stats-returning call surface counts (6B S1 quirk fix: memory spells it
+    # get_stats and was failing the literal "stats()" probe).
     has_stats = bool(re.search(r"struct\s+\w*Stats\b", joined)) and \
-        "stats()" in joined
+        bool(re.search(r"stats\s*\(", joined))
     exempt = any("stats exempt" in p.read_text(encoding="utf-8", errors="replace")
                  for p in sub_files)
     add(3, "STATS_TIERS", "pass" if (has_stats or exempt) else "fail",
@@ -923,10 +940,12 @@ def finish_check(subsystem: str, run_tests: bool = False,
         ("exemption comment present" if exempt else
          "no Stats struct and no 'stats exempt' comment"))
 
-    # 4 nodiscard
-    nd = _scan_nodiscard(sub)
+    # 4 nodiscard — honor compliance-allow markers like compliance_scan does
+    # (adjudicated lines must not resurface as perpetual needs-judgment).
+    nd, nd_allowed = _filter_allows(_scan_nodiscard(sub))
     add(4, "NODISCARD", "pass" if not nd else "needs-judgment",
-        "%d candidate omissions" % len(nd))
+        ["%d candidate omissions" % len(nd)] +
+        (["%d compliance-allowed" % len(nd_allowed)] if nd_allowed else []))
 
     # 5 naming
     nm = _scan_enum_kprefix(subsystem_files(sub))

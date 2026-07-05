@@ -5,6 +5,9 @@
 // CRC32 output is IEEE 802.3 compatible.  The four functions below are also
 // bound into enginefuncs_t (game DLL ABI) as function pointers; a shim at the
 // fill-site is all that is needed — no ABI constraint on this implementation.
+//
+// @thread-safety: free functions are pure — safe from any thread; hasher
+// wrappers are thread-agnostic value types (owner-confined).
 
 #include <array>
 #include <cstdint>

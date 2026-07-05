@@ -4,6 +4,9 @@
 //
 // IMPORTANT: utfstate_t must be zero-initialised before first use.
 // Feed codepoints one byte at a time; function returns 0 while still decoding.
+//
+// @thread-safety: pure functions; utfstate_t is caller-owned — confine each
+// decode state to one thread.
 
 #include <array>
 #include <cstddef>
