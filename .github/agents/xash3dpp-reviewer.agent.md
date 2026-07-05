@@ -23,8 +23,12 @@ details matter, read the cited source, don't guess.
 ## Mechanical pre-pass
 
 Checks tagged **[M]** below are automated by
-`xash3dpp/tools/compliance_scan.py`; the delegating prompt runs it and
-supplies the JSON findings alongside this review. Confirm those findings,
+`xash3dpp/tools/compliance_scan.py` (incl. the Q-22/QN checks:
+`class-operator-new`, `operator-delete-pairing`, `make-unique-outside-pimpl`,
+`post-annotation-retired`, `unsafe-cast-safety-comment`,
+`lifetime-annotation`, and the `--checks annotation-coverage` report); the
+delegating prompt runs it and supplies the JSON findings alongside this
+review. Confirm those findings,
 weed out false positives, and severity-classify them — do not re-grep for
 them. Spend your reasoning on the **[J]** (judgment) checks. If no scan
 output was supplied, say so in your summary and check the [M] items by
@@ -131,6 +135,33 @@ search as a fallback.
 - [M] Diagnostic output via `printf`/`fprintf`/`OutputDebugString` → **WARNING** (exception: test files may use `std::puts` for `CHECK` output)
 - [J] Public API failure path with no preceding `core::log` call → **WARNING**
 - [J] `int64_t` for a size/count, or `size_t` for a file offset → **WARNING**
+
+### 14. Class lifecycle and pool-owned classes (Q-22 in decisions-architecture.md)
+
+- [M] Class-scoped `operator new` → **BLOCKER**
+- [M] `operator delete` declared without both overloads (unsized + sized) → **WARNING**
+- [M] `std::make_unique<T>` for a non-pimpl `T` in `src/` → **WARNING**
+- [J] Owning `unique_ptr<T>` where `T` is neither pimpl `Impl` nor a
+  pool-owned class (operator-delete pair + `pool_new` factory) → **WARNING**
+- [J] Invariant-bearing aggregate mutated as free-function soup (invariants
+  named, not an orchestrator) → **WARNING**
+- [J] Whole-aggregate parameter where a sub-aggregate suffices
+  (narrowest-state, P-5) → **WARNING**
+- [J] Promoted/promotable class with self-bound storage and
+  compiler-generated copy/move (QJ address stability) → **WARNING**
+- [J] Pool-owned factory not named `create_<thing>`; legacy-echo rename
+  without a crosswalk annotation in the same change → **NOTE**
+
+### 15. Annotation discipline (QN in decisions-style.md)
+
+- [M] `// Post:` present (retired convention) → **NOTE**
+- [M] `reinterpret_cast` without `// SAFETY:` outside layout-pin TUs → **WARNING**
+- [M] Raw ptr/ref/view member without `@lifetime:` or `@annotation-exempt:` → **WARNING**
+- [J] `@annotation-exempt:` category untruthful for the marked entity → **WARNING**
+- [J] Public header of a subsystem with an off-main surface missing
+  `@thread-safety:` → **WARNING**
+- [J] Header documenting a main-thread contract the code never asserts
+  ("documents-but-never-asserts") → **WARNING**
 
 ## Output Format
 

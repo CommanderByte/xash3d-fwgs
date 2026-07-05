@@ -76,6 +76,26 @@ infrastructure that is already provided:
    the verdict in the boundary spec (Step 1) and set up the extra target(s)
    in Step 3 if required.
 
+8. **Class lifecycle + annotations baked into the skeleton (Q-22/QN)** — the
+   stubs you generate must already carry the standard so the subsystem never
+   needs a retrofit:
+   - Long-lived subsystem-owned objects: scaffold the pool-owned-class shape —
+     a `create_<thing>(PoolHandle, ...)` factory stub (constructs via
+     `pool_new<T>`) and BOTH `operator delete` overloads on the class routing
+     to `mem_free`. Never scaffold class-scoped `operator new`.
+   - Free-function internals only for orchestrators; anything with invariants
+     gets a class stub. Free functions over an aggregate take the narrowest
+     sub-aggregate.
+   - Annotation stubs per the QN matrix: `// @lifetime:` on raw ptr/ref/view
+     members, `// @thread-safety:` header contract lines on public headers,
+     `// @pre-reserved: <LIMIT>` on hot vectors (plus the `.reserve` in init).
+     Never emit `// Post:` (retired).
+   - Every public mutating entry stub opens with
+     `core::assert_thread_role(ThreadRole::Main)`.
+   - Constants per QO: structural capacities → `limits.hpp` block; behavioral
+     tunables → cvars (legacy-family prefix); wire/ABI-frozen values →
+     `k_*` beside the ABI, never in limits.hpp.
+
 Collect the names of any utilities/platform helpers you will use. Record them
 in a brief comment at the top of the implementation stub.
 

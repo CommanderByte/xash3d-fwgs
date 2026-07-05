@@ -1,6 +1,6 @@
 ---
 name: "Detail audit — structural compliance"
-description: "Read-only structural audit of an xash3dpp module. Runs six checks (limits.hpp coverage, header placement, memory/pool integration, stats tiering, dependency injection, compat isolation), produces a numbered violations table, and stops. No source files are changed. Use /implement-audit to apply the identified fixes."
+description: "Read-only structural audit of an xash3dpp module. Runs eight checks (limits.hpp coverage, header placement, memory/pool integration, stats tiering, dependency injection, compat isolation, class lifecycle, annotation discipline), produces a numbered violations table, and stops. No source files are changed. Use /implement-audit to apply the identified fixes."
 argument-hint: "module name, e.g. 'networking', 'cmd_cvar', 'filesystem'"
 agent: agent
 tools: [read, search, execute, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]
@@ -12,7 +12,8 @@ model: claude-sonnet-4-6
 Perform a **structural and architectural deep-audit** of the `$ARGUMENTS` module.
 This prompt covers checks that `sweep-module` does not perform — specifically:
 limits.hpp coverage, header placement, memory subsystem integration, stats tiering,
-dependency injection completeness, and compat isolation.
+dependency injection completeness, compat isolation, class lifecycle (Q-22), and
+annotation discipline (QN).
 
 **Analysis only — do not make any changes to source files.**
 Present the violations table and stop.
@@ -38,9 +39,10 @@ Present the violations table and stop.
 Read these before auditing. The specific sections are called out in each check.
 
 1. `xash3dpp/include/xash3dpp/limits.hpp` — canonical location for all fixed limits
-2. `xash3dpp/docs/design/decisions-architecture.md` — DI_PARAMS (Q-4), OWNERSHIP (Q-9), ALLOC_POLICY (Q-13), STATS_TIERS, Q-11/Q-12
+2. `xash3dpp/docs/design/decisions-architecture.md` — DI_PARAMS (Q-4), OWNERSHIP (Q-9), ALLOC_POLICY (Q-13), STATS_TIERS, Q-11/Q-12, **LIFECYCLE_MODEL (Q-22)**
 3. `xash3dpp/docs/design/debug-stats-design.md` — three-tier model, exemption criteria
-4. `.github/instructions/xash3dpp.instructions.md` — header placement rules, pool/memory rules
+4. `.github/instructions/xash3dpp.instructions.md` — header placement rules, pool/memory rules, class-lifecycle shape, the QN annotation matrix
+5. `xash3dpp/docs/design/decisions-style.md` — ANNOTATION_DISCIPLINE (QN), CONSTANT_PLACEMENT (QO)
 
 ---
 
@@ -272,6 +274,79 @@ process-global (other than the `memory` singleton, which is the documented excep
 - `#ifdef XASH_GOLDSRC_COMPAT` in a `.cpp` that is not a `compat_*.cpp` file → **WARNING**
 - Engine-wide compat policy aggregating multiple subsystems → **BLOCKER**
 - Compat variant inlined via `if (is_goldsrc_)` member at runtime in hot path → **WARNING**
+
+---
+
+### CHECK-LIFECYCLE — Class lifecycle and pool-owned classes (Q-22)
+
+**Rule** (from `decisions-architecture.md` §LIFECYCLE_MODEL (Q-22)): state with
+invariants lives in a class with an RAII lifecycle; free-functions-over-aggregate
+is reserved for orchestrators; pool-owned classes use the `create_<thing>`
+factory + dual-`operator delete` idiom; class `operator new` is forbidden;
+`make_unique` only for pimpl `Impl`; narrowest-state signatures.
+
+The mechanical pre-pass covers `class-operator-new`, `operator-delete-pairing`,
+`make-unique-outside-pimpl`, and `unique-ptr-nonpimpl`. Judgment calls:
+
+1. **Invariant-bearing aggregates**: is there a struct whose fields carry
+   invariants (paired counters, self-bound buffers, registration windows) but
+   is mutated by free functions from many TUs? → candidate for class promotion.
+2. **Orchestrator carve-out**: frame loops, lifecycle sequencing, and ABI
+   dispatch legitimately stay free functions — do not flag them.
+3. **Narrowest-state signatures**: free functions taking the whole runtime
+   aggregate while touching only one sub-aggregate.
+4. **Address stability**: a promoted class with self-bound storage
+   (buffers over own members, back-pointers) must delete copy/move per QJ
+   unless an explicit rebind path exists.
+5. **Factory naming**: pool-owned object factories are `create_<thing>` (Q-22
+   naming rider); promoted methods drop redundant subsystem prefixes with the
+   rename recorded in the crosswalk.
+
+**Flag**:
+- Class-scoped `operator new` → **BLOCKER** (mechanical)
+- `operator delete` declared without both overloads → **WARNING** (mechanical)
+- Owning `make_unique`/`unique_ptr` outside pimpl and outside the pool-owned
+  idiom → **WARNING**
+- Invariant-bearing aggregate mutated as free-function soup → **WARNING**
+  (promotion candidate; name the invariants)
+- Whole-aggregate parameter where a sub-aggregate suffices → **WARNING**
+- Promoted/promotable class with self-bound storage and compiler-generated
+  copy/move → **WARNING**
+
+---
+
+### CHECK-ANNOTATIONS — Annotation discipline (QN)
+
+**Rule** (from `decisions-style.md` §ANNOTATION_DISCIPLINE (QN); normative
+matrix in the instructions doc): `@lifetime:` on raw ptr/ref/view members;
+`@thread-safety:` on public headers of subsystems with any off-main surface;
+`@pre-reserved:` on hot vectors; `// Pre:` on non-typeable preconditions;
+`// SAFETY:` on reinterpret_cast/puns/const_cast wrappers; `// Post:` is
+retired. "Documents-but-never-asserts is non-compliant" — public mutating
+entries of main-thread-only subsystems open with
+`assert_thread_role(ThreadRole::Main)`.
+
+Start from the coverage report:
+
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --checks annotation-coverage --json
+```
+*(MCP: xash-tools `compliance_scan` with `checks_set="annotation-coverage"`.)*
+
+Judgment calls: exemption-marker truthfulness (`@annotation-exempt:` claims
+the right category), whether an unannotated site genuinely needs the marker
+(denominators are heuristic), and whether an unasserted mutator is a real
+public entry vs a leaf helper.
+
+**Flag**:
+- Coverage below 100% for a marker with no exemption adjudication → **WARNING**
+  per marker class (list the sites)
+- Untruthful `@annotation-exempt:` (e.g. `pure-namespace` on a stateful type) → **WARNING**
+- `// Post:` present → **NOTE** (mechanical; retire it)
+- Public mutating entry without a thread assert in a main-thread-only
+  subsystem → **WARNING**
+- `reinterpret_cast` without `// SAFETY:` outside layout-pin TUs → **WARNING**
+  (mechanical candidate)
 
 ---
 

@@ -53,6 +53,21 @@ Design contract to keep in mind:
 - `destroy_pool` debug-asserts `live_bytes == 0`. Clean up all allocations first.
 - Pool lifecycle (create/destroy) is single-owner. Do not destroy a pool while
   other threads are still allocating from it.
+- Payloads are only ≥8-byte aligned; `pool_new<T>` requires `alignof(T) <= 8`
+  (Q-22).
+
+**Pool-owned classes (Q-22 LIFECYCLE_MODEL)** — the preferred target shape for
+long-lived, subsystem-owned objects, over bare `pool_new` + `pool_ptr`:
+
+- A `create_<thing>(PoolHandle, ...)` factory constructs via `pool_new<T>`.
+- The class overrides **both** `operator delete` overloads (unsized + sized)
+  routing to `mem_free`, so a plain `std::unique_ptr<T>` owns it with the
+  DEFAULT deleter. Precedents: filesystem `File`, `ISearchBackend`.
+- Class-scoped `operator new` is forbidden (cannot carry the injected handle).
+- `std::make_unique<T>` stays sanctioned for pimpl `Impl` only — when this
+  migration finds an owning non-pimpl `make_unique`, convert it to the
+  pool-owned idiom (or defer with an owner tag if no pool handle is reachable
+  yet).
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: "Implement audit fixes"
-description: "Applies all structural violations found by /detail-audit to a module. Re-derives the violations internally (same six checks), applies every finding in severity order (BLOCKERs first, WARNINGs second), updates the boundary doc if one exists, builds, runs tests, and commits. Invoke this after reviewing /detail-audit output, or directly to run the full audit-fix-test-commit cycle without a review gate."
+description: "Applies all structural violations found by /detail-audit to a module. Re-derives the violations internally (same eight checks), applies every finding in severity order (BLOCKERs first, WARNINGs second), updates the boundary doc if one exists, builds, runs tests, and commits. Invoke this after reviewing /detail-audit output, or directly to run the full audit-fix-test-commit cycle without a review gate."
 argument-hint: "module name, e.g. 'networking', 'cmd_cvar', 'filesystem'"
 agent: agent
 tools: [read, search, edit, execute, todo, Build_CMakeTools, RunCtest_CMakeTools]
@@ -87,9 +87,41 @@ Batch independent edits with `multi_replace_string_in_file`.
   Move the guarded block into a pair of `compat_<variant>.cpp` files selected via
   CMakeLists.txt. Keep the core logic file clean.
 
+- **CHECK-LIFECYCLE — Q-22 conformance**:
+  - Remove any class-scoped `operator new`; route construction through a
+    `create_<thing>(PoolHandle, ...)` factory using `memory::pool_new<T>`.
+  - Complete `operator delete` pairs (add the missing sized/unsized overload,
+    both routing to `memory::mem_free`).
+  - Convert owning non-pimpl `make_unique` sites to the pool-owned idiom when
+    a pool handle is reachable; otherwise annotate and defer with an owner tag.
+  - Promote an invariant-bearing aggregate to a class ONLY when the audit named
+    its invariants; keep the change behaviour-preserving, delete copy/move if
+    storage is self-bound (QJ), and record any legacy-echo rename in the
+    crosswalk annotations in the same commit.
+  - Narrow whole-aggregate parameters to the sub-aggregate actually touched.
+
+- **CHECK-ANNOTATIONS — QN backfill**:
+  - Add the missing matrix markers (`@lifetime:`, `@thread-safety:`,
+    `@pre-reserved:` + `.reserve`, `// SAFETY:`) or a truthful
+    `// @annotation-exempt: <category>`.
+  - Delete any `// Post:` comments (retired).
+  - Open unasserted public mutating entries with
+    `assert_thread_role(ThreadRole::Main)` — verify `ThreadRole::Main`
+    registration exists on the production entry paths first; leaf helpers get a
+    `// compliance-allow(thread-assert): <reason>` instead of an assert.
+  - Re-run `compliance_scan --checks annotation-coverage` and report the
+    before/after coverage table.
+
 For any WARNING that cannot be mechanically fixed (e.g. a DI gap that requires
 wiring not yet available), add a `// detail-audit: accepted — <reason>` comment on
 the relevant declaration and record the deferral in the Step 5 summary.
+
+**Candidate adjudication (Q-21/6B taxonomy)**: every `candidate-*` finding is
+resolved as exactly one of **fix** · **compliance-allow(reason)** (inline
+marker) · **false-positive** (tooling bug — fix the rule in the compliance ruleset,
+`rules.py` under `xash3dpp/tools/xtools/`, + add a snippet test) ·
+**deferred-with-owner** (`// TODO(<owner-tag>)`). No silent drops; list the
+adjudications in the Step 5 summary.
 
 ---
 

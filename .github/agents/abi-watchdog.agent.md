@@ -58,6 +58,10 @@ wrapper or adapter for `edict_t`, `entvars_t`, `usercmd_t`), verify that:
 - No fields have been added, removed, or reordered
 - No field type has changed width or alignment
 - No `#pragma pack` or `[[no_unique_address]]` has been applied
+- **Q-22 retrofit guard**: the lifecycle standard must never add members,
+  virtual functions (vtables), or `operator delete` overloads to ABI-frozen
+  or vendored structs — those stay PODs; layout-pin test TUs are exempt from
+  the lifecycle rules entirely
 
 Use `sizeof` and `offsetof` assertions in the relevant test files to lock
 layout — flag their absence as a **WARNING**.

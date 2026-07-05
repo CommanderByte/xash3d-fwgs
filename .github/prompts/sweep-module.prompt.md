@@ -16,11 +16,14 @@ committed.
 
 ---
 
-## Already-Swept Modules (skip if $ARGUMENTS matches one of these)
+## Already-Swept Modules
 
-The following modules were fully swept in commit `e14152ee` and are already
-compliant. If `$ARGUMENTS` is one of them, report "already compliant — nothing
-to do" and stop.
+The following modules were fully swept against the **pre-Q-22/QN ruleset**.
+That sweep does NOT cover the 2026-07-06 additions (Q-22 lifecycle, QN
+annotation discipline, the broadened thread-assert scan) — **the Chunk 6B
+retrofit re-opens every module**. Skip a listed module only when the
+invocation explicitly targets the old ruleset; for 6B sessions and any run
+after 2026-07-06, sweep it.
 
 | Module | Swept commit |
 |--------|-------------|
@@ -311,6 +314,22 @@ Flag: any unqualified or partially-qualified reference to `limits::`,
 lives inside `xash::<subsystem>::` (i.e., the file declares or is inside a
 `namespace xash::<subsystem>` block, and the sibling name appears without `::xash::` prefix).
 
+#### ANNOTATIONS (QN) — annotation matrix conformance
+
+Rule (decisions-style §ANNOTATION_DISCIPLINE (QN); normative matrix in the
+instructions doc): `@lifetime:` on raw ptr/ref/view members; `@thread-safety:`
+on public headers of subsystems with any off-main surface; `// SAFETY:` on
+`reinterpret_cast`/puns/`const_cast` wrappers; `// Post:` is **retired**.
+Exemptions via a truthful `// @annotation-exempt: <category>` marker.
+
+Start from `compliance_scan $ARGUMENTS --checks annotation-coverage` for the
+per-marker denominators.
+
+Flag:
+- Unannotated site per the matrix with no exemption → **WARNING**
+- `// Post:` present → **NOTE** (delete it)
+- Untruthful exemption marker → **WARNING**
+
 #### Forbidden patterns (flag any occurrence in `src/`)
 
 | Forbidden | Use instead |
@@ -334,7 +353,12 @@ being stateless.
 
 Rule: every public method of a stateful subsystem that must only be called from
 the main thread must call `assert_thread_role(ThreadRole::Main)` as its first
-statement. The call is a no-op in release builds.
+statement. The call is a no-op in release builds. **Free-function mutators over
+a runtime aggregate count as public entries** (the server model), and
+"documents-but-never-asserts is non-compliant" (QN): a header that declares a
+main-thread contract without runtime asserts is a violation, not documentation.
+Prerequisite: `register_thread_role(ThreadRole::Main)` wired on the production
+entry paths — asserts on unregistered threads are meaningless.
 
 ```cpp
 #include <xash3dpp/platform/thread_role.hpp>
@@ -423,6 +447,10 @@ the audit identified.
   Add `#include <xash3dpp/platform/log.hpp>` if not already present.
 - **TEST_MACROS**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"`
   (adjust relative path depth). Remove old `#define CHECK` / `#define REQUIRE` lines.
+- **ANNOTATIONS (QN)**: add the missing matrix marker (`@lifetime:`,
+  `@thread-safety:`, `// SAFETY:`) or a truthful
+  `// @annotation-exempt: <category>`; delete `// Post:` comments; re-run
+  the annotation-coverage scan and report before/after.
 - **Forbidden patterns**: Replace with the approved equivalent. Add an inline comment
   if the substitution is non-obvious.
 - **ARRAY_SIZE_STACK**: Replace `std::array<T, N> member_` with `std::vector<T> member_`.
@@ -501,12 +529,13 @@ git diff --cached --name-only | Where-Object { $_ -notlike "xash3dpp/*" }
 If that second command produces any output, unstage those files with
 `git restore --staged <file>` before committing.
 
-Commit message format:
+Commit message format (project convention — `tag: description`, never
+Conventional Commits):
 
 ```
-refactor($ARGUMENTS): apply architecture, style, and threading compliance
+$ARGUMENTS: apply architecture, style, and threading compliance
 
-- <list each rule fixed: PIMPL_MOVE, ERROR_RETURN, OWNERSHIP, DI_PARAMS, STATS_TIERS, NODISCARD, NAMING_FN, NAMING_ENUM, ASSERTIONS, LOGGING, TEST_MACROS, TH-Role, TH-Const, TH-GLOBALS>
+- <list each rule fixed: PIMPL_MOVE, ERROR_RETURN, OWNERSHIP, DI_PARAMS, STATS_TIERS, NODISCARD, NAMING_FN, NAMING_ENUM, ASSERTIONS, LOGGING, TEST_MACROS, ANNOTATIONS (QN), TH-Role, TH-Const, TH-GLOBALS>
 - <one line per concrete change>
 ```
 
