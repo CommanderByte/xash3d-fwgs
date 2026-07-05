@@ -18,6 +18,7 @@
 #include "fake_dll_state.hpp"
 
 #include <xash3dpp/abi/entity_state.hpp>
+#include <xash3dpp/abi/weaponinfo.hpp>
 
 #include <cstdio>
 #include <cstring>
@@ -294,6 +295,30 @@ static int fake_add_to_full_pack( abi::entity_state_t *state, int e,
     return 1; // include every entity offered
 }
 
+// S9 send: pfnUpdateClientData fills the frame's clientdata; pfnGetWeaponData
+// fills the 64-slot weapondata array (returns 1 when weapon prediction is on).
+static void fake_update_client_data( const abi::edict_t *ent, int sendweapons,
+                                     abi::clientdata_t *cd )
+{
+    ++g_state.update_client_data_calls;
+    g_state.update_client_data_sendweapons = sendweapons;
+    if ( cd == nullptr || ent == nullptr )
+        return;
+    cd->health = ent->v.health;
+    for ( int i = 0; i < 3; ++i )
+        cd->origin[i] = ent->v.origin[i];
+}
+
+static int fake_get_weapon_data( abi::edict_t *, abi::weapon_data_t *info )
+{
+    ++g_state.get_weapon_data_calls;
+    if ( info == nullptr )
+        return 0;
+    info[0].m_iId  = 1;
+    info[0].m_iClip = 30;
+    return 1;
+}
+
 static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
 {
     std::memset( table, 0, sizeof( *table ));
@@ -319,6 +344,8 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnCreateInstancedBaselines = fake_create_instanced_baselines;
     table->pfnSetupVisibility          = fake_setup_visibility;
     table->pfnAddToFullPack            = fake_add_to_full_pack;
+    table->pfnUpdateClientData         = fake_update_client_data;
+    table->pfnGetWeaponData            = fake_get_weapon_data;
 }
 
 static void fake_game_shutdown( void )

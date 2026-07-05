@@ -184,6 +184,7 @@ struct ServerClient
     ::xash::abi::edict_t *view_entity    = nullptr; // cl->pViewEntity
     int                   delta_sequence = -1;      // clc_delta ack; -1 = no delta
     int                   chokecount     = 0;       // bandwidth-suppressed count
+    bool                  local_weapons  = false;   // FCL_LOCAL_WEAPONS (cl_lw)
 };
 
 // --- the aggregate (svs.clients + svgame.msg + sv.multicast + filters/log) ---

@@ -210,9 +210,9 @@ struct TYPEDESCRIPTION
 // Opaque across the boundary — only pointers cross in these tables.
 struct delta_s;          // net_encode delta field list
 struct entity_state_t;   // vendored fully in S9 (snapshot pipeline)
-struct weapon_data_s;
+struct weapon_data_t;    // vendored (weaponinfo.hpp) — S9 clientdata send
 struct playermove_s;     // vendored fully in S8 (pmove bridge)
-struct clientdata_s;
+struct clientdata_t;     // vendored (entity_state.hpp) — S9 clientdata send
 struct usercmd_s;
 struct netadr_s;
 struct customization_s;  // engine/custom.h — pointer-only here
@@ -287,7 +287,9 @@ struct enginefuncs_t
     void     ( *pfnCVarSetFloat )( const char *szVarName, float flValue );
     void     ( *pfnCVarSetString )( const char *szVarName, const char *szValue );
     void     ( *pfnAlertMessage )( ALERT_TYPE atype, char *szFmt, ... );
-    void     ( *pfnEngineFprintf )( std::FILE *pfile, char *szFmt, ... );
+    // Frozen enginefuncs_t ABI (eiface.h:168): the engine's FILE* fprintf export
+    // IS the ABI — not routable via IFilesystem.
+    void     ( *pfnEngineFprintf )( std::FILE *pfile, char *szFmt, ... ); // compliance-allow(abi-file-io): frozen ABI FILE* export
     void    *( *pfnPvAllocEntPrivateData )( edict_t *pEdict, long cb );
     void    *( *pfnPvEntPrivateData )( edict_t *pEdict );
     void     ( *pfnFreeEntPrivateData )( edict_t *pEdict );
@@ -452,11 +454,11 @@ struct DLL_FUNCTIONS
     void  ( *pfnPM_Init )( playermove_s *ppmove );
     char  ( *pfnPM_FindTextureType )( char *name );
     void  ( *pfnSetupVisibility )( edict_t *pViewEntity, edict_t *pClient, unsigned char **pvs, unsigned char **pas );
-    void  ( *pfnUpdateClientData )( const edict_t *ent, int sendweapons, clientdata_s *cd );
+    void  ( *pfnUpdateClientData )( const edict_t *ent, int sendweapons, clientdata_t *cd );
     int   ( *pfnAddToFullPack )( entity_state_t *state, int e, edict_t *ent, edict_t *host, int hostflags, int player, unsigned char *pSet );
     void  ( *pfnCreateBaseline )( int player, int eindex, entity_state_t *baseline, edict_t *entity, int playermodelindex, vec3_t player_mins, vec3_t player_maxs );
     void  ( *pfnRegisterEncoders )( void );
-    int   ( *pfnGetWeaponData )( edict_t *player, weapon_data_s *info );
+    int   ( *pfnGetWeaponData )( edict_t *player, weapon_data_t *info );
 
     void  ( *pfnCmdStart )( const edict_t *player, const usercmd_s *cmd, unsigned int random_seed );
     void  ( *pfnCmdEnd )( const edict_t *player );

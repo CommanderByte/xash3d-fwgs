@@ -53,9 +53,14 @@ inline constexpr int k_max_local_weapons       = 64;         // MAX_LOCAL_WEAPON
 inline constexpr int k_svf_skiplocalhost  = 1 << 0; // SVF_SKIPLOCALHOST
 inline constexpr int k_svf_merge_visibility = 1 << 1; // SVF_MERGE_VISIBILITY
 
-// svc opcodes emitted by the snapshot (protocol.h:62-63).
+// svc opcodes emitted by the snapshot + per-frame datagram (protocol.h).
+inline constexpr int k_svc_time                = 7;  // [float] server time
+inline constexpr int k_svc_setangle            = 10; // [angle*3] absolute view
+inline constexpr int k_svc_clientdata          = 15; // [...] clientdata blob
+inline constexpr int k_svc_addangle            = 38; // [angle] mover turn add
 inline constexpr int k_svc_packetentities      = 40;
 inline constexpr int k_svc_deltapacketentities = 41;
+inline constexpr int k_svc_choke               = 42; // choke marker
 
 // One instanced baseline: a classname-keyed template state shared by every
 // entity of that class (pfnCreateInstancedBaseline, sv_game.c:4425).
@@ -154,5 +159,23 @@ int create_instanced_baseline( SnapshotState &snap, ::xash::abi::string_t classn
 // pings ride the same message in later sub-slices.
 void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_index,
                                ::xash::networking::MessageBuf &msg ) noexcept;
+
+// SV_WriteClientdataToMessage (sv_frame.c:526): stamp cl's frame (senttime /
+// ping_time), emit svc_choke / fixangle (svc_setangle | svc_addangle), fill the
+// frame's clientdata via pfnUpdateClientData, then svc_clientdata + the delta
+// (against frames[delta_sequence].clientdata, or null) and — when local weapons
+// are enabled — the 64-slot weapondata deltas.  `frame_index` selects cl's frame
+// (netchan outgoing sequence in the full send path).
+void write_clientdata_to_message( ServerRuntime &rt, ServerClient &cl,
+                                  int frame_index,
+                                  ::xash::networking::MessageBuf &msg ) noexcept;
+
+// SV_SendClientDatagram (sv_frame.c:685): assemble cl's per-frame unreliable
+// datagram body into `msg` — svc_time + sv.time, then clientdata, then the
+// entity delta, then the accumulated per-client `datagram` staging (cleared
+// after).  The Netchan transmit is the S8↔S9 seam (the host frame loop drives
+// it); this only builds the message.
+void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
+                           ::xash::networking::MessageBuf &msg ) noexcept;
 
 } // namespace xash::server

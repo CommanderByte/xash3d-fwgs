@@ -61,6 +61,9 @@ struct State
     int create_instanced_calls;  // pfnCreateInstancedBaselines invocations
     int setup_visibility_calls;  // pfnSetupVisibility invocations
     int add_to_full_pack_calls;  // pfnAddToFullPack invocations
+    int update_client_data_calls;       // pfnUpdateClientData invocations
+    int update_client_data_sendweapons; // last sendweapons flag received
+    int get_weapon_data_calls;          // pfnGetWeaponData invocations
 
     // Every pfnKeyValue the double receives (class/key/value snapshot) — the
     // parse test reads these back to pin the quirk transforms.

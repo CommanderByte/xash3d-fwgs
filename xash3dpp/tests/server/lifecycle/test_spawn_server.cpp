@@ -59,6 +59,15 @@ static const char *k_delta_lst =
     "{\n"
     "    DEFINE_DELTA( origin[0], DT_SIGNED | DT_FLOAT, 16, 8.0 ),\n"
     "    DEFINE_DELTA( sequence, DT_INTEGER, 8, 1.0 )\n"
+    "}\n"
+    "clientdata_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( health, DT_SIGNED | DT_FLOAT, 16, 1.0 ),\n"
+    "    DEFINE_DELTA( waterlevel, DT_INTEGER, 2, 1.0 )\n"
+    "}\n"
+    "weapon_data_t none\n"
+    "{\n"
+    "    DEFINE_DELTA( m_iClip, DT_SIGNED | DT_INTEGER, 10, 1.0 )\n"
     "}\n";
 
 // worldspawn + one linkable entity (both LINK exports the fake DLL provides).
@@ -365,6 +374,90 @@ static void test_write_entities_to_client()
 }
 
 // ---------------------------------------------------------------------------
+// SV_SendClientDatagram (S9 snapshot 3): the per-frame datagram body —
+// svc_time + clientdata (pfnUpdateClientData) + entities.  Pins the envelope
+// order, the weapon-prediction gate, and the fixangle → svc_setangle path.
+// ---------------------------------------------------------------------------
+
+static void test_send_client_datagram()
+{
+    SpawnFixture fx( /*dedicated=*/false, /*maxclients=*/1 );
+
+    REQUIRE( sv::spawn_server( fx.rt, "parsetest", nullptr, false ));
+    fx.refresh_state();
+    REQUIRE( fx.st != nullptr );
+    sv::spawn_entities( fx.rt, *fx.maps.world() );
+    sv::activate_server( fx.rt, /*run_physics=*/true );
+
+    sv::ServerClient &cl = fx.rt.clients.clients[0];
+    cl.state          = sv::ClientState::Spawned;
+    cl.edict          = fx.rt.arena.edict_num( 1 );
+    cl.delta_sequence = -1;
+    cl.local_weapons  = false;
+    REQUIRE( cl.frames != nullptr );
+
+    // --- basic envelope: svc_time + float + clientdata, no weapon prediction --
+    {
+        std::array<std::byte, 8192> buf{};
+        xash::networking::MessageBuf msg{ buf };
+        fx.st->update_client_data_calls       = 0;
+        fx.st->update_client_data_sendweapons = -1;
+        fx.st->get_weapon_data_calls          = 0;
+
+        sv::send_client_datagram( fx.rt, cl, /*frame_index=*/0, msg );
+
+        CHECK( !msg.overflowed() );
+        CHECK_EQ( fx.st->update_client_data_calls, 1 );
+        CHECK_EQ( fx.st->update_client_data_sendweapons, 0 ); // no local weapons
+        CHECK_EQ( fx.st->get_weapon_data_calls, 0 );
+        CHECK_EQ( fx.rt.clients.clients[0].chokecount, 0 );
+
+        // Envelope order: svc_time, sv.time, then straight into svc_clientdata
+        // (no choke, no fixangle).
+        msg.reset();
+        CHECK_EQ( static_cast<int>( msg.read_byte() ), 7 ); // svc_time
+        CHECK( msg.read_float() == static_cast<float>( fx.rt.level.time ));
+        CHECK_EQ( static_cast<int>( msg.read_byte() ), 15 ); // svc_clientdata
+    }
+
+    // --- fixangle=1 → svc_setangle emitted before clientdata, then reset -------
+    {
+        cl.edict->v.fixangle = 1;
+        std::array<std::byte, 8192> buf{};
+        xash::networking::MessageBuf msg{ buf };
+        sv::send_client_datagram( fx.rt, cl, /*frame_index=*/1, msg );
+
+        CHECK( !msg.overflowed() );
+        CHECK_EQ( cl.edict->v.fixangle, 0 ); // always reset
+
+        msg.reset();
+        CHECK_EQ( static_cast<int>( msg.read_byte() ), 7 ); // svc_time
+        ( void )msg.read_float();
+        CHECK_EQ( static_cast<int>( msg.read_byte() ), 10 ); // svc_setangle
+    }
+
+    // --- weapon prediction: local_weapons → sendweapons=1 + pfnGetWeaponData ---
+    {
+        cl.local_weapons = true;
+        std::array<std::byte, 8192> buf{};
+        xash::networking::MessageBuf msg{ buf };
+        fx.st->update_client_data_calls       = 0;
+        fx.st->update_client_data_sendweapons = -1;
+        fx.st->get_weapon_data_calls          = 0;
+
+        sv::send_client_datagram( fx.rt, cl, /*frame_index=*/2, msg );
+
+        CHECK( !msg.overflowed() );
+        CHECK_EQ( fx.st->update_client_data_sendweapons, 1 );
+        CHECK_EQ( fx.st->get_weapon_data_calls, 1 );
+    }
+
+    // Leave the slot free so the fixture teardown's client sweep is a no-op.
+    cl.state = sv::ClientState::Free;
+    cl.edict = nullptr;
+}
+
+// ---------------------------------------------------------------------------
 // Server as the MapLoader level-change executor: `map` drives the FSM, which
 // delegates to exec_load_level → full spawn/activate.
 // ---------------------------------------------------------------------------
@@ -457,6 +550,7 @@ int main()
     RUN_TEST( test_activate_no_physics );
     RUN_TEST( test_baselines_created );
     RUN_TEST( test_write_entities_to_client );
+    RUN_TEST( test_send_client_datagram );
     RUN_TEST( test_level_executor );
     RUN_TEST( test_no_executor_fallback );
 

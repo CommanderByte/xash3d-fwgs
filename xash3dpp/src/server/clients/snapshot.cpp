@@ -23,6 +23,7 @@
 
 #include <cstdlib>  // std::qsort
 #include <cstring>
+#include <span>
 
 namespace xash::server {
 
@@ -613,6 +614,123 @@ void write_entities_to_client( ServerRuntime &rt, ServerClient &cl, int frame_in
     emit_packet_entities( rt, cl, frame, msg );
     // XASH3DPP-STUB(chunk6): SV_EmitEvents + SV_EmitPings ride this message in
     // sub-slice 4.
+}
+
+void write_clientdata_to_message( ServerRuntime &rt, ServerClient &cl,
+                                  int frame_index, net::MessageBuf &msg ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( cl.frames == nullptr || cl.edict == nullptr )
+        return;
+
+    ClientFrame &frame = cl.frames[frame_index & rt.snapshot.update_mask];
+    frame.senttime  = rt.clients.realtime;
+    frame.ping_time = -1.0f; // latency computed on the client's ack
+
+    EntityView clent( cl.edict );
+
+    if ( cl.chokecount != 0 )
+    {
+        msg.write_byte( static_cast<std::uint8_t>( k_svc_choke ));
+        cl.chokecount = 0;
+    }
+
+    // fixangle: 1 = absolute view (svc_setangle), 2 = mover turn (svc_addangle,
+    // consuming avelocity[YAW]).  Reset unconditionally afterwards.
+    switch ( clent.fixangle() )
+    {
+    case 1:
+    {
+        const Vec3 a = clent.angles();
+        msg.write_byte( static_cast<std::uint8_t>( k_svc_setangle ));
+        msg.write_vec3_angles( a.x, a.y, a.z );
+        break;
+    }
+    case 2:
+    {
+        Vec3 av = clent.avelocity();
+        msg.write_byte( static_cast<std::uint8_t>( k_svc_addangle ));
+        msg.write_bit_angle( av.y, 16 ); // avelocity[YAW]
+        av.y = 0.0f;
+        clent.set_avelocity( av );
+        break;
+    }
+    default:
+        break;
+    }
+    clent.set_fixangle( 0 );
+
+    // pfnUpdateClientData fills the frame's clientdata (weapon prediction gated
+    // by FCL_LOCAL_WEAPONS).
+    frame.clientdata = ::xash::abi::clientdata_t{};
+    const int sendweapons = cl.local_weapons ? 1 : 0;
+    if ( rt.game.funcs().pfnUpdateClientData != nullptr )
+        rt.game.funcs().pfnUpdateClientData( cl.edict, sendweapons, &frame.clientdata );
+
+    msg.write_byte( static_cast<std::uint8_t>( k_svc_clientdata ));
+    if ( cl.hltv )
+        return; // HLTV proxy: header only, no clientdata body
+
+    const ::xash::abi::clientdata_t  nullcd{};
+    const ::xash::abi::clientdata_t *from_cd = &nullcd;
+    if ( cl.delta_sequence == -1 )
+    {
+        msg.write_one_bit( 0 ); // no delta compression
+    }
+    else
+    {
+        msg.write_one_bit( 1 );
+        msg.write_byte( static_cast<std::uint8_t>( cl.delta_sequence ));
+        from_cd = &cl.frames[cl.delta_sequence & rt.snapshot.update_mask].clientdata;
+    }
+
+    rt.delta.write_clientdata( msg, from_cd, &frame.clientdata, rt.level.time );
+
+    // Weapon prediction: 64-slot weapondata deltas.
+    if ( cl.local_weapons && rt.game.funcs().pfnGetWeaponData != nullptr &&
+         rt.game.funcs().pfnGetWeaponData( cl.edict, frame.weapondata ))
+    {
+        const ::xash::abi::weapon_data_t nullwd{};
+        for ( int i = 0; i < k_max_local_weapons; ++i )
+        {
+            const ::xash::abi::weapon_data_t *from_wd = &nullwd;
+            if ( cl.delta_sequence != -1 )
+                from_wd = &cl.frames[cl.delta_sequence & rt.snapshot.update_mask]
+                               .weapondata[i];
+            rt.delta.write_weapon_data( msg, from_wd, &frame.weapondata[i],
+                                        rt.level.time, i );
+        }
+    }
+
+    msg.write_one_bit( 0 ); // clientdata blob end marker
+}
+
+void send_client_datagram( ServerRuntime &rt, ServerClient &cl, int frame_index,
+                           net::MessageBuf &msg ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    // Always send the server time at a new frame.
+    msg.write_byte( static_cast<std::uint8_t>( k_svc_time ));
+    msg.write_float( static_cast<float>( rt.level.time ));
+
+    write_clientdata_to_message( rt, cl, frame_index, msg );
+    write_entities_to_client( rt, cl, frame_index, msg );
+
+    // Append the accumulated per-client unreliable staging (sounds / tempents /
+    // multicast copies) if it fits, then clear it (legacy warns on overflow —
+    // that 5s-rate-limited console path is a host-log seam).
+    if ( cl.datagram_bits > 0 && cl.datagram_bits <= msg.num_bits_left() )
+    {
+        const std::size_t bytes = ( cl.datagram_bits + 7 ) / 8;
+        ( void )msg.write_bits(
+            std::span<const std::byte>( cl.datagram, bytes ), cl.datagram_bits );
+    }
+    cl.datagram_bits = 0;
+
+    // XASH3DPP-STUB(chunk6): Netchan_TransmitBits( &cl.netchan, ... ) — the send
+    // seam the host frame loop drives (S8↔S9 splice).
 }
 
 } // namespace xash::server
