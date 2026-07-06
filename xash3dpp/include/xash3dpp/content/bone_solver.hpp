@@ -14,6 +14,7 @@
 
 #include <xash3dpp/content/studio.hpp>
 #include <xash3dpp/utilities/math.hpp>
+#include <xash3dpp/utilities/matrix.hpp>
 
 #include <cstdint>
 #include <span>
@@ -37,5 +38,52 @@ void calc_bone_adj( std::span<float> adj, std::span<const std::uint8_t> pcontrol
 void calc_bones( int frame, float s, const BoneView &bone, const AnimView &anim,
                  std::span<const float> adj,
                  ::xash::utilities::Vec3 &pos, ::xash::utilities::Vec4 *q ) noexcept;
+
+// ---------------------------------------------------------------------------
+// SV_StudioSetupBones — the driver + the swappable solver seam (boundary OQ-5)
+// ---------------------------------------------------------------------------
+
+// Entity pose + blend state for a setup-bones call.
+struct BoneSetupInput
+{
+    float                          frame    = 0.0f;
+    int                            sequence = 0;
+    ::xash::utilities::Vec3        angles{};
+    ::xash::utilities::Vec3        origin{};
+    std::span<const std::uint8_t>  controllers{}; // pcontroller (per controller slot)
+    std::span<const std::uint8_t>  blending{};    // pblending (blend weights)
+    int                            bone = -1;      // iBone: -1 = all bones, else parent chain
+};
+
+// SV_StudioSetupBones — build per-bone world transforms into `out_bones` (indexed
+// by bone; must be at least num_bones long) from the studio header + pose.
+// Returns the number of bones written, or 0 on a bad/empty header. Embedded
+// animations only (seqgroup == 0); an external seqgroup degrades to bind pose
+// (OQ-7 residue — external "...NN.mdl" sequence loads are deferred).
+[[nodiscard]] int setup_bones( const StudioView &hdr, const BoneSetupInput &in,
+                               std::span<::xash::utilities::Matrix3x4> out_bones ) noexcept;
+
+// The swappable bone-solver seam (legacy pBlendAPI->SV_StudioSetupBones). The
+// builtin reproduces the engine's gBlendAPI fallback; a game DLL can substitute
+// its own solver at the server studio-hull provider (OQ-5 -> server OQ-2).
+struct IBoneSolver
+{
+    virtual ~IBoneSolver() = default;
+
+    [[nodiscard]] virtual int setup_bones( const StudioView &hdr, const BoneSetupInput &in,
+                                           std::span<::xash::utilities::Matrix3x4> out_bones ) noexcept = 0;
+};
+
+// The builtin bone solver (gBlendAPI equivalent) — delegates to the free
+// setup_bones. Stateless: safe to share, and each call owns its scratch.
+class BuiltinBoneSolver final : public IBoneSolver
+{
+public:
+    [[nodiscard]] int setup_bones( const StudioView &hdr, const BoneSetupInput &in,
+                                   std::span<::xash::utilities::Matrix3x4> out_bones ) noexcept override
+    {
+        return ::xash::content::setup_bones( hdr, in, out_bones );
+    }
+};
 
 } // namespace xash::content

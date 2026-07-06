@@ -88,6 +88,48 @@ public:
         return base;
     }
 
+    // Append a contiguous block of mstudioanim_t (one per entry — the real .mdl
+    // layout is `numblends * numbones` anims back-to-back), then their RLE
+    // streams. Returns the block base offset (= a sequence's animindex). Each
+    // entry's channel offsets are relative to that entry's own 12-byte header.
+    std::size_t add_anim_block( const std::vector<std::array<std::vector<std::int16_t>, 6>> &anims )
+    {
+        const std::size_t base = grow( anims.size() * k_studio_anim_stride );
+        for( std::size_t a = 0; a < anims.size(); ++a )
+        {
+            const std::size_t hdr = base + a * k_studio_anim_stride;
+            for( int i = 0; i < 6; ++i )
+            {
+                const auto &ch = anims[a][static_cast<std::size_t>( i )];
+                if( ch.empty() )
+                {
+                    put_u16( hdr + 2 * static_cast<std::size_t>( i ), 0 );
+                    continue;
+                }
+                const std::size_t stream = grow( ch.size() * 2 );
+                put_u16( hdr + 2 * static_cast<std::size_t>( i ),
+                         static_cast<std::uint16_t>( stream - hdr ) );
+                for( std::size_t k = 0; k < ch.size(); ++k )
+                    put_i16( stream + 2 * k, ch[k] );
+            }
+        }
+        return base;
+    }
+
+    // mstudioseqdesc_t (176 B) — only the fields the bone solver reads.
+    std::size_t add_seqdesc( std::int32_t numframes, std::int32_t motiontype, std::int32_t motionbone,
+                             std::int32_t numblends, std::int32_t animindex, std::int32_t seqgroup )
+    {
+        const std::size_t off = grow( k_studio_seqdesc_stride );
+        put_i32( off + 56, numframes );
+        put_i32( off + 68, motiontype );
+        put_i32( off + 72, motionbone );
+        put_i32( off + 120, numblends );
+        put_i32( off + 124, animindex );
+        put_i32( off + 156, seqgroup );
+        return off;
+    }
+
     // Stamp the header length to the final size and return the bytes.
     [[nodiscard]] const std::vector<std::byte> &bytes()
     {

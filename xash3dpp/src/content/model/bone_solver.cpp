@@ -13,6 +13,8 @@
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/utilities/quaternion.hpp>
 
+#include <array>
+
 namespace xash::content {
 
 namespace {
@@ -171,6 +173,160 @@ void calc_bones( int frame, float s, const BoneView &bone, const AnimView &anim,
             *q = ::xash::utilities::angle_quaternion_studio( { v1[3], v1[4], v1[5] } );
         }
     }
+}
+
+namespace {
+
+using ::xash::utilities::Vec3;
+using ::xash::utilities::Vec4;
+
+// Mod_StudioCalcRotations — decode every used bone of one blend into pos/q
+// (indexed by bone), then remove the driven linear-motion axes of the motion
+// bone. pos/q are sized to the header bone count; `panim_base` is the byte
+// offset of this blend's mstudioanim_t array.
+void calc_rotations( std::span<const int> boneused, std::span<const std::uint8_t> pcontroller,
+                     std::span<Vec3> pos, std::span<Vec4> q,
+                     const StudioView &hdr, const SeqDescView &seq,
+                     std::size_t panim_base, float f ) noexcept
+{
+    const int numframes = seq.numframes();
+    if( f > static_cast<float>( numframes - 1 ) )
+        f = 0.0f;
+    else if( f < -0.01f )
+        f = -0.01f;
+
+    const int   frame = static_cast<int>( f );
+    const float s     = f - static_cast<float>( frame );
+
+    float adj[::xash::limits::studio_max_controllers] = {};
+    calc_bone_adj( adj, pcontroller, hdr );
+    const std::span<const float> adj_span{ adj };
+
+    for( std::size_t jj = boneused.size(); jj-- > 0; ) // j = numbones-1 .. 0
+    {
+        const std::size_t i = static_cast<std::size_t>( boneused[jj] );
+        const BoneView bone = hdr.bone( boneused[jj] );
+        const AnimView anim{ hdr.data(), panim_base + i * k_studio_anim_stride };
+        calc_bones( frame, s, bone, anim, adj_span, pos[i], &q[i] );
+    }
+
+    // linear-motion removal on the motion bone (Mod_StudioCalcRotations tail).
+    const int mtype = seq.motiontype();
+    const int mbone = seq.motionbone();
+    if( mbone >= 0 && static_cast<std::size_t>( mbone ) < pos.size() )
+    {
+        if( mtype & k_studio_x ) pos[static_cast<std::size_t>( mbone )].x = 0.0f;
+        if( mtype & k_studio_y ) pos[static_cast<std::size_t>( mbone )].y = 0.0f;
+        if( mtype & k_studio_z ) pos[static_cast<std::size_t>( mbone )].z = 0.0f;
+    }
+}
+
+} // namespace
+
+int setup_bones( const StudioView &hdr, const BoneSetupInput &in,
+                 std::span<::xash::utilities::Matrix3x4> out_bones ) noexcept
+{
+    const int numbones_hdr = hdr.num_bones();
+    if( numbones_hdr <= 0
+        || static_cast<std::size_t>( numbones_hdr ) > ::xash::limits::studio_max_bones
+        || out_bones.size() < static_cast<std::size_t>( numbones_hdr ) )
+        return 0;
+
+    int sequence = in.sequence;
+    if( sequence < 0 || sequence >= hdr.num_seq() )
+        sequence = 0;
+
+    const SeqDescView seq = hdr.seqdesc( sequence );
+
+    // R_StudioGetAnim (embedded only). External seqgroup -> OOB base -> bind pose.
+    std::size_t panim_base;
+    if( seq.seqgroup() == 0 && seq.animindex() >= 0 )
+        panim_base = static_cast<std::size_t>( seq.animindex() );
+    else
+        panim_base = hdr.data().size();
+
+    int iBone = in.bone;
+    if( iBone < -1 || iBone >= numbones_hdr )
+        iBone = 0;
+
+    std::array<int, ::xash::limits::studio_max_bones> boneused{};
+    int numbones = 0;
+    if( iBone == -1 )
+    {
+        numbones = numbones_hdr;
+        for( int i = 0; i < numbones_hdr; ++i )
+            boneused[static_cast<std::size_t>( ( numbones - i ) - 1 )] = i; // reversed fill
+    }
+    else
+    {
+        for( int i = iBone; i != -1; i = hdr.bone( i ).parent() )
+        {
+            if( numbones >= numbones_hdr )
+                break; // hardening: malformed parent cycle
+            boneused[static_cast<std::size_t>( numbones++ )] = i;
+        }
+    }
+
+    float f = 0.0f;
+    if( seq.numframes() > 1 )
+        f = ( in.frame * static_cast<float>( seq.numframes() - 1 ) ) / 256.0f;
+
+    std::array<Vec3, ::xash::limits::studio_max_bones> pos{};
+    std::array<Vec4, ::xash::limits::studio_max_bones> q{};
+    const std::span<const int> used{ boneused.data(), static_cast<std::size_t>( numbones ) };
+    calc_rotations( used, in.controllers, pos, q, hdr, seq, panim_base, f );
+
+    if( seq.numblends() > 1 )
+    {
+        const auto blend = [&]( std::size_t k ) -> float {
+            return k < in.blending.size() ? static_cast<float>( in.blending[k] ) / 255.0f : 0.0f;
+        };
+        // R_StudioSlerpBones runs over ALL header bones (not the local subset).
+        const std::size_t nbh    = static_cast<std::size_t>( numbones_hdr );
+        const std::size_t stride = nbh * k_studio_anim_stride;
+
+        std::array<Vec3, ::xash::limits::studio_max_bones> pos2{};
+        std::array<Vec4, ::xash::limits::studio_max_bones> q2{};
+        panim_base += stride;
+        calc_rotations( used, in.controllers, pos2, q2, hdr, seq, panim_base, f );
+        ::xash::utilities::slerp_bones( std::span<Vec4>( q.data(), nbh ), std::span<Vec3>( pos.data(), nbh ),
+                                        std::span<const Vec4>( q2.data(), nbh ), std::span<const Vec3>( pos2.data(), nbh ),
+                                        blend( 0 ) );
+
+        if( seq.numblends() == 4 )
+        {
+            std::array<Vec3, ::xash::limits::studio_max_bones> pos3{}, pos4{};
+            std::array<Vec4, ::xash::limits::studio_max_bones> q3{}, q4{};
+            panim_base += stride;
+            calc_rotations( used, in.controllers, pos3, q3, hdr, seq, panim_base, f );
+            panim_base += stride;
+            calc_rotations( used, in.controllers, pos4, q4, hdr, seq, panim_base, f );
+
+            ::xash::utilities::slerp_bones( std::span<Vec4>( q3.data(), nbh ), std::span<Vec3>( pos3.data(), nbh ),
+                                            std::span<const Vec4>( q4.data(), nbh ), std::span<const Vec3>( pos4.data(), nbh ),
+                                            blend( 0 ) ); // pblending[0] again (legacy quirk)
+            ::xash::utilities::slerp_bones( std::span<Vec4>( q.data(), nbh ), std::span<Vec3>( pos.data(), nbh ),
+                                            std::span<const Vec4>( q3.data(), nbh ), std::span<const Vec3>( pos3.data(), nbh ),
+                                            blend( 1 ) );
+        }
+    }
+
+    const ::xash::utilities::Matrix3x4 studio_transform =
+        ::xash::utilities::create_from_entity( in.origin, in.angles, 1.0f );
+
+    for( std::size_t jj = static_cast<std::size_t>( numbones ); jj-- > 0; )
+    {
+        const std::size_t i = static_cast<std::size_t>( boneused[jj] );
+        const ::xash::utilities::Matrix3x4 bonematrix =
+            ::xash::utilities::from_origin_quat( q[i], pos[i] );
+        const int parent = hdr.bone( boneused[jj] ).parent();
+        if( parent == -1 )
+            out_bones[i] = ::xash::utilities::concat( studio_transform, bonematrix );
+        else
+            out_bones[i] = ::xash::utilities::concat( out_bones[static_cast<std::size_t>( parent )], bonematrix );
+    }
+
+    return numbones;
 }
 
 } // namespace xash::content

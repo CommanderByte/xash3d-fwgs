@@ -55,6 +55,14 @@ constexpr std::size_t kBcStart = 8;
 constexpr std::size_t kBcEnd   = 12;
 constexpr std::size_t kBcIndex = 20;
 
+// mstudioseqdesc_t field offsets (within a 176-byte chunk).
+constexpr std::size_t kSeqNumFrames  = 56;
+constexpr std::size_t kSeqMotionType = 68;
+constexpr std::size_t kSeqMotionBone = 72;
+constexpr std::size_t kSeqNumBlends  = 120;
+constexpr std::size_t kSeqAnimIndex  = 124;
+constexpr std::size_t kSeqSeqGroup   = 156;
+
 // Bounds-checked little-endian reads over the studiohdr byte image; an
 // out-of-range offset returns 0 (untrusted files never fault a reader).
 [[nodiscard]] std::int32_t rd_i32( std::span<const std::byte> d, std::size_t off ) noexcept
@@ -104,6 +112,13 @@ std::int32_t BoneControllerView::type() const noexcept  { return rd_i32( data_, 
 std::int32_t BoneControllerView::index() const noexcept { return rd_i32( data_, off_ + kBcIndex ); }
 float        BoneControllerView::start() const noexcept { return rd_f32( data_, off_ + kBcStart ); } // compliance-allow(thread-assert): read-only value query over caller-owned bytes, not a mutator
 float        BoneControllerView::end() const noexcept   { return rd_f32( data_, off_ + kBcEnd ); }
+
+std::int32_t SeqDescView::numframes() const noexcept  { return rd_i32( data_, off_ + kSeqNumFrames ); }
+std::int32_t SeqDescView::motiontype() const noexcept { return rd_i32( data_, off_ + kSeqMotionType ); }
+std::int32_t SeqDescView::motionbone() const noexcept { return rd_i32( data_, off_ + kSeqMotionBone ); }
+std::int32_t SeqDescView::numblends() const noexcept  { return rd_i32( data_, off_ + kSeqNumBlends ); }
+std::int32_t SeqDescView::animindex() const noexcept  { return rd_i32( data_, off_ + kSeqAnimIndex ); }
+std::int32_t SeqDescView::seqgroup() const noexcept   { return rd_i32( data_, off_ + kSeqSeqGroup ); }
 
 // ---------------------------------------------------------------------------
 // StudioView
@@ -169,6 +184,12 @@ BoneControllerView StudioView::bonecontroller( int j ) const noexcept
 {
     return BoneControllerView{ data_, static_cast<std::size_t>( bonecontroller_index() )
         + k_studio_bonectrl_stride * static_cast<std::size_t>( j ) };
+}
+
+SeqDescView StudioView::seqdesc( int i ) const noexcept
+{
+    return SeqDescView{ data_, static_cast<std::size_t>( seq_index() )
+        + k_studio_seqdesc_stride * static_cast<std::size_t>( i ) };
 }
 
 // ---------------------------------------------------------------------------

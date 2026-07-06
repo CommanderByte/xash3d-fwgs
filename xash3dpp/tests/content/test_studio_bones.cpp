@@ -34,6 +34,14 @@ static bool q_eq( const Vec4 &a, const Vec4 &b ) noexcept
     return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
 }
 
+static bool mat_eq( const xash::utilities::Matrix3x4 &a, const xash::utilities::Matrix3x4 &b ) noexcept
+{
+    for( int r = 0; r < 3; ++r )
+        for( int c = 0; c < 4; ++c )
+            if( a.m[r][c] != b.m[r][c] ) return false;
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // calc_bones — RLE position decode (hand-derived exact)
 // ---------------------------------------------------------------------------
@@ -177,6 +185,158 @@ static void test_calc_bone_adj()
     CHECK( adj[3] == 0.0f );                          // mouth slot skipped
 }
 
+// ---------------------------------------------------------------------------
+// setup_bones — the driver (reduced-input exact + composition oracle)
+// ---------------------------------------------------------------------------
+
+using xash::content::BoneSetupInput;
+using xash::content::BuiltinBoneSolver;
+using xash::utilities::Matrix3x4;
+
+// Build a single-bone, single-sequence, bind-pose (no anim) model with the given
+// bone position/rotation baked into value[].
+static StudioBuilder make_one_bone( std::int32_t parent, const std::array<float, 6> &value )
+{
+    StudioBuilder b;
+    const std::size_t bone_off = b.add_bone( parent, { -1, -1, -1, -1, -1, -1 }, value,
+                                             { 0, 0, 0, 0, 0, 0 } );
+    const std::array<std::vector<std::int16_t>, 6> empty{};
+    const std::size_t anim_off = b.add_anim_block( { empty } );
+    const std::size_t seq_off = b.add_seqdesc( 1, 0, 0, 1, static_cast<std::int32_t>( anim_off ), 0 );
+    b.header_i32( 140, 1 );                                        // numbones
+    b.header_i32( 144, static_cast<std::int32_t>( bone_off ) );    // boneindex
+    b.header_i32( 164, 1 );                                        // numseq
+    b.header_i32( 168, static_cast<std::int32_t>( seq_off ) );     // seqindex
+    return b;
+}
+
+static void test_setup_bones_reduced_pipeline()
+{
+    // identity entity + identity bone rotation, no anim -> world = origin + pos.
+    StudioBuilder b = make_one_bone( -1, { 1.0f, 2.0f, 3.0f, 0.0f, 0.0f, 0.0f } );
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    std::array<Matrix3x4, 1> out{};
+    BoneSetupInput in;
+    in.origin = { 10.0f, 20.0f, 30.0f };
+    BuiltinBoneSolver solver;
+    const int n = solver.setup_bones( hdr, in, out );
+
+    CHECK( n == 1 );
+    CHECK( out[0].m[0][0] == 1.0f && out[0].m[0][1] == 0.0f && out[0].m[0][2] == 0.0f && out[0].m[0][3] == 11.0f );
+    CHECK( out[0].m[1][0] == 0.0f && out[0].m[1][1] == 1.0f && out[0].m[1][2] == 0.0f && out[0].m[1][3] == 22.0f );
+    CHECK( out[0].m[2][0] == 0.0f && out[0].m[2][1] == 0.0f && out[0].m[2][2] == 1.0f && out[0].m[2][3] == 33.0f );
+}
+
+static void test_setup_bones_parent_chain()
+{
+    // two bones, child (1) parented to root (0). Identity rotations -> the child
+    // world translation accumulates: origin + pos0 + pos1.
+    StudioBuilder b;
+    const std::size_t b0 = b.add_bone( -1, { -1, -1, -1, -1, -1, -1 }, { 1, 2, 3, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } );
+    (void)b0;
+    b.add_bone( 0, { -1, -1, -1, -1, -1, -1 }, { 4, 5, 6, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } );
+    const std::array<std::vector<std::int16_t>, 6> empty{};
+    const std::size_t anim_off = b.add_anim_block( { empty, empty } );
+    const std::size_t seq_off = b.add_seqdesc( 1, 0, 0, 1, static_cast<std::int32_t>( anim_off ), 0 );
+    b.header_i32( 140, 2 );
+    b.header_i32( 144, static_cast<std::int32_t>( b0 ) );
+    b.header_i32( 164, 1 );
+    b.header_i32( 168, static_cast<std::int32_t>( seq_off ) );
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    std::array<Matrix3x4, 2> out{};
+    BoneSetupInput in;
+    in.origin = { 10.0f, 20.0f, 30.0f };
+    BuiltinBoneSolver solver;
+    const int n = solver.setup_bones( hdr, in, out );
+
+    CHECK( n == 2 );
+    CHECK( out[0].m[0][3] == 11.0f && out[0].m[1][3] == 22.0f && out[0].m[2][3] == 33.0f );
+    CHECK( out[1].m[0][3] == 15.0f && out[1].m[1][3] == 27.0f && out[1].m[2][3] == 39.0f ); // +{4,5,6}
+}
+
+static void test_setup_bones_sequence_clamp()
+{
+    // an out-of-range sequence clamps to 0 (same result as sequence 0).
+    StudioBuilder b = make_one_bone( -1, { 1.0f, 2.0f, 3.0f, 0.0f, 0.0f, 0.0f } );
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    std::array<Matrix3x4, 1> a{}, c{};
+    BoneSetupInput in;
+    in.origin = { 10.0f, 20.0f, 30.0f };
+    BuiltinBoneSolver solver;
+    in.sequence = 0;  (void)solver.setup_bones( hdr, in, a );
+    in.sequence = 99; (void)solver.setup_bones( hdr, in, c );
+    CHECK( mat_eq( a[0], c[0] ) );
+}
+
+static void test_setup_bones_rotation_oracle()
+{
+    // rotated entity + a non-identity bind-pose rotation. Verify the driver
+    // composes exactly: world = entity_transform * from_origin_quat(q, pos),
+    // with q/pos from the golden-verified primitives.
+    StudioBuilder b = make_one_bone( -1, { 5.0f, 6.0f, 7.0f, 0.3f, -0.1f, 0.2f } );
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    std::array<Matrix3x4, 1> out{};
+    BoneSetupInput in;
+    in.angles = { 10.0f, 20.0f, 30.0f };
+    in.origin = { 1.0f, 2.0f, 3.0f };
+    BuiltinBoneSolver solver;
+    (void)solver.setup_bones( hdr, in, out );
+
+    const Vec4 q = xash::utilities::angle_quaternion_studio( { 0.3f, -0.1f, 0.2f } );
+    const Matrix3x4 bonematrix = xash::utilities::from_origin_quat( q, { 5.0f, 6.0f, 7.0f } );
+    const Matrix3x4 entity = xash::utilities::create_from_entity( { 1.0f, 2.0f, 3.0f }, { 10.0f, 20.0f, 30.0f }, 1.0f );
+    CHECK( mat_eq( out[0], xash::utilities::concat( entity, bonematrix ) ) );
+}
+
+static void test_setup_bones_numblends2_oracle()
+{
+    // 1 bone, 2 blends differing in X position; verify the blend composition
+    // (slerp_bones by pblending[0]/255 then concat) against the public primitives.
+    StudioBuilder b;
+    const std::size_t bone_off = b.add_bone( -1, { -1, -1, -1, -1, -1, -1 },
+                                             { 0, 0, 0, 0, 0, 0 }, { 1, 0, 0, 0, 0, 0 } );
+    std::array<std::vector<std::int16_t>, 6> a0{}, a1{};
+    a0[0] = { anim_num( 2, 2 ), 10, 20 }; // blend0 X pos
+    a1[0] = { anim_num( 2, 2 ), 30, 40 }; // blend1 X pos
+    const std::size_t anim_off = b.add_anim_block( { a0, a1 } );
+    const std::size_t seq_off = b.add_seqdesc( 2, 0, 0, 2, static_cast<std::int32_t>( anim_off ), 0 );
+    b.header_i32( 140, 1 );
+    b.header_i32( 144, static_cast<std::int32_t>( bone_off ) );
+    b.header_i32( 164, 1 );
+    b.header_i32( 168, static_cast<std::int32_t>( seq_off ) );
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    const std::uint8_t blend_bytes[1] = { 128 };
+    std::array<Matrix3x4, 1> out{};
+    BoneSetupInput in;
+    in.blending = blend_bytes;
+    BuiltinBoneSolver solver;
+    (void)solver.setup_bones( hdr, in, out );
+
+    // Oracle: replicate calc_rotations for each blend via the public calc_bones,
+    // then slerp_bones + concat exactly as the driver does (frame 0, s 0).
+    const BoneView bone = hdr.bone( 0 );
+    const AnimView anim0{ bytes, anim_off };
+    const AnimView anim1{ bytes, anim_off + xash::content::k_studio_anim_stride };
+    Vec3 pos0, pos1;
+    Vec4 q0, q1;
+    xash::content::calc_bones( 0, 0.0f, bone, anim0, {}, pos0, &q0 );
+    xash::content::calc_bones( 0, 0.0f, bone, anim1, {}, pos1, &q1 );
+    xash::utilities::slerp_bones( { &q0, 1 }, { &pos0, 1 }, { &q1, 1 }, { &pos1, 1 }, 128.0f / 255.0f );
+    const Matrix3x4 entity = xash::utilities::create_from_entity( {}, {}, 1.0f );
+    const Matrix3x4 expect = xash::utilities::concat( entity, xash::utilities::from_origin_quat( q0, pos0 ) );
+    CHECK( mat_eq( out[0], expect ) );
+}
+
 int main()
 {
     RUN_TEST( test_calc_bones_rle_position );
@@ -184,6 +344,12 @@ int main()
     RUN_TEST( test_calc_bones_rotation_slerp_oracle );
     RUN_TEST( test_calc_bones_controller_adj );
     RUN_TEST( test_calc_bone_adj );
+
+    RUN_TEST( test_setup_bones_reduced_pipeline );
+    RUN_TEST( test_setup_bones_parent_chain );
+    RUN_TEST( test_setup_bones_sequence_clamp );
+    RUN_TEST( test_setup_bones_rotation_oracle );
+    RUN_TEST( test_setup_bones_numblends2_oracle );
 
     std::printf( "test_studio_bones: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

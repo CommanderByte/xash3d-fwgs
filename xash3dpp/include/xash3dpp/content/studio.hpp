@@ -32,6 +32,7 @@ inline constexpr std::size_t  k_studio_header_size = 244;
 inline constexpr std::size_t k_studio_bone_stride       = 112; // mstudiobone_t
 inline constexpr std::size_t k_studio_bonectrl_stride   = 24;  // mstudiobonecontroller_t
 inline constexpr std::size_t k_studio_anim_stride       = 12;  // mstudioanim_t (uint16 offset[6])
+inline constexpr std::size_t k_studio_seqdesc_stride    = 176; // mstudioseqdesc_t
 
 // mstudiobonecontroller_t motion-type flags (engine/studio.h). The low bits are
 // the axis/rotation type (masked by k_studio_types); k_studio_rloop marks a
@@ -130,6 +131,27 @@ private:
     std::size_t                off_ = 0;
 };
 
+// mstudioseqdesc_t (176 B): the bone solver reads numframes@56, motiontype@68,
+// motionbone@72, numblends@120, animindex@124, seqgroup@156. animindex locates
+// the mstudioanim_t array (numblends * numbones anims) for the sequence.
+class SeqDescView
+{
+public:
+    SeqDescView() = default;
+    SeqDescView( std::span<const std::byte> data, std::size_t off ) noexcept : data_( data ), off_( off ) {}
+
+    [[nodiscard]] std::int32_t numframes() const noexcept;
+    [[nodiscard]] std::int32_t motiontype() const noexcept;
+    [[nodiscard]] std::int32_t motionbone() const noexcept;
+    [[nodiscard]] std::int32_t numblends() const noexcept;
+    [[nodiscard]] std::int32_t animindex() const noexcept;
+    [[nodiscard]] std::int32_t seqgroup() const noexcept;
+
+private:
+    std::span<const std::byte> data_;
+    std::size_t                off_ = 0;
+};
+
 // ---------------------------------------------------------------------------
 // StudioView — typed, bounds-safe read surface over a studiohdr_t byte image.
 // Out-of-range reads return 0 / empty rather than faulting (untrusted files).
@@ -170,6 +192,7 @@ public:
     // out-of-range view simply reads zeros.
     [[nodiscard]] BoneView           bone( int i ) const noexcept;
     [[nodiscard]] BoneControllerView bonecontroller( int j ) const noexcept;
+    [[nodiscard]] SeqDescView        seqdesc( int i ) const noexcept;
 
     [[nodiscard]] std::span<const std::byte> data() const noexcept { return data_; }
     [[nodiscard]] bool valid() const noexcept { return data_.size() >= k_studio_header_size; }
