@@ -321,4 +321,18 @@ const TraceHull &BoxHull::set_bounds( const Vec3 &mins, const Vec3 &maxs ) noexc
     return hull_;
 }
 
+const TraceHull &BoxHull::set_planes( std::span<const TracePlane> src ) noexcept
+{
+    // Studio hitbox hull: six oriented planes over the box clipnode chain.
+    for ( int i = 0; i < 6; ++i )
+    {
+        Plane &p   = planes_[static_cast<std::size_t>( i )];
+        p.normal   = src[static_cast<std::size_t>( i )].normal;
+        p.dist     = src[static_cast<std::size_t>( i )].dist;
+        p.type     = 3;  // non-axial: plane_diff takes the general dot path
+        p.signbits = 0;  // unused on the ray point-side path
+    }
+    return hull_;
+}
+
 } // namespace xash::map_loader

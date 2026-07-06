@@ -142,6 +142,13 @@ public:
     const TraceHull &set_bounds( const ::xash::utilities::Vec3 &mins,
                                  const ::xash::utilities::Vec3 &maxs ) noexcept;
 
+    // Studio hitbox hull (Mod_SetStudioHullPlane): reuse the box clipnode chain
+    // with six arbitrary oriented planes (normal + dist). The planes are marked
+    // non-axial so plane_diff takes the general dot path. `src` must hold >= 6
+    // planes; only the first six are used. [[nodiscard]] omitted like set_bounds
+    // — set-then-read-hull() is a legitimate pattern.
+    const TraceHull &set_planes( std::span<const TracePlane> src ) noexcept; // compliance-allow(nodiscard-missing): mutator returning the hull view, same pattern as set_bounds
+
     [[nodiscard]] const TraceHull &hull() const noexcept { return hull_; }
 
 private:

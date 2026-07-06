@@ -284,6 +284,31 @@ static void test_finalize_world_frame()
 }
 
 // ---------------------------------------------------------------------------
+// BoxHull::set_planes — the studio hitbox hull (six oriented planes over the box
+// clipnode chain). Fed the axial box planes it must trace bit-identically to
+// set_bounds: the non-axial dot path yields the same values for unit-axis
+// normals (dot(p,{1,0,0}) == p.x exactly).
+// ---------------------------------------------------------------------------
+
+static void test_set_planes_studio_hull()
+{
+    ml::BoxHull box;
+    const ml::TracePlane planes[6] = {
+        { { 1, 0, 0 },  16.0f }, { { 1, 0, 0 }, -16.0f },
+        { { 0, 1, 0 },  16.0f }, { { 0, 1, 0 }, -16.0f },
+        { { 0, 0, 1 },  16.0f }, { { 0, 0, 1 }, -16.0f },
+    };
+    const auto &hull = box.set_planes( planes );
+
+    const auto tr = ml::trace_hull( hull, { 32, 0, 0 }, { 0, 0, 0 } );
+    CHECK( !tr.allsolid && !tr.startsolid && tr.inopen );
+    CHECK_EQ( bits( tr.fraction ), bits( 0.4990234375f ));
+    CHECK_EQ( bits( tr.endpos.x ), bits( 16.03125f ));
+    CHECK( tr.plane.normal.x == 1.0f );
+    CHECK_EQ( bits( tr.plane.dist ), bits( 16.0f ));
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -300,6 +325,7 @@ int main()
     RUN_TEST( test_allsolid_suppresses_impact_plane );
     RUN_TEST( test_nonaxial_wedge_hit );
     RUN_TEST( test_finalize_world_frame );
+    RUN_TEST( test_set_planes_studio_hull );
 
     std::printf( "hull_trace: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;
