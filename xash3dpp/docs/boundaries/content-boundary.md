@@ -294,26 +294,34 @@ ______________________________________________________________________
   `content → imagelib` CMake link. (The other `map_loader`-deferred payloads
   split per-consumer: content owns texture decode; `LUMP_LIGHTING`, surface
   extents/`msurface_t`, glpolys stay renderer/server work.)
-- **OQ-4 — DLL post-process seam shape.** Model `Mod_ProcessRenderData`
-  (renderer) / `Mod_ProcessUserData` (dedicated-server physics) as an injected
-  `IModelPostProcess`; content calls out, never links toward renderer. Confirm
-  the dedicated-vs-client branch.
-- **OQ-5 — studio bone-math placement.** The swappable game-DLL bone solver
-  (`Server_GetBlendingInterface`) plus the shared `R_StudioCalcBones`/`SlerpBones`
-  kernel: stays in content, or the pure-math kernel promotes to
-  `xash3d_mathlib`/`utilities`?
-- **OQ-6 — CRC cheat-detection ownership.** Content owns the per-model CRC;
-  `server` consumes `Mod_ValidateCRC`/`Mod_NeedCRC`. Confirm the surface lives
-  on the content registry with a thin server-facing query.
-- **OQ-7 — parity scope of legacy quirks.** Keep (bug-compat) vs drop (dead
-  path): `XASH_LOW_MEMORY` studio truncation, external `…T.mdl` merge,
-  dedicated-server sprite half-load, Quake pitch-inversion bug, alias
-  parse-minimal. Each needs a keep/drop call before scaffold.
-- **OQ-8 — model-registry lifecycle coupling.** Content owns the
-  `Mod_LoadWorld` / `Mod_PurgeStudioCache` / `Mod_FreeUnused` level-transition
-  FSM, but slot 0 is `map_loader`'s world and the precache maps are
-  `server`/`client`'s. Define who drives the purge on level change and how the
-  three coordinate (the `LoadGame`/`ChangeLevel` stubs `map_loader` left).
+- **OQ-4 — DLL post-process seam shape. ✅ RESOLVED (implemented):** an injected
+  `content::IModelPostProcess` (`InitParams.post_process`, optional/null on
+  headless); `ModelCache::load_from_bytes` calls `on_model_loaded` after the
+  payload attaches and **frees the model on a false return** (legacy
+  `Mod_ProcessRenderData`/`Mod_ProcessUserData` returning 0). The
+  dedicated-vs-client branch is the implementer's: the server registers a
+  physics `on_model_loaded`, the client a render-data one — content calls out to
+  whichever is injected, never linking toward the renderer.
+- **OQ-5 — studio bone-math placement.** *Still open* — lands with the studio
+  server-collision work (`Mod_HullForStudio` / bone setup). The swappable
+  game-DLL bone solver (`Server_GetBlendingInterface`) becomes a
+  `content::IBoneSolver` seam; the pure `R_StudioCalcBones`/`SlerpBones` kernel
+  is a `xash3d_mathlib`/`utilities` promotion candidate.
+- **OQ-6 — CRC cheat-detection ownership. ✅ RESOLVED (implemented):** the
+  per-model CRC + `CrcFlags` live on the `ModelCache` registry;
+  `ModelCache::need_crc` / `validate_crc` are the server-facing surface, and
+  `load_from_bytes` runs the reload CRC guard (`LoadError::CrcMismatch`).
+- **OQ-7 — parity scope of legacy quirks.** *Partially decided:* **alias =
+  parse-minimal** (render-only, validated but not meshed); sprite/studio header
+  parse implemented. *Still open (with the studio-collision pass):*
+  `XASH_LOW_MEMORY` texel truncation, external `…T.mdl` merge,
+  dedicated-server sprite half-load, and the Quake pitch-inversion bug.
+- **OQ-8 — model-registry lifecycle coupling. ✅ RESOLVED (implemented):**
+  content owns the `purge_for_level_change` / `free_unused` FSM (with
+  `find_or_alloc` rescuing re-referenced models); the world (slot 0) and inline
+  `*N` submodels are never purged. The level-change **orchestrator** (host/
+  server, via the map-load FSM) drives the purge/free sequence around the new
+  world load; the precache maps stay in `server`/`client`.
 
 ______________________________________________________________________
 
