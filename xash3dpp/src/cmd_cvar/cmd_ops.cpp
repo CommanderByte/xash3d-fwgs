@@ -24,7 +24,7 @@ void CmdCvarContext::cmd_add(std::string_view name,
             // Silently replace: update fn + flags + desc.
             existing->fn    = fn;
             existing->flags = flags;
-            if (existing->desc) memory::mem_free(existing->desc);
+            if (existing->desc) ::xash::memory::mem_free(existing->desc);
             existing->desc = pool_dup(impl_->pool, desc ? desc : "");
         }
         // else: duplicate — silently ignore (matches legacy behaviour).
@@ -36,7 +36,7 @@ void CmdCvarContext::cmd_add(std::string_view name,
     if (impl_->compat_policy && impl_->compat_policy->is_overridable_command(cname))
         effective_flags |= FCMD_OVERRIDABLE;
 
-    Command *cmd = static_cast<Command *>(memory::mem_calloc(impl_->pool, sizeof(Command)));
+    Command *cmd = static_cast<Command *>(::xash::memory::mem_calloc(impl_->pool, sizeof(Command)));
     if (!cmd) return;
 
     cmd->name        = pool_dup(impl_->pool, cname);
@@ -46,7 +46,7 @@ void CmdCvarContext::cmd_add(std::string_view name,
     cmd->owner_flags = 0; // set by the DLL registration wrapper
     cmd->abi_next    = nullptr;
 
-    if (!cmd->name) { memory::mem_free(cmd); return; } // OOM
+    if (!cmd->name) { ::xash::memory::mem_free(cmd); return; } // OOM
 
     // Prepend to ABI list + hash map.
     cmd->abi_next        = impl_->cmd_list_head;
@@ -76,9 +76,9 @@ void CmdCvarContext::cmd_remove(std::string_view name) noexcept
     impl_->cmd_list_head = new_head;
 
     // Free pool-owned fields.
-    if (cmd->name) memory::mem_free(cmd->name);
-    if (cmd->desc) memory::mem_free(cmd->desc);
-    memory::mem_free(cmd);
+    if (cmd->name) ::xash::memory::mem_free(cmd->name);
+    if (cmd->desc) ::xash::memory::mem_free(cmd->desc);
+    ::xash::memory::mem_free(cmd);
 }
 
 void CmdCvarContext::cmd_unlink(std::uint32_t flags_mask) noexcept
@@ -93,9 +93,9 @@ void CmdCvarContext::cmd_unlink(std::uint32_t flags_mask) noexcept
         Command *next = cmd->abi_next;
         if (cmd->flags & flags_mask) {
             impl_->cmd_map.remove(cmd->name);
-            if (cmd->name) memory::mem_free(cmd->name);
-            if (cmd->desc) memory::mem_free(cmd->desc);
-            memory::mem_free(cmd);
+            if (cmd->name) ::xash::memory::mem_free(cmd->name);
+            if (cmd->desc) ::xash::memory::mem_free(cmd->desc);
+            ::xash::memory::mem_free(cmd);
         } else {
             *tail         = cmd;
             cmd->abi_next = nullptr;
@@ -144,7 +144,7 @@ static void cbuf_split_push(std::deque<std::string> &dest, std::string_view text
 
         if (!in_quotes && (c == ';' || c == '\n' || at_end)) {
             std::string_view piece{ start, static_cast<std::size_t>(p - start) };
-            piece = utilities::trim_sv(piece, " \t\r");
+            piece = ::xash::utilities::trim_sv(piece, " \t\r");
             if (!piece.empty()) {
                 if (front)
                     pieces.push_back(piece);

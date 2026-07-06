@@ -19,7 +19,7 @@
 
 namespace xash::cmd_cvar {
 
-static_assert(limits::alias_name_max >= 2,
+static_assert(::xash::limits::alias_name_max >= 2,
     "alias_name_max must be at least 2 (one char + NUL)");
 
 static_assert(std::is_trivially_destructible_v<Command>,

@@ -1,7 +1,12 @@
 // xash3dpp — cmd_cvar: CmdCvarContext — TLS definition, ctor/dtor/move.
 //
 // This file is intentionally small: it is the only TU where Impl is complete
-// AND where unique_ptr<Impl> is destructed (standard pimpl rule).
+// AND where the pimpl is destructed (standard pimpl rule).  Impl is a
+// POOL-OWNED pimpl: allocated with memory::pool_new<Impl> and freed with
+// memory::pool_delete (NOT std::unique_ptr with the default deleter — that
+// would call global operator delete on a pool-allocated object, Q-3/Q-22).
+// The declared-only dtor in context.hpp + the out-of-line definitions here
+// satisfy the pimpl completeness rule.
 // All method implementations live in context_init.cpp, cvar_ops.cpp,
 // cmd_ops.cpp, cmd_dispatch.cpp, and context_misc.cpp.
 
@@ -18,7 +23,7 @@ thread_local CmdCvarContext *tls_ctx = nullptr;
 // ---------------------------------------------------------------------------
 
 CmdCvarContext::CmdCvarContext() noexcept
-    : impl_{ memory::pool_new<Impl>(memory::k_null_pool) }
+    : impl_{ ::xash::memory::pool_new<Impl>(::xash::memory::k_null_pool) }
 {
 }
 
@@ -26,7 +31,7 @@ CmdCvarContext::CmdCvarContext() noexcept
 // TUs where Impl is fully defined — the standard pimpl rule.
 CmdCvarContext::~CmdCvarContext()
 {
-    memory::pool_delete(impl_);
+    ::xash::memory::pool_delete(impl_);
 }
 
 CmdCvarContext::CmdCvarContext(CmdCvarContext &&o) noexcept
@@ -39,7 +44,7 @@ CmdCvarContext &CmdCvarContext::operator=(CmdCvarContext &&o) noexcept
 {
     if (this != &o)
     {
-        memory::pool_delete(impl_);
+        ::xash::memory::pool_delete(impl_);
         impl_   = o.impl_;
         o.impl_ = nullptr;
     }

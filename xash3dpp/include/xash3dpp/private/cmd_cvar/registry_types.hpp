@@ -25,21 +25,21 @@ namespace xash::cmd_cvar {
 // Command — full internal command record
 // ---------------------------------------------------------------------------
 struct Command {
-    char         *name;        // pool-owned
-    char         *desc;        // pool-owned; may be nullptr
+    char         *name;        // pool-owned  @lifetime: impl-pool (pool_dup'd; freed on cmd_unlink/shutdown)
+    char         *desc;        // pool-owned; may be nullptr  @lifetime: impl-pool (pool_dup'd; freed on cmd_unlink/shutdown)
     CommandFn     fn;
     std::uint32_t flags;       // CommandFlags bitmask
     std::uint32_t owner_flags; // mirrors CvarFlags domain for unlink matching
-    Command      *abi_next;    // ABI linked-list for Cmd_GetList
+    Command      *abi_next;    // ABI linked-list for Cmd_GetList  @lifetime: registry (list link; nodes owned by impl-pool)
 };
 
 // ---------------------------------------------------------------------------
 // AliasDef — command alias record
 // ---------------------------------------------------------------------------
 struct AliasDef {
-    char        name[limits::alias_name_max]; // NUL-terminated; inlined to avoid extra pool alloc
-    char       *value;                        // pool-owned expansion string
-    AliasDef   *abi_next;
+    char        name[::xash::limits::alias_name_max]; // NUL-terminated; inlined to avoid extra pool alloc
+    char       *value;                        // pool-owned expansion string  @lifetime: impl-pool (pool_dup'd; freed on unalias/shutdown)
+    AliasDef   *abi_next;                      // @lifetime: registry (list link; nodes owned by impl-pool)
 };
 
 } // namespace xash::cmd_cvar

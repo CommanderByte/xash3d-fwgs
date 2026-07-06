@@ -1,6 +1,11 @@
 #pragma once
 // xash3dpp — command public types
 // Legacy reference: engine/common/cmd.h
+//
+// @thread-safety: value types only (POD descriptors + flag enums); no shared
+// state. CommandDesc is a copyable snapshot; its pointers borrow registry
+// memory (see @lifetime notes) and are only valid on the thread that owns the
+// CmdCvarContext.
 
 #include <cstdint>
 
@@ -27,8 +32,8 @@ enum CommandFlags : std::uint32_t {
 // ---------------------------------------------------------------------------
 
 struct CommandDesc {
-    const char   *name;
-    const char   *desc;
+    const char   *name;  // @lifetime: registry (borrowed; valid until the command is removed)
+    const char   *desc;  // @lifetime: registry (borrowed; valid until the command is removed)
     std::uint32_t flags;
     // ParamSpec span will be added here when the scripting layer is designed.
 };

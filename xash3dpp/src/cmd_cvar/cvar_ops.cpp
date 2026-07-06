@@ -13,7 +13,7 @@ namespace xash::cmd_cvar {
 void CmdCvarContext::add_cvar_observer(ICvarObserver *observer,
                                        std::uint32_t  flag_mask) noexcept
 {
-    if (impl_->observer_count >= limits::cmd_observer_max)
+    if (impl_->observer_count >= ::xash::limits::cmd_observer_max)
         return; // silently drop; limit enforced by table capacity
 
     impl_->observers[impl_->observer_count++] = { observer, flag_mask };
@@ -69,7 +69,7 @@ Cvar *CmdCvarContext::cvar_register_dll(CvarAbi *abi_ptr) noexcept
     // The DLL only provides CvarAbi-sized storage; writing extended fields
     // into the cast DLL pointer would be out-of-bounds UB.
     // The pool Cvar is marked FCVAR_DLL_WRAPPER so shutdown/unlink can free it.
-    Cvar *cv = static_cast<Cvar *>(memory::mem_calloc(impl_->pool, sizeof(Cvar)));
+    Cvar *cv = static_cast<Cvar *>(::xash::memory::mem_calloc(impl_->pool, sizeof(Cvar)));
     if (!cv) return nullptr;
 
     // Copy ABI fields from the DLL's struct.
@@ -111,7 +111,7 @@ Cvar *CmdCvarContext::cvar_get_or_create(std::string_view name,
     if (existing) return existing;
 
     // Pool-allocate a new Cvar.
-    Cvar *cv = static_cast<Cvar *>(memory::mem_calloc(impl_->pool, sizeof(Cvar)));
+    Cvar *cv = static_cast<Cvar *>(::xash::memory::mem_calloc(impl_->pool, sizeof(Cvar)));
     if (!cv) return nullptr;
 
     cv->abi.name   = pool_dup(impl_->pool, cname);
@@ -120,7 +120,7 @@ Cvar *CmdCvarContext::cvar_get_or_create(std::string_view name,
     cv->abi.string = pool_dup(impl_->pool, default_value ? default_value : "");
     cv->def_string = pool_dup(impl_->pool, default_value ? default_value : "");
     cv->abi.flags  = flags | FCVAR_USER_CREATED | FCVAR_ALLOCATED;
-    cv->abi.value  = utilities::atof(cv->abi.string);
+    cv->abi.value  = ::xash::utilities::atof(cv->abi.string);
     cv->abi.next   = nullptr;
     cv->desc       = nullptr;
 
@@ -157,10 +157,10 @@ void CmdCvarContext::cvar_set_direct(Cvar           *cv,
     }
 
     // FCVAR_NOEXTRAWHITESPACE: skip leading/trailing whitespace.
-    char trimmed[limits::cmd_line_max];
+    char trimmed[::xash::limits::cmd_line_max];
     if (cv->abi.flags & FCVAR_NOEXTRAWHITESPACE) {
-        const std::string_view sv = utilities::trim_sv(std::string_view{ value });
-        utilities::strncpy(trimmed, sv.data(),
+        const std::string_view sv = ::xash::utilities::trim_sv(std::string_view{ value });
+        ::xash::utilities::strncpy(trimmed, sv.data(),
                            sv.size() + 1 < sizeof(trimmed) ? sv.size() + 1 : sizeof(trimmed));
         value = trimmed;
     }
@@ -176,25 +176,25 @@ void CmdCvarContext::cvar_set_direct(Cvar           *cv,
     }
 
     // Skip no-op writes.
-    if (cv->abi.string && utilities::stricmp(cv->abi.string, value) == 0)
+    if (cv->abi.string && ::xash::utilities::stricmp(cv->abi.string, value) == 0)
         return;
 
     // Free the old pool-owned string if present.
     if (cv->abi.flags & FCVAR_ALLOCATED) {
-        memory::mem_free(cv->abi.string);
+        ::xash::memory::mem_free(cv->abi.string);
         cv->abi.flags &= ~static_cast<std::uint32_t>(FCVAR_ALLOCATED);
     }
 
     // Pool-duplicate the new string.
     cv->abi.string = pool_dup(impl_->pool, value);
     if (!cv->abi.string) {
-        cv->abi.string = const_cast<char *>(""); // OOM fallback
+        cv->abi.string = const_cast<char *>(""); // OOM fallback; SAFETY: "" is a static literal, never written or freed
         return;
     }
     cv->abi.flags |= FCVAR_ALLOCATED;
 
     // Update float value.
-    cv->abi.value = utilities::atof(value);
+    cv->abi.value = ::xash::utilities::atof(value);
 
     // Set FCVAR_CHANGED (polled by legacy DLLs).
     cv->abi.flags |= FCVAR_CHANGED;
@@ -209,10 +209,10 @@ void CmdCvarContext::cvar_set_direct(Cvar           *cv,
 
 #if XASH_DEBUG_CVARS
     if (impl_->break_on_write_name &&
-        utilities::stricmp(cv->abi.name, impl_->break_on_write_name) == 0) {
-        platform::console::write("[cvar] break-on-write: ");
-        platform::console::write(cv->abi.name);
-        platform::console::write("\n");
+        ::xash::utilities::stricmp(cv->abi.name, impl_->break_on_write_name) == 0) {
+        ::xash::platform::console::write("[cvar] break-on-write: ");
+        ::xash::platform::console::write(cv->abi.name);
+        ::xash::platform::console::write("\n");
     }
     // TODO: append CvarChangeRecord to change_log (needs old value snapshot).
 #endif
@@ -263,22 +263,22 @@ void CmdCvarContext::cvar_unlink(std::uint32_t owner_flags_mask) noexcept
 
             // Free FCVAR_ALLOCATED string.
             if (cv->abi.flags & FCVAR_ALLOCATED) {
-                memory::mem_free(cv->abi.string);
+                ::xash::memory::mem_free(cv->abi.string);
                 cv->abi.flags &= ~static_cast<std::uint32_t>(FCVAR_ALLOCATED);
             }
 
             // Restore string to def_string so legacy DLLs see a sane value.
             cv->abi.string = cv->def_string
-                ? const_cast<char *>(cv->def_string)
-                : const_cast<char *>("");
+                ? const_cast<char *>(cv->def_string) // SAFETY: restoring pool/DLL-owned def_string into the ABI char* field; not mutated through this pointer
+                : const_cast<char *>("");            // SAFETY: "" is a static literal, never written or freed
 
             if (cv->abi.flags & FCVAR_USER_CREATED) {
-                memory::mem_free(cv->abi.name);
+                ::xash::memory::mem_free(cv->abi.name);
                 if (cv->def_string)
-                    memory::mem_free(const_cast<char *>(cv->def_string));
-                memory::mem_free(cv);
+                    ::xash::memory::mem_free(const_cast<char *>(cv->def_string)); // SAFETY: reclaiming pool memory (def_string was pool_dup'd as char* then stored const)
+                ::xash::memory::mem_free(cv);
             } else if (cv->abi.flags & FCVAR_DLL_WRAPPER) {
-                memory::mem_free(cv);
+                ::xash::memory::mem_free(cv);
             }
             // else: DLL owns the struct; leave it alone.
         } else {
@@ -316,12 +316,14 @@ CvarDesc CmdCvarContext::cvar_describe(const Cvar *cv) const noexcept
 
 const char *CmdCvarContext::cvar_variable_string(std::string_view name) const noexcept
 {
+    // SAFETY: cvar_find has no const overload; this query performs only a read-only lookup.
     const Cvar *cv = const_cast<CmdCvarContext *>(this)->cvar_find(name);
     return cv ? cv->abi.string : "";
 }
 
 float CmdCvarContext::cvar_variable_value(std::string_view name) const noexcept
 {
+    // SAFETY: cvar_find has no const overload; this query performs only a read-only lookup.
     const Cvar *cv = const_cast<CmdCvarContext *>(this)->cvar_find(name);
     return cv ? cv->abi.value : 0.0f;
 }
@@ -351,16 +353,16 @@ void CmdCvarContext::cvar_full_set(std::string_view name,
     // SetBits — a FullSet never adds flags after creation), and there is
     // no same-value skip (Cvar_Changed fires unconditionally).
     if (cv->abi.flags & FCVAR_ALLOCATED) {
-        memory::mem_free(cv->abi.string);
+        ::xash::memory::mem_free(cv->abi.string);
         cv->abi.flags &= ~static_cast<std::uint32_t>(FCVAR_ALLOCATED);
     }
     cv->abi.string = pool_dup(impl_->pool, value);
     if (!cv->abi.string) {
-        cv->abi.string = const_cast<char *>(""); // OOM fallback
+        cv->abi.string = const_cast<char *>(""); // OOM fallback; SAFETY: "" is a static literal, never written or freed
         return;
     }
     cv->abi.flags |= FCVAR_ALLOCATED;
-    cv->abi.value  = utilities::atof(value);
+    cv->abi.value  = ::xash::utilities::atof(value);
 
     // Cvar_Changed equivalent (same write-tail as cvar_set_direct).
     cv->abi.flags |= FCVAR_CHANGED;

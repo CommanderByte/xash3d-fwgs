@@ -3,6 +3,10 @@
 //
 // CmdCvarStats lives in its own header so consumers that only need the stats
 // view (profiling/debug tooling) do not pull in the full CmdCvarContext API.
+//
+// @thread-safety: all counters are std::atomic (or written game-thread-only),
+// so a CmdCvarStats snapshot may be read from any thread without locking. All
+// writes happen on the main (game) thread.
 
 #include <atomic>
 #include <cstdint>

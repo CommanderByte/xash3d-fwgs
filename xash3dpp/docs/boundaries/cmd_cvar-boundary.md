@@ -324,3 +324,53 @@ void CmdCvarContext::dump_hash_stats() const;
 // Prints: bucket count, filled buckets, max chain length, average chain length.
 // Used to tune limits::cvar_hash_buckets if mods with unusual cvar counts are observed.
 ```
+
+## Threading
+
+cmd_cvar is **main-thread engine state** (decision D8). It is not internally
+synchronised; concurrent callers must serialise externally.
+
+| Component | Constraint |
+|-----------|-----------|
+| `CmdCvarContext::init` / `shutdown` | Main thread only — assert `ThreadRole::Main` at entry (`::xash::core::assert_thread_role`) |
+| `set_server_dll_loaded` / `set_client_dll_loaded` | Main thread only — assert `ThreadRole::Main` at entry (DLL load/unload is a main-thread event) |
+| Cvar/command register, set, unlink, `cbuf_execute` / `cmd_execute_string` | Main (game) thread only; registry structure is frozen during runtime (D7) |
+| Read-only query accessors (`cvar_variable_*`, `cmd_argc`/`cmd_argv`, `stats`) | Called on the owning (main) thread; no internal locking |
+| Per-cvar `generation` (atomic), XASH_STATS `write_count` (atomic) | Safe to read from any thread — lock-free change detection (D8) |
+| `CmdCvarStats` counters | `std::atomic` (or written game-thread-only); safe to snapshot from any thread |
+| `tls_ctx` | Thread-local; set to the executing context for the duration of a single dispatch and nulled afterwards |
+
+The four public mutators flagged by the TH-Role sweep (init, shutdown,
+set_server_dll_loaded, set_client_dll_loaded) carry the `assert_thread_role`
+guard. The remaining mutators (`cvar_set*`, `cmd_add`, `cbuf_*`, `cmd_execute_string`)
+are not individually asserted: they run inside the same main-thread dispatch and
+are exercised by the unit tests on the test thread, so a blanket per-entry assert
+would false-trip the harness. See per-header `@thread-safety` contracts.
+
+## Constant classification (Q-O)
+
+Every tunable buffer/count constant lives in `limits.hpp` as an
+`inline constexpr` and is referenced absolutely (`::xash::limits::*`) — see D6.
+The residual numeric literals flagged by `limits_scan` are **not** tunables and
+deliberately stay inline:
+
+| Literal | Site | Classification |
+|---|---|---|
+| `15` | `compat_goldsrc.cpp` `std::array<std::string_view, 15> kFilterableExemptions` | **frozen** — self-sizing the constexpr GoldSrc HL-mod exemption table (each entry a reviewed exception, D12); the size is derived from the initializer, not a policy knob |
+| `64` | `cvar.hpp` `CvarChangeRecord::old_value/new_value[64]` | **frozen (local)** — `XASH_DEBUG_CVARS` change-log truncation width; a developer-only fixed field, not shared across subsystems |
+| `64` | `context_init.cpp` `char buf[64]` (`cmdlist`/`cvarlist` summary) | **local scratch** — stack buffer for a single `snprintf("%zu command(s)")` line |
+| `128` | `context_misc.cpp` `char buf[128]` (`dump_hash_stats`) | **local scratch** — stack buffer for a single formatted hash-stats line |
+
+None of these are cross-subsystem tunables, so promoting them to `limits.hpp`
+would add dead knobs rather than remove magic numbers. (They are also out of
+scope for the 6B S5 carve, which does not touch `limits.hpp`.)
+
+## Q-11 Satellite Verdict
+
+cmd_cvar has **no external satellite subsystem** (Q-11 inapplicable). The GoldSrc
+compatibility layer (`compat_goldsrc.cpp` / `compat_null.cpp`) is **not** a
+satellite: it is an in-tree implementation of the `ICompatPolicy` interface that
+cmd_cvar itself owns, selected at link time by the `XASH_GOLDSRC_COMPAT` CMake
+option (D12). This is the Q-12 compat-isolation seam — core files contain zero
+`#ifdef HACKS_RELATED_HLMODS`, and every quirk is a reviewed `constexpr` table
+entry — not a separately-scored satellite service. ✓

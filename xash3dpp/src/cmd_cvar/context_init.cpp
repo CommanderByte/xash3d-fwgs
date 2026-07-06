@@ -4,6 +4,7 @@
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 #include <xash3dpp/platform/console.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 
 namespace xash::cmd_cvar {
 
@@ -28,9 +29,10 @@ constexpr char k_filter_def[]      = "1";
 
 bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 {
-    impl_->pool = memory::create_pool("cmd_cvar");
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->pool = ::xash::memory::create_pool("cmd_cvar");
     if (!impl_->pool) {
-        core::log(core::LogLevel::Error, "cmd_cvar", "failed to create memory pool");
+        ::xash::core::log(::xash::core::LogLevel::Error, "cmd_cvar", "failed to create memory pool");
         return false;
     }
 
@@ -52,8 +54,8 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
     {
         using namespace builtin_cvars;
         Cvar &sc = impl_->builtin_cmd_scripting;
-        sc.abi.name   = const_cast<char *>(k_scripting_name);
-        sc.abi.string = const_cast<char *>(k_scripting_def);
+        sc.abi.name   = const_cast<char *>(k_scripting_name); // SAFETY: static string literal stored in the ABI char* field; never written or freed
+        sc.abi.string = const_cast<char *>(k_scripting_def);  // SAFETY: static string literal stored in the ABI char* field; never written or freed
         sc.abi.flags  = FCVAR_ARCHIVE | FCVAR_PRIVILEGED;
         sc.abi.value  = 0.0f;
         sc.abi.next   = nullptr;
@@ -63,8 +65,8 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         cvar_register_engine(sc);
 
         Cvar &fc = impl_->builtin_cl_filterstuffcmd;
-        fc.abi.name   = const_cast<char *>(k_filter_name);
-        fc.abi.string = const_cast<char *>(k_filter_def);
+        fc.abi.name   = const_cast<char *>(k_filter_name); // SAFETY: static string literal stored in the ABI char* field; never written or freed
+        fc.abi.string = const_cast<char *>(k_filter_def);  // SAFETY: static string literal stored in the ABI char* field; never written or freed
         fc.abi.flags  = FCVAR_ARCHIVE | FCVAR_PRIVILEGED;
         fc.abi.value  = 1.0f;
         fc.abi.next   = nullptr;
@@ -86,16 +88,16 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         if (!tls_ctx) return;
         const int argc = tls_ctx->cmd_argc();
         for (int i = 1; i < argc; ++i) {
-            if (i > 1) platform::console::write(" ");
-            platform::console::write(tls_ctx->cmd_argv(i));
+            if (i > 1) ::xash::platform::console::write(" ");
+            ::xash::platform::console::write(tls_ctx->cmd_argv(i));
         }
-        platform::console::write("\n");
+        ::xash::platform::console::write("\n");
     }, 0, "print a message to the console (useful in scripts)");
 
     // wait — skip the rest of the command buffer for N frames.
     cmd_add("wait", []() noexcept {
         if (!tls_ctx) return;
-        int frames = (tls_ctx->cmd_argc() > 1) ? utilities::atoi(tls_ctx->cmd_argv(1)) : 1;
+        int frames = (tls_ctx->cmd_argc() > 1) ? ::xash::utilities::atoi(tls_ctx->cmd_argv(1)) : 1;
         if (frames < 1) frames = 1;
         tls_ctx->impl_->cmd_wait = frames;
     }, 0, "delay command buffer execution by N frames (default: 1)");
@@ -111,12 +113,12 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         if (!al_name) {
             // No args: list all aliases.
             for (AliasDef *a = impl.alias_list_head; a; a = a->abi_next) {
-                platform::console::write(a->name);
+                ::xash::platform::console::write(a->name);
                 if (a->value) {
-                    platform::console::write(" = ");
-                    platform::console::write(a->value);
+                    ::xash::platform::console::write(" = ");
+                    ::xash::platform::console::write(a->value);
                 }
-                platform::console::write("\n");
+                ::xash::platform::console::write("\n");
             }
             return;
         }
@@ -134,22 +136,22 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
                 a = next;
             }
             impl.alias_list_head = new_head;
-            if (al->value) memory::mem_free(al->value);
-            memory::mem_free(al);
+            if (al->value) ::xash::memory::mem_free(al->value);
+            ::xash::memory::mem_free(al);
             return;
         }
 
         if (al) {
             // Update existing alias value.
-            if (al->value) memory::mem_free(al->value);
+            if (al->value) ::xash::memory::mem_free(al->value);
             al->value = pool_dup(impl.pool, al_value);
             return;
         }
 
         // create new alias.
-        al = static_cast<AliasDef *>(memory::mem_calloc(impl.pool, sizeof(AliasDef)));
+        al = static_cast<AliasDef *>(::xash::memory::mem_calloc(impl.pool, sizeof(AliasDef)));
         if (!al) return;
-        utilities::strncpy(al->name, al_name, sizeof(al->name));
+        ::xash::utilities::strncpy(al->name, al_name, sizeof(al->name));
         al->value    = pool_dup(impl.pool, al_value);
         al->abi_next = impl.alias_list_head;
         impl.alias_list_head = al;
@@ -171,8 +173,8 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
             a = next;
         }
         impl.alias_list_head = new_head;
-        if (al->value) memory::mem_free(al->value);
-        memory::mem_free(al);
+        if (al->value) ::xash::memory::mem_free(al->value);
+        ::xash::memory::mem_free(al);
     }, 0, "remove a command alias");
 
     // stuffcmds — replay +cmd arguments from the host command line.
@@ -191,17 +193,17 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         const Impl &impl = *tls_ctx->impl_;
         std::size_t count = 0;
         for (const Command *cmd = impl.cmd_list_head; cmd; cmd = cmd->abi_next) {
-            platform::console::write(cmd->name);
+            ::xash::platform::console::write(cmd->name);
             if (cmd->desc && *cmd->desc) {
-                platform::console::write(" \xe2\x80\x94 ");
-                platform::console::write(cmd->desc);
+                ::xash::platform::console::write(" \xe2\x80\x94 ");
+                ::xash::platform::console::write(cmd->desc);
             }
-            platform::console::write("\n");
+            ::xash::platform::console::write("\n");
             ++count;
         }
         char buf[64];
-        utilities::snprintf(buf, sizeof(buf), "%zu command(s)\n", count);
-        platform::console::write(buf);
+        ::xash::utilities::snprintf(buf, sizeof(buf), "%zu command(s)\n", count);
+        ::xash::platform::console::write(buf);
     }, 0, "list registered commands");
 
     // cvarlist — list all registered cvars to the console.
@@ -210,15 +212,15 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
         const Impl &impl = *tls_ctx->impl_;
         std::size_t count = 0;
         for (const Cvar *cv = impl.cvar_list_head; cv; cv = cvar_list_next(cv)) {
-            platform::console::write(cv->abi.name);
-            platform::console::write(" = \"");
-            if (cv->abi.string) platform::console::write(cv->abi.string);
-            platform::console::write("\"\n");
+            ::xash::platform::console::write(cv->abi.name);
+            ::xash::platform::console::write(" = \"");
+            if (cv->abi.string) ::xash::platform::console::write(cv->abi.string);
+            ::xash::platform::console::write("\"\n");
             ++count;
         }
         char buf[64];
-        utilities::snprintf(buf, sizeof(buf), "%zu cvar(s)\n", count);
-        platform::console::write(buf);
+        ::xash::utilities::snprintf(buf, sizeof(buf), "%zu cvar(s)\n", count);
+        ::xash::platform::console::write(buf);
     }, 0, "list registered cvars");
 
 #if XASH_DEBUG_CVARS
@@ -233,6 +235,7 @@ bool CmdCvarContext::init(const CmdCvarInitParams &params) noexcept
 
 void CmdCvarContext::shutdown() noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     if (!impl_->pool)
         return; // never successfully init()'d
 
@@ -248,25 +251,25 @@ void CmdCvarContext::shutdown() noexcept
 
             // Free pool-owned current string.
             if (cv->abi.flags & FCVAR_ALLOCATED) {
-                memory::mem_free(cv->abi.string);
+                ::xash::memory::mem_free(cv->abi.string);
                 cv->abi.string = nullptr;
                 cv->abi.flags &= ~static_cast<std::uint32_t>(FCVAR_ALLOCATED);
             }
 
             if (cv->abi.flags & FCVAR_USER_CREATED) {
                 // All of name, def_string, and cv itself are pool-owned.
-                memory::mem_free(cv->abi.name);
+                ::xash::memory::mem_free(cv->abi.name);
                 if (cv->def_string)
-                    memory::mem_free(const_cast<char *>(cv->def_string));
-                memory::mem_free(cv);
+                    ::xash::memory::mem_free(const_cast<char *>(cv->def_string)); // SAFETY: reclaiming pool memory (def_string was pool_dup'd as char* then stored const)
+                ::xash::memory::mem_free(cv);
             } else if (cv->abi.flags & FCVAR_DLL_WRAPPER) {
                 // Engine-allocated wrapper around a DLL CvarAbi.
                 // name, string, def_string are borrowed from DLL — do NOT free.
-                memory::mem_free(cv);
+                ::xash::memory::mem_free(cv);
             } else if (cv->owner_flags == 0) {
                 // Engine-static cvar: def_string was pool-dup'd by register_engine.
                 if (cv->def_string) {
-                    memory::mem_free(const_cast<char *>(cv->def_string));
+                    ::xash::memory::mem_free(const_cast<char *>(cv->def_string)); // SAFETY: reclaiming pool memory (def_string was pool_dup'd as char* then stored const)
                     cv->def_string = nullptr;
                 }
                 // cv and name are static; don't free.
@@ -282,10 +285,10 @@ void CmdCvarContext::shutdown() noexcept
         Command *cmd = impl_->cmd_list_head;
         while (cmd) {
             Command *next = cmd->abi_next;
-            memory::mem_free(cmd->name);
+            ::xash::memory::mem_free(cmd->name);
             if (cmd->desc)
-                memory::mem_free(cmd->desc);
-            memory::mem_free(cmd);
+                ::xash::memory::mem_free(cmd->desc);
+            ::xash::memory::mem_free(cmd);
             cmd = next;
         }
     }
@@ -296,8 +299,8 @@ void CmdCvarContext::shutdown() noexcept
         while (al) {
             AliasDef *next = al->abi_next;
             if (al->value)
-                memory::mem_free(al->value);
-            memory::mem_free(al);
+                ::xash::memory::mem_free(al->value);
+            ::xash::memory::mem_free(al);
             al = next;
         }
     }
@@ -313,7 +316,7 @@ void CmdCvarContext::shutdown() noexcept
     impl_->alias_list_head = nullptr;
     impl_->pending_unlink.clear();
 
-    memory::destroy_pool(impl_->pool);
+    ::xash::memory::destroy_pool(impl_->pool);
     impl_->pool = {};
 }
 

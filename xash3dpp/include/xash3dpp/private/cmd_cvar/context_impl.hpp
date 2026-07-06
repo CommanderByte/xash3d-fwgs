@@ -34,26 +34,26 @@ namespace xash::cmd_cvar {
 // ---------------------------------------------------------------------------
 
 struct CmdCvarContext::Impl {
-    memory::PoolHandle pool;
+    ::xash::memory::PoolHandle pool;
 
     // Injected dependencies (non-owning)
-    ITrustOracle  *trust_oracle  = nullptr;
-    ICompatPolicy *compat_policy = nullptr;
+    ITrustOracle  *trust_oracle  = nullptr;  // @lifetime: caller (injected at init; host-owned)
+    ICompatPolicy *compat_policy = nullptr;  // @lifetime: caller (injected at init; host-owned)
 
     // Observer table: fixed at init, never mutated during runtime.
     struct ObserverEntry {
-        ICvarObserver *observer;
+        ICvarObserver *observer;  // @lifetime: caller (registered via add_cvar_observer; not owned)
         std::uint32_t  flag_mask;
     };
-    std::array<ObserverEntry, limits::cmd_observer_max> observers{};
+    std::array<ObserverEntry, ::xash::limits::cmd_observer_max> observers{};
     std::size_t   observer_count { 0 };
 
     // Command queues (deque provides O(1) push_front / push_back).
     // NOTE: std::deque<std::string> uses the system heap, not impl_->pool.
     // Acceptable: each string is a command line consumed within cbuf_execute;
     // the queue is bounded by limits::cbuf_size and is always empty at shutdown.
-    std::deque<std::string> cmd_text;         // trusted queue
-    std::deque<std::string> filteredcmd_text; // stuffcmd (unprivileged) queue
+    std::deque<std::string> cmd_text;         // trusted queue  @pre-reserved: cbuf_size (std::deque: reserve N/A; informally bounded, drained each cbuf_execute, empty at shutdown)
+    std::deque<std::string> filteredcmd_text; // stuffcmd (unprivileged) queue  @pre-reserved: cbuf_size (std::deque: reserve N/A; informally bounded, drained each cbuf_execute, empty at shutdown)
 
     // Scripting state
     int           cmd_wait      { 0 }; // frame-skip counter for 'wait' command
@@ -86,10 +86,10 @@ struct CmdCvarContext::Impl {
     // Tokenizer scratch — valid only while dispatch_cmd() is on the call stack.
     // Written by cbuf_execute before invoking a CommandFn; reset after.
     // Built-in commands access these via the TLS context pointer.
-    static constexpr int k_max_argc = static_cast<int>(limits::cmd_tokens_max);
+    static constexpr int k_max_argc = static_cast<int>(::xash::limits::cmd_tokens_max);
     int                                        tok_argc          { 0 };
     std::array<const char *, k_max_argc>       tok_argv          {};
-    std::array<char, limits::cmd_line_max>     tok_argsBuffer    {};
+    std::array<char, ::xash::limits::cmd_line_max>     tok_argsBuffer    {};
     bool        tok_is_privileged     { false };
 
     // DLL lifecycle flags — set by the host layer.
@@ -100,19 +100,19 @@ struct CmdCvarContext::Impl {
     // Pending safe-unlink list: populated by cvar_prepare_to_unlink() before DLL
     // unload while cvar structs are still valid; consumed by unlink_pending_cvars().
     struct PendingUnlinkEntry {
-        const char   *name;        // pool-owned copy
+        const char   *name;        // pool-owned copy  @lifetime: impl-pool (pool_dup'd; reclaimed on destroy_pool)
         std::uint32_t owner_flags;
     };
     // NOTE: uses the system heap, not impl_->pool; bounded by server/client DLL
     // count and is always cleared (pending_unlink.clear()) before destroy_pool.
-    std::vector<PendingUnlinkEntry> pending_unlink;
+    std::vector<PendingUnlinkEntry> pending_unlink;  // @pre-reserved: cold path (DLL-unload only; bounded by a DLL's cvar count, cleared before destroy_pool)
 
 #if XASH_DEBUG_CVARS
     // Break-on-write cvar name.  Set via debug_break_on_cvar_write().
     const char *break_on_write_name { nullptr };
 
     // Circular change log.
-    detail::CircularBuffer<CvarChangeRecord, limits::cvar_change_log_capacity> change_log;
+    detail::CircularBuffer<CvarChangeRecord, ::xash::limits::cvar_change_log_capacity> change_log;
 #endif
 };
 
@@ -121,7 +121,7 @@ struct CmdCvarContext::Impl {
 // CommandFn dispatch.  Defined once in context.cpp; declared here so every
 // implementation TU in this subsystem can read/write it.
 // ---------------------------------------------------------------------------
-extern thread_local CmdCvarContext *tls_ctx;
+extern thread_local CmdCvarContext *tls_ctx;  // @lifetime: borrowed (set to the executing context for the duration of dispatch; nulled after)
 
 // ---------------------------------------------------------------------------
 // Cvar ABI list helpers — encapsulate the required reinterpret_cast between
@@ -145,11 +145,11 @@ inline void cvar_list_set_next(Cvar *cv, Cvar *next) noexcept
 // pool_dup — pool-duplicate a NUL-terminated string.
 // Inline so it is available in every implementation TU without an extra TU.
 // ---------------------------------------------------------------------------
-[[nodiscard]] inline char *pool_dup(memory::PoolHandle pool, const char *src) noexcept
+[[nodiscard]] inline char *pool_dup(::xash::memory::PoolHandle pool, const char *src) noexcept
 {
     if (!src) return nullptr;
     const std::size_t n = std::strlen(src) + 1;
-    char *dst = static_cast<char *>(memory::mem_alloc(pool, n));
+    char *dst = static_cast<char *>(::xash::memory::mem_alloc(pool, n));
     if (!dst) return nullptr;
     std::memcpy(dst, src, n);
     return dst;

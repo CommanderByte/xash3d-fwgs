@@ -3,6 +3,7 @@
 
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
 #include <xash3dpp/platform/console.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 
 namespace xash::cmd_cvar {
 
@@ -38,11 +39,13 @@ bool CmdCvarContext::cmd_current_is_privileged() const noexcept
 
 void CmdCvarContext::set_server_dll_loaded(bool loaded) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     impl_->server_dll_loaded = loaded;
 }
 
 void CmdCvarContext::set_client_dll_loaded(bool loaded) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     impl_->client_dll_loaded = loaded;
 }
 
@@ -75,10 +78,10 @@ void CmdCvarContext::dump_hash_stats() const noexcept
     };
 
     auto gather = [](const auto &map, const char *label) -> MapStats {
-        std::array<std::size_t, limits::cvar_hash_buckets> hist{};
+        std::array<std::size_t, ::xash::limits::cvar_hash_buckets> hist{};
         map.bucket_histogram(hist);
         MapStats s{ label, 0, 0, 0 };
-        for (std::size_t i = 0; i < limits::cvar_hash_buckets; ++i) {
+        for (std::size_t i = 0; i < ::xash::limits::cvar_hash_buckets; ++i) {
             if (hist[i]) ++s.used_buckets;
             s.total_entries += hist[i];
             if (hist[i] > s.max_chain) s.max_chain = hist[i];
@@ -93,14 +96,14 @@ void CmdCvarContext::dump_hash_stats() const noexcept
     }};
 
     char buf[128];
-    platform::console::write("cmd_cvar hash stats:\n");
+    ::xash::platform::console::write("cmd_cvar hash stats:\n");
     for (const auto &m : maps) {
-        utilities::snprintf(buf, sizeof(buf),
+        ::xash::utilities::snprintf(buf, sizeof(buf),
                       "  %s: %zu/%zu buckets used, %zu entries, max chain %zu\n",
                       m.label,
-                      m.used_buckets, static_cast<std::size_t>(limits::cvar_hash_buckets),
+                      m.used_buckets, static_cast<std::size_t>(::xash::limits::cvar_hash_buckets),
                       m.total_entries, m.max_chain);
-        platform::console::write(buf);
+        ::xash::platform::console::write(buf);
     }
 }
 #endif

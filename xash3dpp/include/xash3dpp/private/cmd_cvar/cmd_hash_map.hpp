@@ -25,14 +25,14 @@
 
 namespace xash::cmd_cvar {
 
-template <typename V, std::size_t kBuckets = limits::cvar_hash_buckets>
+template <typename V, std::size_t kBuckets = ::xash::limits::cvar_hash_buckets>
 class CmdHashMap {
 public:
     // Construct with a null pool; call set_pool() before first insert().
-    CmdHashMap() noexcept : pool_(memory::k_null_pool) {}
+    CmdHashMap() noexcept : pool_(::xash::memory::k_null_pool) {}
 
     // Construct with a live pool ready for immediate use.
-    explicit CmdHashMap(memory::PoolHandle pool) noexcept : pool_(pool) {}
+    explicit CmdHashMap(::xash::memory::PoolHandle pool) noexcept : pool_(pool) {}
 
     CmdHashMap(const CmdHashMap &)            = delete;
     CmdHashMap &operator=(const CmdHashMap &) = delete;
@@ -44,7 +44,7 @@ public:
             buckets_[i]   = o.buckets_[i];
             o.buckets_[i] = nullptr;
         }
-        o.pool_ = memory::k_null_pool;
+        o.pool_ = ::xash::memory::k_null_pool;
     }
 
     // ---------------------------------------------------------------------------
@@ -53,9 +53,9 @@ public:
 
     // Set (or replace) the allocator pool.  Must be called before insert()
     // when the map was default-constructed.
-    void set_pool(memory::PoolHandle pool) noexcept { pool_ = pool; }
+    void set_pool(::xash::memory::PoolHandle pool) noexcept { pool_ = pool; }
 
-    [[nodiscard]] memory::PoolHandle pool() const noexcept { return pool_; }
+    [[nodiscard]] ::xash::memory::PoolHandle pool() const noexcept { return pool_; }
 
     // ---------------------------------------------------------------------------
     // Core operations
@@ -66,7 +66,7 @@ public:
         if (!name) return nullptr;
         Node *n = buckets_[hash(name)];
         while (n) {
-            if (utilities::stricmp(n->key, name) == 0)
+            if (::xash::utilities::stricmp(n->key, name) == 0)
                 return n->value;
             n = n->next;
         }
@@ -78,7 +78,7 @@ public:
     // from the V struct, e.g. cv->abi.name or cmd->name).
     // Returns false only on OOM.
     [[nodiscard]] bool insert(const char *key, V *value) noexcept {
-        Node *n = static_cast<Node *>(memory::mem_alloc(pool_, sizeof(Node)));
+        Node *n = static_cast<Node *>(::xash::memory::mem_alloc(pool_, sizeof(Node)));
         if (!n) return false;
         n->key   = key;
         n->value = value;
@@ -95,10 +95,10 @@ public:
         Node            **pp = &buckets_[b];
         while (*pp) {
             Node *n = *pp;
-            if (utilities::stricmp(n->key, name) == 0) {
+            if (::xash::utilities::stricmp(n->key, name) == 0) {
                 *pp = n->next;
                 V *v = n->value;
-                memory::mem_free(n);
+                ::xash::memory::mem_free(n);
                 return v;
             }
             pp = &n->next;
@@ -123,7 +123,7 @@ public:
             Node *n = buckets_[i];
             while (n) {
                 Node *nxt = n->next;
-                memory::mem_free(n);
+                ::xash::memory::mem_free(n);
                 n = nxt;
             }
             buckets_[i] = nullptr;
@@ -149,8 +149,8 @@ public:
 
 private:
     struct Node {
-        const char *key;
-        V          *value;
+        const char *key;   // @lifetime: borrowed (points into the V record, e.g. cv->abi.name; outlives the node)
+        V          *value; // @lifetime: borrowed (registry entry; the map is non-owning)
         Node       *next { nullptr };
     };
 
@@ -166,7 +166,7 @@ private:
         return static_cast<std::size_t>(h) % kBuckets;
     }
 
-    memory::PoolHandle pool_;
+    ::xash::memory::PoolHandle pool_;
     Node              *buckets_[kBuckets] {};
 };
 

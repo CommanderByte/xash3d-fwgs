@@ -10,6 +10,11 @@
 //   • Implementations must not call back into CmdCvarContext during a callback
 //     (no re-entrant cvar_set from inside on_cvar_changed).
 //   • Observer list is populated at init time and never mutated during runtime.
+//
+// @thread-safety: observer callbacks fire synchronously on the main (game)
+// thread during a cvar write; implementations therefore run in that thread
+// context. The observer table itself is fixed at init and never mutated at
+// runtime, so no synchronisation is required for dispatch.
 
 #include <xash3dpp/cmd_cvar/cvar.hpp>
 

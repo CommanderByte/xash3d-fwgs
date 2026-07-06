@@ -7,6 +7,12 @@
 // Cvar* to cvar_t* only there; cmd_cvar itself always uses Cvar*.
 //
 // NEVER reorder or insert fields before 'owner_flags' in the Cvar struct.
+//
+// @thread-safety: Cvar/CvarAbi records are main-thread registry state, owned by
+// the CmdCvarContext pool and mutated only on the game thread. The atomic
+// 'generation' counter and the XASH_STATS write_count are the only fields safe
+// to read cross-thread (lock-free change detection). CvarDesc is a copyable
+// snapshot whose pointers borrow registry memory (see @lifetime notes).
 
 #include <atomic>
 #include <cstdint>
@@ -90,11 +96,11 @@ enum class CvarWriteSource : std::uint8_t {
 // ---------------------------------------------------------------------------
 
 struct CvarAbi {
-    char         *name;   // +0 on both 32/64-bit
-    char         *string;
+    char         *name;   // +0 on both 32/64-bit  @lifetime: registry (pool_dup'd for engine cvars; borrowed for DLL cvars)
+    char         *string; // @lifetime: registry (pool-owned when FCVAR_ALLOCATED; else literal/DLL-owned)
     std::uint32_t flags;
     float         value;
-    CvarAbi      *next;   // ABI linked-list; only traversed for legacy Cvar_GetList
+    CvarAbi      *next;   // ABI linked-list; only traversed for legacy Cvar_GetList  @lifetime: registry (list link; nodes owned by the registry)
 };
 
 // ---------------------------------------------------------------------------
@@ -114,8 +120,8 @@ struct Cvar {
     CvarAbi abi;
 
     // -- convar_t extensions (present in legacy engine-internal convar_s too) --
-    const char *desc;        // human-readable description; may be nullptr
-    const char *def_string;  // default value string; used to restore on Cvar_Unlink
+    const char *desc;        // human-readable description; may be nullptr  @lifetime: borrowed (string literal for engine cvars / DLL-owned; never freed by cmd_cvar)
+    const char *def_string;  // default value string; used to restore on Cvar_Unlink  @lifetime: registry (pool_dup'd at registration; borrowed for DLL wrappers)
 
     // -- Internal extensions (opaque to legacy DLLs) --
 
@@ -156,10 +162,10 @@ static_assert(__builtin_offsetof(Cvar, abi) == 0,
 // ---------------------------------------------------------------------------
 
 struct CvarDesc {
-    const char   *name;
-    const char   *value;
-    const char   *def_string;
-    const char   *desc;
+    const char   *name;        // @lifetime: registry (borrowed snapshot; valid until the cvar is unlinked)
+    const char   *value;       // @lifetime: registry (borrowed snapshot; valid until the next write)
+    const char   *def_string;  // @lifetime: registry (borrowed snapshot; valid until the cvar is unlinked)
+    const char   *desc;        // @lifetime: registry (borrowed snapshot; valid until the cvar is unlinked)
     std::uint32_t flags;
     CvarType      type_hint;
     float         range_min;
@@ -172,7 +178,7 @@ struct CvarDesc {
 
 #if XASH_DEBUG_CVARS
 struct CvarChangeRecord {
-    const char     *cvar_name;  // stable pointer into registry; never freed while log exists
+    const char     *cvar_name;  // stable pointer into registry; never freed while log exists  @lifetime: registry (borrowed; stable)
     char            old_value[64];
     char            new_value[64];
     std::uint32_t   frame;

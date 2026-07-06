@@ -53,7 +53,7 @@ public:
     // ---------------------------------------------------------------------------
 
     struct Iterator {
-        const CircularBuffer *buf;
+        const CircularBuffer *buf;  // @lifetime: borrowed (the buffer being iterated; iterator must not outlive it)
         std::size_t           idx;
 
         [[nodiscard]] const T &operator*()  const noexcept { return (*buf)[idx]; }

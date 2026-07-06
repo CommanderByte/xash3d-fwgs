@@ -96,7 +96,7 @@ void CmdCvarContext::shutdown() noexcept;
 
 ## Threading model
 
-The context is **game-thread-only** for all mutation (init, shutdown, register, unlink, set, cbuf_execute).
+The context is **game-thread-only** for all mutation (init, shutdown, register, unlink, set, cbuf_execute). The public lifecycle mutators `init`, `shutdown`, `set_server_dll_loaded`, and `set_client_dll_loaded` guard this at entry with `::xash::core::assert_thread_role(::xash::core::ThreadRole::Main)` (Q-22 / TH-Role). The remaining mutators run inside the same main-thread dispatch and are not individually asserted so the unit-test harness can drive them directly.
 
 The following are safe to read from other threads lock-free once the context is in the **Runtime** phase:
 

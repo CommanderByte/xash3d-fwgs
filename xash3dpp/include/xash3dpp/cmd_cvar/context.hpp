@@ -5,6 +5,13 @@
 // All command-buffer and cvar-registry state lives in CmdCvarContext.
 // The global g_cmd_cvar pointer (set in the ABI shim in the host layer) is
 // the only place a singleton reference exists; tests construct local instances.
+//
+// @thread-safety: main-thread engine state. The registry/buffer mutators
+// (init/shutdown, cvar/command register/set/unlink, cbuf_execute) run on the
+// main (game) thread and are NOT internally synchronised; concurrent callers
+// must serialise externally. Read-only query accessors are safe from the
+// owning thread. The only fields safe to read cross-thread are the per-cvar
+// atomics (generation, XASH_STATS counters) and CmdCvarStats.
 
 #include <xash3dpp/cmd_cvar/cvar.hpp>
 #include <xash3dpp/cmd_cvar/command.hpp>
@@ -30,12 +37,12 @@ struct ICompatPolicy;
 struct CmdCvarInitParams {
     // Required: answers whether the stuffcmd queue is currently trusted.
     // The context takes a non-owning pointer; lifetime must exceed the context.
-    ITrustOracle  *trust_oracle  = nullptr;
+    ITrustOracle  *trust_oracle  = nullptr;  // @lifetime: caller (host-owned; must outlive the context)
 
     // Required: routes GoldSrc compat quirks.  Pass a NullCompatPolicy
     // instance when XASH_GOLDSRC_COMPAT is not enabled.
     // The context takes a non-owning pointer; lifetime must exceed the context.
-    ICompatPolicy *compat_policy = nullptr;
+    ICompatPolicy *compat_policy = nullptr;  // @lifetime: caller (host-owned; must outlive the context)
 };
 
 // ---------------------------------------------------------------------------
@@ -210,7 +217,7 @@ private:
     // k_null_pool: the cmd_cvar pool does not yet exist when the Impl is created
     // (it is created inside init()); the Impl is the struct that holds the pool
     // handle, so it cannot itself be pool-allocated from that pool.
-    Impl *impl_ = nullptr;
+    Impl *impl_ = nullptr;  // @lifetime: self (pool-owned pimpl; freed via pool_delete in ~CmdCvarContext)
 };
 
 } // namespace xash::cmd_cvar
