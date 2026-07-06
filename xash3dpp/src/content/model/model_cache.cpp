@@ -119,6 +119,10 @@ ModelHandle ModelCache::find_or_alloc( std::string_view name )
 
     if (const ModelHandle existing = find(name)) {
         ++impl_->stats_.cache_hits;
+        // Re-referencing a model rescues it from a pending level-transition
+        // purge (legacy Mod_FindName restoring NL_PRESENT).
+        if (Model *m = resolve(existing); m && m->needload() == NeedLoad::FreeUnused)
+            m->set_needload(NeedLoad::Present);
         return existing;
     }
 
@@ -196,6 +200,33 @@ std::size_t ModelCache::live_count() const noexcept
     for (const auto &slot : impl_->slots_)
         if (slot.occupied) ++n;
     return n;
+}
+
+void ModelCache::purge_for_level_change() noexcept
+{
+    xash::core::assert_thread_role(xash::core::ThreadRole::Main);
+    // Skip slot 0 (world) and inline "*N" submodels (they share the world data).
+    for (std::size_t i = 1; i < impl_->slots_.size(); ++i)
+    {
+        Impl::Slot &slot = impl_->slots_[i];
+        if (slot.occupied && !slot.model.is_inline_submodel())
+            slot.model.set_needload(NeedLoad::FreeUnused);
+    }
+}
+
+void ModelCache::free_unused() noexcept
+{
+    xash::core::assert_thread_role(xash::core::ThreadRole::Main);
+    for (std::size_t i = 1; i < impl_->slots_.size(); ++i)
+    {
+        Impl::Slot &slot = impl_->slots_[i];
+        if (slot.occupied && slot.model.needload() == NeedLoad::FreeUnused)
+        {
+            slot.occupied   = false;
+            slot.generation = bump_generation(slot.generation);
+            slot.model      = Model{};
+        }
+    }
 }
 
 Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::byte> file )

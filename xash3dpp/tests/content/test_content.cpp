@@ -362,6 +362,39 @@ static void test_model_postprocess()
 }
 
 // ---------------------------------------------------------------------------
+// Level-transition purge FSM (OQ-8)
+// ---------------------------------------------------------------------------
+
+static void test_model_purge()
+{
+    using namespace xash::content;
+
+    xash::filesystem::Filesystem fs;
+    ModelCache cache;
+    REQUIRE( cache.init( { fs } ) );
+
+    CHECK( cache.register_world( "maps/c0a0.bsp" ).valid() );
+    const ModelHandle a = cache.find_or_alloc( "models/a.mdl" );
+    const ModelHandle b = cache.find_or_alloc( "models/b.mdl" );
+    CHECK_EQ( cache.live_count(), std::size_t{ 3 } );  // world + a + b
+
+    // Level change: flag every non-world model for reaping.
+    cache.purge_for_level_change();
+
+    // The new level re-references 'a' (rescues it) but never touches 'b'.
+    const ModelHandle a2 = cache.find_or_alloc( "models/a.mdl" );
+    CHECK( a2 == a );  // same slot, rescued from the purge
+
+    cache.free_unused();
+
+    CHECK( cache.resolve( a ) != nullptr );            // rescued, survives
+    CHECK( cache.resolve( b ) == nullptr );            // reaped
+    CHECK_EQ( cache.live_count(), std::size_t{ 2 } );  // world + a
+
+    cache.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -377,6 +410,7 @@ int main()
     RUN_TEST( test_model_crc );
     RUN_TEST( test_model_introspection );
     RUN_TEST( test_model_postprocess );
+    RUN_TEST( test_model_purge );
 
     std::printf( "test_content: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

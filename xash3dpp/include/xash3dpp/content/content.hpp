@@ -114,6 +114,16 @@ public:
     // Number of currently-occupied slots (world included).
     [[nodiscard]] std::size_t live_count() const noexcept;
 
+    // ---- level-transition purge (OQ-8) -----------------------------------
+    // Mark every non-world, non-inline model as a reap candidate (legacy
+    // Mod_PurgeStudioCache). The next level's find_or_alloc calls rescue the
+    // models it re-references; free_unused() then reaps the rest. The world
+    // (slot 0) and inline "*N" submodels are never purged.
+    void purge_for_level_change() noexcept;
+
+    // Free every slot still flagged for reaping after a purge (Mod_FreeUnused).
+    void free_unused() noexcept;
+
     // Load a model into `h` from an in-memory file image, dispatching on the
     // magic (O-3): IDST/IDSP/IDPO. Attaches the parsed payload, computes the
     // file CRC, and marks the slot Present. FS-decoupled for testability
