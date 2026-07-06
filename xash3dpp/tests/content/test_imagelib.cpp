@@ -707,6 +707,266 @@ static void test_dds_bad_header()
 }
 
 // ---------------------------------------------------------------------------
+// KTX2 decode (kept-compressed BCn + Ktx2Raw passthrough; legacy Image_LoadKTX2)
+// ---------------------------------------------------------------------------
+
+static void ktx2_put_u32( std::vector<std::byte> &v, std::uint32_t x )
+{
+    for( int i = 0; i < 4; ++i )
+        v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >> ( 8 * i ) ) & 0xFF ) } );
+}
+static void ktx2_put_u64( std::vector<std::byte> &v, std::uint64_t x )
+{
+    for( int i = 0; i < 8; ++i )
+        v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >> ( 8 * i ) ) & 0xFF ) } );
+}
+
+// Structural header knobs (defaults describe a plain single-face/-layer 2D KTX2).
+struct Ktx2Desc {
+    std::uint32_t vk_format        = 0;
+    std::uint32_t width            = 0;
+    std::uint32_t height           = 0;
+    std::uint32_t pixel_depth      = 0;
+    std::uint32_t layer_count      = 0;
+    std::uint32_t face_count       = 0;
+    std::uint32_t supercompression = 0;
+};
+
+// Assemble a KTX2 file: 12-byte identifier + 36-byte header + 32-byte (zero)
+// index + one 24-byte level record per payload + the payloads laid out
+// contiguously right after the level array (so byteOffset/byteLength are honest).
+static std::vector<std::byte> make_ktx2( const Ktx2Desc &d,
+                                         std::span<const std::vector<std::byte>> levels )
+{
+    const std::uint32_t n = static_cast<std::uint32_t>( levels.size() );
+
+    std::vector<std::byte> f;
+    const std::uint8_t ident[12] = {
+        0xAB, 'K', 'T', 'X', ' ', '2', '0', 0xBB, '\r', '\n', 0x1A, '\n' };
+    for( const std::uint8_t b : ident )
+        f.push_back( std::byte{ b } );
+
+    ktx2_put_u32( f, d.vk_format );         // vkFormat
+    ktx2_put_u32( f, 0 );                   // typeSize
+    ktx2_put_u32( f, d.width );             // pixelWidth
+    ktx2_put_u32( f, d.height );            // pixelHeight
+    ktx2_put_u32( f, d.pixel_depth );       // pixelDepth
+    ktx2_put_u32( f, d.layer_count );       // layerCount
+    ktx2_put_u32( f, d.face_count );        // faceCount
+    ktx2_put_u32( f, n );                   // levelCount
+    ktx2_put_u32( f, d.supercompression );  // supercompressionScheme
+
+    for( int i = 0; i < 32; ++i )           // ktx2_index_t (unused by the decoder)
+        f.push_back( std::byte{ 0 } );
+
+    // Level records, payloads packed contiguously after the level array.
+    const std::size_t payload_base = 80 + static_cast<std::size_t>( n ) * 24;
+    std::size_t running = payload_base;
+    for( const auto &lvl : levels )
+    {
+        ktx2_put_u64( f, running );           // byteOffset
+        ktx2_put_u64( f, lvl.size() );        // byteLength
+        ktx2_put_u64( f, lvl.size() );        // uncompressedByteLength
+        running += lvl.size();
+    }
+    for( const auto &lvl : levels )
+        for( const std::byte b : lvl )
+            f.push_back( b );
+    return f;
+}
+
+// Fill n bytes with a recognisable ramp so the concat order can be verified.
+static std::vector<std::byte> ktx2_ramp( std::size_t n, std::uint8_t seed )
+{
+    std::vector<std::byte> v( n );
+    for( std::size_t i = 0; i < n; ++i )
+        v[i] = std::byte{ static_cast<std::uint8_t>( seed + i ) };
+    return v;
+}
+
+// A single-level BC7 image is decoded kept-compressed, format+flags per the map.
+static void test_ktx2_bc7()
+{
+    using namespace xash::imagelib;
+
+    // 4x4 => exactly one 16-byte BC7 block.
+    const auto block = ktx2_ramp( 16, 0x20 );
+    std::vector<std::vector<std::byte>> levels{ block };
+
+    // BC7_UNORM (145) -> Bc7Unorm, carries HasColor|HasAlpha.
+    Ktx2Desc du; du.vk_format = 145; du.width = 4; du.height = 4;
+    const auto ktx_u = make_ktx2( du, levels );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "test.KTX2", ktx_u );  // case-insensitive ext
+    REQUIRE( out.has_value() );
+
+    CHECK( out->format() == PixelFormat::Bc7Unorm );
+    CHECK( is_compressed( out->format() ) );
+    CHECK_EQ( out->width(), std::uint16_t{ 4 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 4 } );
+    CHECK_EQ( out->depth(), std::uint16_t{ 1 } );
+    CHECK_EQ( out->mip_count(), std::uint8_t{ 1 } );
+    CHECK( out->has( ImageFlags::DdsFormat ) );
+    CHECK( out->has( ImageFlags::HasColor ) );
+    CHECK( out->has( ImageFlags::HasAlpha ) );
+    CHECK( !out->has( ImageFlags::Cubemap ) );
+
+    // Kept compressed: the block bytes are copied verbatim (size == 16).
+    REQUIRE( out->pixels().size() == std::size_t{ 16 } );
+    bool same = true;
+    for( std::size_t i = 0; i < block.size(); ++i )
+        same = same && out->pixels()[i] == block[i];
+    CHECK( same );
+    CHECK_EQ( dec.stats().images_decoded, std::uint64_t{ 1 } );
+
+    // BC7_SRGB (146) -> Bc7Srgb (same flags), proving the srgb map branch.
+    Ktx2Desc ds; ds.vk_format = 146; ds.width = 4; ds.height = 4;
+    const auto ktx_s = make_ktx2( ds, levels );
+    const auto outs = dec.decode( "test.ktx2", ktx_s );
+    REQUIRE( outs.has_value() );
+    CHECK( outs->format() == PixelFormat::Bc7Srgb );
+    CHECK( outs->has( ImageFlags::HasColor ) );
+    CHECK( outs->has( ImageFlags::HasAlpha ) );
+    dec.shutdown();
+}
+
+// A multi-level BC4 chain exercises the mip size cross-check + concat order.
+static void test_ktx2_mipchain()
+{
+    using namespace xash::imagelib;
+
+    // BC4_UNORM (139): 8 bytes/block. 8x8 => 2x2 blocks = 32 bytes; 4x4 => 8 bytes.
+    const auto mip0 = ktx2_ramp( 32, 0x01 );
+    const auto mip1 = ktx2_ramp( 8, 0xC0 );
+    std::vector<std::vector<std::byte>> levels{ mip0, mip1 };
+
+    Ktx2Desc d; d.vk_format = 139; d.width = 8; d.height = 8;
+    const auto ktx = make_ktx2( d, levels );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "chain.ktx2", ktx );
+    REQUIRE( out.has_value() );
+
+    CHECK( out->format() == PixelFormat::Bc4Unsigned );
+    CHECK( is_compressed( out->format() ) );
+    CHECK_EQ( out->width(), std::uint16_t{ 8 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 8 } );
+    CHECK_EQ( out->mip_count(), std::uint8_t{ 2 } );
+    CHECK( out->has( ImageFlags::DdsFormat ) );
+    CHECK( !out->has( ImageFlags::HasColor ) );   // BC4 = 1 component, no colour
+    CHECK( !out->has( ImageFlags::HasAlpha ) );
+
+    // Levels concatenated in order: [mip0 (32) | mip1 (8)] == 40 bytes.
+    REQUIRE( out->pixels().size() == std::size_t{ 40 } );
+    bool ok = true;
+    for( std::size_t i = 0; i < 32; ++i )
+        ok = ok && out->pixels()[i] == mip0[i];
+    for( std::size_t i = 0; i < 8; ++i )
+        ok = ok && out->pixels()[32 + i] == mip1[i];
+    CHECK( ok );
+    dec.shutdown();
+}
+
+// A valid-but-unrecognised vkFormat falls back to Ktx2Raw (whole file verbatim).
+static void test_ktx2_raw_fallback()
+{
+    using namespace xash::imagelib;
+
+    // VK_FORMAT_R8G8B8A8_UNORM (37) is a legal KTX2 format we do not map to a
+    // PixelFormat -> the whole file is handed through for ref_vk.
+    std::vector<std::vector<std::byte>> levels{ ktx2_ramp( 16, 0x70 ) };
+    Ktx2Desc d; d.vk_format = 37; d.width = 4; d.height = 4;
+    const auto ktx = make_ktx2( d, levels );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "raw.ktx2", ktx );
+    REQUIRE( out.has_value() );
+
+    CHECK( out->format() == PixelFormat::Ktx2Raw );
+    CHECK( !is_compressed( out->format() ) );      // Ktx2Raw is a passthrough, not BCn
+    CHECK( out->has( ImageFlags::DdsFormat ) );
+    CHECK( !out->has( ImageFlags::HasColor ) );    // no per-format flags on the raw path
+    CHECK( !out->has( ImageFlags::HasAlpha ) );
+    CHECK_EQ( out->width(), std::uint16_t{ 4 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 4 } );
+
+    // The stored payload is the entire file, byte for byte.
+    REQUIRE( out->pixels().size() == ktx.size() );
+    bool same = true;
+    for( std::size_t i = 0; i < ktx.size(); ++i )
+        same = same && out->pixels()[i] == ktx[i];
+    CHECK( same );
+    dec.shutdown();
+}
+
+// Bounds-safety + rejection paths: malformed / unsupported inputs must return an
+// error, never fault.
+static void test_ktx2_bad_input()
+{
+    using namespace xash::imagelib;
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+
+    // Shorter than the 104-byte minimal prologue.
+    {
+        std::vector<std::byte> v( 50, std::byte{ 0 } );
+        const auto img = dec.decode( "x.ktx2", v );
+        CHECK( !img.has_value() );
+        CHECK( img.error() == ImageError::Truncated );
+    }
+    // Full-size prologue, wrong identifier.
+    {
+        std::vector<std::byte> v( 104, std::byte{ 0 } );
+        const auto img = dec.decode( "x.ktx2", v );
+        CHECK( !img.has_value() );
+        CHECK( img.error() == ImageError::BadHeader );
+    }
+    // Supercompression is rejected outright (never raw-passed).
+    {
+        std::vector<std::vector<std::byte>> levels{ ktx2_ramp( 16, 0 ) };
+        Ktx2Desc d; d.vk_format = 145; d.width = 4; d.height = 4; d.supercompression = 1;
+        const auto ktx = make_ktx2( d, levels );
+        const auto img = dec.decode( "x.ktx2", ktx );
+        CHECK( !img.has_value() );
+        CHECK( img.error() == ImageError::UnsupportedFeature );
+    }
+    // 3D (pixelDepth > 1) is rejected.
+    {
+        std::vector<std::vector<std::byte>> levels{ ktx2_ramp( 16, 0 ) };
+        Ktx2Desc d; d.vk_format = 145; d.width = 4; d.height = 4; d.pixel_depth = 2;
+        const auto ktx = make_ktx2( d, levels );
+        const auto img = dec.decode( "x.ktx2", ktx );
+        CHECK( !img.has_value() );
+        CHECK( img.error() == ImageError::UnsupportedFeature );
+    }
+    // Multi-face (faceCount > 1, e.g. a cubemap) is rejected.
+    {
+        std::vector<std::vector<std::byte>> levels{ ktx2_ramp( 16, 0 ) };
+        Ktx2Desc d; d.vk_format = 145; d.width = 4; d.height = 4; d.face_count = 6;
+        const auto ktx = make_ktx2( d, levels );
+        const auto img = dec.decode( "x.ktx2", ktx );
+        CHECK( !img.has_value() );
+        CHECK( img.error() == ImageError::UnsupportedFeature );
+    }
+    // Recognised format but the level byteLength disagrees with the computed mip
+    // size (4x4 BC7 must be 16 bytes; give it 15) -> BadHeader.
+    {
+        std::vector<std::vector<std::byte>> levels{ ktx2_ramp( 15, 0 ) };
+        Ktx2Desc d; d.vk_format = 145; d.width = 4; d.height = 4;
+        const auto ktx = make_ktx2( d, levels );
+        const auto img = dec.decode( "x.ktx2", ktx );
+        CHECK( !img.has_value() );
+        CHECK( img.error() == ImageError::BadHeader );
+    }
+    dec.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -731,6 +991,10 @@ int main()
     RUN_TEST( test_dds_dxt1 );
     RUN_TEST( test_dds_dxt5_alpha );
     RUN_TEST( test_dds_bad_header );
+    RUN_TEST( test_ktx2_bc7 );
+    RUN_TEST( test_ktx2_mipchain );
+    RUN_TEST( test_ktx2_raw_fallback );
+    RUN_TEST( test_ktx2_bad_input );
 
     std::printf( "test_imagelib: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;
