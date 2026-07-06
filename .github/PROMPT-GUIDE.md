@@ -56,29 +56,34 @@ Agents never need `mode:` or `argument-hint:`.
 | `vscode` | Use VS Code features |
 | `web` | Fetch information from the web |
 
-### C/C++ DevTools
+### Repo MCP servers (symbol nav, build/test, scans)
 
-| Tool name | What it does |
+Symbol navigation and build/test come from this repo's **MCP servers**, not
+from the CMake Tools / C-C++ extension language-model tools. The pinned
+extensions expose no usable `*_CMakeTools` / `Get*_CppTools` LM tools —
+referencing those names silently drops them. Grant the server wildcard instead:
+
+| Server wildcard | What it provides |
 |---|---|
-| `Build_CMakeTools` | Build a CMake project via CMake Tools extension |
-| `RunCtest_CMakeTools` | Execute CTest tests via CMake Tools extension |
-| `ListTests_CMakeTools` | List available tests for this CMake project |
-| `ListBuildTargets_CMakeTools` | List available CMake build targets |
-| `GetSymbolInfo_CppTools` | Get symbol definition for a C++ symbol |
-| `GetSymbolReferences_CppTools` | Find all references to a C++ symbol |
-| `GetSymbolCallHierarchy_CppTools` | Get call hierarchy for a C++ symbol |
+| `cpp-lsp/*` | clangd-backed definition / references / hover for symbol nav |
+| `xash-tools/*` | build, test, refresh_compile_db, compliance_scan, finish_check, limits_scan, status, whereami, checkpoint, … (same JSON as the `xash3dpp/tools/*.py` CLIs) |
+
+Both are registered in `.vscode/mcp.json`; the CLI (`execute` + the venv
+python) is the identical-JSON fallback when a server is unavailable.
 
 ### Access tiers
 
 | Access level | `tools:` value | Use for |
 |---|---|---|
 | Read-only | `[read, search]` | Analysis, audits that produce reports only |
-| Read + symbol nav | `[read, search, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]` | Audits and analyses that trace types/usages |
+| Read + symbol nav | `[read, search, cpp-lsp/*]` | Audits and analyses that trace types/usages |
 | Docs-write | `[read, search, edit]` | Prompts that write docs but not source code |
-| Implementation | `[read, search, edit, execute, todo, Build_CMakeTools, RunCtest_CMakeTools]` | Prompts that modify source, build, and test |
-| Debug/bisect | `[read, search, execute, Build_CMakeTools, RunCtest_CMakeTools, ListTests_CMakeTools]` | Regression hunting, build verification |
+| Implementation | `[read, search, edit, execute, todo, xash-tools/*]` | Prompts that modify source, build, and test |
+| Debug/bisect | `[read, search, execute, xash-tools/*]` | Regression hunting, build verification |
 
 **Rule**: use `execute` for terminal commands — not `run` or `terminal` (those are not valid tool names).
+**Rule**: symbol nav is `cpp-lsp/*`; build/test/scans are `xash-tools/*` — never the
+extension `*_CMakeTools` / `*_CppTools` names (they do not resolve in the pinned extensions).
 **Rule**: grant the minimum access needed. Analysis prompts that do not modify source
 files must not include `edit` in their tools list.
 

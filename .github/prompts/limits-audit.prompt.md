@@ -3,7 +3,7 @@ name: "Limits audit — magic number enforcement"
 description: "Scan xash3dpp/ (or a specific subsystem) for magic number literals that should be in limits.hpp, verify existing XASH_LIMIT_* entries are used correctly, and report any missing or misplaced limits. Read-only."
 argument-hint: "optional subsystem name to scope the scan, e.g. 'filesystem'. Omit to scan all of xash3dpp/."
 agent: agent
-tools: [read, search, execute]
+tools: [read, search, execute, xash-tools/*]
 model: claude-haiku-4-5-20251001
 ---
 

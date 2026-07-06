@@ -3,7 +3,7 @@ name: "Analyse utility consolidation"
 description: "Scan a folder for duplicated or near-duplicated utility code across its files, identify what can be extracted into a shared utility, and determine where that utility belongs under separation of concerns."
 argument-hint: "folder path relative to repo root (e.g. xash3dpp/src/filesystem, engine/server)"
 agent: agent
-tools: [read, search, edit, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools]
+tools: [read, search, edit, cpp-lsp/*]
 model: claude-sonnet-4-6
 ---
 

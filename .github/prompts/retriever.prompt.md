@@ -3,7 +3,7 @@ name: "Retriever — single-rule codebase enforcement"
 description: "Hunt down every violation of one specific rule across the entire xash3dpp/ tree and fix them all — code, tests, and docs. Loops until the rescan comes back empty or the pass limit is reached. Narrow scope, unlimited depth."
 argument-hint: "RULE_NAME: one-sentence description of what changed. E.g. 'ERROR_RETURN: logging required at public API boundary only, not in private helpers'"
 agent: agent
-tools: [read, search, edit, execute, todo, Build_CMakeTools, RunCtest_CMakeTools]
+tools: [read, search, edit, execute, todo, xash-tools/*]
 model: claude-sonnet-4-6
 ---
 

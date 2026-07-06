@@ -3,7 +3,7 @@ name: "Bisect — find the commit that broke something"
 description: "Run git bisect to locate the exact commit that introduced a build failure, test regression, or behavioural change. Provide a failing symptom and an optional known-good commit. Read-only analysis; does not modify source files."
 argument-hint: "description of the failure + optional known-good ref. E.g. 'test_filesystem crashes on open_file — last known good: main'"
 agent: agent
-tools: [read, search, execute, Build_CMakeTools, RunCtest_CMakeTools, ListTests_CMakeTools]
+tools: [read, search, execute, xash-tools/*]
 model: claude-sonnet-4-6
 ---
 

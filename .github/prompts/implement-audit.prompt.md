@@ -3,7 +3,7 @@ name: "Implement audit fixes"
 description: "Applies all structural violations found by /detail-audit to a module. Re-derives the violations internally (same eight checks), applies every finding in severity order (BLOCKERs first, WARNINGs second), updates the boundary doc if one exists, builds, runs tests, and commits. Invoke this after reviewing /detail-audit output, or directly to run the full audit-fix-test-commit cycle without a review gate."
 argument-hint: "module name, e.g. 'networking', 'cmd_cvar', 'filesystem'"
 agent: agent
-tools: [read, search, edit, execute, todo, Build_CMakeTools, RunCtest_CMakeTools]
+tools: [read, search, edit, execute, todo, xash-tools/*]
 model: claude-sonnet-4-6
 ---
 

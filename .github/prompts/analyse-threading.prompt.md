@@ -3,7 +3,7 @@ name: "Analyse threading safety"
 description: "Audit a subsystem (legacy or xash3dpp) for data races, unsafe statics, and missing synchronisation, then append a Threading section to its boundary spec."
 argument-hint: "subsystem name matching an existing boundary spec (e.g. public-utilities, filesystem, sound)"
 agent: agent
-tools: [read, search, edit, GetSymbolInfo_CppTools, GetSymbolReferences_CppTools, GetSymbolCallHierarchy_CppTools]
+tools: [read, search, edit, cpp-lsp/*]
 model: claude-opus-4-7
 ---
 

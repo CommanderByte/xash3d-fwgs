@@ -3,7 +3,7 @@ name: "Finish-subsystem checklist"
 description: "Read-only done checklist for a completed xash3dpp subsystem. Reports [x]/[ ] status to chat. Run after document-architecture and before merging."
 argument-hint: "subsystem name, e.g. 'sound', 'renderer', 'networking'"
 agent: agent
-tools: [read, search, execute]
+tools: [read, search, execute, xash-tools/*]
 model: claude-haiku-4-5-20251001
 ---
 

@@ -44,12 +44,9 @@
     "chat.useAgentsMdFile": true,
     "chat.useNestedAgentsMdFiles": true,
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-    "chat.mcp.serverSampling": {
-        "xash3d-fwgs/.mcp.json: xash-tools": {
-            "allowedModels": [
-                "copilotcli/auto",
-                "copilot/auto",
-            ]
-        }
-    }
+
+    // MCP: use ONLY the workspace .vscode/mcp.json (xash-tools + cpp-lsp,
+    // actor=copilot). Disable auto-discovery so VS Code does not also start the
+    // Claude-oriented root .mcp.json (actor=claude) as a duplicate server pair.
+    "chat.mcp.discovery.enabled": false
 }
