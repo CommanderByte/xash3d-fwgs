@@ -34,6 +34,7 @@ target_link_libraries(xash3dpp_imagelib
 add_library(xash3dpp_content STATIC
     model/model_cache.cpp
     model/studio.cpp
+    model/formats.cpp
 )
 
 target_include_directories(xash3dpp_content

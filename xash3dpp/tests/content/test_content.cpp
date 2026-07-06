@@ -5,6 +5,7 @@
 #include <xash3dpp/content/content.hpp>
 #include <xash3dpp/content/model.hpp>
 #include <xash3dpp/content/studio.hpp>
+#include <xash3dpp/content/formats.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/utilities/swap.hpp>
@@ -199,6 +200,37 @@ static void test_model_load()
     REQUIRE( m->studio() != nullptr );
     CHECK_EQ( m->studio()->view().num_bones(), 30 );
     CHECK_EQ( cache.stats().models_loaded, std::uint64_t{ 1 } );
+
+    // A sprite (IDSP v2 / Half-Life) loads and normalises its header.
+    std::vector<std::byte> spr( 40, std::byte{ 0 } );
+    xash::utilities::write_le<std::int32_t>( spr.data() + 0, k_sprite_ident );
+    xash::utilities::write_le<std::int32_t>( spr.data() + 4, 2 );    // version
+    xash::utilities::write_le<std::int32_t>( spr.data() + 8, 1 );    // type
+    xash::utilities::write_le<std::int32_t>( spr.data() + 12, 2 );   // texFormat
+    xash::utilities::write_le<std::int32_t>( spr.data() + 20, 64 );  // bounds[0]
+    xash::utilities::write_le<std::int32_t>( spr.data() + 24, 48 );  // bounds[1]
+    xash::utilities::write_le<std::int32_t>( spr.data() + 28, 5 );   // numframes
+    const ModelHandle sh = cache.find_or_alloc( "sprites/explode.spr" );
+    REQUIRE( cache.load_from_bytes( sh, spr ).has_value() );
+    const Model *sm = cache.resolve( sh );
+    REQUIRE( sm != nullptr );
+    CHECK( sm->type() == ModelType::Sprite );
+    REQUIRE( sm->sprite() != nullptr );
+    CHECK_EQ( sm->sprite()->info().num_frames, 5 );
+    CHECK_EQ( sm->sprite()->info().max_width, 64 );
+    CHECK_EQ( sm->sprite()->info().tex_format, 2 );
+
+    // An alias (IDPO v6 / Quake MDL) loads (parse-minimal).
+    std::vector<std::byte> ali( 12, std::byte{ 0 } );
+    xash::utilities::write_le<std::int32_t>( ali.data() + 0, k_alias_ident );
+    xash::utilities::write_le<std::int32_t>( ali.data() + 4, 6 );
+    const ModelHandle ah = cache.find_or_alloc( "models/quake.mdl" );
+    REQUIRE( cache.load_from_bytes( ah, ali ).has_value() );
+    REQUIRE( cache.resolve( ah ) != nullptr );
+    CHECK( cache.resolve( ah )->type() == ModelType::Alias );
+    CHECK( cache.resolve( ah )->alias() != nullptr );
+
+    CHECK_EQ( cache.stats().models_loaded, std::uint64_t{ 3 } );  // studio + sprite + alias
 
     // Unknown magic is rejected.
     const ModelHandle j = cache.find_or_alloc( "junk.dat" );

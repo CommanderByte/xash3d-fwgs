@@ -8,6 +8,7 @@
 //
 // @thread-safety: plain value types — no shared state.
 
+#include <xash3dpp/content/formats.hpp>
 #include <xash3dpp/content/studio.hpp>
 
 #include <cstdint>
@@ -102,12 +103,32 @@ public:
         payload_ = std::move( s );
         type_    = ModelType::Studio;
     }
-    // Non-null only for a loaded studio model.
+    void set_sprite( SpriteModel s ) noexcept
+    {
+        payload_ = std::move( s );
+        type_    = ModelType::Sprite;
+    }
+    void set_alias( AliasModel a ) noexcept
+    {
+        payload_ = std::move( a );
+        type_    = ModelType::Alias;
+    }
+
+    // Non-null only for a loaded model of the matching format.
     [[nodiscard]] const StudioModel* studio() const noexcept
     {
         return std::holds_alternative<StudioModel>( payload_ )
-                   ? &std::get<StudioModel>( payload_ )
-                   : nullptr;
+                   ? &std::get<StudioModel>( payload_ ) : nullptr;
+    }
+    [[nodiscard]] const SpriteModel* sprite() const noexcept
+    {
+        return std::holds_alternative<SpriteModel>( payload_ )
+                   ? &std::get<SpriteModel>( payload_ ) : nullptr;
+    }
+    [[nodiscard]] const AliasModel* alias() const noexcept
+    {
+        return std::holds_alternative<AliasModel>( payload_ )
+                   ? &std::get<AliasModel>( payload_ ) : nullptr;
     }
 
 private:
@@ -116,8 +137,8 @@ private:
     NeedLoad    needload_ = NeedLoad::Unreferenced;
 
     // The format payload: unloaded, or one of the parsed model formats.
-    // Sprite/Alias/Brush alternatives land with their loaders (O-3).
-    std::variant<std::monostate, StudioModel> payload_;
+    // Brush uses a map_loader world reference (added with the brush seam, O-3).
+    std::variant<std::monostate, StudioModel, SpriteModel, AliasModel> payload_;
 };
 
 } // namespace xash::content

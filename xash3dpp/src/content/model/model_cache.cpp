@@ -215,7 +215,27 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
         ++impl_->stats_.models_loaded;
         return {};
     }
-    // TODO(O-3): IDSP -> sprite, IDPO -> alias, 29/30/BSP2 -> brush (map_loader).
+    case k_sprite_ident:
+    {
+        Result<SpriteModel> sp = parse_sprite(file);
+        if (!sp)
+            return std::unexpected(sp.error());
+        m->set_sprite(std::move(*sp));
+        m->set_needload(NeedLoad::Present);
+        ++impl_->stats_.models_loaded;
+        return {};
+    }
+    case k_alias_ident:
+    {
+        Result<AliasModel> al = parse_alias(file);
+        if (!al)
+            return std::unexpected(al.error());
+        m->set_alias(std::move(*al));
+        m->set_needload(NeedLoad::Present);
+        ++impl_->stats_.models_loaded;
+        return {};
+    }
+    // TODO(O-3): 29/30/BSP2 -> brush (dispatch to map_loader, OQ-3).
     default:
         return std::unexpected(LoadError::BadMagic);
     }
