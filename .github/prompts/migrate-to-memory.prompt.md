@@ -207,7 +207,8 @@ Once the checklist above is fully green:
 git add xash3dpp/src/$ARGUMENTS/ xash3dpp/include/xash3dpp/$ARGUMENTS/ \
         xash3dpp/include/xash3dpp/private/$ARGUMENTS/ \
         xash3dpp/tests/$ARGUMENTS/ xash3dpp/CMakeLists.txt
-git commit -m "$ARGUMENTS: migrate all allocations to xash3dpp memory subsystem"
+$coauthor = & .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> "<model>"
+git commit -m "$ARGUMENTS: migrate all allocations to xash3dpp memory subsystem" -m "$coauthor"
 ```
 
 Commit message bullets (add after the one-liner):
@@ -215,3 +216,4 @@ Commit message bullets (add after the one-liner):
 - One bullet per subsystem component that was migrated.
 - Note any pools that were created or renamed.
 - Note if unit tests were added or updated.
+- End with the `Co-Authored-By` trailer naming the active framework/model.

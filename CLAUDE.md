@@ -80,9 +80,10 @@ current. Boundary specs and the decision register are current and binding.
 <!-- SYNC-CORE:BEGIN commit-style -->
 `tag: description` (e.g. `networking: ...`, `docs: ...`) — never
 Conventional Commits. One green (build + tests) commit per stable state;
-one session per commit (see `.github/MODEL-GUIDE.md`). Agent commits carry
-a `Co-Authored-By` trailer naming the agent/model. Record a `checkpoint`
-after each commit.
+one session per commit (see `.github/MODEL-GUIDE.md`). Every agent commit,
+from every framework, ends with a `Co-Authored-By` trailer naming the
+agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
+<framework> [model]` when unsure. Record a `checkpoint` after each commit.
 <!-- SYNC-CORE:END commit-style -->
 
 ## Claude Code specifics
@@ -94,9 +95,14 @@ after each commit.
   /finish-subsystem, /implement-audit, /init, /limits-audit,
   /migrate-to-memory, /plan-implementation, /pre-pr, /retriever,
   /scaffold-subsystem, /status-and-next, /sweep-module, /write-unit-tests.
+- To list canonical prompts or print a framework invocation, run
+  `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py list` or
+  `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command claude <name> [args]`.
 - Subagent types: `xash3dpp-reviewer`, `abi-watchdog`,
   `legacy-parity-auditor` (charters in `.github/agents/`).
 - Commit trailer: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - After editing `.mcp.json`, restart the session for MCP changes to apply.
+- Claude Code reads `.mcp.json` directly; the `xash-tools` server is pinned
+  with checkpoint actor `claude`.
 - Shared permission allowlist: `.claude/settings.json` (committed);
   personal overrides go in `.claude/settings.local.json` (gitignored).

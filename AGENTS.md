@@ -81,9 +81,10 @@ current. Boundary specs and the decision register are current and binding.
 <!-- SYNC-CORE:BEGIN commit-style -->
 `tag: description` (e.g. `networking: ...`, `docs: ...`) — never
 Conventional Commits. One green (build + tests) commit per stable state;
-one session per commit (see `.github/MODEL-GUIDE.md`). Agent commits carry
-a `Co-Authored-By` trailer naming the agent/model. Record a `checkpoint`
-after each commit.
+one session per commit (see `.github/MODEL-GUIDE.md`). Every agent commit,
+from every framework, ends with a `Co-Authored-By` trailer naming the
+agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
+<framework> [model]` when unsure. Record a `checkpoint` after each commit.
 <!-- SYNC-CORE:END commit-style -->
 
 ## Codex CLI notes
@@ -91,9 +92,14 @@ after each commit.
 - Codex has no per-command mechanism: to run a workflow step, **open
   `.github/prompts/<name>.prompt.md`, read it, and follow it exactly**
   (same 21 steps the other frameworks expose as commands).
+- To list prompts or print the exact framework-specific invocation, run
+  `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py list` or
+  `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command codex <name> [args]`.
 - MCP servers come from the committed `.codex/config.toml` after the
   one-time trust step (`.github/AGENT-SETUP.md` §Codex). Codex never reads
   `.github/` files automatically — only this AGENTS.md.
+- Verify wiring with `codex mcp list`; `xash-tools` and `cpp-lsp` should be
+  enabled, with checkpoints recorded as actor `codex`.
 - Keep this file lean: Codex budgets ~32 KiB for combined AGENTS.md
   content.
 
@@ -101,6 +107,8 @@ after each commit.
 
 - The 21 workflow steps are `/`-commands from `.opencode/commands/`
   (same names as the prompt stems); subagents live in `.opencode/agents/`.
+- `agent_workflow.py command opencode <name> [args]` prints the same
+  invocation from the canonical `.github/prompts/` metadata.
 - `opencode.json` registers both MCP servers and additionally loads
   `.github/copilot-instructions.md` via its `instructions` array
   (additive with this file).

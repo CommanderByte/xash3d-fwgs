@@ -4,6 +4,10 @@ This repository contains a legacy C engine codebase and a new modular C++ rewrit
 Conventions and mandatory patterns for `xash3dpp/` work are in
 `.github/instructions/xash3dpp.instructions.md` (auto-injected when editing those files).
 Session workflow, prompt ordering, and commit discipline are in `.github/WORKFLOW.md`.
+Framework setup and cross-agent invocation helpers are documented in
+`.github/AGENT-SETUP.md`; `xash3dpp/tools/agent_workflow.py` prints the
+canonical prompt invocation for Claude Code, VS Code Copilot, opencode, and
+Codex.
 
 ## Short Version
 

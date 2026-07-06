@@ -44,6 +44,7 @@ Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 | `dep_scan.py` | Dependency edges (cross-namespace refs) + InitParams inventory + cycle check | dependency-graph |
 | `slice_diff.py` | Change inventory since a base ref (default: HEAD when the tree is dirty at a checkpointed commit — the slice is the uncommitted work — else the last differing checkpoint head): files + add/delete counts + untracked, optional capped patch — brief gate agents from ground truth, not hand-typed file lists | abi-watchdog / reviewer / parity-auditor invocations; `compliance_scan --slice` |
 | `workflow_sync.py` | Drift checker: frontmatter schema, model dialects vs MODEL-GUIDE canonical table, adapter parity, twin-entry-file SYNC-CORE blocks, ABI single-source, MCP registrations, doc counters. `--stage 1` = tooling-session subset | run after ANY workflow-surface edit |
+| `agent_workflow.py` | Framework-aware workflow helper: lists canonical `.github/prompts/`, shows prompt metadata/body, prints the correct invocation for Claude, Copilot, opencode, or Codex, and generates the mandatory commit `Co-Authored-By` trailer | humans / agents switching frameworks |
 | `whereami.py` | Ground-truth session brief (git, plan/chunk status incl. stub debt in Complete subsystems, gates, blocking OQs, checkpoints with staleness/concurrency flags, suggested next action); `--doctor` adds environment checks. Chunk headings may carry a letter suffix (`### Chunk 6B — …`, label `6B`, sorted 6 < 6B < 7); the **Session ladder** parse is scoped to the active (in-progress, else first todo) chunk so multiple ladder lines don't mis-attribute | session start, dormancy recovery |
 | `checkpoint.py` | Append an advisory checkpoint (intent record) to `.agent-checkpoints.jsonl` | every commit / handoff / interruption |
 | `cpp_lsp_launcher.py` | Portable launcher for the `cpp-lsp` MCP server: resolves clangd + mcp-language-server via vswhere/PATH/env instead of hardcoded machine paths | `.mcp.json` / `.vscode/mcp.json` |
@@ -94,6 +95,23 @@ commands): add the servers to `~/.codex/config.toml` with absolute paths:
 [mcp_servers.xash-tools]
 command = "c:/git/xash3d-fwgs/.venv/Scripts/python.exe"
 args = ["c:/git/xash3d-fwgs/xash3dpp/tools/mcp_server.py"]
+```
+
+Codex has no repo slash-command adapter. Use the canonical prompt directly,
+or print the exact invocation with:
+
+```powershell
+c:\git\xash3d-fwgs\.venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command codex init
+```
+
+Verify repo MCP wiring with `codex mcp list`; `xash-tools` and `cpp-lsp`
+should be enabled, with the xash-tools checkpoint actor set to `codex`.
+
+Agent-authored commits must include a framework/model co-author trailer. For
+Codex, generate it with:
+
+```powershell
+c:\git\xash3d-fwgs\.venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor codex GPT-5
 ```
 
 ## Library layout

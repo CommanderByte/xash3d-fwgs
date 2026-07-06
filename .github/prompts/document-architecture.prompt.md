@@ -374,10 +374,12 @@ Once the Final checklist is green:
 
 ```
 git add xash3dpp/docs/architecture/$ARGUMENTS/
-git commit -m "$ARGUMENTS: write architecture docs"
+$coauthor = & .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> "<model>"
+git commit -m "$ARGUMENTS: write architecture docs" -m "$coauthor"
 ```
 
 Commit message bullets:
 
 - List the doc files created or updated (README.md, index.md, concept pages).
 - If in update mode, note which sections were stale and what was corrected.
+- End with the `Co-Authored-By` trailer naming the active framework/model.

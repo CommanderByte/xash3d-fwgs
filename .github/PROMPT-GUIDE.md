@@ -109,10 +109,15 @@ The `.github/` files are the single source of truth. Other frameworks get
   `model:` per the MODEL-GUIDE opencode column, read-only lockdown
   (`tools: {write: false, edit: false}`, `permission: {bash: deny}`), body
   defers to the `.github/agents/` charter.
+- Codex CLI has no repo slash-command adapter surface. It is first-class by
+  reading the canonical `.github/prompts/<stem>.prompt.md` directly; use
+  `xash3dpp/tools/agent_workflow.py command codex <stem> [args]` to print
+  the exact `codex exec` invocation.
 
 Edit the `.github/` originals, never the adapters; `xash3dpp/tools/
 workflow_sync.py` enforces existence, origin-path pointers, description
-parity, and model-tier parity across dialects.
+parity, model-tier parity across dialects, MCP registration parity, and the
+Codex direct-read helper contract.
 
 ### Tool invocation from prompts
 
@@ -169,15 +174,22 @@ Omit `argument-hint` only when the prompt takes no argument at all (e.g. `init`,
 
 All prompts that produce a commit must use the project convention:
 
-```
+```text
 tag: short description
 
 - one line per logical change
 - group by check category or subsystem
+
+Co-Authored-By: <agent/model> <noreply@provider>
 ```
 
 Where `tag` is the subsystem name or a short file-based tag (e.g. `networking`, `limits`,
 `prompts`). **Never** use Conventional Commits format (`feat(scope):`, `refactor(scope):` etc.).
+The `Co-Authored-By` trailer is mandatory for every agent commit regardless of
+framework. Generate it with
+`xash3dpp/tools/agent_workflow.py coauthor <framework> [model]`, or write the
+same trailer manually when the model identity is clearer from the active
+session.
 
 ---
 
@@ -198,6 +210,7 @@ See [MODEL-GUIDE.md](MODEL-GUIDE.md) for the authoritative tier recommendations 
 The `model:` field in frontmatter is the default; the user can override at invocation time.
 
 Defaults:
+
 - Analysis prompts: `claude-haiku-4-5-20251001` for mechanical checks, `claude-sonnet-4-6` for
   reasoning-heavy analysis, `claude-opus-4-7` for deep architectural or concurrency work.
 - Implementation prompts: `claude-sonnet-4-6`.

@@ -474,14 +474,11 @@ they don't get lost; pick up opportunistically or when the trigger fires):
   `target_compile_features(... cxx_std_20)` minimums while the project
   standard is C++23 (root `CMAKE_CXX_STANDARD 23`; map_loader already
   declares 23). Harmless today; normalize in a mechanical pass.
-- **Session 2 of the hardening pass** — full adapter parity (9 remaining
-  Claude command adapters, 21 opencode command adapters, 3 opencode agent
-  adapters, shared `.claude/settings.json` + gitignored local settings),
-  twin root `AGENTS.md`/`CLAUDE.md` with SYNC-CORE blocks,
-  `.github/AGENT-SETUP.md`, and the WORKFLOW.md upgrades (recon front-end
-  in the pipeline diagram, session-scoping/token-budget section, tooling
-  section). Fully specified in the approved hardening plan; gate =
-  `tools/workflow_sync.py` (full stage) exit 0.
+- **Session 2 of the hardening pass** — ✅ completed 2026-07-06 by the
+  workflow adapter/config parity commits: Claude/opencode adapters are thin,
+  Copilot MCP/tool wiring is clean, twin root `AGENTS.md`/`CLAUDE.md`
+  SYNC-CORE blocks are enforced, `.github/AGENT-SETUP.md` and WORKFLOW.md
+  were upgraded, and `tools/workflow_sync.py` full stage exits 0.
 - **`xash3dpp_script` satellite** *(reserved 2026-07-06, decided-not-built —
   the xash3dpp_http precedent)* — the G-5 scripting runtime target; built
   only after the spike in `design/scripting-runtime-brief.md` picks the

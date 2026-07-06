@@ -338,9 +338,10 @@ Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §ERROR_RETURN 
   failure. Private and internal helpers may propagate failure silently upward.
   Exception: `optional<T>` returning `nullopt` for a "not found" query is silent
   by contract.
-- `std::expected<T, ErrorCode>` is deferred to Chunk 2. Do **not** use it before
-  the `ErrorCode` enum is defined. Do **not** call `.value()` — only
-  `.has_value()` and `operator*`.
+- `std::expected<T, ErrorCode>` is active for rich failure modes when callers
+  need typed failure details. `ErrorCode` lives in `core/error.hpp`;
+  subsystem-specific error enums may use local `Result<T>` aliases. Do **not**
+  call `.value()` — only `.has_value()` and `operator*`.
 - All error return values carry `[[nodiscard]]`.
 
 ### Interface and ABI Rules — Mandatory
@@ -348,14 +349,16 @@ Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §ERROR_RETURN 
 Full decisions: `xash3dpp/docs/design/decisions-architecture.md` §INTERFACE_ABI (Q-7), §STRING_VIEW_BOUNDARY (Q-8).
 
 - **Intra-engine seam** (same binary, same compiler): use a C++ abstract class
-  (`I<Subsystem>` vtable). Supports dependency injection and test mocking.
-  `IFilesystem` is the canonical reference.
+  (`I<Subsystem>` vtable) when a dependency-injection, test-mocking, or
+  protocol-variant seam is needed. Do not invent blanket `I<Subsystem>`
+  wrappers for every concrete subsystem.
 - **DLL boundary** (game DLL, client DLL, renderer DLL, menu DLL): use a C
   function-pointer struct. The legacy ABIs (`enginefuncs_t`, `DLL_FUNCTIONS`,
   `ref_api_t`) are preserved exactly and are **never changed**.
-- **New plugin types** (first: Vulkan renderer at Chunk 10): versioned C
-  descriptor struct with `struct_size` field and two-way version check.
-  See §PLUGIN_VERSION (Q-10) in `decisions-architecture.md`.
+- **New plugin types** (renderer/backend candidates are deferred until the
+  Chunk 13 renderer decision): versioned C descriptor struct with
+  `struct_size` field and two-way version check. See §PLUGIN_VERSION (Q-10)
+  in `decisions-architecture.md`.
 - **`std::string_view` at boundaries**: use freely within the engine binary.
   At any `extern "C"` or DLL edge, use `const char*`; wrap in `string_view`
   immediately on entry. No custom `StringRef` type.

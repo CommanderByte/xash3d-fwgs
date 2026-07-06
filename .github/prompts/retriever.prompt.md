@@ -150,12 +150,15 @@ git diff --cached --name-only | Where-Object { $_ -notlike "xash3dpp/*" -and $_ 
 
 If the second command produces output, unstage those files first.
 
-Commit message format:
+Commit message format (project convention — `tag: description`, never
+Conventional Commits):
 
 ```
-refactor(<subsystem>): enforce RULE across <subsystem>
+<subsystem>: enforce RULE
 
 - <one line per concrete change>
+
+Co-Authored-By: <agent/model> <noreply@provider>
 ```
 
 For documentation-only changes, use `doc(<location>):` instead of `refactor`.

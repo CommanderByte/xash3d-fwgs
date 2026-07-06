@@ -537,7 +537,13 @@ $ARGUMENTS: apply architecture, style, and threading compliance
 
 - <list each rule fixed: PIMPL_MOVE, ERROR_RETURN, OWNERSHIP, DI_PARAMS, STATS_TIERS, NODISCARD, NAMING_FN, NAMING_ENUM, ASSERTIONS, LOGGING, TEST_MACROS, ANNOTATIONS (QN), TH-Role, TH-Const, TH-GLOBALS>
 - <one line per concrete change>
+
+Co-Authored-By: <agent/model> <noreply@provider>
 ```
+
+Generate the trailer with
+`& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> "<model>"`
+or write the equivalent trailer manually for the active framework/model.
 
 Only list rules that actually had violations. Omit rules where no changes were needed.
 

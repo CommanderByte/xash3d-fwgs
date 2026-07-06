@@ -216,6 +216,10 @@ no `XASH3DPP-STUB` backlog implementation.
 - **One commit per subsystem** when a change spans multiple subsystems.
 - **Never batch** a full spiral into one commit at the end. Small commits give rollback points.
 - Commit message format: `tag: short description` — see `CONTRIBUTING.md`.
+- Every agent commit from every framework ends with a `Co-Authored-By`
+  trailer naming the actual agent/model. Generate it with
+  `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> [model]`
+  or write the same trailer manually.
 - **Record a checkpoint** (`checkpoint` MCP tool or
   `xash3dpp\tools\checkpoint.py`) at every commit, handoff, or
   interruption — it is what `whereami` shows the next session.
@@ -241,6 +245,7 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `crosswalk.py` | legacy↔xash3dpp symbol / file:line index (+ `--missing` unported set) | recon during implement / parity |
 | `finish_check.py` | the 10-section done checklist as data (item 2 QO-classified; item 10 = Q-22/QN lifecycle+annotation gate) | finish-subsystem, pre-pr |
 | `workflow_sync.py` | drift gate over the whole workflow surface | after ANY workflow-surface edit |
+| `agent_workflow.py` | list canonical prompts and print framework-specific invocation commands | humans / agents switching between Claude, Copilot, opencode, Codex |
 
 ---
 
@@ -257,13 +262,13 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `sweep-module` | After feature-complete | Yes |
 | `detail-audit` | Structural violation scan — read-only, produces report | No |
 | `implement-audit` | Apply fixes from a detail-audit run | Yes |
-| `analyse-threading` | After sweep | No |
+| `analyse-threading` | After sweep | Yes (docs only) |
 | `document-architecture` | After analyse-threading | Yes |
 | `finish-subsystem` | After document-architecture; done checklist | No |
 | `pre-pr` | After finish-subsystem; final gate before opening PR | No |
 | `analyse-subsystem` | Before rewriting a legacy subsystem | Yes (docs only) |
 | `analyse-modernization` | Optional future cleanup | Yes (docs only) |
-| `analyse-utility-consolidation` | Deduplication planning | No |
+| `analyse-utility-consolidation` | Deduplication planning | Yes (docs only) |
 | `migrate-to-memory` | Memory migration pass | Yes |
 | `retriever` | Enforce one rule across the entire codebase until clean | Yes |
 | `dependency-graph` | Verify EngineContext init order has no cycles | No |

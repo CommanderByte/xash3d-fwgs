@@ -92,8 +92,10 @@ Across the five subsystems, four different return-value strategies are used:
 | `std::optional<T>` | `Filesystem::FileSize`, `FileTime`, `DiskPath`, `FindLibrary`, `CRC32File`, `MD5File` |
 | `void` (silent) | `cbuf_add_text`, `CmdCvarContext::shutdown`, `destroy_pool`, most platform calls |
 
-No `std::expected<T, E>` or custom `Result<T>` type is in use. No standard
-`ErrorCode` enum exists.
+`std::expected<T, E>` is now in active use for richer failure modes
+(`map_loader`, `networking`, `content`, and `imagelib` have typed result
+surfaces), and `core::ErrorCode` is the shared engine error enum for common
+engine failures.
 
 There is no documented rule for when to use `bool` vs `optional<T>` vs
 returning `nullptr`. The current split looks opportunistic rather than systematic:
@@ -127,6 +129,7 @@ Features **in use** today:
 - `std::string_view` — read-only string params in public APIs
 - `std::span` — dynlib export validation
 - `std::optional<T>` — nullable value returns
+- `std::expected<T,E>` — typed success/failure returns
 - `std::array<T,N>` — fixed-count internal buffers
 - `std::unique_ptr<T>` — pimpl, file handles
 - `std::shared_mutex` — filesystem reader-writer
@@ -138,10 +141,8 @@ Features **in use** today:
 - `noexcept` — all internal APIs
 - `[[gnu::weak]]` — build-info symbols
 
-Features **available in C++20 but not yet used**:
+Features **available but not yet used broadly**:
 
-- `std::expected<T, E>` — richer error returns without exceptions (C++23 stdlib, but
-  available in MSVC 19.34+ / Clang 16+ / libc++ 16 as an extension or via `<expected>`)
 - `std::jthread` — cooperative-cancel threads
 - Concepts / `requires` — generic constraints
 - C++20 modules (`.ixx`/`module`) — not practical with current CMake/MSVC support
@@ -348,11 +349,12 @@ a "not found" query is always silent by contract.
 | Recoverable degradation the caller is not told about | `LogLevel::Warning` | Something unexpected happened but the subsystem masked it internally |
 | Internal invariant violation (logic bug — should never happen) | `XASH_FATAL` / `LogLevel::Fatal` | Terminates after logging |
 
-**`std::expected<T, ErrorCode>`**: deferred. Introduced at Chunk 2 (networking)
-as the standard for subsystems where failure reason matters to callers. A central
-`ErrorCode` enum is defined at Chunk 2 and extended per subsystem. When the
-diagnostics channel is ready, error events flow as typed
-`{ subsystem_id, error_code, timestamp }` structs rather than strings.
+**`std::expected<T, ErrorCode>`**: active for subsystems where failure reason
+matters to callers. `core::ErrorCode` is defined in `core/error.hpp` for shared
+engine failures; subsystem-specific result aliases may use narrower local error
+enums where that keeps the public surface clearer. When the diagnostics channel
+is ready, error events flow as typed `{ subsystem_id, error_code, timestamp }`
+structs rather than strings.
 
 All error return values carry `[[nodiscard]]`.
 
@@ -365,7 +367,7 @@ ______________________________________________________________________
 **Summary of decisions**:
 
 - Six `ThreadRole` values: `Main`, `AudioCallback`, `AudioDecoder`, `Worker`,
-  `Render` (deferred Chunk 10), `NetIO` (deferred).
+  `Render` (deferred until the renderer/client split), `NetIO` (deferred).
 - Worker pool (2–4 threads) started at `Host::init()`; audio threads at
   `Sound::init()`.
 - Async asset loading via `JobToken<T>` (atomic status + `unique_ptr` move).
@@ -373,8 +375,8 @@ ______________________________________________________________________
   defined in `core/thread_role.hpp`.
 - Render thread optional — renderer plugin declares `wants_render_thread`;
   double-buffered `RenderFrame` is the main↔render boundary.
-- Network I/O thread deferred; Chunk 2 must keep all socket calls inside
-  `NET_GetPacket`/`NET_SendPacket` to enable transparent later migration.
+- Network I/O thread deferred; networking keeps socket access behind the
+  platform/networking seams so later migration remains transparent.
 - Entity thinks, player physics, input, and all DLL calls are main-thread-only;
   world queries (BSP trace, PVS) are concurrent-read-safe after map load.
 - Two filesystem threading hazards must be fixed before end of Chunk 3.
@@ -464,8 +466,8 @@ ______________________________________________________________________
 
 **Legacy ABIs** (`eiface.h`, `cdll_int.h`, `ref_api.h`) are preserved exactly.
 
-**New plugin types** (Vulkan renderer is the first candidate, Chunk 10) use a
-versioned C descriptor struct:
+**New plugin types** (renderer/backend candidates are expected around the
+Chunk 13 renderer decision) use a versioned C descriptor struct:
 
 ```c
 typedef struct plugin_descriptor_s {
@@ -489,7 +491,8 @@ is defined in the public SDK header for compile-time checks.
 descriptor loads on an older engine — the engine reads only up to its own
 `sizeof(plugin_descriptor_t)`, ignoring unknown trailing fields.
 
-Deferred to Chunk 10. No new plugin types before then.
+Deferred until the first new plugin type is introduced; for the current plan,
+settle renderer/backend policy before Chunk 13 implementation starts.
 
 ______________________________________________________________________
 
@@ -1034,8 +1037,10 @@ These rules apply from the first line of any new subsystem:
 - Concrete-subclass (template-method) pattern: subclass a concrete base only
   when variants differ in policy flags, not algorithm steps (Q-14)
 - Ownership vocabulary table (Q-9)
-- `std::expected<T, ErrorCode>` for rich failure modes, from Chunk 2 (Q-5)
-- Versioned C plugin descriptor for new plugin types, from Chunk 10 (Q-10)
+- `std::expected<T, ErrorCode>` for rich failure modes where callers need typed
+  failure details (Q-5)
+- Versioned C plugin descriptor for future new plugin types; renderer/backend
+  policy is settled before Chunk 13 implementation starts (Q-10)
 - Separate-target test for satellite features at boundary-spec stage (Q-11)
 - Per-subsystem `ICompatPolicy` (or feature-specific variant) named for the
   subsystem; link-time selected; never exported publicly (Q-12)

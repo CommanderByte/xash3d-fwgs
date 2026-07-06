@@ -44,63 +44,18 @@ Conventions, mandatory patterns, naming rules, and framework primitives are in
 
 ## Current State
 
-Six subsystems are complete and tested.
+Do not rely on this prompt for a hand-maintained subsystem inventory. The
+current implementation status, active chunk, blocking OQs, stub debt, and
+workflow gates are derived by `whereami` and the status-table tool:
 
-### `xash3dpp_utilities` — complete
-- **Library**: `xash3dpp/src/utilities/`; headers in `xash3dpp/include/xash3dpp/utilities/`
-- **Modules**: `atlas`, `build`, `dynlib`, `hash`, `math`, `matrix`, `path`, `string`, `swap`, `utf`
-- **Tests**: `xash3dpp/tests/utilities/` — one `test_<module>.cpp` per module; CTest target `test_utilities`
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\whereami.py --doctor
+& .venv\Scripts\python.exe xash3dpp\tools\status_table.py --check --json
+```
 
-### `xash3dpp_memory` — complete
-- **Library**: `xash3dpp/src/memory/`; public headers in `xash3dpp/include/xash3dpp/memory/`;
-  private headers in `xash3dpp/include/xash3dpp/private/memory/`
-- **Design**: pool accounting facade over `malloc`/`free`; 128-slot registry;
-  `SlotState` atomic CAS for concurrent `create_pool`; `std::atomic<OomHandler>`
-  for the OOM callback
-- **Tests**: `xash3dpp/tests/memory/`
-
-### `xash3dpp_filesystem` — complete
-- **Library**: `xash3dpp/src/filesystem/`; headers in `xash3dpp/include/xash3dpp/filesystem/`
-- **Design**: `Filesystem` pimpl class; `VFileSystem009Adapter` is the legacy
-  ABI shim (wraps `Filesystem` directly); PAK/WAD/ZIP archive backends;
-  `ISearchBackend` vtable for backend dispatch; case-insensitive directory
-  cache; `std::shared_mutex` guards the search-path deque
-- **Tests**: `xash3dpp/tests/filesystem/`
-
-### `xash3dpp_platform` — complete (sockets layer pending)
-- **Library**: `xash3dpp/src/platform/`; public headers in
-  `xash3dpp/include/xash3dpp/platform/`
-- **Design**: Single Porting Layer — all OS-specific code lives here.
-  Win32 and POSIX backends for `sys` (time, sleep, env), `console` (stdin
-  reader), and `crash` (signal/exception handler); Android JNI bootstrap via
-  `std::call_once`
-- **Pending**: `IPlatformSockets` / `OsSocket` RAII socket layer is **not yet
-  implemented**. Requirements are in
-  `xash3dpp/docs/architecture/platform/sockets.md`. This is a hard prerequisite
-  for Chunk 4 (networking). Do not call BSD/Winsock socket APIs directly from
-  any subsystem outside `src/platform/*/os_socket.cpp`.
-- **Tests**: `xash3dpp/tests/platform/`
-
-### `xash3dpp_core` — complete
-- **Library**: `xash3dpp/src/core/`; public headers in
-  `xash3dpp/include/xash3dpp/core/`; private headers in
-  `xash3dpp/include/xash3dpp/private/core/`
-- **Design**: Cross-cutting singletons shared by all subsystems — structured
-  logging (`core::log`, `core::logf`, `LogLevel` enum), assertion macros
-  (`XASH_ASSERT`, `XASH_FATAL`), and thread-role registration
-  (`core::register_thread_role`, `core::assert_thread_role`); log sink writes
-  via `platform::console::write()`
-- **Tests**: `xash3dpp/tests/core/`
-
-### `xash3dpp_cmd_cvar` — complete
-- **Library**: `xash3dpp/src/cmd_cvar/`; public headers in
-  `xash3dpp/include/xash3dpp/cmd_cvar/`; private headers in
-  `xash3dpp/include/xash3dpp/private/cmd_cvar/`
-- **Design**: Single `CmdCvarContext` pimpl class; pimpl move ctor/dtor defined
-  in `context.cpp` (not `= default` in header); `XASH_GOLDSRC_COMPAT` CMake
-  option selects `compat_goldsrc.cpp` vs `compat_null.cpp` at link time —
-  zero `#ifdef` in core; `CircularBuffer<T,N>` private template for change log
-- **Tests**: `xash3dpp/tests/cmd_cvar/`
+Read `xash3dpp/docs/implementation-plan.md` for the authoritative chunk plan.
+Chunk numbers are frozen: Chunk 4 is a tombstone, networking is Chunk 2, and
+new work follows the next active chunk reported by `whereami`.
 
 **Common build setup**: CMake at `xash3dpp/CMakeLists.txt`; C++23;
 no exceptions (`/EHs-c-`); no RTTI (`/GR-`); build tree at `xash3dpp/build/`.

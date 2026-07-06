@@ -40,6 +40,11 @@ in every framework (no silent downgrades — the historical example was
 `legacy-parity-auditor` declaring a top-tier model in `.github/` while its
 Claude adapter said `sonnet`).
 
+Codex does not read prompt frontmatter as a command adapter. Pick an
+equivalent tier with `codex -m <model>` / user-global config when needed, and
+use `xash3dpp/tools/agent_workflow.py command codex <prompt> [args]` for the
+canonical prompt invocation.
+
 ---
 
 ## Prompt-to-model recommendations
@@ -165,6 +170,7 @@ model: claude-sonnet-4-6   # adjust to your Copilot's model ID string
 ```
 
 To find the correct model ID string for your Copilot configuration:
+
 1. Open Copilot Chat and select a model from the picker
 2. Run `/help` or check the session metadata — some interfaces expose the model ID
 3. Or check your GitHub organisation's Copilot policy page for the allowed model list

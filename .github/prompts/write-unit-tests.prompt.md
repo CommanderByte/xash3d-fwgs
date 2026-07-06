@@ -107,7 +107,9 @@ After writing the test file:
 
 ```
 git add xash3dpp/tests/utilities/
-git commit -m "utilities: add unit tests for $ARGUMENTS"
+$coauthor = & .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> "<model>"
+git commit -m "utilities: add unit tests for $ARGUMENTS" -m "$coauthor"
 ```
 
 Commit message bullets: one bullet per test scenario added.
+End with the `Co-Authored-By` trailer naming the active framework/model.

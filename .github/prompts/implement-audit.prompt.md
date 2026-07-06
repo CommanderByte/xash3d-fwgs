@@ -182,7 +182,13 @@ Commit message format (project convention — `tag: description`, no Conventiona
 $ARGUMENTS: detail-audit structural fixes
 
 - <one line per concrete change, grouped by CHECK-* category>
+
+Co-Authored-By: <agent/model> <noreply@provider>
 ```
+
+Generate the trailer with
+`& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> "<model>"`
+or write the equivalent trailer manually for the active framework/model.
 
 Verify the commit landed:
 

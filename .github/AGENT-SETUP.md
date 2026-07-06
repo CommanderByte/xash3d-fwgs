@@ -9,12 +9,17 @@ committing.
 
 ## Framework / entry-file matrix
 
-| Framework | Entry file | Commands | Subagents | MCP registration | Setup needed |
-|-----------|-----------|----------|-----------|------------------|--------------|
-| Claude Code | `CLAUDE.md` | `.claude/commands/` (21) | `.claude/agents/` (3) | `.mcp.json` | none |
-| VS Code Copilot | `AGENTS.md` + `.github/copilot-instructions.md` | `.github/prompts/` (native) | `.github/agents/` (native) | `.vscode/mcp.json` | none (settings committed) |
-| opencode | `AGENTS.md` (+ `instructions` array) | `.opencode/commands/` (21) | `.opencode/agents/` (3) | `opencode.json` | none |
-| Codex CLI | `AGENTS.md` | read the prompt file directly | — | `.codex/config.toml` | one-time trust step |
+| Framework | Entry file | Commands | Subagents | MCP registration | Setup / verify |
+|-----------|-----------|----------|-----------|------------------|----------------|
+| Claude Code | `CLAUDE.md` | `.claude/commands/` (21) | `.claude/agents/` (3) | `.mcp.json` | restart after `.mcp.json` edits |
+| VS Code Copilot | `AGENTS.md` + `.github/copilot-instructions.md` | `.github/prompts/` (native) | `.github/agents/` (native) | `.vscode/mcp.json` | settings committed |
+| opencode | `AGENTS.md` (+ `instructions` array) | `.opencode/commands/` (21) | `.opencode/agents/` (3) | `opencode.json` | `opencode.json` loads both servers |
+| Codex CLI | `AGENTS.md` | read `.github/prompts/` directly; helper prints commands | - | `.codex/config.toml` | trust once, then `codex mcp list` |
+
+The helper
+`& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command <framework> <prompt> [args]`
+prints the correct invocation shape for every framework while keeping
+`.github/prompts/` as the single source of truth.
 
 ## Claude Code
 
@@ -33,6 +38,9 @@ defaults vary by VS Code version. `.vscode/mcp.json` starts both servers
 via `${workspaceFolder}` paths. Prompts appear as `/`-commands from
 `.github/prompts/`; instructions auto-apply from
 `.github/instructions/xash3dpp.instructions.md`.
+MCP auto-discovery is disabled for known external sources with an all-false
+`chat.mcp.discovery.enabled` object so Copilot uses only the workspace
+`.vscode/mcp.json` server pair (`XASH_CHECKPOINT_ACTOR=copilot`).
 
 ## opencode
 
@@ -47,9 +55,11 @@ are opencode-canonical).
 
 Codex reads **only** the root `AGENTS.md` automatically (never `.github/`
 files) — to run a workflow step, open `.github/prompts/<name>.prompt.md`,
-read it, and follow it exactly. The committed `.codex/config.toml`
-registers both MCP servers once you trust the project in your
-**user-global** `~/.codex/config.toml`:
+read it, and follow it exactly. Use `agent_workflow.py command codex <name>
+[args]` when you want the exact `codex exec` form generated from the
+canonical prompt metadata. The committed `.codex/config.toml` registers both
+MCP servers once you trust the project in your **user-global**
+`~/.codex/config.toml`:
 
 ```toml
 [projects."c:\\git\\xash3d-fwgs"]
@@ -69,6 +79,17 @@ args = ["c:/git/xash3d-fwgs/xash3dpp/tools/mcp_server.py"]
 command = "c:/git/xash3d-fwgs/.venv/Scripts/python.exe"
 args = ["c:/git/xash3d-fwgs/xash3dpp/tools/cpp_lsp_launcher.py"]
 ```
+
+Verify with:
+
+```powershell
+codex mcp list
+codex doctor
+```
+
+The repo-owned servers should show `xash-tools` and `cpp-lsp` enabled.
+`codex doctor` may report user-global servers unrelated to this repo; fix
+those in `~/.codex/config.toml`, not in the project workflow surface.
 
 ## Human quickstart
 
@@ -96,6 +117,15 @@ checkpoints, and a suggested next action.
 
 Convention: agents (and you) record a `checkpoint` at every commit,
 handoff, or interruption — that note is what the next session sees first.
+Every agent-authored commit also ends with a `Co-Authored-By` trailer naming
+the actual framework/model. Generate the trailer with:
+
+```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor codex GPT-5
+```
+
+Replace `codex GPT-5` with the active framework and model, for example
+`claude "Claude Fable 5"` or `copilot "Claude Sonnet 4.6"`.
 
 ## Environment overrides
 

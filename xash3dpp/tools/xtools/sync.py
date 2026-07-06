@@ -47,6 +47,34 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
+def _has_actor(text: str, actor: str) -> bool:
+    return "XASH_CHECKPOINT_ACTOR" in text and actor in text
+
+
+def _vscode_mcp_discovery_disabled(text: str) -> bool:
+    m = re.search(r'"chat\.mcp\.discovery\.enabled"\s*:\s*(false|\{(?P<body>.*?)\})',
+                  text, re.DOTALL)
+    if not m:
+        return False
+    if m.group(1) == "false":
+        return True
+    body = m.group("body") or ""
+    values = re.findall(r':\s*(true|false)\b', body)
+    return bool(values) and all(v == "false" for v in values)
+
+
+def _tools_allow_edit(tools: str) -> bool:
+    return bool(re.search(r"(?:^|[\[,]\s*)edit(?:\s*[\],]|$)", tools))
+
+
+def _workflow_edit_cell_ok(tools: str, cell: str) -> bool:
+    edits = _tools_allow_edit(tools)
+    normalized = _norm(cell)
+    if edits:
+        return normalized.startswith("yes")
+    return normalized.startswith("no")
+
+
 def canonical_models() -> dict[str, dict[str, str]]:
     """Parse the canonical model table from MODEL-GUIDE.md.
     Returns {tier: {copilot, claude, opencode}}."""
@@ -211,14 +239,23 @@ def workflow_sync(stage: int = 2) -> dict:
 
     # ---- stage 1: MCP registration parity ----------------------------------
     mcp_files = {
-        ".mcp.json": REPO / ".mcp.json",
-        ".vscode/mcp.json": REPO / ".vscode" / "mcp.json",
-        "opencode.json": REPO / "opencode.json",
+        ".mcp.json": (REPO / ".mcp.json", "claude"),
+        ".vscode/mcp.json": (REPO / ".vscode" / "mcp.json", "copilot"),
+        "opencode.json": (REPO / "opencode.json", "opencode"),
+        ".codex/config.toml": (REPO / ".codex" / "config.toml", "codex"),
     }
-    for label, f in mcp_files.items():
-        if not f.is_file() or "xash-tools" not in f.read_text(encoding="utf-8", errors="replace"):
+    for label, (f, actor) in mcp_files.items():
+        if not f.is_file():
+            findings.append(_finding(1, "mcp-parity", "%s missing" % label))
+            continue
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for server in ("xash-tools", "cpp-lsp"):
+            if server not in text:
+                findings.append(_finding(1, "mcp-parity",
+                                         "%s missing %s registration" % (label, server)))
+        if "xash-tools" in text and not _has_actor(text, actor):
             findings.append(_finding(1, "mcp-parity",
-                                     "%s missing xash-tools registration" % label))
+                                     "%s xash-tools actor is not %r" % (label, actor)))
 
     # ---- stage 2: adapter parity -------------------------------------------
     for p in prompts:
@@ -333,15 +370,6 @@ def workflow_sync(stage: int = 2) -> dict:
                                          "CLAUDE.md does not list /%s" % cmd.name.removesuffix(".md")))
 
     # ---- stage 2: host configs, state hygiene, AGENTS.md budget, MCP notes --
-    codex_cfg = REPO / ".codex" / "config.toml"
-    if not codex_cfg.is_file():
-        findings.append(_finding(2, "mcp-parity", ".codex/config.toml missing"))
-    else:
-        ctext = codex_cfg.read_text(encoding="utf-8", errors="replace")
-        for server in ("xash-tools", "cpp-lsp"):
-            if "[mcp_servers.%s]" % server not in ctext:
-                findings.append(_finding(2, "mcp-parity",
-                                         ".codex/config.toml missing [mcp_servers.%s]" % server))
     vs_settings = REPO / ".vscode" / "settings.json"
     if vs_settings.is_file():
         vtext = vs_settings.read_text(encoding="utf-8", errors="replace")
@@ -351,6 +379,10 @@ def workflow_sync(stage: int = 2) -> dict:
             if key not in vtext:
                 findings.append(_finding(2, "vscode-settings",
                                          ".vscode/settings.json missing %r" % key))
+        if not _vscode_mcp_discovery_disabled(vtext):
+            findings.append(_finding(2, "vscode-settings",
+                                     ".vscode/settings.json must disable "
+                                     "chat.mcp.discovery.enabled"))
     else:
         findings.append(_finding(2, "vscode-settings", ".vscode/settings.json missing"))
     gitignore = (REPO / ".gitignore").read_text(encoding="utf-8", errors="replace")
@@ -374,6 +406,11 @@ def workflow_sync(stage: int = 2) -> dict:
             findings.append(_finding(2, "mcp-note",
                                      "%s invokes an MCP-exposed tool but lacks the "
                                      "'MCP: xash-tools' alternative note" % p.name))
+        if ("git commit" in body or "Commit message format" in body) and \
+                "Co-Authored-By" not in body:
+            findings.append(_finding(2, "commit-trailer",
+                                     "%s describes a commit but lacks a "
+                                     "Co-Authored-By trailer requirement" % p.name))
 
     # ---- stage 2: WORKFLOW table completeness + Q cite ----------------------
     wf = GITHUB / "WORKFLOW.md"
@@ -383,6 +420,15 @@ def workflow_sync(stage: int = 2) -> dict:
         if "`%s`" % stem not in wtext and stem not in wtext:
             findings.append(_finding(2, "workflow-table",
                                      "WORKFLOW.md prompt table missing %s" % stem))
+        kv = dict(read_frontmatter(p)[0])
+        row = re.search(r"\|\s*`%s`\s*\|(?P<rest>.*)" % re.escape(stem), wtext)
+        if row:
+            cells = [c.strip() for c in row.group("rest").strip().strip("|").split("|")]
+            if len(cells) >= 2 and not _workflow_edit_cell_ok(kv.get("tools", ""), cells[1]):
+                findings.append(_finding(2, "workflow-table",
+                                         "WORKFLOW.md edits-files cell for %s is %r "
+                                         "but tools are %s" %
+                                         (stem, cells[1], kv.get("tools", ""))))
     for a in agents:
         stem = a.name.removesuffix(".agent.md")
         if stem not in wtext:
@@ -393,6 +439,28 @@ def workflow_sync(stage: int = 2) -> dict:
         findings.append(_finding(2, "q-count",
                                  "WORKFLOW.md cites Q-1 through Q-%s but max is Q-%d"
                                  % (m.group(1), q_max)))
+
+    stale_checks = [
+        (PROMPTS / "init.prompt.md", "Six subsystems are complete and tested.",
+         "init.prompt.md hard-codes stale subsystem count"),
+        (PROMPTS / "init.prompt.md", "Chunk 4 (networking)",
+         "init.prompt.md still treats Chunk 4 as networking"),
+        (GITHUB / "instructions" / "xash3dpp.instructions.md",
+         "std::expected<T, ErrorCode>` is deferred to Chunk 2",
+         "instructions still say std::expected is deferred"),
+        (GITHUB / "instructions" / "xash3dpp.instructions.md",
+         "Vulkan renderer at Chunk 10",
+         "instructions still cite renderer as Chunk 10"),
+        (XPP / "docs" / "design" / "decisions-architecture.md",
+         "Deferred to Chunk 10. No new plugin types before then.",
+         "decision register still cites Chunk 10 plugin deferral"),
+        (XPP / "docs" / "implementation-plan.md",
+         "9 remaining\n  Claude command adapters",
+         "implementation-plan still lists completed adapter parity backlog"),
+    ]
+    for path, needle, detail in stale_checks:
+        if path.is_file() and needle in path.read_text(encoding="utf-8", errors="replace"):
+            findings.append(_finding(2, "stale-guidance", detail))
 
     selected = [f for f in findings if f["stage"] <= stage]
     return {

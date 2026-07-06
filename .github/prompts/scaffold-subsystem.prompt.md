@@ -462,7 +462,8 @@ git add xash3dpp/src/$ARGUMENTS/ xash3dpp/include/xash3dpp/$ARGUMENTS/ \
         xash3dpp/include/xash3dpp/private/$ARGUMENTS/ \
         xash3dpp/tests/$ARGUMENTS/ xash3dpp/CMakeLists.txt \
         xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md
-git commit -m "$ARGUMENTS: scaffold subsystem skeleton"
+$coauthor = & .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py coauthor <framework> "<model>"
+git commit -m "$ARGUMENTS: scaffold subsystem skeleton" -m "$coauthor"
 ```
 
 Commit message bullets:
@@ -470,3 +471,4 @@ Commit message bullets:
 - Boundary doc location.
 - Public header / CMake target name.
 - What the stub implements vs. what is left as TODO.
+- End with the `Co-Authored-By` trailer naming the active framework/model.
