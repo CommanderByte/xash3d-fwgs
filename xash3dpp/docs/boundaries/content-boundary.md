@@ -271,22 +271,29 @@ ______________________________________________________________________
 
 ## Open questions
 
-- **OQ-1 — `rgbdata_t` ABI status.** It crosses `ref_api.h` by pointer *and*
-  lives in the mainui SDK, but the renderer ABI itself is unbuilt (Chunk 13,
-  internally redesignable). Decide: keep a `rgbdata_t`-compatible surface only
-  at the (future) renderer seam with an internal typed image behind it — the
-  `IProtocolDriver` precedent — or freeze `rgbdata_t` now. Blocks the imagelib
-  public type.
-- **OQ-2 — "typed model handle lookup" shape.** Opaque `ModelHandle`
-  (index + generation) vs raw `model_t*`, constrained by the frozen
-  `SV_ModelHandle(int) → model_t*` and `pfnGetModelPtr → void*`. Defines the
-  deliverable's public lookup.
-- **OQ-3 — brush texture-finishing seam.** `map_loader` deferred miptex texel
-  payloads, surface extents/bevels, full `msurface_t`, and `LUMP_LIGHTING`
-  to Chunk 7 (map_loader-boundary §Deferred). Draw the exact
-  map_loader (geometry) → content (texture decode + `texture_t` fill) →
-  renderer (GPU upload) line: who fills `model_t.textures[]`, and when, given
-  `r_wadtextures` (external WAD) vs embedded miptex.
+- **OQ-1 — `rgbdata_t` ABI status. ✅ DECIDED 2026-07-06: internal `Image`
+  type + `rgbdata_t` adapter at the renderer seam** (the `IProtocolDriver`
+  precedent). imagelib's public result is a fresh `Image` value type, so the
+  codecs decode through `std::span` / `std::mdspan` and `enum class` formats
+  internally (unlocks modernization H-4 / M-1 / M-2 / O-2); `rgbdata_t` is
+  materialised only by a compat adapter at the (future, Chunk 13) renderer seam.
+  Content does **not** freeze `rgbdata_t`.
+- **OQ-2 — typed model handle shape. ✅ DECIDED 2026-07-06: opaque
+  `ModelHandle` (index + generation) internally, raw pointer only at the ABI
+  edge.** `ModelCache` lookups return/consume a generation-checked `ModelHandle`
+  (stale-slot safe); the frozen `SV_ModelHandle(int) → model_t*` and
+  `pfnGetModelPtr → void*` are produced only where the ABI demands a raw
+  pointer. This is the O-1 `ModelCache` public surface.
+- **OQ-3 — brush texture-finishing seam. ✅ DECIDED 2026-07-06: content fills
+  `texture_t` (decode via imagelib); `map_loader` stays geometry-only; renderer
+  uploads.** `map_loader` keeps producing geometry + texinfo indices with no
+  texels (unchanged — no re-widening of the seam it deliberately narrowed);
+  content walks `model_t.textures[]`, resolves embedded-miptex vs external-WAD
+  (`r_wadtextures`) and decodes to RGBA via `xash3dpp_imagelib`; the renderer
+  uploads the finished `texture_t` at Chunk 13. This activates the commented
+  `content → imagelib` CMake link. (The other `map_loader`-deferred payloads
+  split per-consumer: content owns texture decode; `LUMP_LIGHTING`, surface
+  extents/`msurface_t`, glpolys stay renderer/server work.)
 - **OQ-4 — DLL post-process seam shape.** Model `Mod_ProcessRenderData`
   (renderer) / `Mod_ProcessUserData` (dedicated-server physics) as an injected
   `IModelPostProcess`; content calls out, never links toward renderer. Confirm
@@ -310,5 +317,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-*Recon deliverable only — no implementation. Next: resolve OQ-1/OQ-2/OQ-3
-(they gate the public types), then `/scaffold-subsystem content`.*
+*Recon deliverable. Scaffold landed (commit `0a387308`). The gating
+OQ-1 / OQ-2 / OQ-3 are ✅ decided 2026-07-06 (above); OQ-4…OQ-8 are
+implementation-time calls. Next: `/plan-implementation content` — stand up the
+`ModelCache` (O-1) and the `IImageCodec` registry (O-2) first.*

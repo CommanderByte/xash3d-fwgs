@@ -460,11 +460,12 @@ ______________________________________________________________________
 
 ## Open questions
 
-- **OQ-A (gates H-4, M-1, M-3) — `rgbdata_t` ABI status.** It crosses
-  `ref_api.h` and the mainui SDK, but the renderer ABI is unbuilt (Chunk 13).
-  Until boundary **OQ-1** is decided (internal typed image + compat adapter at
-  the renderer seam vs freeze `rgbdata_t` now), the imagelib result type — and
-  therefore how far `span`/`mdspan`/`enum class` reach — is undecided.
+- **OQ-A (gated H-4, M-1, M-3) — `rgbdata_t` ABI status. ✅ RESOLVED
+  2026-07-06 (boundary OQ-1): internal `Image` type + `rgbdata_t` adapter at
+  the renderer seam.** H-4 (`span`/`mdspan`), M-1/M-2 (`enum class` formats),
+  and O-2 (`Image` value type) are unblocked for the imagelib internals;
+  `rgbdata_t` is materialised only at the future (Chunk 13) renderer boundary,
+  not frozen by content.
 - **OQ-B — `std::expected` error model.** One shared `LoadError`/`ImageError`
   enum across all formats, or per-format error types? Affects every loader
   signature (H-2).
