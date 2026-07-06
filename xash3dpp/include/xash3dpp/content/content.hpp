@@ -11,6 +11,8 @@
 //   `mod_studiohdr` globals (boundary H-1 / O-1); off-main readers get a
 //   published snapshot (P-2) once a consumer schedules it — never a live ref.
 
+#include <xash3dpp/content/errors.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>

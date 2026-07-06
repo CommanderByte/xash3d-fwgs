@@ -12,6 +12,8 @@
 //   codecs are stateless and one ImageDecoder is safe to share across worker
 //   threads; until then treat a single instance as main-thread.
 
+#include <xash3dpp/imagelib/errors.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>

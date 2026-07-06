@@ -4,9 +4,12 @@
 
 #include <xash3dpp/utilities/swap.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <optional>
+#include <span>
 
 #include "../test_helpers.hpp"
 
@@ -58,12 +61,51 @@ static void test_swap_bytes_noop()
     CHECK( buf[0] == 0x01 && buf[1] == 0x02 && buf[2] == 0x03 );
 }
 
+static void test_read_le_roundtrip()
+{
+    // Little-endian bytes on disk -> host value, regardless of host endianness.
+    const std::byte buf[] = {
+        std::byte{ 0x78 }, std::byte{ 0x56 }, std::byte{ 0x34 }, std::byte{ 0x12 },
+    };
+    CHECK( xash::utilities::read_le<std::uint32_t>( buf ) == 0x12345678u );
+    CHECK( xash::utilities::read_le<std::uint16_t>( buf ) == 0x5678u );
+    CHECK( xash::utilities::read_le<std::uint8_t>( buf ) == 0x78u );
+}
+
+static void test_read_le_bounds()
+{
+    const std::byte buf[2] = { std::byte{ 0x01 }, std::byte{ 0x02 } };
+    const std::span<const std::byte> s{ buf };
+
+    // In-range read succeeds.
+    const auto ok = xash::utilities::read_le<std::uint16_t>( s, 0 );
+    CHECK( ok.has_value() );
+    CHECK( ok.value_or( 0 ) == 0x0201u );
+
+    // A read that runs past the end returns nullopt (no OOB).
+    CHECK( !xash::utilities::read_le<std::uint32_t>( s, 0 ).has_value() );
+    // Offset at/after the end returns nullopt.
+    CHECK( !xash::utilities::read_le<std::uint8_t>( s, 2 ).has_value() );
+}
+
+static void test_write_le_roundtrip()
+{
+    std::byte buf[4] = {};
+    xash::utilities::write_le<std::uint32_t>( buf, 0x12345678u );
+    CHECK( buf[0] == std::byte{ 0x78 } );
+    CHECK( buf[3] == std::byte{ 0x12 } );
+    CHECK( xash::utilities::read_le<std::uint32_t>( buf ) == 0x12345678u );
+}
+
 int main()
 {
     RUN_TEST( test_swap_bytes_2 );
     RUN_TEST( test_swap_bytes_4 );
     RUN_TEST( test_swap_bytes_8 );
     RUN_TEST( test_swap_bytes_noop );
+    RUN_TEST( test_read_le_roundtrip );
+    RUN_TEST( test_read_le_bounds );
+    RUN_TEST( test_write_le_roundtrip );
 
     std::printf( "swap: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;
