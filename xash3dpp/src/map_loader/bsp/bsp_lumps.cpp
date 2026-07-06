@@ -22,6 +22,7 @@
 #include <xash3dpp/map_loader/pvs.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -66,10 +67,10 @@ WorldDataFill::Result WorldDataFill::entities( const LoadContext &ctx, World &w 
     // (maps/<name>.ent) replaces the lump content wholesale.
     if ( !ctx.opts.entity_patch.empty() )
         w.entities_.assign(
-            reinterpret_cast<const char *>( ctx.opts.entity_patch.data() ),
+            reinterpret_cast<const char *>( ctx.opts.entity_patch.data() ), // SAFETY: std::byte→char view of the .ent patch bytes (byte/char may alias any object); size() bytes copied.
             ctx.opts.entity_patch.size() );
     else
-        w.entities_.assign( reinterpret_cast<const char *>( lv->bytes.data() ),
+        w.entities_.assign( reinterpret_cast<const char *>( lv->bytes.data() ), // SAFETY: std::byte→char view of the raw entity lump (byte/char aliasing); lv->bytes.size() bytes copied.
                             lv->bytes.size() );
 
     if ( !ctx.opts.is_world )
@@ -432,7 +433,7 @@ WorldDataFill::Result WorldDataFill::leafs( const LoadContext &ctx, World &w )
                     const int c = other.cluster;
                     const bool visible = c >= 0 &&
                         ( static_cast<unsigned char>( vis[static_cast<std::size_t>( c ) >> 3] ) &
-                          ( 1u << ( static_cast<unsigned>( c ) & 7u ))) != 0;
+                          ( 1u << ( static_cast<std::uint32_t>( c ) & 7u ))) != 0;
                     if ( visible && other.contents == k_contents_empty )
                     {
                         wateralpha = true;

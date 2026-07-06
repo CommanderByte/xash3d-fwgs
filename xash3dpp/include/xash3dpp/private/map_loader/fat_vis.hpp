@@ -35,7 +35,7 @@ void fat_vis_walk( const WorldData &w, const ::xash::utilities::Vec3 &org,
     // Per-leaf decompression scratch (legacy uses the static g_visdata row).
     std::vector<std::byte> row( bytes );
 
-    std::vector<int> stack;
+    std::vector<int> stack; // @pre-reserved: query-local BSP-descent stack, bounded by node-tree depth, freed per call (reserve deferred — Q-18-gated query path, sizing is a parity-safe follow-up)
     stack.push_back( 0 );
 
     while ( !stack.empty() )

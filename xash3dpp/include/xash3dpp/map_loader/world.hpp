@@ -14,6 +14,8 @@
 // Chunk 5 build-up: C4 = core lumps (entities/planes/submodels/visibility/
 // marksurfaces/leafs/nodes); C5 adds clipnodes + hulls; C6 adds surface
 // content flags, water-alpha and the map checksum.
+//
+// @thread-safety: WorldData is built on the main thread by load_world_data and IMMUTABLE after activation; all const accessors/queries are concurrent-read-safe over a shared const WorldData (Q-6).
 
 #include <xash3dpp/core/error.hpp>
 #include <xash3dpp/utilities/math.hpp>
@@ -249,17 +251,21 @@ private:
     std::string wadlist_;
     std::string message_;
 
-    std::vector<Plane>       planes_;
-    std::vector<Node>        nodes_;
-    std::vector<Leaf>        leafs_;
-    std::vector<int>         marksurfaces_;
-    std::vector<SubModel>    submodels_;
-    std::vector<ClipNode32>  clipnodes_;
-    std::vector<ClipNode32>  hull0_nodes_;
-    std::vector<Surface>     surfaces_;
-    std::vector<TexInfo>     texinfos_;
-    std::vector<std::string> texture_names_;
-    std::vector<std::byte>   visdata_;
+    // Cold load-path arrays: each is sized ONCE from its BSP lump during the
+    // load pipeline (resize/assign, not incremental growth) and is immutable
+    // after activation (Q-6); element counts are capped by the disk-format
+    // k_max_map_* facts in disk_format.hpp. No hot-path reserve applies.
+    std::vector<Plane>       planes_;        // @pre-reserved: planes lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<Node>        nodes_;         // @pre-reserved: nodes lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<Leaf>        leafs_;         // @pre-reserved: leafs lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<int>         marksurfaces_;  // @pre-reserved: markfaces lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<SubModel>    submodels_;     // @pre-reserved: models lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<ClipNode32>  clipnodes_;     // @pre-reserved: clipnodes lump, widened+appended per hull at load (cold, immutable after activation, Q-6)
+    std::vector<ClipNode32>  hull0_nodes_;   // @pre-reserved: nodes count (resize to nodes_.size() at load; cold, immutable after activation, Q-6)
+    std::vector<Surface>     surfaces_;      // @pre-reserved: faces lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<TexInfo>     texinfos_;      // @pre-reserved: texinfo lump count (resize at load; cold, immutable after activation, Q-6)
+    std::vector<std::string> texture_names_; // @pre-reserved: textures lump nummiptex (resize at load; cold, immutable after activation, Q-6)
+    std::vector<std::byte>   visdata_;       // @pre-reserved: visibility lump bytes (assign at load; cold, immutable after activation, Q-6)
 };
 
 // ---------------------------------------------------------------------------

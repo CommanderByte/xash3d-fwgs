@@ -9,6 +9,7 @@
 // (observers see success=false).  World-loading success paths live in
 // test_map_loader_world.cpp.
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 
@@ -200,6 +201,9 @@ static void test_map_name_truncation()
 
 int main()
 {
+    // MapLoader load-path entry points assert ThreadRole::Main; register it so
+    // the bare asserts do not FATAL the harness (server test-main idiom).
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
     RUN_TEST( test_init_shutdown_reinit );
     RUN_TEST( test_transitions_queue_until_step );
     RUN_TEST( test_observer_notifications );

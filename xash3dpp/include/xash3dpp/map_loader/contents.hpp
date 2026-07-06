@@ -6,6 +6,8 @@
 // Values are format- and ABI-frozen: they appear in BSP leafs/clipnodes on
 // disk and cross the game-DLL ABI (pmtrace_t, pfnPointContents).  `int` per
 // the GoldSrc-ABI integer policy (QG).
+//
+// @thread-safety: stateless header — compile-time constants only; safe to read from any thread.
 
 namespace xash::map_loader {
 

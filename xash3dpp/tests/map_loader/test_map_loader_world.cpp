@@ -6,6 +6,7 @@
 // driving a synchronous LoadLevel with observer notifications + world()
 // ownership.
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/pvs.hpp>
@@ -187,6 +188,9 @@ static void test_fsm_without_filesystem_fails()
 
 int main()
 {
+    // MapLoader load-path entry points assert ThreadRole::Main; register it so
+    // the bare asserts do not FATAL the harness (server test-main idiom).
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
     setup_tree();
 
     RUN_TEST( test_load_through_filesystem );

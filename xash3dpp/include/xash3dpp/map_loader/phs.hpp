@@ -14,6 +14,8 @@
 // Legacy builds it only for multiplayer servers (SV_Active &&
 // maxclients > 1, mod_bmodel.c:4353-4354): the server calls build_phs()
 // during spawn; the table is immutable afterwards (Q-6).
+//
+// @thread-safety: build_phs runs at load on the main thread; the resulting PhsTable is immutable afterwards; fat_phs/headnode_visible are concurrent-read-safe over const WorldData & const PhsTable (Q-6).
 
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/utilities/math.hpp>
@@ -45,8 +47,8 @@ public:
 private:
     friend PhsTable build_phs( const WorldData &w );
 
-    std::vector<std::byte>   blob_;    // legacy world.compressed_phs
-    std::vector<std::size_t> offsets_; // legacy world.phsofs
+    std::vector<std::byte>   blob_;    // legacy world.compressed_phs  // @pre-reserved: built once at load by build_phs (grows per compressed row; cold, immutable after build, Q-6)
+    std::vector<std::size_t> offsets_; // legacy world.phsofs          // @pre-reserved: PHS row count (resize at load in build_phs; cold, immutable after build, Q-6)
 };
 
 // ---------------------------------------------------------------------------

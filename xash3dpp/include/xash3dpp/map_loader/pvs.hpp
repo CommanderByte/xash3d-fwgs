@@ -11,6 +11,8 @@
 // Mod_FatPVS, Mod_HeadnodeVisible) lives in phs.hpp (Q-19); both fat-vis
 // paths share the walk in private/map_loader/fat_vis.hpp.
 //
+// @thread-safety: every entry point is a pure query — concurrent-read-safe over a const WorldData; scratch is caller-supplied or function-local, no shared mutable state (Q-6).
+//
 // NOTE the tie-break asymmetry, preserved from legacy: the point-in-leaf
 // walk sends an exactly-on-plane point to the BACK child (PlaneDiff <= 0),
 // while the clip-hull walkers (trace.hpp) send it to the FRONT child
@@ -21,6 +23,7 @@
 #include <xash3dpp/utilities/math.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 
 namespace xash::map_loader {
@@ -36,7 +39,7 @@ inline constexpr float       k_fatphs_radius = 8.0f; // legacy FATPHS_RADIUS
     if ( cluster < 0 || static_cast<std::size_t>( cluster ) >= vis.size() * 8 )
         return false;
     return ( static_cast<unsigned char>( vis[static_cast<std::size_t>( cluster ) >> 3] ) &
-             ( 1u << ( static_cast<unsigned>( cluster ) & 7u ))) != 0;
+             ( 1u << ( static_cast<std::uint32_t>( cluster ) & 7u ))) != 0;
 }
 
 // Mod_DecompressPVS: classic zero-RLE — a nonzero byte copies through, a

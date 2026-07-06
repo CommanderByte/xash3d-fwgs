@@ -10,14 +10,14 @@ all findings fixed (`d292c8c0`, `.ent` patch in `ec8b5828`); trace-kernel
 parity audit PARITY-CONFIRMED; kernel cross-checked bit-for-bit against the
 verbatim legacy kernel (18,156 traces, 0 mismatches).*
 
-## 1. Scope
+## 1. Scope / Responsibility
 
 Chunk 5 deliverable: BSP v29/v30/BSP2/BSP30ext loading → immutable
 `WorldData` → PVS queries + clip-hull trace kernel, float-exact to legacy
 (Q-18), with the trace interface **decoupled from edict pointers** (the hard
 prerequisite for the Chunk 6 server ABI work).
 
-## 2. Exposed surface
+## 2. Exposed surface (Interface)
 
 Public headers under `include/xash3dpp/map_loader/`:
 
@@ -73,7 +73,7 @@ criteria (shared WorldData, no extra deps, no independent state machine, not
 useful standalone) → single `xash3dpp_map_loader` target, satellite-style
 folder layout only (networking/delta precedent).
 
-## 3. Invariants
+## 3. Invariants and Quirks
 
 - **`WorldData` is immutable after `load_world_data` returns** (Q-6): every
   accessor is const; all queries take `const WorldData&`/non-owning views
@@ -198,3 +198,27 @@ ownership is the server/host contract (compute/commit separation).
 `limits::map_qpath_max` (64, legacy MAX_QPATH). Format caps (`k_max_map_*`)
 are file-format facts and live in `private/map_loader/bsp/disk_format.hpp`,
 not `limits.hpp` (same rule as the networking wire constants).
+
+## 8. Constant classification (QO)
+
+Only one literal is a tunable capacity and it already lives in `limits.hpp`:
+`map_qpath_max` (level/landmark name buffers, legacy `MAX_QPATH`). Everything
+else is **frozen**, not a capacity or a cvar, so it stays in-code next to what
+defines it:
+
+- **Disk-format facts** — `k_max_map_*` element caps and the on-disk record
+  field widths (the `name[16]` / `landname[16]` / `modelname[16]` /
+  `name[17]` MIPTEX/model-name arrays flagged by `limits_scan` as
+  "unclassified magic"): wire/disk-format constants pinned by the BSP layout.
+  They live in `private/map_loader/bsp/disk_format.hpp` and at the parse
+  sites, never `limits.hpp` (same rule as the networking wire constants).
+- **ABI-frozen values** — `k_contents_*` (BSP leaf/clipnode + game-DLL ABI,
+  `int` per QG) in `contents.hpp`.
+- **Algorithm constants (Q-18)** — the trace/PVS kernel numbers
+  (`k_dist_epsilon = 1/32`, `k_fatpvs_radius`/`k_fatphs_radius = 8.0f`, the
+  zero-RLE 255 run cap, `k_max_box_leafs`) and the map-CRC constants
+  (SP `0x58415348`, the CRC-32 polynomial over lumps 1..14) are float/bit
+  exact to legacy and stay beside the algorithms that require them.
+
+No behavioural knob here is a cvar; there is nothing to migrate into
+`limits.hpp` or the cvar registry beyond `map_qpath_max`.

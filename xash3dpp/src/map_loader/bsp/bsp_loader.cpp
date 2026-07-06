@@ -27,7 +27,9 @@ constexpr std::size_t k_classname_len = sizeof( k_classname_needle ) - 1;
 {
     if ( lump.size() < k_classname_len )
         return false;
-    const auto *needle = reinterpret_cast<const std::byte *>( k_classname_needle );
+    // SAFETY: char literal viewed as std::byte — byte/char may alias any object;
+    // only k_classname_len bytes are read by std::search below.
+    const auto *needle = reinterpret_cast<const std::byte *>( k_classname_needle ); // SAFETY: byte/char aliasing (see above)
     return std::search( lump.begin(), lump.end(), needle, needle + k_classname_len )
            != lump.end();
 }

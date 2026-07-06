@@ -68,7 +68,7 @@ struct LumpInfo
     std::size_t  entrysize;
     std::size_t  entrysize32;
     bool         check_overflow;
-    const char  *name;
+    const char  *name; // @lifetime: static string literal (k_src_lumps table entries; program-duration, never freed)
 };
 
 inline constexpr LumpInfo k_src_lumps[k_header_lumps] = {
@@ -152,7 +152,7 @@ struct LoadScratch
     // Mod_LoadClipnodes output: every source variant widened to 32-bit.
     // Consumed by setup_submodels (shared directly for non-BSP30ext maps;
     // per-hull remap source for BSP30ext), then discarded.
-    std::vector<::xash::map_loader::ClipNode32> clipnodes_widened;
+    std::vector<::xash::map_loader::ClipNode32> clipnodes_widened; // @pre-reserved: clipnodes lump count (resize once at load; cold load-time scratch, discarded post-load)
 };
 
 struct WorldDataFill

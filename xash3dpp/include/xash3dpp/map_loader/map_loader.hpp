@@ -6,6 +6,12 @@
 //
 // Decision ref: docs/boundaries/host-boundary.md  Resolved-decision OQ-2
 //
+// @thread-safety: MapLoader load/activation entry points (init/shutdown/
+// load_level/load_game/load_world/run_frame_step/set_level_executor) are
+// main-thread only (assert_thread_role Main); the const accessors state()/
+// current_map()/world() are read on the main thread and a borrowed world()
+// pointer must NOT be held across a load/clear (Q-6, threading-analysis).
+//
 // MapLoader is a sibling subsystem of Host inside EngineContext.  It is
 // driven by:
 //   • console commands  (map, changelevel, load, demos)

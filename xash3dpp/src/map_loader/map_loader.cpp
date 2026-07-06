@@ -83,6 +83,7 @@ MapLoader &MapLoader::operator=(MapLoader &&) noexcept = default;
 
 bool MapLoader::init( const MapLoaderInitParams &p ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     if (s.initialised) return true;
     s.pool = xash::memory::create_pool("map_loader");
@@ -96,6 +97,7 @@ bool MapLoader::init( const MapLoaderInitParams &p ) noexcept
 
 void MapLoader::shutdown() noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     if (!s.initialised) return;
     s.world.reset();
@@ -119,6 +121,7 @@ void MapLoader::new_game( std::string_view map ) noexcept
 
 void MapLoader::load_level( std::string_view map, bool background ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     s.copy_name( s.level_name, map );
     s.background = background;
@@ -127,6 +130,7 @@ void MapLoader::load_level( std::string_view map, bool background ) noexcept
 
 void MapLoader::load_game( std::string_view map ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     s.copy_name( s.level_name, map );
     s.load_game = true;
@@ -145,6 +149,7 @@ void MapLoader::change_level( std::string_view map, std::string_view landmark,
 
 void MapLoader::run_frame_step() noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     if (s.next == s.state) return;
 
@@ -162,6 +167,7 @@ void MapLoader::run_frame_step() noexcept
         s.notify_begin( map, pending );
         const bool ok = s.executor
             ? s.executor->exec_load_level( map, s.background )
+            // compliance-allow(thread-assert): call site inside run_frame_step (asserted Main above), not a mutator definition — the scanner's def matcher hit the ':' ternary branch.
             : load_world( map, ::xash::map_loader::WorldLoadOptions{} );
         s.state = MapLoadState::RunFrame;
         s.next  = MapLoadState::RunFrame;
@@ -255,6 +261,7 @@ std::string_view MapLoader::current_map() const noexcept { return impl_->level_n
 bool MapLoader::load_world( std::string_view mapname,
                             const map_loader::WorldLoadOptions &opts ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     s.world.reset();
 

@@ -18,6 +18,8 @@
 //
 // Tie-break note (opposite of the PVS point_leaf walk): an exactly-on-plane
 // point goes to the FRONT child here (PlaneDiff < 0 selects the back).
+//
+// @thread-safety: trace queries are concurrent-read-safe over a const WorldData; BoxHull is a per-instance value type (one per thread/callsite — no shared static like the legacy pm_boxhull).
 
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/utilities/math.hpp>
