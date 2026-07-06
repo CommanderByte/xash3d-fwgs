@@ -329,4 +329,59 @@ int setup_bones( const StudioView &hdr, const BoneSetupInput &in,
     return numbones;
 }
 
+bool bone_world_position( const StudioView &hdr, BoneSetupInput in, int bone,
+                          IBoneSolver &solver, ::xash::utilities::Vec3 *out_origin,
+                          ::xash::utilities::Vec3 *out_angles ) noexcept
+{
+    if( bone < 0 || bone >= hdr.num_bones() )
+        return false;
+
+    in.bone = bone;
+    std::array<::xash::utilities::Matrix3x4, ::xash::limits::studio_max_bones> bones{};
+    if( solver.setup_bones( hdr, in, bones ) == 0 )
+        return false;
+
+    const ::xash::utilities::Matrix3x4 &m = bones[static_cast<std::size_t>( bone )];
+    if( out_origin != nullptr )
+        *out_origin = { m.m[0][3], m.m[1][3], m.m[2][3] }; // Matrix3x4_OriginFromMatrix
+    if( out_angles != nullptr )
+        *out_angles = ::xash::utilities::angles_from_matrix( m );
+    return true;
+}
+
+bool attachment_world_position( const StudioView &hdr, BoneSetupInput in, int att,
+                                IBoneSolver &solver, ::xash::utilities::Vec3 *out_origin,
+                                ::xash::utilities::Vec3 *out_angles ) noexcept
+{
+    const int natt = hdr.num_attachments();
+    if( natt <= 0 )
+        return false;
+
+    const int idx = ( att < 0 ) ? 0 : ( ( att > natt - 1 ) ? natt - 1 : att ); // bound(0, att, natt-1)
+    const AttachmentView a = hdr.attachment( idx );
+    const int abone = a.bone();
+    if( abone < 0 || abone >= hdr.num_bones() )
+        return false;
+
+    in.bone = abone;
+    std::array<::xash::utilities::Matrix3x4, ::xash::limits::studio_max_bones> bones{};
+    if( solver.setup_bones( hdr, in, bones ) == 0 )
+        return false;
+
+    // worldPose = studio_bones[bone] * translate(attachment.org)
+    ::xash::utilities::Matrix3x4 localPose = ::xash::utilities::Matrix3x4::identity();
+    const ::xash::utilities::Vec3 org = a.org();
+    localPose.m[0][3] = org.x;
+    localPose.m[1][3] = org.y;
+    localPose.m[2][3] = org.z;
+    const ::xash::utilities::Matrix3x4 worldPose =
+        ::xash::utilities::concat( bones[static_cast<std::size_t>( abone )], localPose );
+
+    if( out_origin != nullptr )
+        *out_origin = { worldPose.m[0][3], worldPose.m[1][3], worldPose.m[2][3] };
+    if( out_angles != nullptr )
+        *out_angles = ::xash::utilities::angles_from_matrix( worldPose );
+    return true;
+}
+
 } // namespace xash::content

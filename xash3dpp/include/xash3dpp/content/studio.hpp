@@ -33,6 +33,7 @@ inline constexpr std::size_t k_studio_bone_stride       = 112; // mstudiobone_t
 inline constexpr std::size_t k_studio_bonectrl_stride   = 24;  // mstudiobonecontroller_t
 inline constexpr std::size_t k_studio_anim_stride       = 12;  // mstudioanim_t (uint16 offset[6])
 inline constexpr std::size_t k_studio_seqdesc_stride    = 176; // mstudioseqdesc_t
+inline constexpr std::size_t k_studio_attachment_stride = 88;  // mstudioattachment_t
 
 // mstudiobonecontroller_t motion-type flags (engine/studio.h). The low bits are
 // the axis/rotation type (masked by k_studio_types); k_studio_rloop marks a
@@ -152,6 +153,22 @@ private:
     std::size_t                off_ = 0;
 };
 
+// mstudioattachment_t (88 B): flags@32, bone@36, org(vec3)@40. The attachment
+// follows `bone`; `org` is its offset in that bone's local frame.
+class AttachmentView
+{
+public:
+    AttachmentView() = default;
+    AttachmentView( std::span<const std::byte> data, std::size_t off ) noexcept : data_( data ), off_( off ) {}
+
+    [[nodiscard]] std::int32_t            bone() const noexcept;
+    [[nodiscard]] ::xash::utilities::Vec3 org() const noexcept;
+
+private:
+    std::span<const std::byte> data_;
+    std::size_t                off_ = 0;
+};
+
 // ---------------------------------------------------------------------------
 // StudioView — typed, bounds-safe read surface over a studiohdr_t byte image.
 // Out-of-range reads return 0 / empty rather than faulting (untrusted files).
@@ -193,6 +210,7 @@ public:
     [[nodiscard]] BoneView           bone( int i ) const noexcept;
     [[nodiscard]] BoneControllerView bonecontroller( int j ) const noexcept;
     [[nodiscard]] SeqDescView        seqdesc( int i ) const noexcept;
+    [[nodiscard]] AttachmentView     attachment( int i ) const noexcept;
 
     [[nodiscard]] std::span<const std::byte> data() const noexcept { return data_; }
     [[nodiscard]] bool valid() const noexcept { return data_.size() >= k_studio_header_size; }

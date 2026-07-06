@@ -63,6 +63,10 @@ constexpr std::size_t kSeqNumBlends  = 120;
 constexpr std::size_t kSeqAnimIndex  = 124;
 constexpr std::size_t kSeqSeqGroup   = 156;
 
+// mstudioattachment_t field offsets (within an 88-byte chunk).
+constexpr std::size_t kAttBone = 36;
+constexpr std::size_t kAttOrg  = 40; // vec3
+
 // Bounds-checked little-endian reads over the studiohdr byte image; an
 // out-of-range offset returns 0 (untrusted files never fault a reader).
 [[nodiscard]] std::int32_t rd_i32( std::span<const std::byte> d, std::size_t off ) noexcept
@@ -119,6 +123,12 @@ std::int32_t SeqDescView::motionbone() const noexcept { return rd_i32( data_, of
 std::int32_t SeqDescView::numblends() const noexcept  { return rd_i32( data_, off_ + kSeqNumBlends ); }
 std::int32_t SeqDescView::animindex() const noexcept  { return rd_i32( data_, off_ + kSeqAnimIndex ); }
 std::int32_t SeqDescView::seqgroup() const noexcept   { return rd_i32( data_, off_ + kSeqSeqGroup ); }
+
+std::int32_t AttachmentView::bone() const noexcept { return rd_i32( data_, off_ + kAttBone ); }
+::xash::utilities::Vec3 AttachmentView::org() const noexcept
+{
+    return { rd_f32( data_, off_ + kAttOrg ), rd_f32( data_, off_ + kAttOrg + 4 ), rd_f32( data_, off_ + kAttOrg + 8 ) };
+}
 
 // ---------------------------------------------------------------------------
 // StudioView
@@ -190,6 +200,12 @@ SeqDescView StudioView::seqdesc( int i ) const noexcept
 {
     return SeqDescView{ data_, static_cast<std::size_t>( seq_index() )
         + k_studio_seqdesc_stride * static_cast<std::size_t>( i ) };
+}
+
+AttachmentView StudioView::attachment( int i ) const noexcept
+{
+    return AttachmentView{ data_, static_cast<std::size_t>( attachment_index() )
+        + k_studio_attachment_stride * static_cast<std::size_t>( i ) };
 }
 
 // ---------------------------------------------------------------------------

@@ -337,6 +337,60 @@ static void test_setup_bones_numblends2_oracle()
     CHECK( mat_eq( out[0], expect ) );
 }
 
+static void test_bone_world_position()
+{
+    // identity entity, bind pose -> bone 0 world origin = origin + pos, angles 0.
+    StudioBuilder b = make_one_bone( -1, { 1.0f, 2.0f, 3.0f, 0.0f, 0.0f, 0.0f } );
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    BoneSetupInput in;
+    in.origin = { 10.0f, 20.0f, 30.0f };
+    BuiltinBoneSolver solver;
+    Vec3 origin{ -1, -1, -1 }, angles{ -1, -1, -1 };
+    const bool ok = xash::content::bone_world_position( hdr, in, 0, solver, &origin, &angles );
+    CHECK( ok );
+    CHECK( origin.x == 11.0f && origin.y == 22.0f && origin.z == 33.0f );
+    CHECK( angles.x == 0.0f && angles.y == 0.0f && angles.z == 0.0f );
+
+    // out-of-range bone -> false, outs untouched.
+    Vec3 o2{ 7, 7, 7 };
+    CHECK( !xash::content::bone_world_position( hdr, in, 5, solver, &o2, nullptr ) );
+    CHECK( o2.x == 7.0f );
+}
+
+static void test_attachment_world_position()
+{
+    // 1 bone + 1 attachment (bone 0, local org {1,0,0}); identity entity, bind
+    // pose -> attachment world = (origin + pos) + org.
+    StudioBuilder b;
+    const std::size_t bone_off = b.add_bone( -1, { -1, -1, -1, -1, -1, -1 }, { 1, 2, 3, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } );
+    const std::array<std::vector<std::int16_t>, 6> empty{};
+    const std::size_t anim_off = b.add_anim_block( { empty } );
+    const std::size_t seq_off = b.add_seqdesc( 1, 0, 0, 1, static_cast<std::int32_t>( anim_off ), 0 );
+    const std::size_t att_off = b.add_attachment( 0, 1.0f, 0.0f, 0.0f );
+    b.header_i32( 140, 1 );  b.header_i32( 144, static_cast<std::int32_t>( bone_off ) );
+    b.header_i32( 164, 1 );  b.header_i32( 168, static_cast<std::int32_t>( seq_off ) );
+    b.header_i32( 212, 1 );  b.header_i32( 216, static_cast<std::int32_t>( att_off ) ); // numattachments / index
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    BoneSetupInput in;
+    in.origin = { 10.0f, 20.0f, 30.0f };
+    BuiltinBoneSolver solver;
+    Vec3 origin{};
+    const bool ok = xash::content::attachment_world_position( hdr, in, 0, solver, &origin, nullptr );
+    CHECK( ok );
+    CHECK( origin.x == 12.0f && origin.y == 22.0f && origin.z == 33.0f ); // {11,22,33}+{1,0,0}
+
+    // a model with no attachments -> false.
+    StudioBuilder nb = make_one_bone( -1, { 0, 0, 0, 0, 0, 0 } );
+    const auto &nbytes = nb.bytes();
+    const StudioView nhdr{ nbytes };
+    Vec3 o2{ 5, 5, 5 };
+    CHECK( !xash::content::attachment_world_position( nhdr, in, 0, solver, &o2, nullptr ) );
+}
+
 int main()
 {
     RUN_TEST( test_calc_bones_rle_position );
@@ -350,6 +404,9 @@ int main()
     RUN_TEST( test_setup_bones_sequence_clamp );
     RUN_TEST( test_setup_bones_rotation_oracle );
     RUN_TEST( test_setup_bones_numblends2_oracle );
+
+    RUN_TEST( test_bone_world_position );
+    RUN_TEST( test_attachment_world_position );
 
     std::printf( "test_studio_bones: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

@@ -130,6 +130,17 @@ public:
         return off;
     }
 
+    // mstudioattachment_t (88 B) — bone@36, org(vec3)@40.
+    std::size_t add_attachment( std::int32_t bone, float ox, float oy, float oz )
+    {
+        const std::size_t off = grow( k_studio_attachment_stride );
+        put_i32( off + 36, bone );
+        put_f32( off + 40, ox );
+        put_f32( off + 44, oy );
+        put_f32( off + 48, oz );
+        return off;
+    }
+
     // Stamp the header length to the final size and return the bytes.
     [[nodiscard]] const std::vector<std::byte> &bytes()
     {

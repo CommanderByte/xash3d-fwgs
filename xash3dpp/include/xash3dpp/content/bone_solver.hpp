@@ -86,4 +86,27 @@ public:
     }
 };
 
+// ---------------------------------------------------------------------------
+// Studio pose queries (Mod_GetBonePosition / Mod_StudioGetAttachment)
+// ---------------------------------------------------------------------------
+
+// Mod_GetBonePosition — world origin/angles of bone `bone` under pose `in`
+// (in.bone is overridden). Writes out_origin/out_angles when non-null; returns
+// false on a bad header or out-of-range bone (the caller keeps its defaults).
+// NO pitch flip — that is the caller's (attachment/hull) concern.
+[[nodiscard]] bool bone_world_position( const StudioView &hdr, BoneSetupInput in, int bone,
+                                        IBoneSolver &solver,
+                                        ::xash::utilities::Vec3 *out_origin,
+                                        ::xash::utilities::Vec3 *out_angles ) noexcept;
+
+// Mod_StudioGetAttachment — world origin/angles of attachment `att` (clamped to
+// [0, numattachments-1]). Sets up the attachment bone's chain, concats the
+// attachment's local offset, reads the world pose. `out_angles` is the world
+// orientation (the caller applies the legacy ENGINE_COMPUTE_STUDIO_LERP gate).
+// Returns false when there are no attachments or the header is bad.
+[[nodiscard]] bool attachment_world_position( const StudioView &hdr, BoneSetupInput in, int att,
+                                              IBoneSolver &solver,
+                                              ::xash::utilities::Vec3 *out_origin,
+                                              ::xash::utilities::Vec3 *out_angles ) noexcept;
+
 } // namespace xash::content
