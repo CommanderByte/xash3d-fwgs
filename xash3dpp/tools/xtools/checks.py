@@ -28,7 +28,7 @@ ALLOW_RE = re.compile(r"compliance-allow\(\s*([\w\-, ]+?)\s*\)")
 # exclusion) with the name captured — used to propagate a definition-line
 # compliance-allow to every use of that global (6B S2 refinement).
 _G_DEF_RX = re.compile(
-    r"^(?:static\s+)?[\w:<>*&\s]+\s(g_\w+)\s*(?:\[[^\]]*\]\s*)*(?:=|;|\{)")
+    r"^(?:static\s+)?[\w:<>*&\s]+[\s*&](g_\w+)\s*(?:\[[^\]]*\]\s*)*(?:=|;|\{)")
 
 # unique_ptr<T> inner type (first template arg, default deleter) — used to
 # check T against the pool-owned set for the unique-ptr-nonpimpl suppression.

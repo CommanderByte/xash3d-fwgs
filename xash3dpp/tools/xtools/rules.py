@@ -279,8 +279,10 @@ RULES: list[Rule] = [
         check="mutable-global",
         severity="blocker",
         # `(\[[^\]]*\]\s*)*` — array globals (`Foo g_handles[2];`) are
-        # definitions too (6B S2 def-shape fix).
-        pattern=r"^(static\s+)?(?!(static\s+)?(const|constexpr|inline\s+constexpr))\w[\w:<>*&\s]*\s+g_\w+\s*(\[[^\]]*\]\s*)*(=|;|\{)",
+        # definitions too (6B S2 def-shape fix).  `[\s*&]+` before the name —
+        # a raw-pointer global glues the `*`/`&` to the name (`Foo *g_x;`),
+        # so whitespace alone would miss it (6B S9a def-shape fix).
+        pattern=r"^(static\s+)?(?!(static\s+)?(const|constexpr|inline\s+constexpr))\w[\w:<>*&\s]*[\s*&]g_\w+\s*(\[[^\]]*\]\s*)*(=|;|\{)",
         scopes=("src",),
         exclude_subsystems=("memory",),
         hint="no new mutable file-scope globals; state lives in context objects (reviewer §7; sweep DI_PARAMS)",
@@ -294,7 +296,7 @@ RULES: list[Rule] = [
         pattern=r"(?<![\w.])g_[a-z]\w+",
         scopes=("src",),
         exclude_subsystems=("memory",),
-        exclude_line_re=r"^(static\s+)?[\w:<>*&\s]+\sg_\w+\s*(\[[^\]]*\]\s*)*(=|;|\{)",
+        exclude_line_re=r"^(static\s+)?[\w:<>*&\s]+[\s*&]g_\w+\s*(\[[^\]]*\]\s*)*(=|;|\{)",
         hint="dependencies flow through InitParams, not process globals (detail CHECK-DI, Q-4)",
         source_ref="detail CHECK-DI (Q-4)",
         candidate=True,

@@ -287,6 +287,15 @@ class AnnotationRules(unittest.TestCase):
         self.assertEqual(m.group(1), "g_handles")
         self.assertTrue(_hits("mutable-global", "AssetManagerHandle g_handles[2];"))
         self.assertFalse(_hits("di-global-ref", "AssetManagerHandle g_handles[2];"))
+        # Raw-pointer globals glue the * to the name (6B S9a def-shape fix):
+        # `Foo *g_x = nullptr;` must still register as a definition.
+        m = _G_DEF_RX.match("EngineBridge *g_bridge = nullptr;")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), "g_bridge")
+        self.assertTrue(_hits("mutable-global", "EngineBridge *g_bridge = nullptr;"))
+        self.assertFalse(_hits("di-global-ref", "EngineBridge *g_bridge = nullptr;"))
+        # The star-spaced form still works too.
+        self.assertIsNotNone(_G_DEF_RX.match("EngineBridge * g_bridge = nullptr;"))
         # A use is not a definition.
         self.assertIsNone(_G_DEF_RX.match("    g_jni.env = env;"))
 
