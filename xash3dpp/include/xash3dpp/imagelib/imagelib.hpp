@@ -18,6 +18,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
+#include <string_view>
 
 namespace xash::imagelib {
 
@@ -52,13 +54,16 @@ public:
 
     [[nodiscard]] const ImageStats& stats() const noexcept;
 
-    // TODO(Chunk 7, O-2): register the per-format IImageCodec implementations
-    //   and add the decode/encode surface (all std::expected, boundary H-2):
-    //     std::expected<Image, ImageError> decode(std::string_view name,
-    //                                              std::span<const std::byte> file);
-    //     std::expected<void,  ImageError> save  (...);              // WAD3 pack
-    //   The "WAD texture pack/unpack test" deliverable exercises the MIP/WAD3
-    //   codec on raw buffers (no filesystem needed — codecs take spans).
+    // Decode a whole image-file buffer, dispatching by the filename extension
+    // to a registered IImageCodec (O-2). `name` carries the original filename
+    // for the name-prefix quirks ('{' masked, "sky", '#' logo, …); `file` is
+    // the raw bytes (no filesystem — codecs take spans, OQ-1). Main-thread
+    // today (bumps stats); the codecs themselves are stateless/reentrant.
+    [[nodiscard]] Result<Image> decode( std::string_view name,
+                                        std::span<const std::byte> file );
+
+    // Encoding lives in <xash3dpp/imagelib/save.hpp> (save_wad, …) — free
+    // functions that return a byte buffer for the caller to write.
 
 private:
     struct Impl;

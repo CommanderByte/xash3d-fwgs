@@ -5,9 +5,12 @@
 #include <xash3dpp/imagelib/imagelib.hpp>
 #include <xash3dpp/imagelib/image.hpp>
 #include <xash3dpp/imagelib/pixel_format.hpp>
+#include <xash3dpp/imagelib/save.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 
 #include <cstddef>
+#include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "../test_helpers.hpp"
@@ -97,6 +100,73 @@ static void test_image_value()
 }
 
 // ---------------------------------------------------------------------------
+// WAD3 pack/unpack round-trip (chunk deliverable)
+// ---------------------------------------------------------------------------
+
+static void test_wad_roundtrip()
+{
+    using namespace xash::imagelib;
+
+    // A 16x16 indexed image: pixel i carries index i, one of every index.
+    Palette pal;
+    for( int i = 0; i < 256; ++i )
+        pal[static_cast<std::size_t>( i )] = Rgba{
+            static_cast<std::uint8_t>( i ),
+            static_cast<std::uint8_t>( 255 - i ),
+            static_cast<std::uint8_t>( i / 2 ),
+            255 };
+
+    std::vector<std::byte> idx( 16 * 16 );
+    for( int i = 0; i < 256; ++i )
+        idx[static_cast<std::size_t>( i )] = std::byte{ static_cast<std::uint8_t>( i ) };
+
+    Image src( 16, 16, PixelFormat::Indexed8, std::move( idx ) );
+    src.set_palette( pal );
+
+    // pack -> WAD3 bytes
+    const auto packed = save_wad( src );
+    REQUIRE( packed.has_value() );
+    CHECK( !packed->empty() );
+
+    // unpack via the decoder registry (dispatch on ".wad")
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "logo.WAD", *packed );  // case-insensitive ext
+    REQUIRE( out.has_value() );
+
+    CHECK_EQ( out->width(), std::uint16_t{ 16 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 16 } );
+    CHECK( out->format() == PixelFormat::Rgba8 );
+    CHECK( out->has( ImageFlags::HasAlpha ) );
+
+    // Each pixel expands to its palette RGB; index 255 is transparent (classic).
+    const auto px = out->pixels();
+    REQUIRE( px.size() == 16 * 16 * 4 );
+    bool all_ok = true;
+    for( int i = 0; i < 256; ++i )
+    {
+        const Rgba e = pal[static_cast<std::size_t>( i )];
+        const std::uint8_t ea = ( i == 255 ) ? 0 : 255;
+        all_ok = all_ok
+            && std::to_integer<std::uint8_t>( px[i * 4 + 0] ) == e.r
+            && std::to_integer<std::uint8_t>( px[i * 4 + 1] ) == e.g
+            && std::to_integer<std::uint8_t>( px[i * 4 + 2] ) == e.b
+            && std::to_integer<std::uint8_t>( px[i * 4 + 3] ) == ea;
+    }
+    CHECK( all_ok );
+    CHECK_EQ( dec.stats().images_decoded, std::uint64_t{ 1 } );
+    dec.shutdown();
+
+    // An unknown extension must not resolve to a codec.
+    ImageDecoder dec2;
+    REQUIRE( dec2.init() );
+    const auto bad = dec2.decode( "x.xyz", *packed );
+    CHECK( !bad.has_value() );
+    CHECK( bad.error() == ImageError::UnknownFormat );
+    dec2.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -109,6 +179,7 @@ int main()
     RUN_TEST( test_pixel_format );
     RUN_TEST( test_image_flags );
     RUN_TEST( test_image_value );
+    RUN_TEST( test_wad_roundtrip );
 
     std::printf( "test_imagelib: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;
