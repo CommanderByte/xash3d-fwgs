@@ -12,10 +12,12 @@
 //   published snapshot (P-2) once a consumer schedules it — never a live ref.
 
 #include <xash3dpp/content/errors.hpp>
+#include <xash3dpp/content/model.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string_view>
 
 namespace xash::filesystem { class Filesystem; }
 
@@ -65,11 +67,31 @@ public:
 
     [[nodiscard]] const ContentStats& stats() const noexcept;
 
-    // TODO(Chunk 7, O-1): the model-registry surface —
-    //   find_or_load / extradata / purge_for_level_change / free_unused /
-    //   validate_crc, plus the typed ModelHandle lookup (boundary OQ-2) and the
-    //   server-side studio collision queries (hull_for_studio / bone_position /
-    //   attachment). Dispatch is a std::variant over the four formats (O-3).
+    // ---- model registry (O-1; the typed handle-lookup deliverable) -------
+    // These manage slots + the needload FSM; the file load/format dispatch
+    // (studio/sprite/alias/brush) attaches its payload on top (loaders, O-3).
+
+    // Find an already-registered model by name, or the null handle if absent.
+    [[nodiscard]] ModelHandle find( std::string_view name ) noexcept;
+
+    // Find-or-allocate a slot for `name` (legacy Mod_FindName). Never returns
+    // the world slot; returns the null handle only if the cache is full.
+    [[nodiscard]] ModelHandle find_or_alloc( std::string_view name );
+
+    // Reserve slot 0 for the world model (legacy Mod_LoadWorld; slot-0-world
+    // invariant). Re-registering the world reuses slot 0.
+    [[nodiscard]] ModelHandle register_world( std::string_view name );
+
+    // Resolve a handle to its model, or nullptr if the handle is null or stale
+    // (generation mismatch — use-after-free safe).
+    [[nodiscard]] Model*       resolve( ModelHandle h ) noexcept;
+    [[nodiscard]] const Model* resolve( ModelHandle h ) const noexcept;
+
+    // Free a model slot; bumps its generation so outstanding handles go stale.
+    void free_model( ModelHandle h ) noexcept;
+
+    // Number of currently-occupied slots (world included).
+    [[nodiscard]] std::size_t live_count() const noexcept;
 
 private:
     struct Impl;

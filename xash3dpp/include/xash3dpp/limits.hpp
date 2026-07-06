@@ -463,4 +463,11 @@ inline constexpr std::size_t sv_max_generic = 1024; // MAX_CUSTOM generic files 
 inline constexpr std::size_t sv_max_generic = XASH_LIMIT_SV_MAX_GENERIC;
 #endif
 
+// content subsystem
+#ifndef XASH_LIMIT_CONTENT_MAX_MODELS
+inline constexpr std::size_t content_max_models = 4096; // model-cache slot cap; matches the protocol MAX_MODELS precache width (see sv_max_models)
+#else
+inline constexpr std::size_t content_max_models = XASH_LIMIT_CONTENT_MAX_MODELS;
+#endif
+
 } // namespace xash::limits
