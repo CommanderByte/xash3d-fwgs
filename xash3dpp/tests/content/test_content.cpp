@@ -203,6 +203,10 @@ static void test_model_load()
     CHECK_EQ( m->studio()->view().num_bones(), 30 );
     CHECK_EQ( cache.stats().models_loaded, std::uint64_t{ 1 } );
 
+    // ABI-edge accessor: the raw studiohdr pointer (pfnGetModelPtr).
+    CHECK( cache.studio_extradata( h ) == m->studio()->bytes().data() );
+    CHECK( cache.studio_extradata( ModelHandle{} ) == nullptr );  // null handle
+
     // A sprite (IDSP v2 / Half-Life) loads and normalises its header.
     std::vector<std::byte> spr( 40, std::byte{ 0 } );
     xash::utilities::write_le<std::int32_t>( spr.data() + 0, k_sprite_ident );
@@ -221,6 +225,7 @@ static void test_model_load()
     CHECK_EQ( sm->sprite()->info().num_frames, 5 );
     CHECK_EQ( sm->sprite()->info().max_width, 64 );
     CHECK_EQ( sm->sprite()->info().tex_format, 2 );
+    CHECK( cache.studio_extradata( sh ) == nullptr );  // not a studio model
 
     // An alias (IDPO v6 / Quake MDL) loads (parse-minimal).
     std::vector<std::byte> ali( 12, std::byte{ 0 } );

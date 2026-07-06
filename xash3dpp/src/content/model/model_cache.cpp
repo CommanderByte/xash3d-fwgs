@@ -321,6 +321,15 @@ bool ModelCache::validate_crc( std::string_view name, std::uint32_t crc ) const 
     return false;
 }
 
+const void* ModelCache::studio_extradata( ModelHandle h ) const noexcept
+{
+    const Model *m = resolve(h);
+    if (!m)
+        return nullptr;
+    const StudioModel *s = m->studio();
+    return s ? static_cast<const void*>(s->bytes().data()) : nullptr;
+}
+
 std::vector<ModelCache::ModelInfo> ModelCache::model_infos() const
 {
     std::vector<ModelInfo> out;

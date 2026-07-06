@@ -154,6 +154,12 @@ public:
     // debug/MCP/stats consumers read instead of poking registry internals).
     [[nodiscard]] std::vector<ModelInfo> model_infos() const;
 
+    // ABI-edge accessor: the raw studiohdr pointer the game DLL walks (legacy
+    // Mod_StudioExtradata / pfnGetModelPtr returns this void*). Non-null only for
+    // a loaded studio model; confines raw studiohdr access behind the handle so a
+    // future v2 ABI can hand a StudioView instead (G-2 door).
+    [[nodiscard]] const void* studio_extradata( ModelHandle h ) const noexcept;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
