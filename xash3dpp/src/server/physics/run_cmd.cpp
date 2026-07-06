@@ -191,7 +191,7 @@ void sv_run_cmd( ServerRuntime &rt, ServerClient &cl,
         // pfnCmdStart's random_seed is the frozen ABI type `unsigned int`
         // (eiface.hpp) — match it exactly, not uint32_t.
         rt.game.funcs().pfnCmdStart(
-            clent, reinterpret_cast<const abi::usercmd_s *>( &ucmd ),
+            clent, reinterpret_cast<const abi::usercmd_s *>( &ucmd ), // SAFETY: usercmd_t->usercmd_s ABI pun — ucmd is the complete xash3dpp mirror; pfnCmdStart's slot names the forward-declared struct tag (eiface.hpp:226); same frozen SDK layout
             static_cast<unsigned int>( random_seed ) ); // compliance-allow(int-width): ABI unsigned int
 
     const double frametime = static_cast<double>( ucmd.msec ) / 1000.0;
@@ -231,7 +231,7 @@ void sv_run_cmd( ServerRuntime &rt, ServerClient &cl,
     sv_setup_pmove( rt, cl, ucmd, cl.physinfo );
     if ( rt.game.funcs().pfnPM_Move != nullptr )
         rt.game.funcs().pfnPM_Move(
-            reinterpret_cast<abi::playermove_s *>( &*rt.pmove ), 1 );
+            reinterpret_cast<abi::playermove_s *>( &*rt.pmove ), 1 ); // SAFETY: playermove_t->playermove_s ABI pun — rt.pmove is the complete xash3dpp mirror; pfnPM_Move's slot names the forward-declared struct tag (eiface.hpp:224); same frozen SDK layout
     sv_finish_pmove( rt, cl );
 
     // Touch dispatch (no custom physFuncs.PM_PlayerTouch hook → the engine

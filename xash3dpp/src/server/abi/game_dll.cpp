@@ -38,11 +38,11 @@ bool GameDll::load( const char *path, ::xash::abi::enginefuncs_t *table,
         return false;
     }
 
-    auto get_entity_api = reinterpret_cast<::xash::abi::APIFUNCTION>(
+    auto get_entity_api = reinterpret_cast<::xash::abi::APIFUNCTION>(         // SAFETY: object-pointer->function-pointer cast — the game DLL exports "GetEntityAPI" with the frozen APIFUNCTION signature (eiface.h); sanctioned loader pun
         pf::get_symbol( lib_, "GetEntityAPI" ));
-    auto get_entity_api2 = reinterpret_cast<::xash::abi::APIFUNCTION2>(
+    auto get_entity_api2 = reinterpret_cast<::xash::abi::APIFUNCTION2>(       // SAFETY: object->function-pointer cast — "GetEntityAPI2" has the frozen APIFUNCTION2 signature (eiface.h)
         pf::get_symbol( lib_, "GetEntityAPI2" ));
-    auto give_new_dll_funcs = reinterpret_cast<::xash::abi::NEW_DLL_FUNCTIONS_FN>(
+    auto give_new_dll_funcs = reinterpret_cast<::xash::abi::NEW_DLL_FUNCTIONS_FN>( // SAFETY: object->function-pointer cast — "GetNewDLLFunctions" has the frozen NEW_DLL_FUNCTIONS_FN signature (eiface.h)
         pf::get_symbol( lib_, "GetNewDLLFunctions" ));
 
     if ( !get_entity_api && !get_entity_api2 )
@@ -54,7 +54,7 @@ bool GameDll::load( const char *path, ::xash::abi::enginefuncs_t *table,
         return false;
     }
 
-    auto give_fnptrs = reinterpret_cast<::xash::abi::GIVEFNPTRSTODLL>(
+    auto give_fnptrs = reinterpret_cast<::xash::abi::GIVEFNPTRSTODLL>(       // SAFETY: object->function-pointer cast — "GiveFnptrsToDll" has the frozen GIVEFNPTRSTODLL signature (eiface.h)
         pf::get_symbol( lib_, "GiveFnptrsToDll" ));
 
     if ( !give_fnptrs )
@@ -145,7 +145,7 @@ void GameDll::unload()
 ::xash::abi::LINK_ENTITY_FUNC
 GameDll::entity_link( const char *classname ) const noexcept
 {
-    return reinterpret_cast<::xash::abi::LINK_ENTITY_FUNC>(
+    return reinterpret_cast<::xash::abi::LINK_ENTITY_FUNC>(                  // SAFETY: object->function-pointer cast — the game DLL exports each classname as a LINK_ENTITY_FUNC spawn function (legacy SV_AllocPrivateData path); missing symbol yields nullptr
         pf::get_symbol( lib_, classname ));
 }
 

@@ -224,7 +224,7 @@ void add_links_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
     const abi::link_t *stop = &node->solid_edicts;
     for ( const abi::link_t *l = node->solid_edicts.next; l != stop; )
     {
-        abi::edict_t *check = edict_from_area( const_cast<abi::link_t *>( l ));
+        abi::edict_t *check = edict_from_area( const_cast<abi::link_t *>( l )); // SAFETY: Q-16 const_cast — the area list is traversed read-only, but edict_from_area recovers the OWNING (mutable) edict via offsetof back-cast; the links thread the mutable arena edicts
         l = l->next;
 
         if ( check->v.groupinfo != 0 )
@@ -305,7 +305,7 @@ void add_ladders_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
     const abi::link_t *stop = &node->solid_edicts;
     for ( const abi::link_t *l = node->solid_edicts.next; l != stop; )
     {
-        abi::edict_t *check = edict_from_area( const_cast<abi::link_t *>( l ));
+        abi::edict_t *check = edict_from_area( const_cast<abi::link_t *>( l )); // SAFETY: Q-16 const_cast — the area list is traversed read-only, but edict_from_area recovers the OWNING (mutable) edict via offsetof back-cast; the links thread the mutable arena edicts
         l = l->next;
 
         if ( check->v.solid != abi::k_solid_not ||

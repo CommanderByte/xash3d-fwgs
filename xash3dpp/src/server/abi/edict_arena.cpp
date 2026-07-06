@@ -172,14 +172,14 @@ int EdictArena::index_of( const edict_t *ed ) const noexcept
 
 std::ptrdiff_t EdictArena::offset_of( const edict_t *ed ) const noexcept
 {
-    return reinterpret_cast<const char *>( ed ) -
-           reinterpret_cast<const char *>( edicts_ );
+    return reinterpret_cast<const char *>( ed ) -                 // SAFETY: edict->byte-address pun — ed and edicts_ both index the one contiguous arena (edicts_[max_edicts_]); the char* difference is the intra-arena byte offset
+           reinterpret_cast<const char *>( edicts_ );             // SAFETY: arena base viewed as a byte address — same contiguous array as ed above
 }
 
 edict_t *EdictArena::ent_of_offset( std::ptrdiff_t off ) const noexcept
 {
-    return reinterpret_cast<edict_t *>(
-        reinterpret_cast<char *>( edicts_ ) + off );
+    return reinterpret_cast<edict_t *>(                           // SAFETY: byte-offset->edict pun — off is an offset_of() result taken within this same arena, so base+off lands on an edict boundary in edicts_
+        reinterpret_cast<char *>( edicts_ ) + off );              // SAFETY: arena base viewed as a byte address for the offset add
 }
 
 } // namespace xash::server

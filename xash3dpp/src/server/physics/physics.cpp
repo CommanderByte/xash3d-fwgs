@@ -215,6 +215,7 @@ void check_velocity( ServerRuntime &rt, abi::edict_t *ent ) noexcept
 
 [[nodiscard]] bool run_think( ServerRuntime &rt, abi::edict_t *ent ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     EntityView v( ent );
 
     if ( !fbit( v.flags(), abi::k_fl_killme ) )
@@ -1586,6 +1587,7 @@ void physics_entity( ServerRuntime &rt, abi::edict_t *ent ) noexcept
 // SV_UpdateBaseVelocity (sv_phys.c:162): conveyor momentum handshake.
 void update_base_velocity( ServerRuntime &, abi::edict_t *ent ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     EntityView v( ent );
     if ( !fbit( v.flags(), abi::k_fl_onground ) )
         return;

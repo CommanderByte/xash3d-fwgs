@@ -79,7 +79,7 @@ struct ServerInitParams
     // Q-5 host error surface (installed by the host layer; nullptr →
     // core::log_error fallback).  Same signature as the private HostErrorHook.
     void ( *host_error )( void *ctx, const char *msg ) = nullptr;
-    void  *host_error_ctx                              = nullptr;
+    void  *host_error_ctx                              = nullptr; // @lifetime: caller-owned — the host_error callback context (installed by the host layer, not copied)
 
     // TODO(chunk6-S9): ITrustOracle seam (cmd_cvar D2), host feature flags +
     // ICompatPolicy (Q-12), the frame-rate gate (host OQ-11).
@@ -89,6 +89,12 @@ struct ServerInitParams
 // Server (pimpl)
 // ---------------------------------------------------------------------------
 
+// @thread-safety: main-thread engine state. Server and every entry point
+// (init/shutdown, frame(), the exec_* level-change hooks, active()/initialized(),
+// and the free-function-over-ServerRuntime workers behind the private headers)
+// run on ThreadRole::Main and assert it (T_Main; QN). The game DLL is only ever
+// called from T_Main. The sole cross-thread surface is stats(): the ServerStats
+// Tier-1 counters are std::atomic and readable from any thread (debug-stats seam).
 class Server final : public ::xash::ILevelChangeExecutor
 {
 public:

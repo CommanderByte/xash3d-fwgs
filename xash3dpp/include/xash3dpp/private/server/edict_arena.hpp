@@ -118,7 +118,7 @@ private:
     std::size_t                num_entities_ = 0;
     std::size_t                reserved_     = 0;
     PrivateDataReleaser        releaser_     = nullptr;
-    void                      *releaser_ctx_ = nullptr;
+    void                      *releaser_ctx_ = nullptr; // @lifetime: caller-owned — opaque context for releaser_ (installed at arena init, not copied)
 };
 
 } // namespace xash::server

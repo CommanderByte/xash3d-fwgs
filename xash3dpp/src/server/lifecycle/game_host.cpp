@@ -57,6 +57,7 @@ void kill_operator_commands( ServerRuntime & ) {}
 
 void set_server_state( ServerRuntime &rt, ServerState state ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     // Host_SetServerState (sv_init.c:35-39): the cvar mirror carries the
     // raw enum integer.
     if ( rt.cvars != nullptr )

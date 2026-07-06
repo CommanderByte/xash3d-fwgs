@@ -486,7 +486,7 @@ void sv_init_client_move( ServerRuntime &rt ) noexcept
     // to the DLL's initializer (a DLL_FUNCTIONS export; absent in stubs).
     if ( rt.game.funcs().pfnPM_Init != nullptr )
         rt.game.funcs().pfnPM_Init(
-            reinterpret_cast<abi::playermove_s *>( &pm ) );
+            reinterpret_cast<abi::playermove_s *>( &pm ) );        // SAFETY: playermove_t->playermove_s ABI pun — pm is the complete xash3dpp mirror; the DLL_FUNCTIONS slot names the forward-declared struct tag (eiface.hpp:224); same frozen SDK layout (typedef struct playermove_s playermove_t)
 }
 
 } // namespace xash::server

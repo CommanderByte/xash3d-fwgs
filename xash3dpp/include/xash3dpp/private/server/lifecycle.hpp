@@ -69,7 +69,7 @@ struct ServerConfig
 
     // Q-5 host error surface (see engine_bridge.hpp).
     HostErrorHook host_error     = nullptr;
-    void         *host_error_ctx = nullptr;
+    void         *host_error_ctx = nullptr; // @lifetime: caller-owned — Q-5 host error hook context (see engine_bridge.hpp)
 };
 
 // legacy server_t (subset — fields land with the slice that uses them;
@@ -201,7 +201,7 @@ struct ServerRuntime
     // client replays — baselines (now), precache lists / user messages (later
     // slices).  Pool-allocated once (snapshot_alloc_signon), the MessageBuf
     // rebinds it; reset each spawn; the buffer is freed in snapshot_shutdown.
-    std::byte                     *signon_buf = nullptr; // [k_max_init_msg]
+    std::byte                     *signon_buf = nullptr; // @lifetime: pool-owned — snapshot_alloc_signon allocates it; the MessageBuf rebinds it; freed in snapshot_shutdown [k_max_init_msg]
     ::xash::networking::MessageBuf signon;
 
     bool game_loaded = false;

@@ -61,6 +61,7 @@ bool LightStyles::set( int style, const char *pattern, float time ) noexcept
 
 void LightStyles::run_frame( float frametime ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     // SV_RunLightStyles (sv_phys.c:1789-1803): map values are 'a'-relative
     // (0..25); the 12.0 divisor yields the legacy normal-brightness scale.
     for ( LightStyle &ls : styles_ )

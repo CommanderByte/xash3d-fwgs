@@ -19,8 +19,15 @@ ______________________________________________________________________
 ## OQ-9 — main-thread-only, enforced
 
 Every public entry point that mutates server state opens with
-`assert_thread_role(ThreadRole::Main)` — **86 assertions across 26 source
-files** at the time of writing. The covered surfaces are the lifecycle
+`assert_thread_role(ThreadRole::Main)` — **92 assertions across 26 source
+files** at the time of writing (the 6B S9a conformance pass added the
+frame/runtime mutators `set_server_state`, `run_think`, `update_base_velocity`,
+`LightStyles::run_frame`, and the two bridge-state ABI shims
+`set_external_cvar_string` / `set_min_max_size`). Two mutator-shaped helpers
+intentionally do **not** assert and carry a `compliance-allow(thread-assert)`
+marker: `set_axis` (a stateless writer over a caller-owned `Vec3` — thread
+affinity belongs to the caller) and the `set_min_max_size` forward declaration
+(the assert lives at its definition). The covered surfaces are the lifecycle
 (`load_progs`/`unload_progs`/`spawn_server`/`activate_server`/`deactivate_server`),
 the frame loop (`host_server_frame`/`sv_physics`/`sv_run_game_frame`/
 `sv_update_movevars`), the pmove bridge (`sv_setup_pmove`/`sv_finish_pmove`/
@@ -53,7 +60,7 @@ OQ-9 were broken:
 | Symbol | File | Class | Notes |
 |--------|------|-------|-------|
 | `ServerRuntime rt` | (aggregate) | Safe-by-contract | Heap-owned by the one `Server`; reached only through Main-thread entry points |
-| `g_bridge` | `abi/engine_table.cpp` | Race-shared (contained) | Install/detach only during operation; process-global ⇒ also assumes a single live server |
+| `g_bridge` | `abi/engine_table.cpp` | Race-shared (contained) | Install/detach only during operation; process-global ⇒ also assumes a single live server. The one sanctioned engine-state singleton: the ~30 context-free pfn shims have fixed ABI signatures with no userdata slot, so they reach engine state through this file-scope pointer (Q-20 ABI-slot carve-out). Adjudicated at its definition with a `compliance-allow(mutable-global, di-global-ref)` marker |
 | ABI static return buffers (`s_value`, `s_empty`, static `""`) | `engine_table.cpp`, `init_client_move.cpp` | Race-static-buf (contained) | Frozen slot contract; a second concurrent caller would clobber the in-flight result |
 | `s_rng_state`, `s_pm_rng` | `engine_table.cpp`, `init_client_move.cpp` | Race-shared (contained) | Per-call xorshift mutation; the tracked RNG-unification stubs |
 

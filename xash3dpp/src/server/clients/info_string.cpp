@@ -112,12 +112,12 @@ void info_remove_key( char *s, const char *key ) noexcept
         if ( *s == '\\' )
             ++s;
 
-        s = const_cast<char *>( read_field( s, pkey ) );
+        s = const_cast<char *>( read_field( s, pkey ) );           // SAFETY: Q-16 const_cast — read_field returns a const cursor into the caller-owned MUTABLE info buffer; restores write access the read-only return narrowed away (the buffer is spliced in place below)
         if ( *s == '\0' )
             return;
         ++s;
 
-        s = const_cast<char *>( read_field( s, value ) );
+        s = const_cast<char *>( read_field( s, value ) );          // SAFETY: Q-16 const_cast — read_field returns a const cursor into the caller-owned MUTABLE info buffer; restores write access the read-only return narrowed away
 
         // legacy uses a case-sensitive PREFIX match of strlen(key) chars
         // (Q_strncmp) — bug-compatible: "name" also matches "name2".
@@ -147,12 +147,12 @@ void info_remove_prefixed_keys( char *start, char prefix ) noexcept
         if ( *s == '\\' )
             ++s;
 
-        s = const_cast<char *>( read_field( s, pkey ) );
+        s = const_cast<char *>( read_field( s, pkey ) );           // SAFETY: Q-16 const_cast — read_field returns a const cursor into the caller-owned MUTABLE info buffer; restores write access the read-only return narrowed away (the buffer is spliced in place below)
         if ( *s == '\0' )
             return;
         ++s;
 
-        s = const_cast<char *>( read_field( s, value ) );
+        s = const_cast<char *>( read_field( s, value ) );          // SAFETY: Q-16 const_cast — read_field returns a const cursor into the caller-owned MUTABLE info buffer; restores write access the read-only return narrowed away
 
         if ( pkey[0] == prefix )
         {

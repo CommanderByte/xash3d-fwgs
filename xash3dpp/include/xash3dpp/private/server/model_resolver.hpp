@@ -40,8 +40,8 @@ public:
     [[nodiscard]] bool is_studio( int modelindex ) noexcept override;
 
 private:
-    const ::xash::map_loader::WorldData *world_    = nullptr;
-    const PrecacheTables                *precache_ = nullptr;
+    const ::xash::map_loader::WorldData *world_    = nullptr; // @lifetime: engine — borrowed map_loader WorldData (outlives the resolver)
+    const PrecacheTables                *precache_ = nullptr; // @lifetime: runtime — borrowed PrecacheTables (owned by ServerRuntime, outlives the resolver)
 };
 
 } // namespace xash::server

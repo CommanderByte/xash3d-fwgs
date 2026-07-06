@@ -123,10 +123,10 @@ struct EngineBridge
     // (opaque chain inside the allocations; legacy leaks these into the
     // svgame mempool and bulk-frees at unload — misc_pool asserts on
     // leaks instead, so reset_external_cvars() must run at teardown).
-    void *cvar_string_allocs = nullptr;
+    void *cvar_string_allocs = nullptr; // @lifetime: misc_pool-owned — the CvarStringNode chain lives in the server misc_pool, freed by reset_external_cvars() at teardown
 
     HostErrorHook host_error     = nullptr;
-    void         *host_error_ctx = nullptr;
+    void         *host_error_ctx = nullptr; // @lifetime: caller-owned — the host_error hook's context (installed with the bridge, not copied)
 };
 
 // Install the bridge the table implementations reach (legacy svgame).

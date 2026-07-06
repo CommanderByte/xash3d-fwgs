@@ -134,9 +134,9 @@ std::size_t StringPool::process_string( char *dst, const char *src ) noexcept
 bool StringPool::offset_in_int_range( const char *base, const char *p ) noexcept
 {
     const auto diff = static_cast<std::intptr_t>(
-                          reinterpret_cast<std::uintptr_t>( p )) -
+                          reinterpret_cast<std::uintptr_t>( p )) -      // SAFETY: pointer->integer for signed offset math only — no dereference; the value is range-checked below (legacy string_t is an int offset)
                       static_cast<std::intptr_t>(
-                          reinterpret_cast<std::uintptr_t>( base ));
+                          reinterpret_cast<std::uintptr_t>( base ));    // SAFETY: pointer->integer for the arena-base address; offset arithmetic only
     return diff <= INT_MAX && diff >= INT_MIN;
 }
 
@@ -204,9 +204,9 @@ string_t StringPool::make_string( const char *value )
     if ( offset_in_int_range( block_, value ))
     {
         const auto diff = static_cast<std::intptr_t>(
-                              reinterpret_cast<std::uintptr_t>( value )) -
+                              reinterpret_cast<std::uintptr_t>( value )) - // SAFETY: pointer->integer for offset math — value is inside the pool block_ (offset_in_int_range checked above); no dereference
                           static_cast<std::intptr_t>(
-                              reinterpret_cast<std::uintptr_t>( block_ ));
+                              reinterpret_cast<std::uintptr_t>( block_ )); // SAFETY: pointer->integer for the pool-base address; yields the legacy string_t offset
         return static_cast<string_t>( diff );
     }
     return alloc_string( value );

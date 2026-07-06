@@ -96,13 +96,13 @@ public:
 
 private:
     ::xash::memory::PoolHandle pool_;
-    char       *block_       = nullptr; // 2 × arena_size
+    char       *block_       = nullptr; // @lifetime: pool_-owned — the 2 × arena_size string arena (mem_calloc'd from pool_, freed with it)
     std::size_t arena_size_  = 0;
     bool        dynamic_     = false;
     bool        allow_dup_   = false;
-    char       *cursor_base_ = nullptr; // legacy pstringbase (active arena)
-    char       *old_base_    = nullptr; // legacy poldstringbase (dedup floor)
-    char       *last_        = nullptr; // legacy plast (write cursor)
+    char       *cursor_base_ = nullptr; // @lifetime: interior of block_ — legacy pstringbase (active arena)
+    char       *old_base_    = nullptr; // @lifetime: interior of block_ — legacy poldstringbase (dedup floor)
+    char       *last_        = nullptr; // @lifetime: interior of block_ — legacy plast (write cursor)
     StringPoolStats stats_;
 };
 

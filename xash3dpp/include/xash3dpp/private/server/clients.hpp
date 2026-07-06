@@ -225,7 +225,7 @@ struct ServerClient
     // of SV_UPDATE_BACKUP ClientFrame (snapshot_alloc_ring owns it; nullptr
     // until maxclients is latched).  pViewEntity overrides the vis origin for
     // spectators/portals (nullptr ⇒ the DLL uses the client edict).
-    ClientFrame          *frames         = nullptr; // cl->frames[SV_UPDATE_BACKUP]
+    ClientFrame          *frames         = nullptr; // @lifetime: pool-owned — snapshot_alloc_ring owns this SV_UPDATE_BACKUP ClientFrame ring; nullptr until maxclients is latched (cl->frames[SV_UPDATE_BACKUP])
     ::xash::abi::edict_t *view_entity    = nullptr; // cl->pViewEntity
     int                   delta_sequence = -1;      // clc_delta ack; -1 = no delta
     int                   chokecount     = 0;       // bandwidth-suppressed count

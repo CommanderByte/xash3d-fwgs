@@ -111,7 +111,7 @@ public:
 private:
     struct Table
     {
-        char        *names = nullptr; // cap × qpath, contiguous
+        char        *names = nullptr; // @lifetime: pool_-owned — cap × qpath contiguous name storage (mem_calloc'd from pool_)
         std::size_t  cap   = 0;
 
         [[nodiscard]] char *slot( std::size_t i ) const noexcept;
@@ -125,14 +125,14 @@ private:
 
     ::xash::memory::PoolHandle pool_;
     Table         models_, sounds_, events_, generics_;
-    std::uint32_t *model_flags_ = nullptr;
+    std::uint32_t *model_flags_ = nullptr; // @lifetime: pool_-owned — sv.model_precache_flags mirror (mem_calloc'd from pool_)
     PrecacheCaps  caps_;
     bool          loading_ = false;
 
     LatePrecacheSink  late_sink_      = nullptr;
-    void             *late_sink_ctx_  = nullptr;
+    void             *late_sink_ctx_  = nullptr; // @lifetime: caller-owned — opaque context for late_sink_ (installed with the sink, not copied)
     PrecacheErrorHook error_hook_     = nullptr;
-    void             *error_hook_ctx_ = nullptr;
+    void             *error_hook_ctx_ = nullptr; // @lifetime: caller-owned — opaque context for error_hook_ (installed with the hook, not copied)
 };
 
 } // namespace xash::server

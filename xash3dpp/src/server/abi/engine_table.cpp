@@ -49,7 +49,7 @@ using ut::Vec3;
 
 namespace {
 
-EngineBridge *g_bridge = nullptr;
+EngineBridge * g_bridge = nullptr; // compliance-allow(mutable-global, di-global-ref): engine_table ABI-slot carve-out (Q-20) — the game DLL's ~30 context-free pfn shims have fixed ABI signatures with no userdata slot, so they reach engine state through this one file-scope singleton; set once at bridge install, main-thread-only thereafter
 
 // legacy MAX_MAP_LEAFS (common/bspfile.h, bsp30) — sizes the file-static
 // fat-visibility buffers exactly like sv_game.c:31-32.
@@ -259,6 +259,7 @@ struct CvarStringNode
 // zone copy; the DLL's original static stays untouched).
 void set_external_cvar_string( abi::cvar_t *var, const char *value )
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     if ( value == nullptr )
         value = "";
 
@@ -272,7 +273,7 @@ void set_external_cvar_string( abi::cvar_t *var, const char *value )
     node->next = static_cast<CvarStringNode *>( g_bridge->cvar_string_allocs );
     g_bridge->cvar_string_allocs = node;
 
-    char *copy = reinterpret_cast<char *>( node + 1 );
+    char *copy = reinterpret_cast<char *>( node + 1 );              // SAFETY: trailing-data pun — the char payload directly follows the CvarStringNode header in the single mem_alloc( sizeof(node)+len ) block above
     std::memcpy( copy, value, len );
     var->string = copy;
     var->value  = static_cast<float>( std::atof( copy ));
@@ -336,6 +337,8 @@ int pfn_precache_sound( const char *s )
 constexpr int k_ss_active = 2;
 
 // Defined below; SV_SetModel needs it before the definition point.
+// compliance-allow(thread-assert): forward declaration — the ThreadRole::Main
+// assert lives at the definition (SV_SetMinMaxSize, below).
 void set_min_max_size( abi::edict_t *e, const float *mins, const float *maxs,
                        bool relink );
 
@@ -421,6 +424,7 @@ int pfn_model_frames( int )
 void set_min_max_size( abi::edict_t *e, const float *mins, const float *maxs,
                        bool relink )
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     if ( !valid_edict( e ))
         return;
 
@@ -588,7 +592,7 @@ abi::edict_t *pfn_find_entity_by_string( abi::edict_t *pStartEdict,
 
         abi::string_t s;
         std::memcpy( &s,
-                     reinterpret_cast<const char *>( &ed->v ) + desc->offset,
+                     reinterpret_cast<const char *>( &ed->v ) + desc->offset, // SAFETY: entvars byte-offset pun — desc->offset is a save/restore field-table offset into entvars_t; read as bytes, memcpy'd out (no misaligned deref)
                      sizeof( s ));
 
         if ( s == 0 ) // string points at pStringBase — the empty string
@@ -1785,7 +1789,7 @@ unsigned char *pfn_set_fat_pvs( const float *org )
     if ( env == nullptr || env->world == nullptr )
     {
         std::memset( s_fatpvs, 0xFF, sizeof( s_fatpvs )); // pre-world fullvis
-        return reinterpret_cast<unsigned char *>( s_fatpvs );
+        return reinterpret_cast<unsigned char *>( s_fatpvs );          // SAFETY: std::byte->unsigned char byte-aliasing (sanctioned) — pfnSetFatPVS's frozen ABI return type is unsigned char*; s_fatpvs is a plain byte buffer
     }
 
     // TODO(chunk12): fold CL_DisableVisibility() into fullvis when the
@@ -1799,7 +1803,7 @@ unsigned char *pfn_set_fat_pvs( const float *org )
                          k_fatpvs_radius, std::span<std::byte>( s_fatpvs ),
                          g_bridge->merge_visibility, fullvis );
 
-    return reinterpret_cast<unsigned char *>( s_fatpvs );
+    return reinterpret_cast<unsigned char *>( s_fatpvs );          // SAFETY: std::byte->unsigned char byte-aliasing (sanctioned) — pfnSetFatPVS's frozen ABI return type is unsigned char*; s_fatpvs is a plain byte buffer
 }
 
 unsigned char *pfn_set_fat_pas( const float *org )
@@ -1809,7 +1813,7 @@ unsigned char *pfn_set_fat_pas( const float *org )
     if ( env == nullptr || env->world == nullptr )
     {
         std::memset( s_fatphs, 0xFF, sizeof( s_fatphs ));
-        return reinterpret_cast<unsigned char *>( s_fatphs );
+        return reinterpret_cast<unsigned char *>( s_fatphs );          // SAFETY: std::byte->unsigned char byte-aliasing (sanctioned) — pfnSetFatPAS's frozen ABI return type is unsigned char*; s_fatphs is a plain byte buffer
     }
 
     // TODO(chunk12): CL_DisableVisibility() — see pfn_set_fat_pvs.
@@ -1823,7 +1827,7 @@ unsigned char *pfn_set_fat_pas( const float *org )
                          k_fatphs_radius, std::span<std::byte>( s_fatphs ),
                          g_bridge->merge_visibility, fullvis );
 
-    return reinterpret_cast<unsigned char *>( s_fatphs );
+    return reinterpret_cast<unsigned char *>( s_fatphs );          // SAFETY: std::byte->unsigned char byte-aliasing (sanctioned) — pfnSetFatPAS's frozen ABI return type is unsigned char*; s_fatphs is a plain byte buffer
 }
 
 // pfnCheckVisibility (sv_game.c:4329): leaf cache first, headnode walk as
@@ -1884,13 +1888,13 @@ int pfn_check_visibility( const abi::edict_t *entity, unsigned char *pset )
     // too many leafs for individual check, go by headnode
     int lastleaf = -1;
     const std::span<const std::byte> bits{
-        reinterpret_cast<const std::byte *>( pset ), world.visbytes() };
+        reinterpret_cast<const std::byte *>( pset ), world.visbytes() }; // SAFETY: unsigned char->std::byte byte-aliasing (sanctioned) — pset is the ABI visibility bitset (unsigned char*); viewed as a byte span for headnode_visible
 
     if ( !ml::headnode_visible( world, entity->headnode, bits, &lastleaf ))
         return 0;
 
     // legacy caches the found cluster on the CONST edict (deliberate).
-    auto *mutable_ent = const_cast<abi::edict_t *>( entity );
+    auto *mutable_ent = const_cast<abi::edict_t *>( entity );       // SAFETY: Q-16 const_cast — pfnCheckVisibility takes a const edict but legacy (sv_game.c:4329) deliberately caches the found cluster on it; the edict is arena-owned mutable storage
     if ( large_leafs )
         mutable_ent->leafnums32[entity->num_leafs] = lastleaf;
     else

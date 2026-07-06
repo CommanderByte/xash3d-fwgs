@@ -191,9 +191,9 @@ bool parse_edict( ServerRuntime &rt, const ml::WorldData &world,
     {
         // The custom KeyValue is dispatched with NO fHandled check.
         ::xash::abi::KeyValueData kvd{};
-        kvd.szClassName = const_cast<char *>( "custom" );
-        kvd.szKeyName   = const_cast<char *>( "customclass" );
-        kvd.szValue     = const_cast<char *>( classname );
+        kvd.szClassName = const_cast<char *>( "custom" );          // SAFETY: Q-16 const_cast — KeyValueData's ABI fields are char* but pfnKeyValue only READS them; "custom" is a string literal (never written)
+        kvd.szKeyName   = const_cast<char *>( "customclass" );     // SAFETY: Q-16 const_cast — read-only KeyValueData field; string literal
+        kvd.szValue     = const_cast<char *>( classname );         // SAFETY: Q-16 const_cast — read-only KeyValueData field; classname is caller-owned and not written by pfnKeyValue
         kvd.fHandled    = 0;
         funcs.pfnKeyValue( ent, &kvd );
     }
@@ -230,7 +230,7 @@ bool parse_edict( ServerRuntime &rt, const ml::WorldData &world,
         }
 
         ::xash::abi::KeyValueData kvd{};
-        kvd.szClassName = const_cast<char *>( classname );
+        kvd.szClassName = const_cast<char *>( classname );         // SAFETY: Q-16 const_cast — read-only KeyValueData ABI field; pfnKeyValue never writes szClassName; classname is caller-owned
         kvd.szKeyName   = key.data();
         kvd.szValue     = value.data();
         kvd.fHandled    = 0;

@@ -22,6 +22,9 @@ namespace abi = ::xash::abi;
 
 namespace {
 
+// compliance-allow(thread-assert): stateless helper over a caller-owned Vec3 —
+// writes one component by axis index; no runtime/bridge/file-scope state, no
+// thread affinity (affinity belongs to the caller that owns the vector).
 void set_axis( Vec3 &v, int axis, float value ) noexcept
 {
     if ( axis == 0 )

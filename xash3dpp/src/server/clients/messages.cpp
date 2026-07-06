@@ -598,7 +598,7 @@ void playback_event_full( EngineBridge &bridge, int flags,
 
     // Reading the invoker's entvars must go through the EntityView facade; the
     // ABI hands us a const edict but every access below is read-only.
-    EntityView invoker( const_cast<::xash::abi::edict_t *>( invoker_raw ) );
+    EntityView invoker( const_cast<::xash::abi::edict_t *>( invoker_raw ) ); // SAFETY: Q-16 const_cast — the ABI hands a const edict; EntityView needs non-const to construct, but every access through it here is read-only (origin/view_ofs, per the comment above)
 
     if ( invoker.valid() ) // SV_IsValidEdict
     {
