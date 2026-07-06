@@ -470,4 +470,19 @@ inline constexpr std::size_t content_max_models = 4096; // model-cache slot cap;
 inline constexpr std::size_t content_max_models = XASH_LIMIT_CONTENT_MAX_MODELS;
 #endif
 
+// ABI-frozen: match the studiohdr array bounds (engine/studio.h). The bone
+// solver's per-frame scratch (studio_bones[], boneused[], adj[]) is sized by
+// these; raising them is a studio-format compatibility change.
+#ifndef XASH_LIMIT_STUDIO_MAX_BONES
+inline constexpr std::size_t studio_max_bones = 128; // matches legacy MAXSTUDIOBONES
+#else
+inline constexpr std::size_t studio_max_bones = XASH_LIMIT_STUDIO_MAX_BONES;
+#endif
+
+#ifndef XASH_LIMIT_STUDIO_MAX_CONTROLLERS
+inline constexpr std::size_t studio_max_controllers = 32; // matches legacy MAXSTUDIOCONTROLLERS
+#else
+inline constexpr std::size_t studio_max_controllers = XASH_LIMIT_STUDIO_MAX_CONTROLLERS;
+#endif
+
 } // namespace xash::limits

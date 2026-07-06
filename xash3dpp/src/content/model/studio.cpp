@@ -31,6 +31,8 @@ constexpr std::size_t kOffClipMax    = 124;  // vec3 (bbmax)
 constexpr std::size_t kOffFlags      = 136;
 constexpr std::size_t kOffNumBones   = 140;
 constexpr std::size_t kOffBoneIndex  = 144;
+constexpr std::size_t kOffNumBoneCtrl  = 148;
+constexpr std::size_t kOffBoneCtrlIndex = 152;
 constexpr std::size_t kOffNumHitbox  = 156;
 constexpr std::size_t kOffHitboxIndex = 160;
 constexpr std::size_t kOffNumSeq     = 164;
@@ -41,7 +43,67 @@ constexpr std::size_t kOffNumBodyparts = 204;
 constexpr std::size_t kOffNumAttach  = 212;
 constexpr std::size_t kOffAttachIndex = 216;
 
+// mstudiobone_t field offsets (within a 112-byte bone chunk).
+constexpr std::size_t kBoneParent = 32;
+constexpr std::size_t kBoneCtrl   = 40;  // int32 bonecontroller[6]
+constexpr std::size_t kBoneValue  = 64;  // vec_t value[6]
+constexpr std::size_t kBoneScale  = 88;  // vec_t scale[6]
+
+// mstudiobonecontroller_t field offsets (within a 24-byte chunk).
+constexpr std::size_t kBcType  = 4;
+constexpr std::size_t kBcStart = 8;
+constexpr std::size_t kBcEnd   = 12;
+constexpr std::size_t kBcIndex = 20;
+
+// Bounds-checked little-endian reads over the studiohdr byte image; an
+// out-of-range offset returns 0 (untrusted files never fault a reader).
+[[nodiscard]] std::int32_t rd_i32( std::span<const std::byte> d, std::size_t off ) noexcept
+{
+    if( off + sizeof( std::int32_t ) > d.size() ) return 0;
+    return ::xash::utilities::read_le<std::int32_t>( d.data() + off );
+}
+[[nodiscard]] std::uint16_t rd_u16( std::span<const std::byte> d, std::size_t off ) noexcept
+{
+    if( off + sizeof( std::uint16_t ) > d.size() ) return 0;
+    return ::xash::utilities::read_le<std::uint16_t>( d.data() + off );
+}
+[[nodiscard]] std::int16_t rd_i16( std::span<const std::byte> d, std::size_t off ) noexcept
+{
+    if( off + sizeof( std::int16_t ) > d.size() ) return 0;
+    return ::xash::utilities::read_le<std::int16_t>( d.data() + off );
+}
+[[nodiscard]] std::uint8_t rd_u8( std::span<const std::byte> d, std::size_t off ) noexcept
+{
+    if( off + sizeof( std::uint8_t ) > d.size() ) return 0;
+    return static_cast<std::uint8_t>( d[off] );
+}
+[[nodiscard]] float rd_f32( std::span<const std::byte> d, std::size_t off ) noexcept
+{
+    if( off + sizeof( std::uint32_t ) > d.size() ) return 0.0f;
+    return std::bit_cast<float>( ::xash::utilities::read_le<std::uint32_t>( d.data() + off ) );
+}
+
 } // namespace
+
+// ---------------------------------------------------------------------------
+// Sub-views (typed offset cursors — the G-2 door)
+// ---------------------------------------------------------------------------
+
+std::int32_t BoneView::parent() const noexcept              { return rd_i32( data_, off_ + kBoneParent ); }
+std::int32_t BoneView::bonecontroller( int c ) const noexcept { return rd_i32( data_, off_ + kBoneCtrl + 4 * static_cast<std::size_t>( c ) ); }
+float        BoneView::value( int c ) const noexcept        { return rd_f32( data_, off_ + kBoneValue + 4 * static_cast<std::size_t>( c ) ); }
+float        BoneView::scale( int c ) const noexcept        { return rd_f32( data_, off_ + kBoneScale + 4 * static_cast<std::size_t>( c ) ); }
+
+std::uint8_t AnimValueCursor::valid() const noexcept        { return rd_u8( data_, off_ ); }
+std::uint8_t AnimValueCursor::total() const noexcept        { return rd_u8( data_, off_ + 1 ); }
+std::int16_t AnimValueCursor::value( std::size_t word ) const noexcept { return rd_i16( data_, off_ + 2 * word ); }
+
+std::uint16_t AnimView::channel_offset( int c ) const noexcept { return rd_u16( data_, off_ + 2 * static_cast<std::size_t>( c ) ); }
+
+std::int32_t BoneControllerView::type() const noexcept  { return rd_i32( data_, off_ + kBcType ); }
+std::int32_t BoneControllerView::index() const noexcept { return rd_i32( data_, off_ + kBcIndex ); }
+float        BoneControllerView::start() const noexcept { return rd_f32( data_, off_ + kBcStart ); } // compliance-allow(thread-assert): read-only value query over caller-owned bytes, not a mutator
+float        BoneControllerView::end() const noexcept   { return rd_f32( data_, off_ + kBcEnd ); }
 
 // ---------------------------------------------------------------------------
 // StudioView
@@ -79,6 +141,8 @@ std::int32_t StudioView::length() const noexcept           { return i32( kOffLen
 std::int32_t StudioView::flags() const noexcept            { return i32( kOffFlags ); }
 std::int32_t StudioView::num_bones() const noexcept        { return i32( kOffNumBones ); }
 std::int32_t StudioView::bone_index() const noexcept       { return i32( kOffBoneIndex ); }
+std::int32_t StudioView::num_bonecontrollers() const noexcept  { return i32( kOffNumBoneCtrl ); }
+std::int32_t StudioView::bonecontroller_index() const noexcept { return i32( kOffBoneCtrlIndex ); }
 std::int32_t StudioView::num_hitboxes() const noexcept     { return i32( kOffNumHitbox ); }
 std::int32_t StudioView::hitbox_index() const noexcept     { return i32( kOffHitboxIndex ); }
 std::int32_t StudioView::num_seq() const noexcept          { return i32( kOffNumSeq ); }
@@ -94,6 +158,18 @@ std::int32_t StudioView::attachment_index() const noexcept { return i32( kOffAtt
 ::xash::utilities::Vec3 StudioView::hull_max() const noexcept    { return vec3( kOffHullMax ); }
 ::xash::utilities::Vec3 StudioView::clip_min() const noexcept    { return vec3( kOffClipMin ); }
 ::xash::utilities::Vec3 StudioView::clip_max() const noexcept    { return vec3( kOffClipMax ); }
+
+BoneView StudioView::bone( int i ) const noexcept
+{
+    return BoneView{ data_, static_cast<std::size_t>( bone_index() )
+        + k_studio_bone_stride * static_cast<std::size_t>( i ) };
+}
+
+BoneControllerView StudioView::bonecontroller( int j ) const noexcept
+{
+    return BoneControllerView{ data_, static_cast<std::size_t>( bonecontroller_index() )
+        + k_studio_bonectrl_stride * static_cast<std::size_t>( j ) };
+}
 
 // ---------------------------------------------------------------------------
 // parse_studio

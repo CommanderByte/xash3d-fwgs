@@ -43,6 +43,7 @@ target_link_libraries(xash3dpp_imagelib PRIVATE xash3dpp_miniz)
 add_library(xash3dpp_content STATIC
     model/model_cache.cpp
     model/studio.cpp
+    model/bone_solver.cpp
     model/formats.cpp
 )
 
