@@ -81,7 +81,7 @@ void install_world_bridge( ServerRuntime &rt, const ml::WorldData &world ) noexc
 {
     ::xash::abi::edict_t *ws = rt.arena.edict_num( 0 );
 
-    rt.models.bind( &world, &rt.precache );
+    rt.models.bind( &world, &rt.precache, rt.fs );
 
     rt.move_env            = MoveEnv{};
     rt.move_env.world      = &world;

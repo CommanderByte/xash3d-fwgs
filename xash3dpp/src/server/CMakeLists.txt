@@ -64,6 +64,9 @@ target_link_libraries(xash3dpp_server
     PUBLIC  xash3dpp_networking    # S7 — DeltaTables (Delta_Init per spawn)
     PUBLIC  xash3dpp_cmd_cvar      # S7 — state mirrors, FCVAR_EXTDLL dance
     PUBLIC  xash3dpp_filesystem    # S7 — delta.lst, resource lists (via delta)
+    PUBLIC  xash3dpp_content       # Chunk 7 — studio model cache + bone solver
+                                   #   (pfnGetModelPtr / GetBonePosition /
+                                   #    GetAttachment, studio hull provider)
     PRIVATE xash3dpp_core
     PRIVATE xash3dpp_platform      # S6 — dynlib load, time
     # Added as the slices land (see server-boundary.md Dependencies):

@@ -379,7 +379,7 @@ void deactivate_server( ServerRuntime &rt ) noexcept
 
     // Unbind the world-interaction env so nothing refines against a world
     // MapLoader may free before the next spawn.
-    rt.models.bind( nullptr, nullptr );
+    rt.models.bind( nullptr, nullptr, nullptr );
     rt.move_env = MoveEnv{};
     rt.link_env = LinkEnv{};
     rt.hooks.bind( &rt.game, nullptr );

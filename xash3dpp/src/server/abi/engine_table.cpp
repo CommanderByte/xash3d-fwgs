@@ -18,6 +18,8 @@
 #include <xash3dpp/private/server/engine_bridge.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
+#include <xash3dpp/content/bone_solver.hpp> // studio pose queries (Chunk 7)
+#include <xash3dpp/content/studio.hpp>      // StudioView over the resolver bytes
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
@@ -1366,11 +1368,38 @@ abi::edict_t *pfn_find_entity_by_vars( abi::entvars_t *pvars )
     return nullptr;
 }
 
-void *pfn_get_model_ptr( abi::edict_t * )
+// Build the studio pose (SV_StudioSetupBones inputs) from an edict's entvars.
+static content::BoneSetupInput pose_from_edict( const abi::edict_t *ed ) noexcept
 {
-    // XASH3DPP-STUB(chunk6): studio extradata lands with the model cache
-    // (S7 / Chunk 7); legacy failure value is NULL.
-    return nullptr;
+    content::BoneSetupInput in;
+    in.frame       = ed->v.frame;
+    in.sequence    = ed->v.sequence;
+    in.angles      = { ed->v.angles[0], ed->v.angles[1], ed->v.angles[2] };
+    in.origin      = { ed->v.origin[0], ed->v.origin[1], ed->v.origin[2] };
+    in.controllers = { ed->v.controller, 4 };
+    in.blending    = { ed->v.blending, 2 };
+    return in;
+}
+
+// The studiohdr byte image for an edict's model, or an empty span (no model /
+// not a studio model / resolver unavailable).
+static std::span<const std::byte> studio_bytes_for( const abi::edict_t *ed ) noexcept
+{
+    if ( ed == nullptr || g_bridge == nullptr || g_bridge->move_env == nullptr
+         || g_bridge->move_env->models == nullptr )
+        return {};
+    return g_bridge->move_env->models->studio_bytes( ed->v.modelindex );
+}
+
+void *pfn_get_model_ptr( abi::edict_t *ed )
+{
+    // Mod_StudioExtradata: the studiohdr the game DLL walks (NULL if none).
+    const std::span<const std::byte> bytes = studio_bytes_for( ed );
+    if ( bytes.empty() )
+        return nullptr;
+    // SAFETY: the studiohdr is read-only to the game DLL (Mod_StudioExtradata);
+    // the cache owns the const bytes and the frozen ABI signature is void*.
+    return const_cast<void *>( static_cast<const void *>( bytes.data() ));
 }
 
 int pfn_reg_user_msg( const char *pszName, int iSize )
@@ -1383,15 +1412,23 @@ void pfn_animation_automove( const abi::edict_t *, float )
     // legacy: empty (sv_game.c:3546) — on purpose.
 }
 
-void pfn_get_bone_position( const abi::edict_t *, int, float *rgflOrigin,
+void pfn_get_bone_position( const abi::edict_t *ed, int iBone, float *rgflOrigin,
                             float *rgflAngles )
 {
-    // XASH3DPP-STUB(chunk6): Mod_GetBonePosition needs studio support
-    // (Chunk 7).  Zero the outs so callers see deterministic values.
-    if ( rgflOrigin != nullptr )
-        rgflOrigin[0] = rgflOrigin[1] = rgflOrigin[2] = 0.0f;
-    if ( rgflAngles != nullptr )
-        rgflAngles[0] = rgflAngles[1] = rgflAngles[2] = 0.0f;
+    // Mod_GetBonePosition: no studio model -> leave the caller's buffers as-is
+    // (legacy returns early). No pitch flip on this path.
+    const std::span<const std::byte> bytes = studio_bytes_for( ed );
+    if ( bytes.empty() )
+        return;
+
+    const content::StudioView hdr{ bytes };
+    content::BuiltinBoneSolver solver;
+    Vec3 o, a;
+    if ( content::bone_world_position( hdr, pose_from_edict( ed ), iBone, solver, &o, &a ))
+    {
+        if ( rgflOrigin != nullptr ) { rgflOrigin[0] = o.x; rgflOrigin[1] = o.y; rgflOrigin[2] = o.z; }
+        if ( rgflAngles != nullptr ) { rgflAngles[0] = a.x; rgflAngles[1] = a.y; rgflAngles[2] = a.z; }
+    }
 }
 
 unsigned long pfn_function_from_name( const char * )
@@ -1440,14 +1477,38 @@ int pfn_cmd_argc( void )
     return 0;
 }
 
-void pfn_get_attachment( const abi::edict_t *, int, float *rgflOrigin,
+void pfn_get_attachment( const abi::edict_t *ed, int iAttachment, float *rgflOrigin,
                          float *rgflAngles )
 {
-    // XASH3DPP-STUB(chunk6): studio attachments land in Chunk 7.
-    if ( rgflOrigin != nullptr )
-        rgflOrigin[0] = rgflOrigin[1] = rgflOrigin[2] = 0.0f;
-    if ( rgflAngles != nullptr )
-        rgflAngles[0] = rgflAngles[1] = rgflAngles[2] = 0.0f;
+    // Mod_StudioGetAttachment. On a studio model with attachments, write the
+    // world-space attachment origin; the attachment angles are gated on
+    // ENGINE_COMPUTE_STUDIO_LERP, which is unwired (host.features == 0) so they
+    // stay untouched. Otherwise fall back to the entity's own origin/angles.
+    const std::span<const std::byte> bytes = studio_bytes_for( ed );
+    if ( !bytes.empty() )
+    {
+        const content::StudioView hdr{ bytes };
+        content::BoneSetupInput in = pose_from_edict( ed );
+        // ENGINE_COMPENSATE_QUAKE_BUG is unwired (off) -> the legacy pitch flip
+        // applies. Drive this from host.features when it lands (feature-flag
+        // wiring is a recorded deferral).
+        in.angles.x = -in.angles.x;
+
+        content::BuiltinBoneSolver solver;
+        Vec3 o;
+        if ( content::attachment_world_position( hdr, in, iAttachment, solver, &o, nullptr ))
+        {
+            if ( rgflOrigin != nullptr ) { rgflOrigin[0] = o.x; rgflOrigin[1] = o.y; rgflOrigin[2] = o.z; }
+            return; // angles: ENGINE_COMPUTE_STUDIO_LERP off -> left untouched
+        }
+    }
+
+    // Legacy fallback (no studio model / no attachments): entity origin+angles.
+    if ( ed != nullptr )
+    {
+        if ( rgflOrigin != nullptr ) { rgflOrigin[0] = ed->v.origin[0]; rgflOrigin[1] = ed->v.origin[1]; rgflOrigin[2] = ed->v.origin[2]; }
+        if ( rgflAngles != nullptr ) { rgflAngles[0] = ed->v.angles[0]; rgflAngles[1] = ed->v.angles[1]; rgflAngles[2] = ed->v.angles[2]; }
+    }
 }
 
 // --- CRC32 (utilities/hash) --------------------------------------------------

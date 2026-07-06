@@ -4,7 +4,10 @@
 #include <xash3dpp/private/server/model_resolver.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
+#include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/utilities/string.hpp>
+
+#include <vector>
 
 namespace xash::server {
 
@@ -49,6 +52,61 @@ bool ModelResolver::is_studio( int modelindex ) noexcept
     // bbox hull exactly like the legacy no-hitbox-data studio case (Chunk 7
     // supplies real studio hulls via the OQ-2 IStudioHullProvider).
     return !brush_model( modelindex ).has_value();
+}
+
+bool ModelResolver::ensure_cache() noexcept
+{
+    if ( cache_ready_ )
+        return true;
+    if ( fs_ == nullptr )
+        return false;
+    if ( !studio_cache_.init( ::xash::content::InitParams{ *fs_ } ))
+        return false;
+    cache_ready_ = true;
+    return true;
+}
+
+std::span<const std::byte> ModelResolver::studio_bytes( int modelindex ) noexcept
+{
+    if ( modelindex <= 0 || precache_ == nullptr )
+        return {};
+
+    ::xash::content::ModelHandle h{};
+    const auto it = studio_handles_.find( modelindex );
+    if ( it != studio_handles_.end() )
+    {
+        h = it->second; // may be the null handle (a cached negative)
+    }
+    else
+    {
+        const char *name =
+            precache_->model_name( static_cast<std::size_t>( modelindex ));
+        if ( name == nullptr || name[0] == '\0' || name[0] == '*' )
+        {
+            studio_handles_.emplace( modelindex, ::xash::content::ModelHandle{} );
+            return {}; // brush / inline submodel / unset — not a studio model
+        }
+        if ( !ensure_cache() )
+            return {};
+
+        std::vector<std::byte> bytes = fs_->load_file( name );
+        h = studio_cache_.find_or_alloc( name );
+        if ( bytes.empty() || !h.valid()
+             || !studio_cache_.load_from_bytes( h, bytes ).has_value() )
+        {
+            studio_handles_.emplace( modelindex, ::xash::content::ModelHandle{} );
+            return {};
+        }
+        studio_handles_.emplace( modelindex, h );
+    }
+
+    const ::xash::content::Model *m = studio_cache_.resolve( h );
+    if ( m == nullptr )
+        return {};
+    const ::xash::content::StudioModel *sm = m->studio();
+    if ( sm == nullptr )
+        return {}; // loaded but not a studio format (sprite/alias)
+    return sm->bytes();
 }
 
 } // namespace xash::server

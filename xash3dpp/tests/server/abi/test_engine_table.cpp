@@ -17,14 +17,18 @@
 #include <xash3dpp/private/server/engine_bridge.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 
+#include "../../content/studio_builder.hpp"
 #include "../../map_loader/bsp/test_bsp_builder.hpp"
 #include "fake_dll_state.hpp"
 
 #include "../../test_helpers.hpp"
 
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <optional>
+#include <span>
+#include <vector>
 
 namespace sv  = xash::server;
 namespace abi = xash::abi;
@@ -51,6 +55,15 @@ struct FixtureResolver final : sv::IModelResolver
         return std::nullopt;
     }
     bool is_studio( int ) noexcept override { return false; }
+
+    // A synthetic studio model at modelindex 2 (studio_data set by the test).
+    std::vector<std::byte> studio_data;
+    std::span<const std::byte> studio_bytes( int modelindex ) noexcept override
+    {
+        if ( modelindex == 2 && !studio_data.empty() )
+            return studio_data;
+        return {};
+    }
 };
 
 struct LinkHooks final : sv::IWorldLinkHooks
@@ -576,6 +589,63 @@ static void test_cross_dll_engine_probe()
 }
 
 // ---------------------------------------------------------------------------
+// studio pose slots (Chunk 7): pfnGetModelPtr / GetBonePosition / GetAttachment
+// ---------------------------------------------------------------------------
+
+static void test_studio_pose_slots()
+{
+    using namespace xash::content::test;
+
+    BridgeFixture f;
+
+    // Synthetic studio model at index 2: one bone at value pos {1,2,3}, no
+    // rotation, no anim (bind pose), + one attachment (bone 0, local {1,0,0}).
+    StudioBuilder b;
+    const std::size_t bone_off = b.add_bone( -1, { -1, -1, -1, -1, -1, -1 },
+                                             { 1, 2, 3, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } );
+    const std::array<std::vector<std::int16_t>, 6> empty{};
+    const std::size_t anim_off = b.add_anim_block( { empty } );
+    const std::size_t seq_off  = b.add_seqdesc( 1, 0, 0, 1, static_cast<std::int32_t>( anim_off ), 0 );
+    const std::size_t att_off  = b.add_attachment( 0, 1.0f, 0.0f, 0.0f );
+    b.header_i32( 140, 1 ); b.header_i32( 144, static_cast<std::int32_t>( bone_off ) );
+    b.header_i32( 164, 1 ); b.header_i32( 168, static_cast<std::int32_t>( seq_off ) );
+    b.header_i32( 212, 1 ); b.header_i32( 216, static_cast<std::int32_t>( att_off ) );
+    const auto &bytes = b.bytes();
+    f.resolver.studio_data.assign( bytes.begin(), bytes.end() );
+
+    // A studio entity at origin {10,20,30}, angles 0.
+    abi::edict_t *e = f.arena.edict_num( 1 );
+    e->v.modelindex = 2;
+    e->v.origin[0] = 10.0f; e->v.origin[1] = 20.0f; e->v.origin[2] = 30.0f;
+    e->v.angles[0] = e->v.angles[1] = e->v.angles[2] = 0.0f;
+    e->v.sequence = 0;
+    e->v.frame    = 0.0f;
+
+    // pfnGetModelPtr -> the studiohdr byte image.
+    void *ptr = f.table.pfnGetModelPtr( e );
+    CHECK( ptr == f.resolver.studio_data.data() );
+
+    // pfnGetBonePosition(bone 0) -> entity origin + bone pos; angles 0.
+    float bo[3] = { -1, -1, -1 }, ba[3] = { -1, -1, -1 };
+    f.table.pfnGetBonePosition( e, 0, bo, ba );
+    CHECK( bo[0] == 11.0f && bo[1] == 22.0f && bo[2] == 33.0f );
+    CHECK( ba[0] == 0.0f && ba[1] == 0.0f && ba[2] == 0.0f );
+
+    // pfnGetAttachment(0) -> bone world + local {1,0,0}.
+    float ao[3] = { 0, 0, 0 };
+    f.table.pfnGetAttachment( e, 0, ao, nullptr );
+    CHECK( ao[0] == 12.0f && ao[1] == 22.0f && ao[2] == 33.0f );
+
+    // A brush model (index 1) -> NULL studiohdr; bone position untouched.
+    abi::edict_t *br = f.arena.edict_num( 2 );
+    br->v.modelindex = 1;
+    CHECK( f.table.pfnGetModelPtr( br ) == nullptr );
+    float ko[3] = { 7, 7, 7 };
+    f.table.pfnGetBonePosition( br, 0, ko, nullptr );
+    CHECK( ko[0] == 7.0f && ko[1] == 7.0f && ko[2] == 7.0f );
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -598,6 +668,7 @@ int main()
     RUN_TEST( test_visibility_slots );
     RUN_TEST( test_external_cvar_chain );
     RUN_TEST( test_cross_dll_engine_probe );
+    RUN_TEST( test_studio_pose_slots );
 
     std::printf( "engine_table: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

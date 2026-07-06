@@ -24,7 +24,9 @@
 #include <xash3dpp/utilities/math.hpp>
 #include <xash3dpp/utilities/matrix.hpp>
 
+#include <cstddef>
 #include <optional>
+#include <span>
 
 namespace xash::server {
 
@@ -48,10 +50,21 @@ struct IModelResolver
     [[nodiscard]] virtual std::optional<BrushModel>
     brush_model( int modelindex ) noexcept = 0;
 
-    // TODO(chunk7): studio models take the hitbox path via the OQ-2
-    // IStudioHullProvider; until then studio-flagged entities fall back
-    // to the bbox hull exactly like the legacy no-hitbox-data path.
+    // studio-flagged entities take the OQ-2 studio-hull path when studio_bytes
+    // yields a header; otherwise they fall back to the bbox hull exactly like
+    // the legacy no-hitbox-data path.
     [[nodiscard]] virtual bool is_studio( int modelindex ) noexcept = 0;
+
+    // Chunk 7: the studiohdr byte image for a studio model's modelindex, or an
+    // empty span when the model is absent or not a studio model. The production
+    // resolver lazily loads + caches the studio model (content::ModelCache);
+    // callers wrap the span in a content::StudioView (pfnGetModelPtr, bone
+    // position, attachment, the studio-hull provider). Default: none — test
+    // fixtures and the bbox-fallback path do not resolve studio bytes.
+    [[nodiscard]] virtual std::span<const std::byte> studio_bytes( int /*modelindex*/ ) noexcept
+    {
+        return {};
+    }
 };
 
 struct SvTrace; // fwd

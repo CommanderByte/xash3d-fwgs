@@ -160,7 +160,7 @@ struct ParseFixture
 
         // Install the world-interaction bridge (S7c does this in
         // spawn_server; the parse/model paths need it live now).
-        resolver.bind( &*world, &rt.precache );
+        resolver.bind( &*world, &rt.precache, rt.fs );
 
         abi::edict_t *ws = rt.arena.edict_num( 0 );
         env.world      = &*world;
