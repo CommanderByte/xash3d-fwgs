@@ -51,6 +51,14 @@ enum class CrcFlags : std::uint8_t
 {
     return static_cast<CrcFlags>( static_cast<std::uint8_t>( a ) | static_cast<std::uint8_t>( b ) );
 }
+[[nodiscard]] constexpr CrcFlags operator&( CrcFlags a, CrcFlags b ) noexcept
+{
+    return static_cast<CrcFlags>( static_cast<std::uint8_t>( a ) & static_cast<std::uint8_t>( b ) );
+}
+[[nodiscard]] constexpr CrcFlags operator~( CrcFlags a ) noexcept
+{
+    return static_cast<CrcFlags>( ~static_cast<std::uint8_t>( a ) );
+}
 [[nodiscard]] constexpr bool any( CrcFlags f ) noexcept { return static_cast<std::uint8_t>( f ) != 0; }
 
 // ---------------------------------------------------------------------------
@@ -131,10 +139,18 @@ public:
                    ? &std::get<AliasModel>( payload_ ) : nullptr;
     }
 
+    // ---- CRC (cheat-detection surface, OQ-6) -----------------------------
+    [[nodiscard]] std::uint32_t crc() const noexcept       { return crc_; }
+    void set_crc( std::uint32_t c ) noexcept               { crc_ = c; }
+    [[nodiscard]] CrcFlags crc_flags() const noexcept      { return crc_flags_; }
+    void set_crc_flags( CrcFlags f ) noexcept              { crc_flags_ = f; }
+
 private:
-    std::string name_;
-    ModelType   type_     = ModelType::Bad;
-    NeedLoad    needload_ = NeedLoad::Unreferenced;
+    std::string   name_;
+    ModelType     type_      = ModelType::Bad;
+    NeedLoad      needload_  = NeedLoad::Unreferenced;
+    std::uint32_t crc_       = 0;
+    CrcFlags      crc_flags_ = CrcFlags::None;
 
     // The format payload: unloaded, or one of the parsed model formats.
     // Brush uses a map_loader world reference (added with the brush seam, O-3).

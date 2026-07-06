@@ -95,10 +95,20 @@ public:
     [[nodiscard]] std::size_t live_count() const noexcept;
 
     // Load a model into `h` from an in-memory file image, dispatching on the
-    // magic (O-3): IDST -> studio (others as their loaders land). Attaches the
-    // parsed payload and marks the slot Present. FS-decoupled for testability
+    // magic (O-3): IDST/IDSP/IDPO. Attaches the parsed payload, computes the
+    // file CRC, and marks the slot Present. FS-decoupled for testability
     // (OQ-1); the production path loads the bytes via the injected filesystem.
+    // A reload with a changed CRC on a checksum-required model fails
+    // (LoadError::CrcMismatch — cheat detection).
     [[nodiscard]] Result<void> load_from_bytes( ModelHandle h, std::span<const std::byte> file );
+
+    // ---- CRC cheat-detection surface (OQ-6; server consumes it) ----------
+    // Flag a model (by name, allocating a slot if needed) as checksum-required
+    // (legacy Mod_NeedCRC). Cleared by passing false.
+    void need_crc( std::string_view name, bool need );
+
+    // True iff a loaded model of that name has the given CRC (Mod_ValidateCRC).
+    [[nodiscard]] bool validate_crc( std::string_view name, std::uint32_t crc ) const noexcept;
 
 private:
     struct Impl;

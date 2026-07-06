@@ -8,6 +8,7 @@
 #include <xash3dpp/content/formats.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/core/thread_role.hpp>
+#include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/swap.hpp>
 
 #include <bit>
@@ -243,6 +244,39 @@ static void test_model_load()
 }
 
 // ---------------------------------------------------------------------------
+// CRC cheat-detection surface (OQ-6)
+// ---------------------------------------------------------------------------
+
+static void test_model_crc()
+{
+    using namespace xash::content;
+
+    xash::filesystem::Filesystem fs;
+    ModelCache cache;
+    REQUIRE( cache.init( { fs } ) );
+
+    // Flag a model checksum-required, then load it.
+    cache.need_crc( "models/player.mdl", true );
+    const ModelHandle h = cache.find_or_alloc( "models/player.mdl" );
+    std::vector<std::byte> a = make_studio_header();
+    REQUIRE( cache.load_from_bytes( h, a ).has_value() );
+
+    const std::uint32_t crc_a = xash::utilities::crc32( a.data(), a.size() );
+    CHECK( cache.validate_crc( "models/player.mdl", crc_a ) );
+    CHECK( !cache.validate_crc( "models/player.mdl", crc_a ^ 0x1u ) );
+    CHECK( !cache.validate_crc( "unknown.mdl", crc_a ) );
+
+    // A reload with changed bytes on a checksum-required model is rejected.
+    std::vector<std::byte> b = make_studio_header();
+    xash::utilities::write_le<std::int32_t>( b.data() + 140, 31 );  // numbones 30 -> 31
+    const auto reload = cache.load_from_bytes( h, b );
+    CHECK( !reload.has_value() );
+    CHECK( reload.error() == LoadError::CrcMismatch );
+
+    cache.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -255,6 +289,7 @@ int main()
     RUN_TEST( test_model_registry );
     RUN_TEST( test_studio_parse );
     RUN_TEST( test_model_load );
+    RUN_TEST( test_model_crc );
 
     std::printf( "test_content: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

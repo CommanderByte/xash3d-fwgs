@@ -16,6 +16,7 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/swap.hpp>
 
 #include <cstdint>
@@ -201,6 +202,14 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
     if (file.size() < sizeof(std::int32_t))
         return std::unexpected(LoadError::Truncated);
 
+    // Cheat-detection: a checksum-required model that was already loaded must
+    // keep the same CRC on reload (legacy Mod_LoadModel CRC guard, OQ-6).
+    const std::uint32_t crc = ::xash::utilities::crc32(file.data(), file.size());
+    if (any(m->crc_flags() & CrcFlags::ChecksumDone)
+        && any(m->crc_flags() & CrcFlags::ShouldChecksum)
+        && m->crc() != crc)
+        return std::unexpected(LoadError::CrcMismatch);
+
     // Dispatch on the file magic (legacy Mod_LoadModel switch; O-3).
     const auto magic = ::xash::utilities::read_le<std::int32_t>(file.data());
     switch (magic)
@@ -211,9 +220,7 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
         if (!sm)
             return std::unexpected(sm.error());
         m->set_studio(std::move(*sm));
-        m->set_needload(NeedLoad::Present);
-        ++impl_->stats_.models_loaded;
-        return {};
+        break;
     }
     case k_sprite_ident:
     {
@@ -221,9 +228,7 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
         if (!sp)
             return std::unexpected(sp.error());
         m->set_sprite(std::move(*sp));
-        m->set_needload(NeedLoad::Present);
-        ++impl_->stats_.models_loaded;
-        return {};
+        break;
     }
     case k_alias_ident:
     {
@@ -231,14 +236,43 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
         if (!al)
             return std::unexpected(al.error());
         m->set_alias(std::move(*al));
-        m->set_needload(NeedLoad::Present);
-        ++impl_->stats_.models_loaded;
-        return {};
+        break;
     }
     // TODO(O-3): 29/30/BSP2 -> brush (dispatch to map_loader, OQ-3).
     default:
         return std::unexpected(LoadError::BadMagic);
     }
+
+    // Common post-load state: mark present, record the CRC.
+    m->set_needload(NeedLoad::Present);
+    m->set_crc(crc);
+    m->set_crc_flags(m->crc_flags() | CrcFlags::ChecksumDone);
+    ++impl_->stats_.models_loaded;
+    return {};
+}
+
+void ModelCache::need_crc( std::string_view name, bool need )
+{
+    xash::core::assert_thread_role(xash::core::ThreadRole::Main);
+    const ModelHandle h = find_or_alloc(name);
+    Model *m = resolve(h);
+    if (!m)
+        return;
+    if (need)
+        m->set_crc_flags(m->crc_flags() | CrcFlags::ShouldChecksum);
+    else
+        m->set_crc_flags(m->crc_flags() & ~CrcFlags::ShouldChecksum);
+}
+
+bool ModelCache::validate_crc( std::string_view name, std::uint32_t crc ) const noexcept
+{
+    for (const auto &slot : impl_->slots_)
+    {
+        if (slot.occupied && slot.model.name() == name)
+            return any(slot.model.crc_flags() & CrcFlags::ChecksumDone)
+                   && slot.model.crc() == crc;
+    }
+    return false;
 }
 
 } // namespace xash::content
