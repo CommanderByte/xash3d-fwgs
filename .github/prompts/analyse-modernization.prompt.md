@@ -49,6 +49,11 @@ When you are uncertain whether something crosses the boundary, mark it
      `if constexpr`, structured bindings, `std::filesystem`
    - **C++20**: `std::span`, `std::bit_cast`, `std::format`, concepts,
      `std::numbers`, ranges, `[[likely]]`/`[[unlikely]]`
+   - **C++23**: `std::expected` (loader/parse error returns), `std::byteswap`
+     (endian codecs), `std::to_underlying`, `std::mdspan`, `std::print`,
+     `if consteval` — this repo builds at `CMAKE_CXX_STANDARD 23`, so these are
+     available (verify MSVC x64+x86 `<mdspan>`/`<print>` support before relying
+     on the newest two)
 
 ---
 
@@ -179,6 +184,30 @@ otherwise idiomatic C++:
 | Debug/introspection code reaching into subsystem internals where a typed surface (`EntityView`, observers, stats tiers) exists or should be extended | P-4 typed surfaces |
 | Cross-thread state access not using an inbox / published-snapshot design | P-1 / P-2 |
 
+### 2-L  Design paradigm — C dispatch / state that should be OOP
+
+Beyond idiom-level swaps, flag **design-level** shapes: C `switch`-on-tag
+dispatch and stateful file-scope globals that the register makes classes or
+polymorphic hierarchies. Sanctioned by Q-22 (state-with-invariants → class),
+P-7 (pool-owned RAII classes), and Q-11 (open-set features → registered
+implementations), with the seam precedents already in the tree (`ISearchBackend`,
+`IProtocolDriver`, `EntityView`).
+
+| Pattern | Suggested replacement |
+|---------|----------------------|
+| File-scope globals + free functions mutating them (a de-facto object) | A class owning the state, invariants as private members (Q-22) |
+| `switch (tag)` over a **closed, frozen** set of variants | `std::variant<...>` + visitor (no RTTI, exhaustiveness-checked) |
+| `{ ext, fnptr }` table over an **open** set (formats, backends) | An `I<Thing>` interface + registry (open-closed; `ISearchBackend` shape) |
+| Raw `void *` / offset-walked frozen struct handed across a seam | A non-owning typed view class over it (`EntityView`-over-`entvars_t`) |
+| Manual `create`/`destroy` + owning raw pointer | Pool-owned class, P-7 `create_<thing>` factory + `operator delete` |
+
+**Constraints — keep this from becoming OOP-maximalism**: engine targets are
+`/GR-` (no RTTI → no `dynamic_cast`; prefer `variant` + visitor for closed sets)
+and `/EHs-c-` (no throwing constructors → a factory returning `std::expected`).
+**Orchestrators stay procedural (Q-22)**: top-level flow / lifecycle sequences
+remain free functions that *drive* these classes; OOP is for stateful aggregates
+and open dispatch sets, not everything.
+
 ---
 
 ## Step 3 — Prioritise
@@ -187,7 +216,7 @@ Group findings into three tiers:
 
 | Tier | Criteria |
 |------|----------|
-| **High** | Removes a safety hazard (shared mutable buffer, manual lifetime, naked owning pointer) or eliminates significant boilerplate in a hot call path; or deletes a helper function that is now entirely redundant (category 2-J) |
+| **High** | Removes a safety hazard (shared mutable buffer, manual lifetime, naked owning pointer) or eliminates significant boilerplate in a hot call path; deletes a helper function that is now entirely redundant (category 2-J); or replaces a file-scope-global cluster with an encapsulating class (category 2-L) |
 | **Medium** | Improves readability/type-safety with low risk (enum class, nullptr, std::array, optional) |
 | **Low** | Cosmetic improvement, debatable style gain, or requires touching frozen ABI |
 

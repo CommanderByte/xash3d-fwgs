@@ -40,6 +40,13 @@ Determine which parts of this subsystem touch the fixed external ABI surfaces:
 
 Everything else is internal and free to redesign.
 
+Also check **internal** seams against sibling subsystems already built: read the
+adjacent `xash3dpp/docs/boundaries/*.md` for surface this subsystem's legacy
+code touches but a *done* subsystem now owns, and scope it out explicitly rather
+than re-specifying owned surface. (Precedent: content's legacy WAD mounting is
+already `filesystem`'s `WadBackend`; its brush-model path is already
+`map_loader` — content only dispatches to and decodes from them.)
+
 ## Step 4 — Write the boundary spec
 
 Read `xash3dpp/docs/design/extension-goals.md` first — the template's

@@ -224,7 +224,7 @@ target_include_directories(xash3dpp_$ARGUMENTS
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
-target_compile_features(xash3dpp_$ARGUMENTS PUBLIC cxx_std_20)
+target_compile_features(xash3dpp_$ARGUMENTS PUBLIC cxx_std_23)
 
 # xash3dpp_memory is always required — every subsystem that allocates uses it.
 # xash3dpp_utilities provides string, path, hash, and math helpers.
@@ -359,18 +359,18 @@ through `impl_->pool_`.
 
 ## Step 5 — Create the test harness
 
-Create `xash3dpp/tests/$ARGUMENTS/CMakeLists.txt`:
+Create `xash3dpp/tests/$ARGUMENTS/CMakeLists.txt`. Use the
+`xash3dpp_add_test()` helper (`cmake/test_helpers.cmake`, included by the parent
+`CMakeLists.txt`) — **every** test target in the tree uses it; a raw
+`add_executable` here is non-conforming. It expands to the
+`add_executable` / `target_link_libraries` / `add_test` triple; `SOURCE`
+defaults to `<name>.cpp`. Transitive `PUBLIC` deps of the linked lib (memory,
+core, …) come in automatically, so list only the subsystem lib under test:
 
 ```cmake
-find_package(Threads REQUIRED)
+cmake_minimum_required(VERSION 3.16)
 
-add_executable(test_$ARGUMENTS test_$ARGUMENTS.cpp)
-target_link_libraries(test_$ARGUMENTS PRIVATE
-    xash3dpp_$ARGUMENTS
-    xash3dpp_memory
-    Threads::Threads
-)
-add_test(NAME test_$ARGUMENTS COMMAND test_$ARGUMENTS)
+xash3dpp_add_test(test_$ARGUMENTS LIBS xash3dpp_$ARGUMENTS)
 ```
 
 Create `xash3dpp/tests/$ARGUMENTS/test_$ARGUMENTS.cpp`:
@@ -381,6 +381,7 @@ Create `xash3dpp/tests/$ARGUMENTS/test_$ARGUMENTS.cpp`:
 
 #include <xash3dpp/$ARGUMENTS/$ARGUMENTS.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 
 #include "../test_helpers.hpp"
 
@@ -408,6 +409,11 @@ static void test_init_shutdown()
 
 int main()
 {
+    // Step 0.5 makes every public mutating entry assert ThreadRole::Main, so the
+    // test thread MUST register that role first — otherwise init()/shutdown()
+    // fatal with "expected Main, got Unknown" (the S5 scaffold regression).
+    xash::core::register_thread_role(xash::core::ThreadRole::Main);
+
     test_init_shutdown();
 
     std::printf("$ARGUMENTS: %d passed, %d failed\n", g_pass, g_fail);
