@@ -6,6 +6,7 @@
 #include <xash3dpp/imagelib/image.hpp>
 #include <xash3dpp/imagelib/pixel_format.hpp>
 #include <xash3dpp/imagelib/save.hpp>
+#include <xash3dpp/private/imagelib/palette.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/utilities/swap.hpp>
 
@@ -14,6 +15,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <span>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -967,6 +969,292 @@ static void test_ktx2_bad_input()
 }
 
 // ---------------------------------------------------------------------------
+// MIP (miptex) decode — legacy Image_LoadMIP parity. Small hand-built lumps.
+// ---------------------------------------------------------------------------
+
+static void mip_put_u16( std::vector<std::byte> &v, std::uint16_t x )
+{
+    v.push_back( std::byte{ static_cast<std::uint8_t>( x & 0xFF ) } );
+    v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >> 8 ) & 0xFF ) } );
+}
+static void mip_put_u32( std::vector<std::byte> &v, std::uint32_t x )
+{
+    for( int i = 0; i < 4; ++i )
+        v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >> ( 8 * i ) ) & 0xFF ) } );
+}
+
+// Build a miptex lump: mip_t header (name[16] + w + h + offsets[4]), four mip
+// levels (level 0 = `indices`, levels 1..3 zero-filled), and — when `pal768` is
+// non-empty — a 2-byte colour count (256) + the 256*RGB embedded palette (an HL
+// mip). An empty `pal768` yields a Quake1 mip (no palette).
+static std::vector<std::byte> build_mip( std::string_view mipname, std::uint32_t w, std::uint32_t h,
+                                         const std::vector<std::uint8_t> &indices,
+                                         const std::vector<std::uint8_t> &pal768 )
+{
+    const std::uint32_t m0 = w * h, m1 = m0 / 4, m2 = m0 / 16, m3 = m0 / 64;
+    std::vector<std::byte> v;
+    for( std::size_t i = 0; i < 16; ++i )
+        v.push_back( std::byte{ i < mipname.size() ? static_cast<std::uint8_t>( mipname[i] ) : std::uint8_t{ 0 } } );
+    mip_put_u32( v, w );
+    mip_put_u32( v, h );
+    const std::uint32_t o0 = 40, o1 = o0 + m0, o2 = o1 + m1, o3 = o2 + m2;
+    mip_put_u32( v, o0 );
+    mip_put_u32( v, o1 );
+    mip_put_u32( v, o2 );
+    mip_put_u32( v, o3 );
+    for( std::uint32_t i = 0; i < m0; ++i )
+        v.push_back( std::byte{ i < indices.size() ? indices[i] : std::uint8_t{ 0 } } );
+    for( std::uint32_t i = 0; i < m1 + m2 + m3; ++i )
+        v.push_back( std::byte{ 0 } );
+    if( !pal768.empty() )
+    {
+        mip_put_u16( v, 256 );
+        for( std::uint32_t i = 0; i < 768; ++i )
+            v.push_back( std::byte{ i < pal768.size() ? pal768[i] : std::uint8_t{ 0 } } );
+    }
+    return v;
+}
+
+// The built-in Quake palette bytes (index-loop copy — no span-iterator warnings).
+static std::vector<std::uint8_t> quake_pal_bytes()
+{
+    const auto s = xash::imagelib::quake_palette_rgb();
+    std::vector<std::uint8_t> v;
+    v.reserve( s.size() );
+    for( std::size_t i = 0; i < s.size(); ++i )
+        v.push_back( s[i] );
+    return v;
+}
+
+// An HL mip whose embedded palette IS the Quake palette: classifies PAL_QUAKE1,
+// so it decodes through LUMP_NORMAL (no texgamma) with the QUAKEPAL flag.
+static void test_mip_hl_quake_palette()
+{
+    using namespace xash::imagelib;
+
+    const auto qp = quake_pal_bytes();
+    std::vector<std::uint8_t> idx( 64 );
+    for( int i = 0; i < 64; ++i )
+        idx[static_cast<std::size_t>( i )] = static_cast<std::uint8_t>( i );  // all < 225, none 255
+    const auto mip = build_mip( "qtex", 8, 8, idx, qp );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "qtex.MIP", mip );  // case-insensitive ext
+    REQUIRE( out.has_value() );
+
+    CHECK_EQ( out->width(), std::uint16_t{ 8 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 8 } );
+    CHECK( out->format() == PixelFormat::Rgba8 );
+    CHECK( out->has( ImageFlags::QuakePal ) );
+    CHECK( out->has( ImageFlags::HasColor ) );
+    CHECK( !out->has( ImageFlags::HasLuma ) );
+    CHECK( !out->has( ImageFlags::HasAlpha ) );
+
+    const auto px = out->pixels();
+    REQUIRE( px.size() == 64 * 4 );
+    bool ok = true;
+    for( int i = 0; i < 64; ++i )
+        ok = ok
+          && std::to_integer<std::uint8_t>( px[i * 4 + 0] ) == qp[static_cast<std::size_t>( i * 3 + 0 )]
+          && std::to_integer<std::uint8_t>( px[i * 4 + 1] ) == qp[static_cast<std::size_t>( i * 3 + 1 )]
+          && std::to_integer<std::uint8_t>( px[i * 4 + 2] ) == qp[static_cast<std::size_t>( i * 3 + 2 )]
+          && std::to_integer<std::uint8_t>( px[i * 4 + 3] ) == 255;
+    CHECK( ok );
+    CHECK_EQ( dec.stats().images_decoded, std::uint64_t{ 1 } );
+    dec.shutdown();
+}
+
+// A '{'-masked HL mip: index 255 decodes fully transparent, others opaque, and
+// the OneBitAlpha + HasAlpha flags are set.
+static void test_mip_masked()
+{
+    using namespace xash::imagelib;
+
+    std::vector<std::uint8_t> pal( 768 );
+    for( int i = 0; i < 256; ++i )
+    {
+        pal[static_cast<std::size_t>( i * 3 + 0 )] = static_cast<std::uint8_t>( i );
+        pal[static_cast<std::size_t>( i * 3 + 1 )] = static_cast<std::uint8_t>( 255 - i );
+        pal[static_cast<std::size_t>( i * 3 + 2 )] = static_cast<std::uint8_t>( i / 2 );
+    }
+    std::vector<std::uint8_t> idx( 64 );
+    for( int i = 0; i < 64; ++i )
+        idx[static_cast<std::size_t>( i )] = static_cast<std::uint8_t>( i );
+    idx[10] = 255;  // one transparent-key pixel
+    const auto mip = build_mip( "{decal", 8, 8, idx, pal );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "{decal.mip", mip );
+    REQUIRE( out.has_value() );
+
+    CHECK( out->format() == PixelFormat::Rgba8 );
+    CHECK( out->has( ImageFlags::OneBitAlpha ) );
+    CHECK( out->has( ImageFlags::HasAlpha ) );
+
+    const auto px = out->pixels();
+    REQUIRE( px.size() == 64 * 4 );
+    bool ok = true;
+    for( int i = 0; i < 64; ++i )
+    {
+        const std::uint8_t id = idx[static_cast<std::size_t>( i )];
+        std::uint8_t er, eg, eb, ea;
+        if( id == 255 ) { er = 0; eg = 0; eb = 0; ea = 0; }
+        else { er = id; eg = static_cast<std::uint8_t>( 255 - id ); eb = static_cast<std::uint8_t>( id / 2 ); ea = 255; }
+        ok = ok
+          && std::to_integer<std::uint8_t>( px[i * 4 + 0] ) == er
+          && std::to_integer<std::uint8_t>( px[i * 4 + 1] ) == eg
+          && std::to_integer<std::uint8_t>( px[i * 4 + 2] ) == eb
+          && std::to_integer<std::uint8_t>( px[i * 4 + 3] ) == ea;
+    }
+    CHECK( ok );
+    dec.shutdown();
+}
+
+// A Quake1 mip (no embedded palette) decodes against the built-in Q1 table.
+static void test_mip_quake1_nopalette()
+{
+    using namespace xash::imagelib;
+
+    const auto qp = quake_pal_bytes();
+    std::vector<std::uint8_t> idx( 64 );
+    for( int i = 0; i < 64; ++i )
+        idx[static_cast<std::size_t>( i )] = static_cast<std::uint8_t>( i );  // < 225
+    const std::vector<std::uint8_t> nopal;  // empty => Quake1 mip
+    const auto mip = build_mip( "quake", 8, 8, idx, nopal );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "quake.mip", mip );
+    REQUIRE( out.has_value() );
+
+    CHECK( out->has( ImageFlags::QuakePal ) );
+    CHECK( !out->has( ImageFlags::HasLuma ) );
+    CHECK( !out->has( ImageFlags::HasAlpha ) );
+
+    const auto px = out->pixels();
+    REQUIRE( px.size() == 64 * 4 );
+    bool ok = true;
+    for( int i = 0; i < 64; ++i )
+        ok = ok
+          && std::to_integer<std::uint8_t>( px[i * 4 + 0] ) == qp[static_cast<std::size_t>( i * 3 + 0 )]
+          && std::to_integer<std::uint8_t>( px[i * 4 + 1] ) == qp[static_cast<std::size_t>( i * 3 + 1 )]
+          && std::to_integer<std::uint8_t>( px[i * 4 + 2] ) == qp[static_cast<std::size_t>( i * 3 + 2 )]
+          && std::to_integer<std::uint8_t>( px[i * 4 + 3] ) == 255;
+    CHECK( ok );
+    dec.shutdown();
+}
+
+// A fullbright index ( > 224, != 255 ) in a Quake1 mip flags a luma layer.
+static void test_mip_quake1_luma()
+{
+    using namespace xash::imagelib;
+
+    std::vector<std::uint8_t> idx( 64, 10 );
+    idx[5] = 230;  // fullbright
+    const std::vector<std::uint8_t> nopal;
+    const auto mip = build_mip( "torch", 8, 8, idx, nopal );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "torch.mip", mip );
+    REQUIRE( out.has_value() );
+    CHECK( out->has( ImageFlags::HasLuma ) );
+    CHECK( out->has( ImageFlags::QuakePal ) );
+    dec.shutdown();
+}
+
+// A 2:1 texture whose embedded name starts "sky" gets the QuakeSky flag.
+static void test_mip_quakesky()
+{
+    using namespace xash::imagelib;
+
+    std::vector<std::uint8_t> idx( 128 );  // 16x8
+    for( int i = 0; i < 128; ++i )
+        idx[static_cast<std::size_t>( i )] = static_cast<std::uint8_t>( i % 200 );  // avoid fullbright
+    const std::vector<std::uint8_t> nopal;
+    const auto mip = build_mip( "sky1", 16, 8, idx, nopal );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "sky1.mip", mip );
+    REQUIRE( out.has_value() );
+    CHECK( out->has( ImageFlags::QuakeSky ) );
+    CHECK( out->has( ImageFlags::QuakePal ) );
+    dec.shutdown();
+}
+
+// An HL water mip ("!..." embedded name) parses fog colour+density into
+// fog_params (palette entry 3 RGB + entry 4 red).
+static void test_mip_water_fog()
+{
+    using namespace xash::imagelib;
+
+    std::vector<std::uint8_t> pal( 768, 0 );
+    for( int i = 0; i < 256; ++i )  // greyscale base so it classifies Custom (not Q1/HL)
+    {
+        pal[static_cast<std::size_t>( i * 3 + 0 )] = static_cast<std::uint8_t>( i );
+        pal[static_cast<std::size_t>( i * 3 + 1 )] = static_cast<std::uint8_t>( i );
+        pal[static_cast<std::size_t>( i * 3 + 2 )] = static_cast<std::uint8_t>( i );
+    }
+    pal[3 * 3 + 0] = 200; pal[3 * 3 + 1] = 100; pal[3 * 3 + 2] = 50;  // fog colour
+    pal[4 * 3 + 0] = 77;                                              // fog density
+    const std::vector<std::uint8_t> idx( 64, 1 );
+    const auto mip = build_mip( "!water", 8, 8, idx, pal );
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+    const auto out = dec.decode( "!water.mip", mip );
+    REQUIRE( out.has_value() );
+
+    const Rgba fp = out->fog_params();
+    CHECK_EQ( fp.r, std::uint8_t{ 200 } );
+    CHECK_EQ( fp.g, std::uint8_t{ 100 } );
+    CHECK_EQ( fp.b, std::uint8_t{ 50 } );
+    CHECK_EQ( fp.a, std::uint8_t{ 77 } );
+    dec.shutdown();
+}
+
+// Bounds safety: malformed mips return an error, never fault.
+static void test_mip_bad_input()
+{
+    using namespace xash::imagelib;
+
+    ImageDecoder dec;
+    REQUIRE( dec.init() );
+
+    // Shorter than the 40-byte mip_t header.
+    {
+        std::vector<std::byte> v( 10, std::byte{ 0 } );
+        const auto r = dec.decode( "x.mip", v );
+        CHECK( !r.has_value() );
+        CHECK( r.error() == ImageError::Truncated );
+    }
+    // Valid header claiming 8x8 at offset0=40, but no pixel body at all.
+    {
+        std::vector<std::byte> v;
+        for( int i = 0; i < 16; ++i ) v.push_back( std::byte{ 0 } );
+        mip_put_u32( v, 8 ); mip_put_u32( v, 8 );
+        mip_put_u32( v, 40 ); mip_put_u32( v, 0 ); mip_put_u32( v, 0 ); mip_put_u32( v, 0 );
+        const auto r = dec.decode( "t.mip", v );
+        CHECK( !r.has_value() );
+        CHECK( r.error() == ImageError::Truncated );
+    }
+    // Zero width => bad header.
+    {
+        std::vector<std::byte> v;
+        for( int i = 0; i < 16; ++i ) v.push_back( std::byte{ 0 } );
+        mip_put_u32( v, 0 ); mip_put_u32( v, 8 );
+        mip_put_u32( v, 40 ); mip_put_u32( v, 0 ); mip_put_u32( v, 0 ); mip_put_u32( v, 0 );
+        const auto r = dec.decode( "t.mip", v );
+        CHECK( !r.has_value() );
+        CHECK( r.error() == ImageError::BadHeader );
+    }
+    dec.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -995,6 +1283,13 @@ int main()
     RUN_TEST( test_ktx2_mipchain );
     RUN_TEST( test_ktx2_raw_fallback );
     RUN_TEST( test_ktx2_bad_input );
+    RUN_TEST( test_mip_hl_quake_palette );
+    RUN_TEST( test_mip_masked );
+    RUN_TEST( test_mip_quake1_nopalette );
+    RUN_TEST( test_mip_quake1_luma );
+    RUN_TEST( test_mip_quakesky );
+    RUN_TEST( test_mip_water_fog );
+    RUN_TEST( test_mip_bad_input );
 
     std::printf( "test_imagelib: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

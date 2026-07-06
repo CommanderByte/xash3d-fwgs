@@ -97,6 +97,7 @@ Result<Image> ImageDecoder::decode( std::string_view name, std::span<const std::
         &bmp_codec(),
         &dds_codec(),
         &ktx2_codec(),
+        &mip_codec(),
     };
 
     for( const IImageCodec *codec : registry )

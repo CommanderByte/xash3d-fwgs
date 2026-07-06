@@ -38,5 +38,6 @@ struct IImageCodec
 [[nodiscard]] const IImageCodec &bmp_codec() noexcept;
 [[nodiscard]] const IImageCodec &dds_codec() noexcept;
 [[nodiscard]] const IImageCodec &ktx2_codec() noexcept;
+[[nodiscard]] const IImageCodec &mip_codec() noexcept;
 
 } // namespace xash::imagelib

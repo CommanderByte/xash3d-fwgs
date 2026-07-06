@@ -14,11 +14,13 @@ cmake_minimum_required(VERSION 3.16)
 # --- imagelib (satellite target) -------------------------------------------
 add_library(xash3dpp_imagelib STATIC
     imagelib/imagelib.cpp
+    imagelib/palette.cpp
     imagelib/codec_wad.cpp
     imagelib/codec_tga.cpp
     imagelib/codec_bmp.cpp
     imagelib/codec_dds.cpp
     imagelib/codec_ktx2.cpp
+    imagelib/codec_mip.cpp
 )
 
 target_include_directories(xash3dpp_imagelib
