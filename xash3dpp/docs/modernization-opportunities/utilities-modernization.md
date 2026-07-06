@@ -1,340 +1,252 @@
 # Utilities Modernization Opportunities
 
-> C++ standard in use: C++**20** (from `xash3dpp/CMakeLists.txt`)
-> Boundary spec: derived from frozen headers
-> ABI-frozen symbols in this subsystem: **None** — all utilities are `xash3dpp`-internal
+> C++ standard in use: C++**23** (from `xash3dpp/CMakeLists.txt`, `CMAKE_CXX_STANDARD 23`)
+> Boundary spec: `docs/boundaries/utilities-boundary.md`
+> ABI-frozen symbols in this subsystem: **None** — all utilities are `xash3dpp`-internal.
+> The only external contract is that four CRC32 free functions can be bound
+> into `enginefuncs_t` as function pointers via a fill-site shim; the
+> implementation is otherwise unconstrained (boundary spec §External ABI).
 
 ## Summary
 
-The utilities subsystem (`hash`, `atlas`, `utf`, `build`, `string`, `path`,
-`matrix`, `swap`, `dynlib`) is largely modern: `std::array`, `std::span`,
-`std::optional`, `std::numbers::pi`, and `enum class` with bitwise operators
-are already in place after earlier modernization passes. Remaining issues fall
-into two groups: (1) legacy `const char *` interfaces paired with their modern
-equivalents that are now deletable (2-J), and (2) a handful of residual C-array
-locals, duplicate constants, and one critical missing implementation.
+The utilities subsystem (`string`, `path`, `math`, `matrix`, `quaternion`,
+`hash`, `utf`, `swap`, `atlas`, `build`, `dynlib`, `gameinfo_parser`) is
+already highly modern after several prior passes: `std::array`, `std::span`,
+`std::optional`, `std::string_view`, `enum class` with bitwise operators,
+`std::numbers`, `std::byteswap`/`std::endian` (in `swap.hpp`), magic-static
+initialisation, RAII hasher wrappers, and template-based MD5 rounds are all in
+place. Every finding that the previous revision of this report ranked High or
+Medium (missing `vec_to_yaw`/`vector_angles`, duplicate `DEG2RAD`, the raw
+`atov`/`atoi`/`atof` overloads, the `Tokenizer` C-array buffer) has since been
+resolved in the source.
+
+What remains is a small tail: one clearly-superseded raw-buffer overload that
+is now a pure deletion candidate, two fixed-size stack buffers / raw
+pointer+length pairs that could become `std::string`/`std::span`, and a handful
+of cosmetic C-array-to-`std::array` and duplicate-attribute cleanups. There are
+also two **implementation gaps** (`swap_struct` and the `gameinfo_parser`
+functions are declared/stubbed but unimplemented) — these are noted separately
+because they are missing code, not C-style code to modernize.
+
+Non-obvious constraint found: much of the "C-looking" code here is
+**deliberately** C-shaped and must stay that way. The `double`-precision trig in
+`math.hpp`/`quaternion.cpp`/`matrix.cpp` is bit-parity-load-bearing (studio bone
+math), the CRT mirrors (`strncpy`, `snprintf`, `parse_token`) intentionally
+match libc signatures, and the raw `(char*, size)` path overloads are
+documented as hot-path siblings of the `string_view` versions.
 
 ______________________________________________________________________
 
 ## High-priority opportunities
 
-### H-1: `vec_to_yaw` and `vector_angles` are declared but never implemented
+### H-1: Delete the raw `strip_colors(const char *, char *)` overload (2-J)
 
-- **File(s)**: `xash3dpp/include/xash3dpp/utilities/math.hpp` lines ~94–98
+- **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` line ~104;
+  `xash3dpp/src/utilities/string.cpp` lines ~205–216 (raw impl) and ~500–515
+  (`std::string_view` impl).
 
-- **Current pattern**:
-
-  ```cpp
-  float vec_to_yaw( const Vec3 &v ) noexcept;
-  Vec3  vector_angles( const Vec3 &fwd ) noexcept;
-  ```
-
-  No definition exists in any `.cpp` under `xash3dpp/src/utilities/`. Any
-  translation unit that calls either function will fail to link.
-
-- **Suggested replacement**: Implement both in `matrix.cpp`. Legacy reference
-  implementations (`SV_VecToYaw`, `VectorAngles`) live in
-  `engine/server/sv_studio.c`.
+- **Current pattern**: Two overloads coexist —
 
   ```cpp
-  float vec_to_yaw( const Vec3 &v ) noexcept
-  {
-      if( v.x == 0.0f && v.y == 0.0f ) return 0.0f;
-      return std::atan2( v.y, v.x ) * ( 180.0f / static_cast<float>( std::numbers::pi ) );
-  }
-
-  Vec3 vector_angles( const Vec3 &fwd ) noexcept
-  {
-      float pitch, yaw;
-      if( fwd.x == 0.0f && fwd.y == 0.0f )
-      {
-          yaw   = 0.0f;
-          pitch = ( fwd.z > 0.0f ) ? 90.0f : 270.0f;
-      }
-      else
-      {
-          yaw   = std::atan2( fwd.y, fwd.x ) * ( 180.0f / static_cast<float>( std::numbers::pi ) );
-          if( yaw < 0.0f ) yaw += 360.0f;
-          const float xy = std::sqrt( fwd.x*fwd.x + fwd.y*fwd.y );
-          pitch = std::atan2( fwd.z, xy ) * ( -180.0f / static_cast<float>( std::numbers::pi ) );
-          if( pitch < 0.0f ) pitch += 360.0f;
-      }
-      return { pitch, yaw, 0.0f };
-  }
+  void        strip_colors( const char *in, char *out ) noexcept;  // raw, caller-owned out buffer
+  std::string strip_colors( std::string_view in ) noexcept;        // owning return
   ```
 
-- **Boundary-safe**: Yes
+  The raw overload writes into a caller-supplied buffer with no size argument
+  (a latent overflow if `out` is smaller than `in`). Its **only** caller is its
+  own unit test (`tests/utilities/test_string.cpp::test_strip_colors`, which
+  passes a `char out[32]`); no production code uses it.
 
-- **Rationale**: Missing definitions cause linker errors for any caller. This is
-  a blocking gap, not a cosmetic issue.
+- **Suggested replacement**: Delete the raw overload from the header and
+  `string.cpp`. Update the two raw-buffer assertions in `test_strip_colors` to
+  use the `std::string_view` → `std::string` version (the test already exercises
+  that overload immediately below).
+
+- **Boundary-safe**: Yes — engine-internal, no production callers.
+
+- **Rationale**: Removes a sizeless shared-output-buffer API whose safe
+  replacement already exists and is already the one every real caller uses.
+  Classic 2-J deletion: the function disappears and the single call site becomes
+  one idiomatic expression.
 
 ______________________________________________________________________
 
 ## Medium-priority opportunities
 
-### M-1: `DEG2RAD` duplicated in `matrix.cpp` (two `static constexpr` definitions)
+### M-1: `pretify_mem` fixed `char val[32]` stack buffer → `std::format`
 
-- **File(s)**: `xash3dpp/src/utilities/matrix.cpp` lines ~86 and ~191
-
-- **Current pattern**: `static constexpr float DEG2RAD = …` declared
-  independently inside both `from_angles()` and `angle_vectors()`.
-
-- **Suggested replacement**: Hoist to a single file-scope constant before both
-  functions:
-
-  ```cpp
-  static constexpr float k_deg2rad = static_cast<float>( std::numbers::pi / 180.0 );
-  ```
-
-  Replace the two local definitions with uses of `k_deg2rad`.
-
-- **Boundary-safe**: Yes
-
-- **Rationale**: DRY; the value cannot drift between the two functions; naming
-  `k_deg2rad` is consistent with the `k_` prefix convention already used for
-  `k_crc32table` in `hash.cpp`.
-
-### M-2: `atov(float*, const char*, size_t)` raw overload (2-J deletion)
-
-- **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` line ~46;
-  `xash3dpp/src/utilities/string.cpp` lines ~171–184
-
-- **Current pattern**: A raw-pointer overload exists alongside the modern span
-  overload:
-
-  ```cpp
-  void atov( float *out, const char *s, std::size_t n ) noexcept; // old
-  void atov( std::span<float> out, std::string_view s ) noexcept; // new
-  ```
-
-  Zero call sites for the raw overload exist anywhere in `xash3dpp/`.
-
-- **Suggested replacement**: Delete the `(float*, const char*, size_t)` overload
-  from both the header and `string.cpp`. Call sites (when they arrive) use
-  `atov( std::span{arr}, sv )`.
-
-- **Boundary-safe**: Yes — engine-internal, no callers.
-
-- **Rationale**: Two overloads for the same operation with different safety
-  profiles invites accidental use of the unsafe one.
-
-### M-3: `strip_colors(const char*, char*)` raw overload (2-J deletion)
-
-- **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` line ~51;
-  `xash3dpp/src/utilities/string.cpp` lines ~206–215
-
-- **Current pattern**: Raw in+out-buffer overload alongside `std::string` return:
-
-  ```cpp
-  void        strip_colors( const char *in, char *out ) noexcept; // old
-  std::string strip_colors( std::string_view in ) noexcept;       // new
-  ```
-
-  Zero call sites for the raw overload exist in `xash3dpp/`.
-
-- **Suggested replacement**: Delete the raw overload; keep only the
-  `std::string_view` → `std::string` version.
-
-- **Boundary-safe**: Yes
-
-- **Rationale**: Same argument as M-2; eliminates a shared mutable output buffer.
-
-### M-4: `atoi` / `atof` accept `const char *` with defensive null guards
-
-- **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` lines ~44–45;
-  `xash3dpp/src/utilities/string.cpp` lines ~123–165
-
-- **Current pattern**:
-
-  ```cpp
-  int   atoi( const char *s ) noexcept;
-  float atof( const char *s ) noexcept;
-  ```
-
-  Both guard `if (!s || !*s) return 0;` and `skip_spaces` also null-guards.
-  The test in `tests/utilities/test_string.cpp` line 40 explicitly passes
-  `nullptr` and expects `0`.
-
-- **Suggested replacement**: Add `std::string_view` overloads that remove the
-  null checks; keep the `const char *` overloads as thin forwarders for legacy
-  callers passing null:
-
-  ```cpp
-  int   atoi( std::string_view s ) noexcept;
-  float atof( std::string_view s ) noexcept;
-  // Legacy compat — forwards to string_view overload; handles null.
-  inline int   atoi( const char *s ) noexcept { return atoi( s ? std::string_view{s} : std::string_view{} ); }
-  inline float atof( const char *s ) noexcept { return atof( s ? std::string_view{s} : std::string_view{} ); }
-  ```
-
-  Update `atov(std::span<float>, std::string_view)` to call the new string_view
-  `atof` overload directly; remove the pointer-arithmetic walk from
-  `atov(std::span<float>, …)`.
-
-- **Boundary-safe**: Yes
-
-- **Rationale**: The modern overloads become the canonical interface; new callers
-  never see the null-guard defensive code. The legacy wrappers keep the
-  existing test passing without change.
-
-### M-5: `pretify_mem` uses `char val[32]` / `char buf[48]` local C arrays
-
-- **File(s)**: `xash3dpp/src/utilities/string.cpp` lines ~237–262
+- **File(s)**: `xash3dpp/src/utilities/string.cpp` lines ~237–262.
 
 - **Current pattern**:
 
   ```cpp
   char val[32];
-  std::snprintf( val, sizeof val, … );
-  char buf[48];
-  char *o = buf;
-  …
-  return std::string( buf );
+  if( is_integral )
+      std::snprintf( val, sizeof val, "%d", static_cast<int>( value + 0.5f ) );
+  else
+      std::snprintf( val, sizeof val, "%.*f", decimals, static_cast<double>( value ) );
+  const char *dot = std::strchr( val, '.' );
+  ...
   ```
 
-- **Suggested replacement**: Use `std::string` throughout and `std::format`
-  for the numeric portion:
+  The result is already a `std::string`; only the numeric formatting step still
+  round-trips through a fixed C buffer plus `strchr`/`strlen` walking.
+
+- **Suggested replacement**: Format the numeric portion with `std::format`
+  (C++23) into a `std::string`, then run the existing thousands-separator pass
+  over that string instead of over `char val[]`:
 
   ```cpp
-  std::string pretify_mem( float value, int decimals ) noexcept
-  {
-      …
-      std::string val = decimals <= 0 || is_integral
-          ? std::format( "{}", static_cast<int>( value + 0.5f ) )
-          : std::format( "{:.{}f}", static_cast<double>( value ), decimals );
-      // comma-insertion pass using string operations
-      …
-      return val + " " + suffix;
-  }
+  const std::string num = is_integral
+      ? std::format( "{}", static_cast<int>( value + 0.5f ) )
+      : std::format( "{:.{}f}", static_cast<double>( value ), decimals );
+  const std::size_t dot = num.find( '.' );
+  const int span = static_cast<int>( dot == std::string::npos ? num.size() : dot );
   ```
 
-  The inner comma-insertion loop remains but operates on `std::string` rather
-  than a fixed-size `char[]`.
+- **Boundary-safe**: Yes.
 
-- **Boundary-safe**: Yes
+- **Rationale**: Removes the last fixed-size stack buffer in `string.cpp` and
+  the `strchr`/`strlen` pointer walk; `std::format` is bounds-safe and its
+  format string is checked at compile time.
 
-- **Rationale**: Eliminates two fixed-size stack buffers that could overrun if
-  `decimals` is very large or `value` is extreme. `std::format` is also
-  exception-safe for compile-time checked format strings.
+### M-2: `crc32_block_sequence(const std::uint8_t *, int, int)` → `std::span`
 
-### M-6: `number_from_date` uses pointer arithmetic on `string_view::data()`
+- **File(s)**: `xash3dpp/include/xash3dpp/utilities/hash.hpp` line ~45;
+  `xash3dpp/src/utilities/hash.cpp` (function body, C-array + `memcpy`).
 
-- **File(s)**: `xash3dpp/src/utilities/build.cpp` lines ~30–75
-
-- **Current pattern**:
+- **Current pattern**: A raw `base` pointer plus a separate `int length` (with
+  an internal `if( length > 60 ) length = 60;` clamp) describe the input block:
 
   ```cpp
-  const char *date = iso_date.data();
-  const int y0 = digit( *date++ );
-  …
-  if( y0 < 0 || *date++ != '-' ) …
+  std::uint8_t crc32_block_sequence( const std::uint8_t *base, int length, int sequence ) noexcept;
   ```
 
-  Pointer increments through a `std::string_view` backing store are technically
-  valid but unusual and bypass the `string_view` API entirely.
+- **Suggested replacement**: Accept `std::span<const std::uint8_t> block` (the
+  length travels with the pointer; the `> 60` clamp becomes
+  `block = block.first( std::min<std::size_t>( block.size(), 60 ) )`). The
+  internal `std::array<std::uint8_t, 64> buffer` staging is already modern.
 
-- **Suggested replacement**: Use indexed subscript access instead:
+- **Boundary-safe**: Needs verification — this reproduces legacy
+  `CRC32_BlockSequence`, used for demo/resource integrity hashes on the wire.
+  The *hash output* must stay byte-identical; the *signature* is engine-internal
+  and free to change once the (currently zero) call sites are known.
+
+- **Rationale**: Ties length to the buffer, eliminating the mismatched-length
+  footgun; parity is preserved because only parameter passing changes.
+
+### M-3: Raw in-place `(char *, size)` path mutators duplicate the `string_view` API
+
+- **File(s)**: `xash3dpp/include/xash3dpp/utilities/path.hpp` lines ~15–52
+  (raw overloads) vs ~60–72 (`std::string` overloads);
+  `xash3dpp/src/utilities/path.cpp` throughout.
+
+- **Current pattern**: Every path helper exists twice — a raw caller-owned-buffer
+  form and an owning `string_view` → `std::string` form:
 
   ```cpp
-  const int y0 = digit( iso_date[0] ), y1 = digit( iso_date[1] ),
-            y2 = digit( iso_date[2] ), y3 = digit( iso_date[3] );
-  if( iso_date[4] != '-' ) return -1;
-  …
+  void file_base( const char *path, char *out, std::size_t size ) noexcept;   // raw
+  ...
+  [[nodiscard]] std::string file_base( std::string_view path );               // owning
   ```
 
-  Since `size() != 10` is checked up front, all indexed accesses are safe.
+  The header comments the raw set as intentionally kept "for hot paths", but the
+  known production callers (`filesystem/backends/wad_backend.cpp`,
+  `platform/{win32,posix}/sys.cpp`) all use the `std::string`/`string_view`
+  forms.
 
-- **Boundary-safe**: Yes
+- **Suggested replacement**: Audit for remaining raw-form call sites. For each
+  raw overload with zero non-test callers, delete it (2-J); the private
+  `find_extension(const char *)` helper (path.cpp line ~17) then also becomes
+  deletable (see L-4). Keep only the raw forms a measured hot path actually
+  needs.
 
-- **Rationale**: Eliminates raw pointer manipulation; the indexed form makes the
-  "YYYY-MM-DD" pattern visually obvious and can be verified at a glance.
+- **Boundary-safe**: Needs verification — depends on the raw-form call-site
+  census across the whole `xash3dpp/` tree, including subsystems not yet written.
+
+- **Rationale**: Two overloads per operation, one of them a sizeless/manual
+  buffer form, doubles the surface and invites accidental use of the unsafe one.
+  Deletion-driven simplification once callers are confirmed.
 
 ______________________________________________________________________
 
 ## Low-priority / cosmetic opportunities
 
-### L-1: `k_cp1251_table` is a C array — should be `constexpr std::array`
-
-- **File(s)**: `xash3dpp/src/utilities/utf.cpp` lines ~170–179
-- **Current**: `static const uint16_t k_cp1251_table[64] = { … };`
-- **Replacement**: `static constexpr std::array<std::uint16_t, 64> k_cp1251_table{ … };`
-- **Boundary-safe**: Yes
-- **Rationale**: Consistent with all other table-like data in the codebase
-  (`k_crc32table` aside — that one is already `constexpr`).
-
-### L-2: `find_extension` private helper still uses raw `const char *` walk
-
-- **File(s)**: `xash3dpp/src/utilities/path.cpp` lines ~18–31
-- **Current**: `static const char *find_extension( const char *path )` —
-  pointer-walking null-guarded helper used only by the legacy raw-buffer
-  overloads of `strip_extension` and `default_extension`.
-- **Replacement**: Remove `find_extension` entirely once the raw-buffer
-  overloads are removed (if that happens); or rewrite as a `std::string_view`
-  helper to match `file_extension(std::string_view)`.
-- **Boundary-safe**: Yes
-- **Rationale**: The `std::string_view`-based `file_extension` already
-  duplicates its logic cleanly. This is a maintenance hazard.
-
-### L-3: `Tokenizer::buf_` is a raw `char[]` member
-
-- **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` lines ~130–131
-- **Current**: `char buf_[MAX_TOKEN]{};`
-- **Replacement**: `std::array<char, xash::limits::tokenizer_token_max> buf_{};`
-  Access via `buf_.data()` in `Tokenizer::next()`.
-- **Boundary-safe**: Yes
-- **Rationale**: Makes `sizeof(Tokenizer::buf_)` unnecessary; `buf_.data()` is
-  explicit about the pointer extraction.
-
-### L-4: `month_prefix` / `month_days` C arrays in `build.cpp`
-
-- **File(s)**: `xash3dpp/src/utilities/build.cpp` lines ~68–71
-- **Current**: `constexpr int month_prefix[13] = { … }; constexpr int month_days[12] = { … };`
-- **Replacement**: `constexpr std::array<int, 13>` / `std::array<int, 12>`.
-- **Boundary-safe**: Yes
-- **Rationale**: Consistent style; array access out-of-bounds is caught by
-  `std::array` in debug builds.
-
-### L-5: `SwapField::subdef` is a raw pointer — no null-as-optional idiom
-
-- **File(s)**: `xash3dpp/include/xash3dpp/utilities/swap.hpp` lines ~44–48
-- **Current**: `const SwapField *subdef;` — `nullptr` means "not a sub-struct".
-- **Replacement**: `std::span<const SwapField> subdef{};` — empty span is the
-  "not a sub-struct" sentinel. `size < 0` check becomes `!subdef.empty()`.
-- **Boundary-safe**: Yes — `SwapField` is engine-internal.
-- **Rationale**: Removes a raw pointer with a sentinel convention; `std::span`
-  expresses "optional array" more clearly.
+| ID | File(s) | Current | Suggested | Boundary-safe | Rationale |
+|----|---------|---------|-----------|---------------|-----------|
+| L-1 | `src/utilities/hash.cpp` lines ~16–79 | `static constexpr std::uint32_t k_crc32table[256] = { … };` (C array) | `static constexpr std::array<std::uint32_t, 256> k_crc32table{ … };` | Yes | Matches the `std::array` convention already used for `k_cp1251_table` (utf.cpp) and MD5 state; `[]` indexing is unchanged. |
+| L-2 | `include/xash3dpp/utilities/math.hpp` line ~22 | `[[nodiscard]] [[nodiscard]] constexpr vec_t dot( … )` — attribute written twice | Remove the duplicate `[[nodiscard]]`. | Yes | Harmless but obviously accidental; some compilers warn on repeated attributes. |
+| L-3 | `include/xash3dpp/utilities/swap.hpp` lines ~86–92 | `const SwapField *subdef{};` — `nullptr` means "not a sub-struct", paired with `int32_t size` where `< 0` flags recursion | `std::span<const SwapField> subdef{};` — empty span is the sentinel; `size < 0` test becomes `!subdef.empty()` | Yes (engine-internal) | Removes a raw pointer + magic-sign convention. **Defer until `swap_struct` is implemented** (see Implementation gaps) so the descriptor shape is designed once. |
+| L-4 | `src/utilities/path.cpp` line ~17 | `static const char *find_extension( const char *path )` — null-guarded pointer walk used only by the raw path overloads | Delete alongside the raw path overloads (M-3), or re-express as a `std::string_view` helper mirroring `file_extension`. | Yes | Duplicates `file_extension(std::string_view)` logic; a maintenance hazard while both exist. |
+| L-5 | `include/xash3dpp/utilities/swap.hpp` lines ~24–41 | `swap_bytes( void *p, std::size_t size )` — runtime `switch(size)` byte reversal | Leave as-is for the dynamic-width reflection path; new codecs should prefer the already-modern templated `read_le<T>`/`write_le<T>` (which fold to `std::byteswap`). | Yes | No change needed; documented so it is not mistaken for an oversight. The typed path already exists. |
 
 ______________________________________________________________________
 
 ## Out of scope / ABI-frozen
 
-- `char *strncpy( char *, const char *, std::size_t )` — the signature mirrors
-  the standard `::strncpy`; changing it would break drop-in compatibility for
-  code that calls it via `Q_strncpy`.
-- Raw `file_base(const char*, char*, size_t)` and related path functions — kept
-  intentionally as "hot-path" C-API overloads alongside the string-returning
-  versions. Per the header comment they are not slated for removal.
-- `void *` in `ExportEntry::slot` — function pointer type erasure for a generic
-  export table; typed generics would require templates throughout the loader,
-  which changes the callers' code significantly.
+These look modernizable but are deliberately C-shaped and should **not** change:
+
+- **`strncpy( char *, const char *, std::size_t )`** (string.hpp/.cpp) — a CRT
+  mirror (`Q_strncpy`) that always null-terminates. Callers rely on the exact
+  libc-like signature; changing it defeats its drop-in purpose.
+- **`snprintf` / `vsnprintf`** (string.hpp) — variadic CRT mirrors; carry
+  `compliance-allow(nodiscard-missing)` for `Q_snprintf`/`Q_vsnprintf` parity.
+- **`parse_token( const char *data, char *token, std::size_t, … )`**
+  (string.hpp) — the single-step tokeniser is the hot inner primitive that the
+  `Tokenizer` class wraps; its `char*` output buffer is intentional. The
+  ergonomic `Tokenizer` (already `std::array`-backed, `std::optional`-returning)
+  is the recommended surface.
+- **CRC32 free functions** (`crc32_init/update/final`) — bound into
+  `enginefuncs_t` as function pointers via a fill-site shim (boundary spec).
+  Their signatures mirror the frozen game-DLL slots.
+- **`const void *` byte-buffer parameters** in `crc32_update` / `md5_update` —
+  generic "hash these bytes" APIs; the `std::span<const std::byte>` ergonomic
+  form already exists on the `Crc32Hasher`/`Md5Hasher` wrappers.
+- **`void **slot` in `ExportEntry`** (dynlib.hpp) — deliberate type erasure for
+  a heterogeneous export table filled after `LoadLibrary`/`dlopen`. Typing it
+  would require templating every plugin loader; the erased slot is the point.
+
+______________________________________________________________________
+
+## Implementation gaps (not modernization — missing code)
+
+Flagged so they are not mistaken for C-style code awaiting a rewrite:
+
+- **`swap_struct( void *, std::span<const SwapField> )`** is declared in
+  `swap.hpp` but has **no definition** (no `swap.cpp` in
+  `src/utilities/CMakeLists.txt`; `tests/utilities/test_swap.cpp` and the
+  architecture docs both note this). Nothing calls it, so there is no linker
+  hazard today. When it is written, adopt L-3 (`std::span` `subdef`) at the same
+  time.
+- **`gameinfo_parser`** functions (`parse_gameinfo_txt`, `parse_liblist_gam`,
+  `serialise_gameinfo`, and the `dll_path`/`title` derivation in
+  `apply_gameinfo_fixups`) are `// TODO` stubs returning `std::nullopt`/`{}`.
+  Unfinished implementation, not modernization scope.
 
 ______________________________________________________________________
 
 ## Open questions
 
-1. **`vec_to_yaw` / `vector_angles` intent (H-1)**: Are these deliberately left
-   unimplemented as stubs for a future content-loaders subsystem, or were they
-   simply overlooked when `angle_vectors` was added? If the former, the
-   declarations should be removed or guarded with `// not yet implemented`.
+1. **M-3 raw path-overload census.** The `path.hpp` header states the raw
+   `(char*, size)` overloads exist "for hot paths." Are any actually on a
+   measured hot path, or are they legacy scaffolding that every current caller
+   already bypasses via the `std::string` forms? The answer decides whether M-3
+   is a clean deletion or a keep-with-justification.
 
-1. **`atoi(nullptr)` contract (M-4)**: The unit test explicitly exercises
-   `atoi(nullptr) == 0`. Is this a deliberate legacy-compat guarantee for
-   engine code paths that may receive null config tokens, or a test artefact?
-   The answer determines whether the `const char *` overloads can be removed
-   entirely or must be kept as forwarders.
+1. **`crc32_block_sequence` wire callers (M-2).** No caller exists in the tree
+   yet. Before changing its signature to `std::span`, confirm the intended
+   demo/resource-integrity call sites so the hash output contract is pinned by a
+   test first.
 
-1. **`Utf8Decoder::feed` U+0000 vs invalid-byte ambiguity**: Both a valid U+0000
-   byte (0x00) and an isolated continuation byte (0x80–0xBF) return
-   `optional{0}`. The comment says "optional{0} for invalid byte sequences"
-   but this is the same value as valid U+0000. If callers need to detect
-   invalid sequences, the return type should be `std::expected<uint32_t, Utf8Error>` (or a wrapper enum). Needs design decision.
+1. **UTF decoder `0` overload — valid U+0000 vs invalid sequence.** Both
+   `decode_utf8`/`decode_utf16` (and the `Utf8Decoder::feed`/`Utf16Decoder::feed`
+   wrappers) return `0` / `optional{0}` for a genuine U+0000 **and** for an
+   invalid byte sequence. If any consumer must distinguish "valid NUL" from
+   "malformed input", the return type should become
+   `std::expected<std::uint32_t, Utf8Error>` (C++23). Needs a design decision
+   before the encoding boundary is finalised.
+
+1. **`swap_struct` descriptor shape (L-3).** When `swap_struct` is implemented,
+   should `SwapField::subdef` be a `std::span<const SwapField>` (empty = leaf)
+   instead of a raw pointer + `size < 0` sentinel? Decide at implementation time
+   so the reflection table is designed once.
