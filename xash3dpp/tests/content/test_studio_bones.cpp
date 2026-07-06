@@ -432,6 +432,13 @@ static void test_studio_hitbox_hulls()
     CHECK( hulls[0].planes[0].dist == 17.0f && hulls[0].planes[1].dist == 8.0f );  // 15+2, 10-2
     CHECK( hulls[0].planes[2].dist == 30.0f && hulls[0].planes[3].dist == 17.0f ); // 27+3, 20-3
     CHECK( hulls[0].planes[4].dist == 43.0f && hulls[0].planes[5].dist == 26.0f ); // 39+4, 30-4
+
+    // DotProductFabs takes |normal·size| PER TERM, so a negative size component
+    // expands identically to its magnitude — a faithful transcription (the naive
+    // |normal|*size form would instead flip the expansion sign here).
+    const int n3 = xash::content::studio_hitbox_hulls( hdr, in, { -2, 3, 4 }, solver, hulls );
+    CHECK( n3 == 1 );
+    CHECK( hulls[0].planes[0].dist == 17.0f && hulls[0].planes[1].dist == 8.0f );  // same as {2,3,4}
 }
 
 int main()

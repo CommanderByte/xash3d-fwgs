@@ -44,6 +44,14 @@ public:
         world_    = world;
         precache_ = precache;
         fs_       = fs;
+        // Level transition: reap the previous level's studio models (OQ-8) so
+        // the cache does not grow unbounded across maps, then drop the stale
+        // modelindex map. The next level lazily reloads what it references.
+        if ( cache_ready_ )
+        {
+            studio_cache_.purge_for_level_change();
+            studio_cache_.free_unused();
+        }
         studio_handles_.clear();
     }
 

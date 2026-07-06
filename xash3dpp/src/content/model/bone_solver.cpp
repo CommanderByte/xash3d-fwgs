@@ -390,10 +390,12 @@ namespace {
 using ::xash::utilities::Matrix3x4;
 using ::xash::utilities::Vec3;
 
-// DotProductFabs (xash3d_mathlib.h): |a| . b, component-wise absolute dot.
+// DotProductFabs (xash3d_mathlib.h:97): sum of |aᵢ·bᵢ| — the absolute value of
+// each PRODUCT, not |aᵢ|·bᵢ. Identical for non-negative `size` (every stock
+// caller) but the faithful form matters when a size component is negative.
 [[nodiscard]] float dot_fabs( const Vec3 &a, const Vec3 &b ) noexcept
 {
-    return std::fabs( a.x ) * b.x + std::fabs( a.y ) * b.y + std::fabs( a.z ) * b.z;
+    return std::fabs( a.x * b.x ) + std::fabs( a.y * b.y ) + std::fabs( a.z * b.z );
 }
 
 // Mod_SetStudioHullPlane: a plane whose normal is column `axis` of the bone
