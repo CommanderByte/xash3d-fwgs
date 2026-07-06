@@ -520,6 +520,39 @@ See [docs/threading-analysis/networking-threading.md](../threading-analysis/netw
 
 **TL;DR:** the entire transport stack (NetworkContext, Netchan, PacketPool, LagQueue, SplitReassembler, MasterListClient) is confined to the `T_NetIO` thread role. Only `NetworkContext::stats()` Tier-1 atomic counters are safe to read from other threads. There are no internal mutexes; single-thread access is the caller's contract.
 
+### QN/Q-22 annotation adjudication (6B S6 retrofit)
+
+The thread-role assert recommended by the threading analysis (Rec. #1) is
+**deliberately not wired in yet**: the `T_NetIO` thread is not split from
+`ThreadRole::Main` (a G-2 future), so `assert_thread_role(ThreadRole::Main)`
+would contradict the documented `T_NetIO`-ready design, and asserting
+`ThreadRole::NetIO` would fatal today's main-thread execution and the
+role-less networking tests. All 55 flagged transport-stack mutators therefore
+carry `compliance-allow(thread-assert)` at their definition, with a reason
+drawn from the thread model:
+
+- **Transport stack** (`NetworkContext`, `Netchan`, `LoopbackTransport`,
+  `SplitReassembler`, `DeltaTables`): *T_NetIO single-thread caller contract —
+  no internal sync; role unasserted until the NetIO split (G-2)*.
+- **Stateless codecs / wire transforms** (delta codec, field codec, table
+  wire, compat shims, OOB framing, LZSS/compress helpers): *pure transform,
+  no thread affinity*.
+- **Const wire-format / protocol-driver singletons**: *Safe-RO by
+  construction*.
+- **`MessageBuf`**: *thread-agnostic value type over a caller-owned buffer*.
+
+When the NetIO thread is introduced (G-2), flip these to
+`assert_thread_role(ThreadRole::NetIO)` and strike Rec. #1 in the threading
+analysis in the same commit.
+
+**QO literal classification (finish_check item 2):** the four literals the
+limits scan cannot auto-classify are all frozen structural/algorithm
+constants — not tunable limits or cvars: the IPv6 address length (`v6[16]`),
+the LZSS sliding-window size (`window_size = 4096`) and its hash-bucket count
+(`buckets[256]`), and the GoldSrc delta-descriptor name field (`fieldName[32]`,
+part of the `sizeof(goldsrc_delta_t) == 56` ABI assert). They stay inline as
+wire/ABI-frozen values.
+
 ## Source folder layout
 
 `src/networking/` is divided into three functional sub-layers. Private headers

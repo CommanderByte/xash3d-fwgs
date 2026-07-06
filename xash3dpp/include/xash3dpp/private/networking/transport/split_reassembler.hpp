@@ -60,7 +60,7 @@ public:
 
 private:
     void                begin_new_( const SplitFragmentInfo &frag ) noexcept;
-    Outcome             store_fragment_( const SplitFragmentInfo &frag ) noexcept;
+    [[nodiscard]] Outcome store_fragment_( const SplitFragmentInfo &frag ) noexcept;
     [[nodiscard]] bool  is_complete_() const noexcept;
     void                assemble_into_buffer_() noexcept;
 
@@ -68,8 +68,8 @@ private:
     std::uint8_t                                              expected_ { 0 };
     std::uint8_t                                              received_ { 0 };
     std::array<bool, max_fragments>                           got_      {};
-    std::array<std::vector<std::byte>, max_fragments>         fragments_{};
-    std::vector<std::byte>                                    assembled_{};
+    std::array<std::vector<std::byte>, max_fragments>         fragments_{}; // @pre-reserved: each slot assign()ed once to its fragment body in store_fragment_(); array bounded by max_fragments (per-slot reserve N/A)
+    std::vector<std::byte>                                    assembled_{}; // @pre-reserved: assemble_into_buffer_() reserves to the summed fragment length before insert
 };
 
 } // namespace xash::networking

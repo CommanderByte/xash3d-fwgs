@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — networking address types
+// @thread-safety: thread-agnostic value type (NetAddress) — no shared mutable state
 // Legacy reference: common/netadr.h (netadr_t / netadr_s binary layout)
 //
 // NetAddress is a clean internal type; the legacy-ABI netadr_t shim lives in

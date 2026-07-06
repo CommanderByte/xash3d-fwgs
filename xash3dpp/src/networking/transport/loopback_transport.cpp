@@ -18,7 +18,7 @@ constexpr std::uint32_t mask_ =
 
 LoopbackTransport::LoopbackTransport() noexcept = default;
 
-Result<void> LoopbackTransport::send(
+Result<void> LoopbackTransport::send( // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
     SocketKind                 sender,
     std::span<const std::byte> data ) noexcept
 {
@@ -67,7 +67,7 @@ Result<std::size_t> LoopbackTransport::receive(
     return slot.length;
 }
 
-void LoopbackTransport::clear() noexcept
+void LoopbackTransport::clear() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     for( Ring &ring : rings_ )
     {

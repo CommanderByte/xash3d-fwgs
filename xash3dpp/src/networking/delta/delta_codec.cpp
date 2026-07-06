@@ -28,7 +28,6 @@
 
 namespace xash::networking {
 
-namespace core = ::xash::core;
 using delta::DeltaTable;
 
 namespace {
@@ -81,7 +80,7 @@ void count_fields_read( DeltaStats &stats, std::size_t n ) noexcept
 // usercmd_t — client writes, server reads
 // ---------------------------------------------------------------------------
 
-void DeltaTables::write_delta_usercmd( MessageBuf &msg,
+void DeltaTables::write_delta_usercmd( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                        const ::xash::abi::usercmd_t *from,
                                        const ::xash::abi::usercmd_t *to ) noexcept
 {
@@ -114,7 +113,7 @@ void DeltaTables::read_delta_usercmd( MessageBuf &msg,
 // event_args_t
 // ---------------------------------------------------------------------------
 
-void DeltaTables::write_delta_event( MessageBuf &msg,
+void DeltaTables::write_delta_event( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                      const ::xash::abi::event_args_t *from,
                                      const ::xash::abi::event_args_t *to ) noexcept
 {
@@ -146,7 +145,7 @@ void DeltaTables::read_delta_event( MessageBuf &msg,
 // movevars_t — command byte + rollback on zero changes
 // ---------------------------------------------------------------------------
 
-bool DeltaTables::write_delta_movevars( MessageBuf &msg,
+bool DeltaTables::write_delta_movevars( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                         const ::xash::abi::movevars_t *from,
                                         const ::xash::abi::movevars_t *to,
                                         std::uint32_t svc_deltamovevars_cmd ) noexcept
@@ -197,7 +196,7 @@ void DeltaTables::read_delta_movevars( MessageBuf &msg,
 // clientdata_t — "have clientdata" bit, rewritten to 0 on zero changes
 // ---------------------------------------------------------------------------
 
-void DeltaTables::write_clientdata( MessageBuf &msg,
+void DeltaTables::write_clientdata( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                     const ::xash::abi::clientdata_t *from,
                                     const ::xash::abi::clientdata_t *to,
                                     double timebase ) noexcept
@@ -257,7 +256,7 @@ void DeltaTables::read_clientdata( MessageBuf &msg,
 // weapon_data_t — 1 bit + weapon index, fully rolled back on zero changes
 // ---------------------------------------------------------------------------
 
-void DeltaTables::write_weapon_data( MessageBuf &msg,
+void DeltaTables::write_weapon_data( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                      const ::xash::abi::weapon_data_t *from,
                                      const ::xash::abi::weapon_data_t *to,
                                      double timebase, int index ) noexcept
@@ -322,7 +321,7 @@ namespace {
 
 } // namespace
 
-bool DeltaTables::write_delta_entity( MessageBuf &msg,
+bool DeltaTables::write_delta_entity( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                       const ::xash::abi::entity_state_t *from,
                                       const ::xash::abi::entity_state_t *to,
                                       const WriteDeltaEntityParams &params ) noexcept
@@ -344,7 +343,7 @@ bool DeltaTables::write_delta_entity( MessageBuf &msg,
     if( to->number < 0 || ( params.max_edicts > 0 && to->number >= params.max_edicts ))
     {
         // legacy Host_Error — recoverable per Q-5: log and refuse to write.
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "write_delta_entity: bad entity number: %i", to->number );
         return false;
     }
@@ -420,7 +419,7 @@ bool DeltaTables::read_delta_entity( MessageBuf &msg,
     if( params.number < 0
         || ( params.max_entities > 0 && params.number >= params.max_entities ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "read_delta_entity: bad delta entity number: %i", params.number );
         return false;
     }
@@ -442,7 +441,7 @@ bool DeltaTables::read_delta_entity( MessageBuf &msg,
             return false;
         }
 
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "read_delta_entity: unknown update type %u", remove_type );
         return false;
     }
@@ -470,7 +469,7 @@ bool DeltaTables::read_delta_entity( MessageBuf &msg,
 
     if( !dt.initialized )
     {
-        core::log( core::LogLevel::Error, "delta", "read_delta_entity: broken delta" );
+        ::xash::core::log( ::xash::core::LogLevel::Error, "delta", "read_delta_entity: broken delta" );
         return true; // message parsed, like legacy
     }
 
@@ -516,7 +515,7 @@ int DeltaTables::test_baseline( const ::xash::abi::entity_state_t *from,
         {
             if( field.flags & delta::k_dt_string )
                 count_bits += static_cast<int>( ::xash::utilities::strlen(
-                    reinterpret_cast<const char *>( to ) + field.offset )) * 8;
+                    reinterpret_cast<const char *>( to ) + field.offset )) * 8; // SAFETY: byte-addresses a string field within the caller's struct at its ABI offset (from/to share the game-struct layout)
             else
                 count_bits += field.bits;
         }
@@ -529,7 +528,7 @@ int DeltaTables::test_baseline( const ::xash::abi::entity_state_t *from,
 // GoldSrc batch codec — legacy Delta_Write/ReadGSFields
 // ---------------------------------------------------------------------------
 
-void DeltaTables::write_gs_fields( MessageBuf &msg, DeltaStructId id,
+void DeltaTables::write_gs_fields( MessageBuf &msg, DeltaStructId id, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                    const void *from, const void *to,
                                    double timebase ) noexcept
 {

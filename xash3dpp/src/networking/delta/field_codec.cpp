@@ -24,7 +24,7 @@ namespace {
 // Field-relative typed loads.  Sign-extended loads are deliberately
 // assigned into wider signed/unsigned ints exactly like the legacy casts.
 template <typename T>
-[[nodiscard]] T load_as( const void *base, int offset ) noexcept
+[[nodiscard]] T load_as( const void *base, int offset ) noexcept // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
 {
     T v;
     std::memcpy( &v, static_cast<const std::uint8_t *>( base ) + offset, sizeof( T ));
@@ -40,7 +40,7 @@ void store_as( void *base, int offset, T v ) noexcept
 // Signed-payload serialisation switch (legacy MSG_Write/ReadSBitLong with
 // iAlternateSign).  Sign-magnitude mirrors the GoldSrc branch exactly:
 // 1 sign bit first, then |value| in bits-1 (legacy uses abs()).
-void write_sbits( MessageBuf &msg, int value, int bits, SignEncoding sign ) noexcept
+void write_sbits( MessageBuf &msg, int value, int bits, SignEncoding sign ) noexcept // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
 {
     if( sign == SignEncoding::SignMagnitude )
     {
@@ -207,7 +207,7 @@ bool compare_field( const DeltaField &field, const void *from, const void *to ) 
 // write_field_payload — legacy Delta_WriteField_
 // ---------------------------------------------------------------------------
 
-void write_field_payload( MessageBuf &msg, const DeltaField &field,
+void write_field_payload( MessageBuf &msg, const DeltaField &field, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                           const void *to, double timebase,
                           SignEncoding sign ) noexcept
 {

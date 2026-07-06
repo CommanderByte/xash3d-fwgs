@@ -54,7 +54,7 @@ public:
         const auto addrs = cfg_.master_addresses();
         if( addrs.empty() )
         {
-            core::log( core::LogLevel::Verbose, "master_list",
+            ::xash::core::log( ::xash::core::LogLevel::Verbose, "master_list",
                        "heartbeat: no master addresses configured, skipping" );
             return;
         }
@@ -66,7 +66,7 @@ public:
                                              addr );
             if( !r.has_value() )
             {
-                core::log( core::LogLevel::Warning, "master_list",
+                ::xash::core::log( ::xash::core::LogLevel::Warning, "master_list",
                            "heartbeat: send_packet failed for one master "
                            "address (continuing)" );
             }
@@ -89,7 +89,7 @@ public:
                                              addr );
             if( !r.has_value() )
             {
-                core::log( core::LogLevel::Warning, "master_list",
+                ::xash::core::log( ::xash::core::LogLevel::Warning, "master_list",
                            "send_shutdown: send_packet failed for one master "
                            "address (continuing)" );
             }

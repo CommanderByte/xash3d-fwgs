@@ -17,8 +17,6 @@
 
 namespace xash::networking::delta {
 
-namespace core      = ::xash::core;
-namespace utilities = ::xash::utilities;
 
 namespace {
 
@@ -32,27 +30,27 @@ struct Cursor
     // Advance one token.  Returns false at end of input (pos == nullptr).
     [[nodiscard]] bool next() noexcept
     {
-        pos = utilities::parse_token( pos, token, sizeof( token ));
+        pos = ::xash::utilities::parse_token( pos, token, sizeof( token ));
         return pos != nullptr;
     }
 
     [[nodiscard]] bool token_is( const char *s ) const noexcept
     {
-        return utilities::strcmp( token, s ) == 0;
+        return ::xash::utilities::strcmp( token, s ) == 0;
     }
 };
 
 [[nodiscard]] std::uint32_t flag_for_name( const char *name ) noexcept
 {
-    if( utilities::strcmp( name, "DT_BYTE" ) == 0 )           return k_dt_byte;
-    if( utilities::strcmp( name, "DT_SHORT" ) == 0 )          return k_dt_short;
-    if( utilities::strcmp( name, "DT_FLOAT" ) == 0 )          return k_dt_float;
-    if( utilities::strcmp( name, "DT_INTEGER" ) == 0 )        return k_dt_integer;
-    if( utilities::strcmp( name, "DT_ANGLE" ) == 0 )          return k_dt_angle;
-    if( utilities::strcmp( name, "DT_TIMEWINDOW_8" ) == 0 )   return k_dt_timewindow_8;
-    if( utilities::strcmp( name, "DT_TIMEWINDOW_BIG" ) == 0 ) return k_dt_timewindow_big;
-    if( utilities::strcmp( name, "DT_STRING" ) == 0 )         return k_dt_string;
-    if( utilities::strcmp( name, "DT_SIGNED" ) == 0 )         return k_dt_signed;
+    if( ::xash::utilities::strcmp( name, "DT_BYTE" ) == 0 )           return k_dt_byte;
+    if( ::xash::utilities::strcmp( name, "DT_SHORT" ) == 0 )          return k_dt_short;
+    if( ::xash::utilities::strcmp( name, "DT_FLOAT" ) == 0 )          return k_dt_float;
+    if( ::xash::utilities::strcmp( name, "DT_INTEGER" ) == 0 )        return k_dt_integer;
+    if( ::xash::utilities::strcmp( name, "DT_ANGLE" ) == 0 )          return k_dt_angle;
+    if( ::xash::utilities::strcmp( name, "DT_TIMEWINDOW_8" ) == 0 )   return k_dt_timewindow_8;
+    if( ::xash::utilities::strcmp( name, "DT_TIMEWINDOW_BIG" ) == 0 ) return k_dt_timewindow_big;
+    if( ::xash::utilities::strcmp( name, "DT_STRING" ) == 0 )         return k_dt_string;
+    if( ::xash::utilities::strcmp( name, "DT_SIGNED" ) == 0 )         return k_dt_signed;
     return 0; // unknown flags are ignored, like legacy
 }
 
@@ -63,7 +61,7 @@ struct Cursor
     (void)c.next();
     if( !c.token_is( "(" ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: expected '(', found '%s' instead", c.token );
         return false;
     }
@@ -71,14 +69,14 @@ struct Cursor
     // field name
     if( !c.next())
     {
-        core::log( core::LogLevel::Error, "delta", "parse_field: missing field name" );
+        ::xash::core::log( ::xash::core::LogLevel::Error, "delta", "parse_field: missing field name" );
         return false;
     }
 
     const DeltaFieldInfo *info = nullptr;
     for( const auto &fi : dt.info )
     {
-        if( utilities::strcmp( fi.name, c.token ) == 0 )
+        if( ::xash::utilities::strcmp( fi.name, c.token ) == 0 )
         {
             info = &fi;
             break;
@@ -86,7 +84,7 @@ struct Cursor
     }
     if( !info )
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: unable to find field %s", c.token );
         return false;
     }
@@ -94,7 +92,7 @@ struct Cursor
     (void)c.next();
     if( !c.token_is( "," ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: expected ',', found '%s' instead", c.token );
         return false;
     }
@@ -116,7 +114,7 @@ struct Cursor
 
     if( !c.token_is( "," ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: expected ',', found '%s' instead", c.token );
         return false;
     }
@@ -124,16 +122,16 @@ struct Cursor
     // bits
     if( !c.next())
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: %s field bits argument is missing", out.name );
         return false;
     }
-    out.bits = utilities::atoi( c.token );
+    out.bits = ::xash::utilities::atoi( c.token );
 
     (void)c.next();
     if( !c.token_is( "," ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: expected ',', found '%s' instead", c.token );
         return false;
     }
@@ -141,29 +139,29 @@ struct Cursor
     // multiplier
     if( !c.next())
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: %s missing 'multiplier' argument", out.name );
         return false;
     }
-    out.multiplier = utilities::atof( c.token );
+    out.multiplier = ::xash::utilities::atof( c.token );
 
     if( post )
     {
         (void)c.next();
         if( !c.token_is( "," ))
         {
-            core::logf( core::LogLevel::Error, "delta",
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                         "parse_field: expected ',', found '%s' instead", c.token );
             return false;
         }
 
         if( !c.next())
         {
-            core::logf( core::LogLevel::Error, "delta",
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                         "parse_field: %s missing 'post_multiply' argument", out.name );
             return false;
         }
-        out.post_multiplier = utilities::atof( c.token );
+        out.post_multiplier = ::xash::utilities::atof( c.token );
     }
     else
     {
@@ -175,7 +173,7 @@ struct Cursor
     (void)c.next();
     if( !c.token_is( ")" ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_field: expected ')', found '%s' instead", c.token );
         return false;
     }
@@ -206,7 +204,7 @@ void parse_table( Cursor &c, DeltaTable &dt,
             // the memory-safe equivalent of legacy's fixed allocation.
             if( dt.fields.size() >= dt.info.size())
             {
-                core::logf( core::LogLevel::Warning, "delta",
+                ::xash::core::logf( ::xash::core::LogLevel::Warning, "delta",
                             "parse_table: %s field list is full, skipping rest",
                             dt.name );
                 XASH_ASSERT( false );
@@ -223,13 +221,13 @@ void parse_table( Cursor &c, DeltaTable &dt,
         }
     }
 
-    (void)utilities::strncpy( dt.func_name, encode_func, sizeof( dt.func_name ));
+    (void)::xash::utilities::strncpy( dt.func_name, encode_func, sizeof( dt.func_name ));
 
-    if( utilities::stricmp( encode_dll, "none" ) == 0 )
+    if( ::xash::utilities::stricmp( encode_dll, "none" ) == 0 )
         dt.custom_encode = CustomEncodeKind::None;
-    else if( utilities::stricmp( encode_dll, "gamedll" ) == 0 )
+    else if( ::xash::utilities::stricmp( encode_dll, "gamedll" ) == 0 )
         dt.custom_encode = CustomEncodeKind::Server;
-    else if( utilities::stricmp( encode_dll, "clientdll" ) == 0 )
+    else if( ::xash::utilities::stricmp( encode_dll, "clientdll" ) == 0 )
         dt.custom_encode = CustomEncodeKind::Client;
 
     dt.initialized = true; // table is ok
@@ -254,39 +252,39 @@ bool parse_delta_lst( std::string_view script, DeltaTables::Impl &impl ) noexcep
         if( !dt )
         {
             // Legacy: Sys_Error — structural failure fails the whole parse.
-            core::logf( core::LogLevel::Error, "delta",
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                         "delta.lst: unknown struct %s", c.token );
             return false;
         }
 
         if( !c.next())
         {
-            core::logf( core::LogLevel::Error, "delta",
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                         "delta.lst: missing encoder type in section %s", dt->name );
             return false;
         }
-        (void)utilities::strncpy( encode_dll, c.token, sizeof( encode_dll ));
+        (void)::xash::utilities::strncpy( encode_dll, c.token, sizeof( encode_dll ));
 
-        if( utilities::stricmp( encode_dll, "none" ) == 0 )
+        if( ::xash::utilities::stricmp( encode_dll, "none" ) == 0 )
         {
-            (void)utilities::strncpy( encode_func, "null", sizeof( encode_func ));
+            (void)::xash::utilities::strncpy( encode_func, "null", sizeof( encode_func ));
         }
         else
         {
             if( !c.next())
             {
-                core::logf( core::LogLevel::Error, "delta",
+                ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                             "delta.lst: missing encoder name in section %s", dt->name );
                 return false;
             }
-            (void)utilities::strncpy( encode_func, c.token, sizeof( encode_func ));
+            (void)::xash::utilities::strncpy( encode_func, c.token, sizeof( encode_func ));
         }
 
         // jump to '{'
         (void)c.next();
         if( c.token[0] != '{' )
         {
-            core::logf( core::LogLevel::Error, "delta",
+            ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                         "delta.lst: missing '{' in section %s", dt->name );
             return false;
         }

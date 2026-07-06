@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — delta encoder public types (Layer 4)
+// @thread-safety: T_NetIO-confined — table state caller-serialised; DeltaTables::stats() Tier-1 atomics are any-thread read-safe
 // Legacy reference: engine/common/net_encode.h
 //
 // The delta encoder serialises differences between two instances of a frozen

@@ -16,8 +16,6 @@
 
 namespace xash::networking {
 
-namespace core      = ::xash::core;
-namespace utilities = ::xash::utilities;
 using delta::DeltaTable;
 
 // ---------------------------------------------------------------------------
@@ -41,7 +39,7 @@ DeltaTable *DeltaTables::Impl::find_struct( const char *name ) noexcept
 
     for( auto &dt : tables )
     {
-        if( utilities::stricmp( dt.name, name ) == 0 )
+        if( ::xash::utilities::stricmp( dt.name, name ) == 0 )
             return &dt;
     }
     return nullptr;
@@ -67,7 +65,7 @@ DeltaTable *DeltaTables::Impl::find_struct_by_encoder( const char *encoder_name 
 
     for( auto &dt : tables )
     {
-        if( utilities::stricmp( dt.func_name, encoder_name ) == 0 )
+        if( ::xash::utilities::stricmp( dt.func_name, encoder_name ) == 0 )
             return &dt;
     }
     return nullptr;
@@ -93,7 +91,7 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
     // check for coexisting field — update in place
     for( auto &field : dt.fields )
     {
-        if( utilities::strcmp( field.name, name ) == 0 )
+        if( ::xash::utilities::strcmp( field.name, name ) == 0 )
         {
             field.flags           = flags;
             field.bits            = bits;
@@ -107,7 +105,7 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
     const delta::DeltaFieldInfo *info = nullptr;
     for( const auto &fi : dt.info )
     {
-        if( utilities::strcmp( fi.name, name ) == 0 )
+        if( ::xash::utilities::strcmp( fi.name, name ) == 0 )
         {
             info = &fi;
             break;
@@ -116,7 +114,7 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
 
     if( !info )
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "add_field: couldn't find description for %s->%s",
                     dt.name, name );
         return false;
@@ -124,7 +122,7 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
 
     if( dt.fields.size() + 1 > dt.info.size())
     {
-        core::logf( core::LogLevel::Warning, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Warning, "delta",
                     "add_field: can't add %s->%s encoder list is full",
                     dt.name, name );
         return false;
@@ -220,19 +218,19 @@ DeltaTables::~DeltaTables() = default;
 DeltaTables::DeltaTables( DeltaTables && ) noexcept            = default;
 DeltaTables &DeltaTables::operator=( DeltaTables && ) noexcept = default;
 
-bool DeltaTables::init( ::xash::filesystem::Filesystem &fs ) noexcept
+bool DeltaTables::init( ::xash::filesystem::Filesystem &fs ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     const std::vector<std::byte> file = fs.load_file( "delta.lst" );
     if( file.empty())
     {
         // Legacy: Sys_Error — fatal.  Q-5: log at the public API and fail.
-        core::log( core::LogLevel::Error, "delta",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "delta",
                    "init: couldn't load file delta.lst" );
         return false;
     }
 
     return init_from_script( std::string_view{
-        reinterpret_cast<const char *>( file.data()), file.size() });
+        reinterpret_cast<const char *>( file.data()), file.size() }); // SAFETY: re-views the delta.lst byte buffer as char for text parsing; same object, byte<->char aliasing is well-defined
 }
 
 bool DeltaTables::init_from_script( std::string_view script ) noexcept
@@ -272,7 +270,7 @@ void DeltaTables::init_client() noexcept
         impl_->initialized = true;
 }
 
-void DeltaTables::clear() noexcept
+void DeltaTables::clear() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     if( !impl_->initialized )
         return;
@@ -295,7 +293,7 @@ bool DeltaTables::register_encoder( const char *name, DeltaEncodeFn fn ) noexcep
 
     if( !dt || !dt->initialized )
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "register_encoder: couldn't find delta with specified custom encode %s",
                     name ? name : "(null)" );
         return false;
@@ -303,7 +301,7 @@ bool DeltaTables::register_encoder( const char *name, DeltaEncodeFn fn ) noexcep
 
     if( dt->custom_encode == delta::CustomEncodeKind::None )
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "register_encoder: %s not supposed for custom encoding", dt->name );
         return false;
     }
@@ -320,13 +318,13 @@ int DeltaTables::find_field( const DeltaField *fields, const char *fieldname ) c
 
     for( std::size_t i = 0; i < dt->fields.size(); ++i )
     {
-        if( utilities::strcmp( dt->fields[ i ].name, fieldname ) == 0 )
+        if( ::xash::utilities::strcmp( dt->fields[ i ].name, fieldname ) == 0 )
             return static_cast<int>( i );
     }
     return -1;
 }
 
-void DeltaTables::set_field( DeltaField *fields, const char *fieldname ) noexcept
+void DeltaTables::set_field( DeltaField *fields, const char *fieldname ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     DeltaTable *dt = impl_->find_struct_by_fields( fields );
     if( !dt || !fieldname || !fieldname[0] )
@@ -334,7 +332,7 @@ void DeltaTables::set_field( DeltaField *fields, const char *fieldname ) noexcep
 
     for( auto &field : dt->fields )
     {
-        if( utilities::strcmp( field.name, fieldname ) == 0 )
+        if( ::xash::utilities::strcmp( field.name, fieldname ) == 0 )
         {
             field.inactive = false;
             return;
@@ -350,7 +348,7 @@ void DeltaTables::unset_field( DeltaField *fields, const char *fieldname ) noexc
 
     for( auto &field : dt->fields )
     {
-        if( utilities::strcmp( field.name, fieldname ) == 0 )
+        if( ::xash::utilities::strcmp( field.name, fieldname ) == 0 )
         {
             field.inactive = true;
             return;
@@ -358,7 +356,7 @@ void DeltaTables::unset_field( DeltaField *fields, const char *fieldname ) noexc
     }
 }
 
-void DeltaTables::set_field_by_index( DeltaField *fields, int field_number ) noexcept
+void DeltaTables::set_field_by_index( DeltaField *fields, int field_number ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     DeltaTable *dt = impl_->find_struct_by_fields( fields );
     if( !dt || field_number < 0

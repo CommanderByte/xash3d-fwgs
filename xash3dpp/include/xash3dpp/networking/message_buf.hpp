@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — MessageBuf: bit/byte codec over a caller-owned buffer
+// @thread-safety: thread-agnostic value type — serialises a caller-owned buffer; confined to its owner's thread
 // Legacy reference: engine/common/net_buffer.{c,h}
 //
 // MessageBuf replaces the legacy `sizebuf_t` POD plus its MSG_* free function
@@ -146,9 +147,9 @@ public:
     void                read_vec3_angles( float &x, float &y, float &z ) noexcept;
 
 private:
-    bool check_overflow( std::size_t additional_bits ) noexcept;
+    [[nodiscard]] bool check_overflow( std::size_t additional_bits ) noexcept;
 
-    std::byte   *data_      = nullptr;
+    std::byte   *data_      = nullptr; // @lifetime: caller (rebind()/init point it at a caller-owned buffer that must outlive the MessageBuf)
     std::size_t  num_bits_  = 0;   // capacity in bits
     std::size_t  cur_bit_   = 0;
     const char  *name_      = "unnamed";

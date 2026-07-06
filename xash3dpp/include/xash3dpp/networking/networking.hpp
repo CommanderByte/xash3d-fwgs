@@ -47,15 +47,15 @@ struct NetworkInitParams
 {
     // Required: OS socket abstraction.  All real socket I/O routes through
     // this interface.  See docs/architecture/platform/sockets.md.
-    xash::platform::IPlatformSockets *sockets = nullptr;
+    xash::platform::IPlatformSockets *sockets = nullptr; // @lifetime: caller (host owns the IPlatformSockets; must outlive the context)
 
     // Optional: registry of additional IProtocolDriver factories.  When
     // nullptr, only the default GoldSrc protocol driver is available.
-    IProtocolDriverRegistry *protocol_registry = nullptr;
+    IProtocolDriverRegistry *protocol_registry = nullptr; // @lifetime: caller (registry outlives the context; nullptr -> built-in GoldSrc driver)
 
     // Optional: master-server list configuration (LAN-only, NAT bypass, etc.).
     // When nullptr, master-list heartbeats are disabled.
-    IMasterListConfig *master_list_config = nullptr;
+    IMasterListConfig *master_list_config = nullptr; // @lifetime: caller (config outlives the context; nullptr -> heartbeats disabled)
 
     // True when the engine is a dedicated server.  Disables loopback ring,
     // bzip2/LZSS compression (per XASH_NET_COMPRESSION), and any client-only

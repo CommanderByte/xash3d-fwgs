@@ -37,7 +37,7 @@ public:
     // header.  XashProtocolDriver (below) overrides this to return true.
     [[nodiscard]] bool sends_qport() const noexcept override { return false; }
 
-    [[nodiscard]] Result<void> write_packet_header(
+    [[nodiscard]] Result<void> write_packet_header( // compliance-allow(thread-assert): stateless const protocol driver — Safe-RO singleton (networking-threading.md)
         MessageBuf &out,
         const PacketHeaderInput &in ) noexcept override
     {

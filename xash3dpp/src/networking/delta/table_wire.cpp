@@ -26,7 +26,6 @@
 
 namespace xash::networking {
 
-namespace core = ::xash::core;
 using delta::DeltaTable;
 
 namespace {
@@ -36,7 +35,7 @@ namespace {
 constexpr std::size_t k_gs_struct_name_max = 64;
 
 // Legacy Delta_WriteTableField.
-void write_table_field( MessageBuf &msg, std::uint32_t svc_deltatable_cmd,
+void write_table_field( MessageBuf &msg, std::uint32_t svc_deltatable_cmd, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                         int table_index, const DeltaTable &dt,
                         const DeltaField &field ) noexcept
 {
@@ -96,7 +95,7 @@ void write_table_field( MessageBuf &msg, std::uint32_t svc_deltatable_cmd,
 // write_description — legacy Delta_WriteDescriptionToClient
 // ---------------------------------------------------------------------------
 
-void DeltaTables::write_description( MessageBuf &msg,
+void DeltaTables::write_description( MessageBuf &msg, // compliance-allow(thread-assert): stateless delta codec — pure wire transform, no thread affinity
                                      std::uint32_t svc_deltatable_cmd ) noexcept
 {
     for( std::size_t t = 0; t < impl_->tables.size(); ++t )
@@ -123,7 +122,7 @@ bool DeltaTables::parse_table_field( MessageBuf &msg ) noexcept
     // Host_Error "not initialized" path.
     if( table_index >= static_cast<std::uint32_t>( DeltaStructId::Count ))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_table_field: bad table index %u", table_index );
         return false;
     }
@@ -142,7 +141,7 @@ bool DeltaTables::parse_table_field( MessageBuf &msg ) noexcept
     else
     {
         ignore = true;
-        core::logf( core::LogLevel::Warning, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Warning, "delta",
                     "parse_table_field: wrong nameIndex %u for table %s, ignoring",
                     name_index, dt.name );
     }
@@ -188,7 +187,7 @@ bool DeltaTables::parse_table_gs( MessageBuf &msg ) noexcept
 
     if( !dt )
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_table_gs: unknown struct %s", name );
         return false;
     }
@@ -196,7 +195,7 @@ bool DeltaTables::parse_table_gs( MessageBuf &msg ) noexcept
     const int num_fields = msg.read_short();
     if( num_fields > static_cast<int>( dt->info.size()))
     {
-        core::logf( core::LogLevel::Error, "delta",
+        ::xash::core::logf( ::xash::core::LogLevel::Error, "delta",
                     "parse_table_gs: numFields %d > maxFields %zu for %s",
                     num_fields, dt->info.size(), dt->name );
         return false;

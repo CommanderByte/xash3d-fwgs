@@ -17,7 +17,6 @@
 
 namespace xash::networking::bz2 {
 
-namespace core = ::xash::core;
 
 bool available() noexcept
 {
@@ -26,7 +25,7 @@ bool available() noexcept
 
 Result<std::vector<std::byte>> compress( std::span<const std::byte> /*src*/ )
 {
-    core::log( core::LogLevel::Verbose, "compress_null",
+    ::xash::core::log( ::xash::core::LogLevel::Verbose, "compress_null",
                "compress(): compression disabled at build time "
                "(XASH_NET_COMPRESSION=OFF)" );
     return std::unexpected( NetError::NotInitialised );
@@ -35,7 +34,7 @@ Result<std::vector<std::byte>> compress( std::span<const std::byte> /*src*/ )
 Result<std::size_t> decompress( std::span<const std::byte> /*src*/,
                                 std::span<std::byte>       /*dst*/ ) noexcept
 {
-    core::log( core::LogLevel::Verbose, "compress_null",
+    ::xash::core::log( ::xash::core::LogLevel::Verbose, "compress_null",
                "decompress(): compression disabled at build time "
                "(XASH_NET_COMPRESSION=OFF)" );
     return std::unexpected( NetError::NotInitialised );

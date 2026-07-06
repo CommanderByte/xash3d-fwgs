@@ -78,11 +78,11 @@ NetworkContext::~NetworkContext() = default;
 NetworkContext::NetworkContext( NetworkContext && ) noexcept            = default;
 NetworkContext &NetworkContext::operator=( NetworkContext && ) noexcept = default;
 
-bool NetworkContext::init( const NetworkInitParams &params ) noexcept
+bool NetworkContext::init( const NetworkInitParams &params ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     if( !impl_ )
     {
-        core::log( core::LogLevel::Error, "networking",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "networking",
                    "init() called on moved-from NetworkContext" );
         return false;
     }
@@ -93,7 +93,7 @@ bool NetworkContext::init( const NetworkInitParams &params ) noexcept
     // See docs/architecture/platform/sockets.md for the contract.
     if( params.sockets == nullptr )
     {
-        core::log( core::LogLevel::Error, "networking",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "networking",
                    "init() requires a non-null IPlatformSockets" );
         return false;
     }
@@ -106,7 +106,7 @@ bool NetworkContext::init( const NetworkInitParams &params ) noexcept
     impl_->pool = xash::memory::create_pool( "networking" );
     if( impl_->pool == xash::memory::k_null_pool )
     {
-        core::log( core::LogLevel::Error, "networking",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "networking",
                    "failed to create memory pool" );
         return false;
     }
@@ -115,7 +115,7 @@ bool NetworkContext::init( const NetworkInitParams &params ) noexcept
     return true;
 }
 
-void NetworkContext::shutdown() noexcept
+void NetworkContext::shutdown() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     if( !impl_ || !impl_->initialised )
         return;

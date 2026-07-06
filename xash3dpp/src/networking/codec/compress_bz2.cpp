@@ -20,7 +20,6 @@
 
 namespace xash::networking::bz2 {
 
-namespace core = ::xash::core;
 
 bool available() noexcept
 {
@@ -32,7 +31,7 @@ bool available() noexcept
 
 Result<std::vector<std::byte>> compress( std::span<const std::byte> /*src*/ )
 {
-    core::log( core::LogLevel::Verbose, "compress_bz2",
+    ::xash::core::log( ::xash::core::LogLevel::Verbose, "compress_bz2",
                "compress(): TODO link 3rdparty/bzip2; returning NotInitialised" );
     return std::unexpected( NetError::NotInitialised );
 }
@@ -40,7 +39,7 @@ Result<std::vector<std::byte>> compress( std::span<const std::byte> /*src*/ )
 Result<std::size_t> decompress( std::span<const std::byte> /*src*/,
                                 std::span<std::byte>       /*dst*/ ) noexcept
 {
-    core::log( core::LogLevel::Verbose, "compress_bz2",
+    ::xash::core::log( ::xash::core::LogLevel::Verbose, "compress_bz2",
                "decompress(): TODO link 3rdparty/bzip2; returning NotInitialised" );
     return std::unexpected( NetError::NotInitialised );
 }

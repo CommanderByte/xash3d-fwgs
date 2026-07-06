@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — IProtocolDriver / IProtocolDriverRegistry: per-netchan game-protocol abstractions
+// @thread-safety: stateless const drivers — Safe-RO singletons (registry immutable after construction)
 // Legacy reference: engine/common/net_ws.c (SPLITPACKET / SPLITPACKETGS framing choice).
 //
 // These interfaces are part of NetworkInitParams (public API).  Callers that

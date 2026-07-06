@@ -12,7 +12,7 @@ namespace
 
 constexpr std::uint32_t magic_le = net_header_out_of_band_packet;
 
-void write_magic( std::span<std::byte> dst ) noexcept
+void write_magic( std::span<std::byte> dst ) noexcept // compliance-allow(thread-assert): stateless wire transform — no thread affinity
 {
     // Little-endian; matches legacy SDK byte order.
     dst[0] = static_cast<std::byte>( magic_le & 0xFFu );
@@ -58,7 +58,7 @@ Result<std::size_t> encode(
 {
     return encode(
         std::span<const std::byte>{
-            reinterpret_cast<const std::byte *>( payload.data() ),
+            reinterpret_cast<const std::byte *>( payload.data() ), // SAFETY: re-views the caller's string_view payload as std::byte for span framing; char<->byte aliasing is well-defined
             payload.size() },
         dst );
 }

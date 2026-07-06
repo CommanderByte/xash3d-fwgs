@@ -21,9 +21,9 @@ namespace xash::networking {
 struct NetworkContext::Impl
 {
     // Injected dependencies (non-owning).
-    xash::platform::IPlatformSockets *sockets             = nullptr;
-    IProtocolDriverRegistry          *protocol_registry   = nullptr;
-    IMasterListConfig                *master_list_config  = nullptr;
+    xash::platform::IPlatformSockets *sockets             = nullptr; // @lifetime: caller (injected non-owning; mirrors NetworkInitParams; outlives the context)
+    IProtocolDriverRegistry          *protocol_registry   = nullptr; // @lifetime: caller (injected non-owning; mirrors NetworkInitParams; outlives the context)
+    IMasterListConfig                *master_list_config  = nullptr; // @lifetime: caller (injected non-owning; mirrors NetworkInitParams; outlives the context)
 
     // Pool for all fragment-buffer allocations.  Created in init().
     xash::memory::PoolHandle pool;

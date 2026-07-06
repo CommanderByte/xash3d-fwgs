@@ -13,7 +13,7 @@ namespace
 
 constexpr std::uint32_t magic_le = net_header_compressed_packet;
 
-void write_magic( std::span<std::byte> dst ) noexcept
+void write_magic( std::span<std::byte> dst ) noexcept // compliance-allow(thread-assert): stateless codec — no thread affinity
 {
     dst[0] = static_cast<std::byte>( magic_le & 0xFFu );
     dst[1] = static_cast<std::byte>( ( magic_le >> 8 ) & 0xFFu );

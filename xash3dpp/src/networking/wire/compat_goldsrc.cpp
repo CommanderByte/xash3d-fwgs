@@ -16,7 +16,7 @@ namespace {
 
 constexpr std::size_t k_header_size = sizeof( SplitHeaderGoldSrc );
 
-inline void write_le32( std::byte *p, std::uint32_t v ) noexcept
+inline void write_le32( std::byte *p, std::uint32_t v ) noexcept // compliance-allow(thread-assert): stateless wire transform — no thread affinity
 {
     p[0] = std::byte{ static_cast<std::uint8_t>( v        ) };
     p[1] = std::byte{ static_cast<std::uint8_t>( v >>  8  ) };

@@ -32,7 +32,7 @@ MessageBuf::MessageBuf( std::span<std::byte> data, const char *name ) noexcept
     rebind( data, name );
 }
 
-void MessageBuf::reset() noexcept
+void MessageBuf::reset() noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     cur_bit_  = 0;
     overflow_ = false;
@@ -105,19 +105,19 @@ bool MessageBuf::check_overflow( std::size_t additional_bits ) noexcept
 // Bit writes
 // ---------------------------------------------------------------------------
 
-void MessageBuf::write_one_bit( int value ) noexcept
+void MessageBuf::write_one_bit( int value ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     if( check_overflow( 1 ) )
         return;
     const std::size_t byte_idx = cur_bit_ >> 3;
     const std::uint8_t mask    = static_cast<std::uint8_t>( 1u << ( cur_bit_ & 7 ) );
-    auto &b = reinterpret_cast<std::uint8_t &>( data_[ byte_idx ] );
+    auto &b = reinterpret_cast<std::uint8_t &>( data_[ byte_idx ] ); // SAFETY: std::byte and std::uint8_t are layout-compatible unsigned-narrow types; byte aliasing for bit ops is well-defined
     if( value ) b |=  mask;
     else        b &= ~mask;
     ++cur_bit_;
 }
 
-void MessageBuf::write_ubit_long( std::uint32_t value, int num_bits ) noexcept
+void MessageBuf::write_ubit_long( std::uint32_t value, int num_bits ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     if( num_bits <= 0 || num_bits > 32 )
     {
@@ -144,7 +144,7 @@ void MessageBuf::write_ubit_long( std::uint32_t value, int num_bits ) noexcept
         const std::uint8_t clear_mask  = static_cast<std::uint8_t>(
             bit_mask( take ) << bit_in_byte );
 
-        auto &b = reinterpret_cast<std::uint8_t &>( data_[ byte_idx ] );
+        auto &b = reinterpret_cast<std::uint8_t &>( data_[ byte_idx ] ); // SAFETY: std::byte and std::uint8_t are layout-compatible unsigned-narrow types; byte aliasing for bit ops is well-defined
         b = static_cast<std::uint8_t>( ( b & ~clear_mask ) | shifted );
 
         v             >>= take;
@@ -153,7 +153,7 @@ void MessageBuf::write_ubit_long( std::uint32_t value, int num_bits ) noexcept
     }
 }
 
-void MessageBuf::write_sbit_long( std::int32_t value, int num_bits ) noexcept
+void MessageBuf::write_sbit_long( std::int32_t value, int num_bits ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     // Sign-extension-aware: store low (num_bits - 1) bits then a sign bit.
     if( num_bits <= 1 || num_bits > 32 )
@@ -167,7 +167,7 @@ void MessageBuf::write_sbit_long( std::int32_t value, int num_bits ) noexcept
     write_ubit_long( static_cast<std::uint32_t>( value ) & mask, num_bits );
 }
 
-bool MessageBuf::write_bits( std::span<const std::byte> src, std::size_t num_bits ) noexcept
+bool MessageBuf::write_bits( std::span<const std::byte> src, std::size_t num_bits ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     if( num_bits > src.size() * 8 )
     {
@@ -200,20 +200,20 @@ bool MessageBuf::write_bits( std::span<const std::byte> src, std::size_t num_bit
 // Byte writes — all little-endian on the wire
 // ---------------------------------------------------------------------------
 
-void MessageBuf::write_byte( std::uint8_t  v ) noexcept { write_ubit_long( v, 8  ); }
-void MessageBuf::write_char( std::int8_t   v ) noexcept { write_ubit_long( static_cast<std::uint8_t> ( v ), 8  ); }
-void MessageBuf::write_word( std::uint16_t v ) noexcept { write_ubit_long( v, 16 ); }
-void MessageBuf::write_short( std::int16_t v ) noexcept { write_ubit_long( static_cast<std::uint16_t>( v ), 16 ); }
-void MessageBuf::write_dword( std::uint32_t v ) noexcept { write_ubit_long( v, 32 ); }
-void MessageBuf::write_long ( std::int32_t  v ) noexcept { write_ubit_long( static_cast<std::uint32_t>( v ), 32 ); }
+void MessageBuf::write_byte( std::uint8_t  v ) noexcept { write_ubit_long( v, 8  ); } // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
+void MessageBuf::write_char( std::int8_t   v ) noexcept { write_ubit_long( static_cast<std::uint8_t> ( v ), 8  ); } // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
+void MessageBuf::write_word( std::uint16_t v ) noexcept { write_ubit_long( v, 16 ); } // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
+void MessageBuf::write_short( std::int16_t v ) noexcept { write_ubit_long( static_cast<std::uint16_t>( v ), 16 ); } // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
+void MessageBuf::write_dword( std::uint32_t v ) noexcept { write_ubit_long( v, 32 ); } // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
+void MessageBuf::write_long ( std::int32_t  v ) noexcept { write_ubit_long( static_cast<std::uint32_t>( v ), 32 ); } // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 
-void MessageBuf::write_float( float v ) noexcept
+void MessageBuf::write_float( float v ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     std::uint32_t bits = std::bit_cast<std::uint32_t>( v );
     write_ubit_long( bits, 32 );
 }
 
-bool MessageBuf::write_string( std::string_view s ) noexcept
+bool MessageBuf::write_string( std::string_view s ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     for( char c : s )
     {
@@ -225,7 +225,7 @@ bool MessageBuf::write_string( std::string_view s ) noexcept
     return !overflow_;
 }
 
-bool MessageBuf::write_bytes( std::span<const std::byte> src ) noexcept
+bool MessageBuf::write_bytes( std::span<const std::byte> src ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     return write_bits( src, src.size() * 8 );
 }
@@ -387,20 +387,20 @@ float wrap_angle_0_360( float angle ) noexcept
 
 } // namespace
 
-void MessageBuf::write_coord( float v ) noexcept
+void MessageBuf::write_coord( float v ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     // Round-toward-zero matches the legacy `(int)( val * 8 )` truncation.
     write_short( static_cast<std::int16_t>( v * coord_scale ) );
 }
 
-void MessageBuf::write_coord_large( float v ) noexcept
+void MessageBuf::write_coord_large( float v ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     // Equivalent of Q_rint: round half-away-from-zero.
     const float r = v >= 0.0f ? v + 0.5f : v - 0.5f;
     write_short( static_cast<std::int16_t>( r ) );
 }
 
-void MessageBuf::write_bit_angle( float angle, int num_bits ) noexcept
+void MessageBuf::write_bit_angle( float angle, int num_bits ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     if( num_bits <= 0 || num_bits > 32 )
     {
@@ -422,14 +422,14 @@ void MessageBuf::write_bit_angle( float angle, int num_bits ) noexcept
     write_ubit_long( static_cast<std::uint32_t>( d ) & mask, num_bits );
 }
 
-void MessageBuf::write_vec3_coord( float x, float y, float z ) noexcept
+void MessageBuf::write_vec3_coord( float x, float y, float z ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     write_coord( x );
     write_coord( y );
     write_coord( z );
 }
 
-void MessageBuf::write_vec3_angles( float x, float y, float z ) noexcept
+void MessageBuf::write_vec3_angles( float x, float y, float z ) noexcept // compliance-allow(thread-assert): thread-agnostic value type — MessageBuf serialises a caller-owned buffer, confined to its owner's thread
 {
     write_bit_angle( x, 16 );
     write_bit_angle( y, 16 );

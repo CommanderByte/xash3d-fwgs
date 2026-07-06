@@ -24,8 +24,6 @@
 
 namespace xash::networking {
 
-namespace core     = ::xash::core;
-namespace limits   = ::xash::limits;
 
 // ---------------------------------------------------------------------------
 // Internal fragment-queue types.  Mirrors legacy fragbuf_t / fragbufwaiting_t
@@ -74,7 +72,7 @@ struct IncomingStream
     std::uint32_t          total_expected { 0 };
     bool                   ready          { false };
 
-    void reset() noexcept
+    void reset() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
     {
         data.clear();
         total_expected = 0;
@@ -194,13 +192,13 @@ bool Netchan::setup( const NetchanConfig &config ) noexcept
     if( !impl_ ) return false;
     if( config.driver == nullptr || config.block_size_provider == nullptr )
     {
-        core::log( core::LogLevel::Error, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "netchan",
                    "setup: driver and block_size_provider are required" );
         return false;
     }
     if( !config.pool.valid() )
     {
-        core::log( core::LogLevel::Error, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "netchan",
                    "setup: pool handle is required (must be the parent "
                    "NetworkContext's networking pool)" );
         return false;
@@ -225,7 +223,7 @@ bool Netchan::setup( const NetchanConfig &config ) noexcept
     return true;
 }
 
-void Netchan::clear() noexcept
+void Netchan::clear() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     if( !impl_ || !impl_->active ) return;
 
@@ -252,7 +250,7 @@ bool Netchan::is_active() const noexcept
 // Reliable / fragment queue input
 // ---------------------------------------------------------------------------
 
-bool Netchan::write_reliable( std::span<const std::byte> bytes ) noexcept
+bool Netchan::write_reliable( std::span<const std::byte> bytes ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     if( !impl_ || !impl_->active ) return false;
     if( bytes.empty() ) return true;
@@ -263,7 +261,7 @@ bool Netchan::write_reliable( std::span<const std::byte> bytes ) noexcept
         // Would overflow the reliable queue.  Drop and signal the caller;
         // the legacy engine treats this as a fatal condition for the
         // channel, but at this layer we only refuse the write.
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "write_reliable: reliable buffer overflow, dropping payload" );
         return false;
     }
@@ -282,7 +280,7 @@ Result<void> Netchan::create_fragments( FragStream stream,
         return {};
     if( payload.size() > ::xash::limits::net_max_payload )
     {
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "create_fragments: payload exceeds net_max_payload" );
         return std::unexpected( NetError::Overflow );
     }
@@ -290,7 +288,7 @@ Result<void> Netchan::create_fragments( FragStream stream,
     const int chunksize_raw = impl_->block_size_provider->block_size( FragSize::Fragment );
     if( chunksize_raw <= 0 )
     {
-        core::log( core::LogLevel::Error, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "netchan",
                    "create_fragments: block_size_provider returned non-positive size" );
         return std::unexpected( NetError::InvalidArgument );
     }
@@ -329,19 +327,19 @@ Result<void> Netchan::create_file_fragments_from_buffer(
         return {};
     if( filename.empty() )
     {
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "create_file_fragments_from_buffer: empty filename" );
         return std::unexpected( NetError::InvalidArgument );
     }
     if( filename.size() >= ::xash::limits::net_max_filename )
     {
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "create_file_fragments_from_buffer: filename exceeds net_max_filename" );
         return std::unexpected( NetError::InvalidArgument );
     }
     if( payload.size() > ::xash::limits::net_max_payload )
     {
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "create_file_fragments_from_buffer: payload exceeds net_max_payload" );
         return std::unexpected( NetError::Overflow );
     }
@@ -349,7 +347,7 @@ Result<void> Netchan::create_file_fragments_from_buffer(
     const int chunksize_raw = impl_->block_size_provider->block_size( FragSize::Fragment );
     if( chunksize_raw <= 0 )
     {
-        core::log( core::LogLevel::Error, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "netchan",
                    "create_file_fragments_from_buffer: block_size_provider returned "
                    "non-positive size" );
         return std::unexpected( NetError::InvalidArgument );
@@ -358,7 +356,7 @@ Result<void> Netchan::create_file_fragments_from_buffer(
     const std::size_t filename_header = filename.size() + 1u; // legacy MSG_WriteString writes a NUL
     if( filename_header >= chunksize )
     {
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "create_file_fragments_from_buffer: filename header consumes the "
                    "entire fragment payload" );
         return std::unexpected( NetError::InvalidArgument );
@@ -403,7 +401,7 @@ Result<void> Netchan::create_file_fragments_from_buffer(
 // Transmit / process
 // ---------------------------------------------------------------------------
 
-Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable,
+Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable, // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
                                        std::span<std::byte>       out ) noexcept
 {
     if( !impl_ || !impl_->active )
@@ -532,7 +530,7 @@ Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable,
         }
         else
         {
-            core::log( core::LogLevel::Verbose, "netchan",
+            ::xash::core::log( ::xash::core::LogLevel::Verbose, "netchan",
                        "transmit: unreliable tail dropped, would exceed "
                        "block_size(Unreliable) cap" );
         }
@@ -611,7 +609,7 @@ Result<std::size_t> Netchan::transmit_bits( std::span<const std::byte> unreliabl
     return transmit( unreliable.subspan( 0, bytes_needed ), out );
 }
 
-bool Netchan::process( std::span<const std::byte> datagram,
+bool Netchan::process( std::span<const std::byte> datagram, // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
                        MessageBuf                 &msg ) noexcept
 {
     if( !impl_ || !impl_->active || impl_->driver == nullptr )
@@ -625,7 +623,7 @@ bool Netchan::process( std::span<const std::byte> datagram,
         msg, impl_->sock == SocketKind::Server );
     if( !meta.has_value() )
     {
-        core::log( core::LogLevel::Verbose, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Verbose, "netchan",
                    "process: header decode failed, dropping datagram" );
         return false;
     }
@@ -638,7 +636,7 @@ bool Netchan::process( std::span<const std::byte> datagram,
     if( meta->sequence <= impl_->incoming_sequence
         && impl_->incoming_sequence != 0u )
     {
-        core::log( core::LogLevel::Verbose, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Verbose, "netchan",
                    "process: stale or duplicate sequence, dropping datagram" );
         return false;
     }
@@ -751,12 +749,12 @@ Result<std::size_t> Netchan::copy_file_fragments( std::span<std::byte> out,
     // parent-directory traversal sequences or backslashes before we hand
     // them to the caller's filesystem layer.
     const std::string_view raw_name(
-        reinterpret_cast<const char *>( begin ), name_len );
+        reinterpret_cast<const char *>( begin ), name_len ); // SAFETY: re-views the wire byte buffer as char for a length-bounded filename field (name_len); same object
     if( raw_name.find( ".." )  != std::string_view::npos
         || raw_name.find( '\\' ) != std::string_view::npos
         || ( !raw_name.empty() && raw_name.front() == '/' ) )
     {
-        core::log( core::LogLevel::Warning, "netchan",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "netchan",
                    "copy_file_fragments: rejected filename with path-traversal "
                    "sequence" );
         slot.reset();
@@ -812,7 +810,7 @@ bool Netchan::can_packet( double now_seconds, bool choke ) const noexcept
     return impl_->cleartime < now_seconds;
 }
 
-void Netchan::update_choke( double now_seconds, std::size_t bytes_sent ) noexcept
+void Netchan::update_choke( double now_seconds, std::size_t bytes_sent ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     if( !impl_ || !impl_->active ) return;
     if( impl_->rate <= 0.0 ) return; // no rate cap configured

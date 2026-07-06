@@ -33,7 +33,7 @@ struct GoldSrcDeltaWireFormat final : IDeltaWireFormat
 {
     [[nodiscard]] const char *name() const noexcept override { return "goldsrc"; }
 
-    [[nodiscard]] std::size_t write_fields(
+    [[nodiscard]] std::size_t write_fields( // compliance-allow(thread-assert): stateless const wire-format singleton — Safe-RO by construction (networking-threading.md)
         MessageBuf &msg, std::span<const DeltaField> fields,
         const void *from, const void *to, double timebase ) const noexcept override
     {

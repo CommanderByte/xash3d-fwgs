@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — networking error codes and Result<T> alias
+// @thread-safety: pure types (NetError enum + Result<T> alias) — no shared state
 // Legacy reference: engine/common/net_ws.c (WinsockError / errno mapping),
 //                   engine/common/net_ws_private.h
 //

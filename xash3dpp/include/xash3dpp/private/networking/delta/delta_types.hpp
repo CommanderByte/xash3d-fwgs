@@ -100,7 +100,7 @@ enum class CustomEncodeKind : std::uint8_t
 
 struct DeltaFieldInfo
 {
-    const char *name;
+    const char *name; // @lifetime: static string literal (compile-time field identity; immutable)
     int         offset;
     int         size;
 };

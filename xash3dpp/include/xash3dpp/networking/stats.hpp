@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — networking lifetime counters and instrumentation
+// @thread-safety: Tier-1 counters are relaxed atomics (any-thread read-safe); Tier-2/3 written only on T_NetIO
 //
 // Three-tier instrumentation per docs/design/debug-stats-design.md:
 //   Tier 1 (always-on): single relaxed atomics on hot-path events.

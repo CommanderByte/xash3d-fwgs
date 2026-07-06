@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — LagQueue: in-memory delay queue for simulated lag
+// @thread-safety: T_NetIO-confined — caller-synchronised, no internal sync (fakelag path)
 // Legacy reference: net_ws.c fakelag / fakeloss handling.
 //
 // LagQueue holds incoming or outgoing datagrams for a configurable delay
@@ -29,7 +30,7 @@ struct DelayedPacket
 {
     std::uint64_t       release_time_ms = 0;  // absolute monotonic ms
     NetAddress          peer {};
-    std::vector<std::byte> data;
+    std::vector<std::byte> data; // @pre-reserved: cold path (fakelag sim, dev/cheat only) — assign()ed once to the datagram length at enqueue; no incremental growth (reserve N/A)
 };
 
 class LagQueue
@@ -60,7 +61,7 @@ private:
     // when the delay is constant.  When delay varies across calls,
     // try_dequeue still scans only the head — out-of-order packets simply
     // wait longer, matching legacy `fakelag` behaviour.
-    std::deque<DelayedPacket> queue_;
+    std::deque<DelayedPacket> queue_; // @pre-reserved: cold path (fakelag sim, dev/cheat only) — std::deque: reserve N/A; drained by try_dequeue, empty when lag disabled
 };
 
 } // namespace xash::networking

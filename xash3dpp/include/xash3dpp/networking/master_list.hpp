@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — IMasterListConfig / IMasterListClient: master-server injectable interfaces
+// @thread-safety: T_NetIO-confined — heartbeat()/send_shutdown() route through NetworkContext::send_packet
 // Legacy reference: engine/common/masterlist.c
 //
 // These interfaces are part of NetworkInitParams (public API).  Callers that
@@ -58,6 +59,7 @@ class NetworkContext; // fwd
 // heartbeats / shutdowns through the supplied NetworkContext using the
 // configuration values exposed by IMasterListConfig.  The returned client
 // is owned by the caller; both `ctx` and `cfg` must outlive it.
+// compliance-allow(unique-ptr-nonpimpl): caller-owned factory for the master-list satellite — the concrete MasterListClient is a tiny session-lifetime reference-holder built via nothrow-new (see master_list.cpp), not a pimpl and not (yet) a pool-owned class. pool_new + class-scoped operator delete migration is deferred to the memory-integration owner (Q-22).
 [[nodiscard]] std::unique_ptr<IMasterListClient> create_master_list_client(
     NetworkContext    &ctx,
     IMasterListConfig &cfg ) noexcept;

@@ -4,7 +4,7 @@
 
 namespace xash::networking {
 
-void SplitReassembler::reset() noexcept
+void SplitReassembler::reset() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — transport stack has no internal sync; role unasserted until the NetIO thread is split out (G-2)
 {
     sequence_ = -1;
     expected_ = 0;

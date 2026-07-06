@@ -1,5 +1,6 @@
 #pragma once
 // xash3dpp — Netchan: reliable + unreliable + fragmented channel (Layer 3)
+// @thread-safety: T_NetIO-confined — one channel per peer, single-thread caller contract, no internal sync
 // Legacy reference: engine/common/net_chan.c, engine/common/netchan.h
 //
 // Netchan owns one peer's reliable-queue / unreliable-stream / file-stream

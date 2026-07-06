@@ -24,7 +24,7 @@ inline std::uint32_t read_le32( const std::byte *p ) noexcept
           | ( static_cast<std::uint32_t>( std::to_integer<std::uint8_t>( p[3] ) ) << 24 );
 }
 
-inline void write_le32( std::byte *p, std::uint32_t v ) noexcept
+inline void write_le32( std::byte *p, std::uint32_t v ) noexcept // compliance-allow(thread-assert): stateless codec — no thread affinity
 {
     p[0] = std::byte{ static_cast<std::uint8_t>( v        ) };
     p[1] = std::byte{ static_cast<std::uint8_t>( v >>  8  ) };
@@ -55,7 +55,7 @@ struct State
 
 void build_hash( State &state, const std::byte *source )
 {
-    const std::size_t index = reinterpret_cast<std::uintptr_t>( source ) & ( window_size - 1 );
+    const std::size_t index = reinterpret_cast<std::uintptr_t>( source ) & ( window_size - 1 ); // SAFETY: ptr->uintptr for hash bucketing only; masked to a window index, never dereferenced through
     Node &node              = state.nodes[ index ];
 
     if( node.data )

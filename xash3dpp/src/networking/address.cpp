@@ -104,7 +104,7 @@ Result<std::size_t> to_string( const NetAddress &a, std::span<char> out ) noexce
                                  "%u.%u.%u.%u:%u",
                                  a.addr.v4[0], a.addr.v4[1],
                                  a.addr.v4[2], a.addr.v4[3],
-                                 static_cast<unsigned>( a.port ) );
+                                 static_cast<std::uint32_t>( a.port ) );
     if( n <= 0 || static_cast<std::size_t>( n ) >= out.size() )
         return std::unexpected( NetError::BufferTooSmall );
     return static_cast<std::size_t>( n );
