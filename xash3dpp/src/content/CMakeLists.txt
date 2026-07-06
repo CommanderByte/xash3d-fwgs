@@ -21,6 +21,7 @@ add_library(xash3dpp_imagelib STATIC
     imagelib/codec_dds.cpp
     imagelib/codec_ktx2.cpp
     imagelib/codec_mip.cpp
+    imagelib/codec_png.cpp
 )
 
 target_include_directories(xash3dpp_imagelib
@@ -34,7 +35,9 @@ target_link_libraries(xash3dpp_imagelib
     PUBLIC xash3dpp_memory
     PUBLIC xash3dpp_core
 )
-# TODO(Chunk 7, H-3/O-2): PRIVATE xash3dpp_miniz for PNG inflate/deflate.
+# miniz — PNG inflate/deflate (codec_png.cpp). Implementation detail, so PRIVATE
+# (it does not leak through the imagelib public headers).
+target_link_libraries(xash3dpp_imagelib PRIVATE xash3dpp_miniz)
 
 # --- content (model handle cache + non-brush loaders) ----------------------
 add_library(xash3dpp_content STATIC

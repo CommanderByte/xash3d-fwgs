@@ -21,6 +21,8 @@
 
 #include "../test_helpers.hpp"
 
+#include <miniz.h>   // build valid PNG IDAT (deflate) + CRCs for the codec tests
+
 static int g_pass = 0, g_fail = 0;
 
 // ---------------------------------------------------------------------------
@@ -1255,6 +1257,406 @@ static void test_mip_bad_input()
 }
 
 // ---------------------------------------------------------------------------
+// PNG decode + save (chunk deliverable) — build valid PNGs in memory with miniz
+// (deflate the filtered scanlines, CRC each chunk) then decode via the registry.
+// ---------------------------------------------------------------------------
+
+static void png_put_u32be( std::vector<std::byte> &v, std::uint32_t x )
+{
+    v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >> 24 ) & 0xFF ) } );
+    v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >> 16 ) & 0xFF ) } );
+    v.push_back( std::byte{ static_cast<std::uint8_t>( ( x >>  8 ) & 0xFF ) } );
+    v.push_back( std::byte{ static_cast<std::uint8_t>(   x         & 0xFF ) } );
+}
+
+// Append a full PNG chunk (length + 4-char tag + data + CRC-32 over tag+data).
+static void png_chunk( std::vector<std::byte> &v, const char ( &tag )[5],
+                       std::span<const std::uint8_t> data )
+{
+    png_put_u32be( v, static_cast<std::uint32_t>( data.size() ) );
+    std::vector<unsigned char> crcbuf;
+    for( int i = 0; i < 4; ++i )
+        crcbuf.push_back( static_cast<unsigned char>( tag[i] ) );
+    for( const std::uint8_t b : data )
+        crcbuf.push_back( b );
+    for( const unsigned char c : crcbuf )
+        v.push_back( std::byte{ c } );
+    const mz_ulong crc = mz_crc32( MZ_CRC32_INIT, crcbuf.data(), crcbuf.size() );
+    png_put_u32be( v, static_cast<std::uint32_t>( crc ) );
+}
+
+// Build a filter-None scanline stream (each row: 0 byte + rowsize raw samples).
+static std::vector<std::uint8_t> png_none_stream( std::uint32_t w, std::uint32_t h,
+                                                  std::size_t pixel_size,
+                                                  std::span<const std::uint8_t> samples )
+{
+    const std::size_t rowsize = pixel_size * w;
+    std::vector<std::uint8_t> s;
+    for( std::uint32_t y = 0; y < h; ++y )
+    {
+        s.push_back( 0 );  // PNG_F_NONE
+        for( std::size_t i = 0; i < rowsize; ++i )
+            s.push_back( samples[y * rowsize + i] );
+    }
+    return s;
+}
+
+static std::uint8_t png_paeth_pred( int a, int b, int c )
+{
+    const int p = a + b - c;
+    int pa = p - a; if( pa < 0 ) pa = -pa;
+    int pb = p - b; if( pb < 0 ) pb = -pb;
+    int pc = p - c; if( pc < 0 ) pc = -pc;
+    return static_cast<std::uint8_t>( ( pc < pa && pc < pb ) ? c : ( pb < pa ) ? b : a );
+}
+
+// Forward-filter each row of `raw` (h*w*bpp bytes) with the per-row filter `ft`,
+// producing the scanline stream the decoder must invert.
+static std::vector<std::uint8_t> png_filtered_stream(
+    std::uint32_t w, std::uint32_t h, std::size_t bpp,
+    std::span<const std::uint8_t> raw, std::span<const std::uint8_t> ft )
+{
+    const std::size_t rowsize = bpp * w;
+    std::vector<std::uint8_t> out;
+    for( std::uint32_t y = 0; y < h; ++y )
+    {
+        const std::uint8_t f = ft[y];
+        out.push_back( f );
+        for( std::size_t i = 0; i < rowsize; ++i )
+        {
+            const int cur  = raw[y * rowsize + i];
+            const int left = ( i >= bpp ) ? raw[y * rowsize + i - bpp] : 0;
+            const int up   = ( y > 0 ) ? raw[( y - 1 ) * rowsize + i] : 0;
+            const int ul   = ( y > 0 && i >= bpp ) ? raw[( y - 1 ) * rowsize + i - bpp] : 0;
+            int fv = cur;
+            switch( f )
+            {
+            case 1: fv = cur - left; break;                              // Sub
+            case 2: fv = cur - up; break;                                // Up
+            case 3: fv = cur - ( ( left + up ) >> 1 ); break;            // Average
+            case 4: fv = cur - png_paeth_pred( left, up, ul ); break;    // Paeth
+            default: fv = cur; break;                                    // None
+            }
+            out.push_back( static_cast<std::uint8_t>( fv & 0xFF ) );
+        }
+    }
+    return out;
+}
+
+// Assemble a full PNG: signature + IHDR + optional PLTE/tRNS + IDAT(deflate) + IEND.
+static std::vector<std::byte> png_assemble( std::uint32_t w, std::uint32_t h, std::uint8_t colortype,
+                                            std::span<const std::uint8_t> filtered_stream,
+                                            std::span<const std::uint8_t> plte = {},
+                                            std::span<const std::uint8_t> trns = {} )
+{
+    auto u8 = []( auto x ) { return static_cast<std::uint8_t>( x ); };
+
+    std::vector<std::byte> png;
+    const std::uint8_t sig[8] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+    for( const std::uint8_t sb : sig )
+        png.push_back( std::byte{ sb } );
+
+    std::vector<std::uint8_t> ihdr;
+    ihdr.push_back( u8( w >> 24 ) ); ihdr.push_back( u8( w >> 16 ) );
+    ihdr.push_back( u8( w >>  8 ) ); ihdr.push_back( u8( w ) );
+    ihdr.push_back( u8( h >> 24 ) ); ihdr.push_back( u8( h >> 16 ) );
+    ihdr.push_back( u8( h >>  8 ) ); ihdr.push_back( u8( h ) );
+    ihdr.push_back( u8( 8 ) );        // bit depth
+    ihdr.push_back( colortype );
+    ihdr.push_back( u8( 0 ) );        // compression
+    ihdr.push_back( u8( 0 ) );        // filter
+    ihdr.push_back( u8( 0 ) );        // interlace
+    png_chunk( png, "IHDR", ihdr );
+
+    if( !plte.empty() ) png_chunk( png, "PLTE", plte );
+    if( !trns.empty() ) png_chunk( png, "tRNS", trns );
+
+    const mz_ulong bound = mz_compressBound( static_cast<mz_ulong>( filtered_stream.size() ) );
+    std::vector<unsigned char> comp( bound != 0 ? bound : 1 );
+    mz_ulong comp_len = static_cast<mz_ulong>( comp.size() );
+    const int rc = mz_compress2( comp.data(), &comp_len, filtered_stream.data(),
+                                 static_cast<mz_ulong>( filtered_stream.size() ), MZ_BEST_COMPRESSION );
+    REQUIRE( rc == MZ_OK );
+    std::vector<std::uint8_t> idat;
+    for( mz_ulong i = 0; i < comp_len; ++i )
+        idat.push_back( comp[i] );
+    png_chunk( png, "IDAT", idat );
+
+    png_chunk( png, "IEND", std::span<const std::uint8_t>{} );
+    return png;
+}
+
+// Pixel accessor for the Rgba8 decode output.
+static std::uint8_t png_px( const xash::imagelib::Image &img, std::size_t i, std::size_t c )
+{
+    return std::to_integer<std::uint8_t>( img.pixels()[i * 4 + c] );
+}
+
+static void test_png_rgb_decode()
+{
+    using namespace xash::imagelib;
+    const std::uint8_t px[4][3] = { { 10, 20, 30 }, { 40, 50, 60 }, { 70, 80, 90 }, { 100, 110, 120 } };
+    std::vector<std::uint8_t> samples;
+    for( const auto &c : px ) { samples.push_back( c[0] ); samples.push_back( c[1] ); samples.push_back( c[2] ); }
+    const auto stream = png_none_stream( 2, 2, 3, samples );
+    const auto png    = png_assemble( 2, 2, 2 /*RGB*/, stream );
+
+    ImageDecoder dec; REQUIRE( dec.init() );
+    const auto out = dec.decode( "a.png", png );
+    REQUIRE( out.has_value() );
+    CHECK_EQ( out->width(), std::uint16_t{ 2 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 2 } );
+    CHECK( out->format() == PixelFormat::Rgba8 );
+    CHECK( out->has( ImageFlags::HasColor ) );
+    CHECK( !out->has( ImageFlags::HasAlpha ) );  // no tRNS, RGB has no alpha sample
+    REQUIRE( out->pixels().size() == 2 * 2 * 4 );
+    bool ok = true;
+    for( int i = 0; i < 4; ++i )
+        ok = ok && png_px( *out, i, 0 ) == px[i][0] && png_px( *out, i, 1 ) == px[i][1]
+                && png_px( *out, i, 2 ) == px[i][2] && png_px( *out, i, 3 ) == 255;
+    CHECK( ok );
+    CHECK_EQ( dec.stats().images_decoded, std::uint64_t{ 1 } );
+    dec.shutdown();
+}
+
+static void test_png_rgba_decode()
+{
+    using namespace xash::imagelib;
+    const std::uint8_t px[4][4] = {
+        { 10, 20, 30, 255 }, { 40, 50, 60, 128 }, { 70, 80, 90, 200 }, { 100, 110, 120, 0 } };
+    std::vector<std::uint8_t> samples;
+    for( const auto &c : px ) for( int k = 0; k < 4; ++k ) samples.push_back( c[k] );
+    const auto stream = png_none_stream( 2, 2, 4, samples );
+    const auto png    = png_assemble( 2, 2, 6 /*RGBA*/, stream );
+
+    ImageDecoder dec; REQUIRE( dec.init() );
+    const auto out = dec.decode( "a.png", png );
+    REQUIRE( out.has_value() );
+    CHECK( out->has( ImageFlags::HasColor ) );
+    CHECK( out->has( ImageFlags::HasAlpha ) );
+    REQUIRE( out->pixels().size() == 2 * 2 * 4 );
+    bool ok = true;
+    for( int i = 0; i < 4; ++i ) for( int k = 0; k < 4; ++k )
+        ok = ok && png_px( *out, i, k ) == px[i][k];
+    CHECK( ok );
+    dec.shutdown();
+}
+
+static void test_png_grey_and_alpha()
+{
+    using namespace xash::imagelib;
+
+    // Greyscale (colortype 0): 1 byte/pixel -> R=G=B=v, opaque; no colour bit.
+    {
+        const std::uint8_t g[4] = { 5, 128, 200, 255 };
+        std::vector<std::uint8_t> samples( g, g + 4 );
+        const auto stream = png_none_stream( 2, 2, 1, samples );
+        const auto png    = png_assemble( 2, 2, 0 /*GREY*/, stream );
+        ImageDecoder dec; REQUIRE( dec.init() );
+        const auto out = dec.decode( "g.png", png );
+        REQUIRE( out.has_value() );
+        CHECK( !out->has( ImageFlags::HasColor ) );
+        CHECK( !out->has( ImageFlags::HasAlpha ) );
+        bool ok = true;
+        for( int i = 0; i < 4; ++i )
+            ok = ok && png_px( *out, i, 0 ) == g[i] && png_px( *out, i, 1 ) == g[i]
+                    && png_px( *out, i, 2 ) == g[i] && png_px( *out, i, 3 ) == 255;
+        CHECK( ok );
+        dec.shutdown();
+    }
+
+    // Grey+alpha (colortype 4): 2 bytes/pixel -> R=G=B=grey, A=alpha; alpha bit set.
+    {
+        const std::uint8_t ga[4][2] = { { 5, 255 }, { 128, 64 }, { 200, 0 }, { 255, 200 } };
+        std::vector<std::uint8_t> samples;
+        for( const auto &c : ga ) { samples.push_back( c[0] ); samples.push_back( c[1] ); }
+        const auto stream = png_none_stream( 2, 2, 2, samples );
+        const auto png    = png_assemble( 2, 2, 4 /*GREY+ALPHA*/, stream );
+        ImageDecoder dec; REQUIRE( dec.init() );
+        const auto out = dec.decode( "ga.png", png );
+        REQUIRE( out.has_value() );
+        CHECK( !out->has( ImageFlags::HasColor ) );
+        CHECK( out->has( ImageFlags::HasAlpha ) );
+        bool ok = true;
+        for( int i = 0; i < 4; ++i )
+            ok = ok && png_px( *out, i, 0 ) == ga[i][0] && png_px( *out, i, 1 ) == ga[i][0]
+                    && png_px( *out, i, 2 ) == ga[i][0] && png_px( *out, i, 3 ) == ga[i][1];
+        CHECK( ok );
+        dec.shutdown();
+    }
+}
+
+static void test_png_palette()
+{
+    using namespace xash::imagelib;
+    // 4-entry PLTE; tRNS gives per-index alpha for the first 3 (idx3 -> opaque).
+    const std::uint8_t plte[12] = { 10, 20, 30,  40, 50, 60,  70, 80, 90,  100, 110, 120 };
+    const std::uint8_t trns[3]  = { 255, 128, 0 };
+    const std::uint8_t idx[4]   = { 0, 1, 2, 3 };
+    std::vector<std::uint8_t> samples( idx, idx + 4 );
+    std::vector<std::uint8_t> plte_v( plte, plte + 12 );
+    std::vector<std::uint8_t> trns_v( trns, trns + 3 );
+    const auto stream = png_none_stream( 2, 2, 1, samples );
+    const auto png    = png_assemble( 2, 2, 3 /*PALETTE*/, stream, plte_v, trns_v );
+
+    ImageDecoder dec; REQUIRE( dec.init() );
+    const auto out = dec.decode( "pal.png", png );
+    REQUIRE( out.has_value() );
+    CHECK( out->has( ImageFlags::HasColor ) );  // PALETTE carries the colour bit
+    CHECK( out->has( ImageFlags::HasAlpha ) );  // tRNS present
+    const std::uint8_t expa[4] = { 255, 128, 0, 255 };
+    bool ok = true;
+    for( int i = 0; i < 4; ++i )
+        ok = ok && png_px( *out, i, 0 ) == plte[i * 3 + 0] && png_px( *out, i, 1 ) == plte[i * 3 + 1]
+                && png_px( *out, i, 2 ) == plte[i * 3 + 2] && png_px( *out, i, 3 ) == expa[i];
+    CHECK( ok );
+    dec.shutdown();
+}
+
+static void test_png_trns_colorkey()
+{
+    using namespace xash::imagelib;
+    // RGB with a tRNS colour key (200,100,50) -> matching pixels decode to alpha 0.
+    const std::uint8_t px[4][3] = { { 10, 20, 30 }, { 200, 100, 50 }, { 70, 80, 90 }, { 200, 100, 50 } };
+    const std::uint8_t trns[6]  = { 0, 200, 0, 100, 0, 50 };  // 16-bit-per-sample, high byte 0
+    std::vector<std::uint8_t> samples;
+    for( const auto &c : px ) { samples.push_back( c[0] ); samples.push_back( c[1] ); samples.push_back( c[2] ); }
+    std::vector<std::uint8_t> trns_v( trns, trns + 6 );
+    const auto stream = png_none_stream( 2, 2, 3, samples );
+    const auto png    = png_assemble( 2, 2, 2 /*RGB*/, stream, {}, trns_v );
+
+    ImageDecoder dec; REQUIRE( dec.init() );
+    const auto out = dec.decode( "key.png", png );
+    REQUIRE( out.has_value() );
+    CHECK( out->has( ImageFlags::HasAlpha ) );  // tRNS forces the alpha bit on RGB
+    const std::uint8_t expa[4] = { 255, 0, 255, 0 };
+    bool ok = true;
+    for( int i = 0; i < 4; ++i )
+        ok = ok && png_px( *out, i, 0 ) == px[i][0] && png_px( *out, i, 1 ) == px[i][1]
+                && png_px( *out, i, 2 ) == px[i][2] && png_px( *out, i, 3 ) == expa[i];
+    CHECK( ok );
+    dec.shutdown();
+}
+
+static void test_png_filters()
+{
+    using namespace xash::imagelib;
+    // 4x4 RGB; each row uses a different filter so the decoder must invert Sub,
+    // Up, Average and Paeth to reproduce the original samples.
+    const std::uint32_t w = 4, h = 4;
+    std::vector<std::uint8_t> raw;
+    for( std::uint32_t y = 0; y < h; ++y )
+        for( std::uint32_t x = 0; x < w; ++x )
+        {
+            raw.push_back( static_cast<std::uint8_t>( 16 * x + y ) );
+            raw.push_back( static_cast<std::uint8_t>( 255 - 16 * x + 2 * y ) );
+            raw.push_back( static_cast<std::uint8_t>( 8 * x + 32 * y ) );
+        }
+    const std::uint8_t ft[4] = { 1, 2, 3, 4 };  // Sub, Up, Average, Paeth
+    std::vector<std::uint8_t> ftv( ft, ft + 4 );
+    const auto stream = png_filtered_stream( w, h, 3, raw, ftv );
+    const auto png    = png_assemble( w, h, 2 /*RGB*/, stream );
+
+    ImageDecoder dec; REQUIRE( dec.init() );
+    const auto out = dec.decode( "f.png", png );
+    REQUIRE( out.has_value() );
+    CHECK_EQ( out->width(), std::uint16_t{ 4 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 4 } );
+    REQUIRE( out->pixels().size() == w * h * 4 );
+    bool ok = true;
+    for( std::uint32_t i = 0; i < w * h; ++i )
+        ok = ok && png_px( *out, i, 0 ) == raw[i * 3 + 0] && png_px( *out, i, 1 ) == raw[i * 3 + 1]
+                && png_px( *out, i, 2 ) == raw[i * 3 + 2] && png_px( *out, i, 3 ) == 255;
+    CHECK( ok );
+    dec.shutdown();
+}
+
+static void test_png_bad_input()
+{
+    using namespace xash::imagelib;
+    ImageDecoder dec; REQUIRE( dec.init() );
+
+    // A valid 1x1 RGB baseline to corrupt.
+    const std::uint8_t px[3] = { 100, 150, 200 };
+    std::vector<std::uint8_t> samples( px, px + 3 );
+    const auto stream = png_none_stream( 1, 1, 3, samples );
+    const auto good   = png_assemble( 1, 1, 2, stream );
+
+    // Baseline decodes.
+    {
+        const auto out = dec.decode( "ok.png", good );
+        REQUIRE( out.has_value() );
+        CHECK( png_px( *out, 0, 0 ) == 100 );
+        CHECK( png_px( *out, 0, 3 ) == 255 );
+    }
+    // Shorter than the 33-byte header => Truncated.
+    {
+        std::vector<std::byte> v( good.begin(), good.begin() + 10 );
+        const auto out = dec.decode( "t.png", v );
+        CHECK( !out.has_value() );
+        CHECK( out.error() == ImageError::Truncated );
+    }
+    // Corrupt the signature => BadHeader.
+    {
+        std::vector<std::byte> v = good;
+        v[1] = std::byte{ 0x00 };
+        const auto out = dec.decode( "s.png", v );
+        CHECK( !out.has_value() );
+        CHECK( out.error() == ImageError::BadHeader );
+    }
+    // Corrupt the IHDR CRC (byte 29) while leaving the fields valid => BadHeader.
+    {
+        std::vector<std::byte> v = good;
+        v[29] = std::byte{ static_cast<std::uint8_t>( std::to_integer<std::uint8_t>( v[29] ) ^ 0xFF ) };
+        const auto out = dec.decode( "c.png", v );
+        CHECK( !out.has_value() );
+        CHECK( out.error() == ImageError::BadHeader );
+    }
+    dec.shutdown();
+}
+
+static void test_png_save_roundtrip()
+{
+    using namespace xash::imagelib;
+    // 3x2 RGBA with varied alpha; save_png -> decode must reproduce the pixels.
+    const std::uint32_t w = 3, h = 2;
+    std::vector<std::byte> srcpx( w * h * 4 );
+    for( std::uint32_t i = 0; i < w * h; ++i )
+    {
+        srcpx[i * 4 + 0] = std::byte{ static_cast<std::uint8_t>( 20 * i + 1 ) };
+        srcpx[i * 4 + 1] = std::byte{ static_cast<std::uint8_t>( 255 - 15 * i ) };
+        srcpx[i * 4 + 2] = std::byte{ static_cast<std::uint8_t>( 7 * i + 3 ) };
+        srcpx[i * 4 + 3] = std::byte{ static_cast<std::uint8_t>( ( i % 2 ) ? 128 : 255 ) };
+    }
+    Image src( static_cast<std::uint16_t>( w ), static_cast<std::uint16_t>( h ),
+               PixelFormat::Rgba8, std::move( srcpx ), ImageFlags::HasColor | ImageFlags::HasAlpha );
+
+    const auto saved = save_png( src );
+    REQUIRE( saved.has_value() );
+    CHECK( !saved->empty() );
+
+    ImageDecoder dec; REQUIRE( dec.init() );
+    const auto out = dec.decode( "rt.png", *saved );
+    REQUIRE( out.has_value() );
+    CHECK_EQ( out->width(), std::uint16_t{ 3 } );
+    CHECK_EQ( out->height(), std::uint16_t{ 2 } );
+    CHECK( out->has( ImageFlags::HasAlpha ) );
+    REQUIRE( out->pixels().size() == w * h * 4 );
+    bool ok = true;
+    for( std::uint32_t i = 0; i < w * h; ++i )
+    {
+        const std::uint8_t er = static_cast<std::uint8_t>( 20 * i + 1 );
+        const std::uint8_t eg = static_cast<std::uint8_t>( 255 - 15 * i );
+        const std::uint8_t eb = static_cast<std::uint8_t>( 7 * i + 3 );
+        const std::uint8_t ea = ( i % 2 ) ? std::uint8_t{ 128 } : std::uint8_t{ 255 };
+        ok = ok && png_px( *out, i, 0 ) == er && png_px( *out, i, 1 ) == eg
+                && png_px( *out, i, 2 ) == eb && png_px( *out, i, 3 ) == ea;
+    }
+    CHECK( ok );
+    dec.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -1290,6 +1692,14 @@ int main()
     RUN_TEST( test_mip_quakesky );
     RUN_TEST( test_mip_water_fog );
     RUN_TEST( test_mip_bad_input );
+    RUN_TEST( test_png_rgb_decode );
+    RUN_TEST( test_png_rgba_decode );
+    RUN_TEST( test_png_grey_and_alpha );
+    RUN_TEST( test_png_palette );
+    RUN_TEST( test_png_trns_colorkey );
+    RUN_TEST( test_png_filters );
+    RUN_TEST( test_png_bad_input );
+    RUN_TEST( test_png_save_roundtrip );
 
     std::printf( "test_imagelib: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

@@ -31,4 +31,11 @@ namespace xash::imagelib {
 // round-trips with ImageDecoder::decode() on a ".bmp" name.
 [[nodiscard]] Result<std::vector<std::byte>> save_bmp( const Image &img );
 
+// Encode an image as an 8-bit PNG buffer (legacy Image_SavePNG): RGB colour type
+// when the image has no alpha, RGBA when it carries HasAlpha, every scanline
+// filtered as None and the pixel data deflated at best compression. Accepts the
+// Rgb8/Bgr8/Rgba8/Bgra8 formats and round-trips with ImageDecoder::decode() on a
+// ".png" name (the deflate bytes are an equivalent — not byte-identical — stream).
+[[nodiscard]] Result<std::vector<std::byte>> save_png( const Image &img );
+
 } // namespace xash::imagelib
