@@ -99,7 +99,7 @@ struct IClipHooks
 struct SvTrace
 {
     ::xash::map_loader::TraceResult t{};
-    ::xash::abi::edict_t           *ent      = nullptr;
+    ::xash::abi::edict_t           *ent      = nullptr; // @lifetime: arena (traced edict; non-owning)
     int                             hitgroup = 0;
 };
 

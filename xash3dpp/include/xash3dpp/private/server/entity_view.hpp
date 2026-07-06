@@ -151,7 +151,7 @@ public:
     void set_groundentity( ::xash::abi::edict_t *g ) noexcept { e_->v.groundentity = g; }
 
 private:
-    ::xash::abi::edict_t *e_;
+    ::xash::abi::edict_t *e_; // @lifetime: arena (viewed edict; facade is non-owning)
 };
 
 } // namespace xash::server

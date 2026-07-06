@@ -43,7 +43,7 @@ public:
 private:
     std::string                    base_path_;
     SearchPathFlags                flags_;
-    ::xash::platform::AssetManagerHandle*  mgr_ = nullptr;
+    ::xash::platform::AssetManagerHandle*  mgr_ = nullptr; // @lifetime: platform JNI glue (g_handles) — process-lifetime, borrowed
 };
 
 #endif // XASH_ANDROID

@@ -124,7 +124,7 @@ struct PersistentState
 // the SV_PushMove/SV_PushRotate rollback stack (svgame.pushed[256]).
 struct PushedEnt
 {
-    ::xash::abi::edict_t *ent = nullptr;
+    ::xash::abi::edict_t *ent = nullptr; // @lifetime: arena (pushed-state edict; non-owning)
     ::xash::utilities::Vec3 origin{};
     ::xash::utilities::Vec3 angles{};
     int fixangle = 0;
@@ -136,10 +136,10 @@ struct ServerRuntime
     ServerConfig cfg;
 
     // Injected dependencies (Q-4). @lifetime: engine
-    ::xash::cmd_cvar::CmdCvarContext *cvars = nullptr; // optional pre-S7b
-    ::xash::filesystem::Filesystem   *fs    = nullptr; // required by load_progs
-    ::xash::MapLoader                *maps  = nullptr; // S7b spawn path
-    ::xash::networking::NetworkContext *net = nullptr; // S9 packet I/O (read_packets)
+    ::xash::cmd_cvar::CmdCvarContext *cvars = nullptr; // optional pre-S7b @lifetime: engine (injected dep, Q-4)
+    ::xash::filesystem::Filesystem   *fs    = nullptr; // required by load_progs @lifetime: engine (injected dep, Q-4)
+    ::xash::MapLoader                *maps  = nullptr; // S7b spawn path @lifetime: engine (injected dep, Q-4)
+    ::xash::networking::NetworkContext *net = nullptr; // S9 packet I/O (read_packets) @lifetime: engine (injected dep, Q-4)
 
     // Owned game binding (legacy svgame equivalents).
     ::xash::memory::PoolHandle game_pool;   // svgame.mempool

@@ -113,7 +113,7 @@ public:
 
 private:
     ::xash::memory::PoolHandle pool_;
-    ::xash::abi::edict_t      *edicts_       = nullptr;
+    ::xash::abi::edict_t      *edicts_       = nullptr; // @lifetime: pool_-owned (this arena's edict block)
     std::size_t                max_edicts_   = 0;
     std::size_t                num_entities_ = 0;
     std::size_t                reserved_     = 0;

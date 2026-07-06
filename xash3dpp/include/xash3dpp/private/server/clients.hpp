@@ -119,7 +119,7 @@ struct MessageState
     int           size_index = -1;  // byte offset of reserved word, -1 = fixed
     int           realsize   = 0;   // bytes written since the command byte
     float         org[3]     = {};
-    ::xash::abi::edict_t *ent = nullptr;
+    ::xash::abi::edict_t *ent = nullptr; // @lifetime: arena (edict owned by the edict arena)
 };
 
 // --- ban filters (sv_filter.c) ----------------------------------------------
@@ -211,7 +211,7 @@ struct ServerClient
     double next_messagetime    = 0.0;
     double next_messageinterval = 0.05;
 
-    ::xash::abi::edict_t *edict = nullptr;
+    ::xash::abi::edict_t *edict = nullptr; // @lifetime: arena (edict owned by the edict arena)
 
     // Per-client staging buffers.  SV_Multicast appends reliable payloads to
     // `reliable` and unreliable to `datagram`; S8's frame loop drains them
@@ -226,7 +226,7 @@ struct ServerClient
     // until maxclients is latched).  pViewEntity overrides the vis origin for
     // spectators/portals (nullptr ⇒ the DLL uses the client edict).
     ClientFrame          *frames         = nullptr; // @lifetime: pool-owned — snapshot_alloc_ring owns this SV_UPDATE_BACKUP ClientFrame ring; nullptr until maxclients is latched (cl->frames[SV_UPDATE_BACKUP])
-    ::xash::abi::edict_t *view_entity    = nullptr; // cl->pViewEntity
+    ::xash::abi::edict_t *view_entity    = nullptr; // cl->pViewEntity @lifetime: arena-or-null (cl->pViewEntity override)
     int                   delta_sequence = -1;      // clc_delta ack; -1 = no delta
     int                   chokecount     = 0;       // bandwidth-suppressed count
     bool                  local_weapons  = false;   // FCL_LOCAL_WEAPONS (cl_lw)

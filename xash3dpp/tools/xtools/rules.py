@@ -251,7 +251,7 @@ RULES: list[Rule] = [
         # Statement keywords are excluded — inline bodies live in headers too
         # (`return *this;` matched the member shape; 6B S1 false-positive fix).
         pattern=r"^\s*(?!(?:return|delete|throw|new|goto|break|continue|case|else|co_return|co_yield|co_await)\b)"
-                r"[A-Za-z_][\w:<>,\s]*(?:[*&]\s*|std::(?:span|string_view)\s*<[^;]*>\s+)\w+_?\s*(=\s*[\w:]+)?;\s*$",
+                r"(?:::)?[A-Za-z_][\w:<>,\s]*(?:[*&]\s*|std::(?:span|string_view)\s*<[^;]*>\s+)\w+_?\s*(=\s*[\w:]+)?;\s*$",
         scopes=("include",),
         exclude_line_re=r"@lifetime:|@annotation-exempt:",
         hint="raw pointer/reference/view members need '// @lifetime: <owner>' "

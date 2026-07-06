@@ -104,7 +104,7 @@ struct ClientFrame
 // snapshot_shutdown before game_pool destruction.
 struct SnapshotState
 {
-    ::xash::abi::entity_state_t *baselines      = nullptr; // [baseline_count]
+    ::xash::abi::entity_state_t *baselines      = nullptr; // [baseline_count] @lifetime: game_pool-owned (freed in snapshot_shutdown)
     int                          baseline_count = 0;       // == GI->max_edicts
 
     InstancedBaseline instanced[k_max_custom_baselines] = {}; // sv.instanced
@@ -114,7 +114,7 @@ struct SnapshotState
     // svs.packet_entities — the shared circular ring every client frame indexes
     // into (sv_init.c:826).  next_client_entities is the monotonic write cursor
     // (reset only on a ring realloc or the 0x7FFFFFFE overflow guard).
-    ::xash::abi::entity_state_t *packet_entities     = nullptr; // [num_client_entities]
+    ::xash::abi::entity_state_t *packet_entities     = nullptr; // [num_client_entities] @lifetime: game_pool-owned (freed in snapshot_shutdown)
     int                          num_client_entities = 0;
     int                          next_client_entities = 0;
     int                          ring_maxclients     = 0; // size key for realloc
@@ -124,7 +124,7 @@ struct SnapshotState
     // SV_WriteEntitiesToClient's static sv_ents_t (gather scratch, reused per
     // client): the visible states before qsort + ring copy, and the per-edict
     // dedup bitmask that stops portal passes double-adding an entity.
-    ::xash::abi::entity_state_t *gather_ents = nullptr;      // [k_max_visible_packet]
+    ::xash::abi::entity_state_t *gather_ents = nullptr;      // [k_max_visible_packet] @lifetime: game_pool-owned (freed in snapshot_shutdown)
     std::uint8_t                 sended[k_max_edicts_bytes] = {};
 };
 
