@@ -176,6 +176,41 @@ static void test_studio_parse()
 }
 
 // ---------------------------------------------------------------------------
+// Load path — magic dispatch through the cache (O-3)
+// ---------------------------------------------------------------------------
+
+static void test_model_load()
+{
+    using namespace xash::content;
+
+    xash::filesystem::Filesystem fs;
+    ModelCache cache;
+    REQUIRE( cache.init( { fs } ) );
+
+    // A studio model loads and attaches its payload.
+    const ModelHandle h = cache.find_or_alloc( "models/player.mdl" );
+    const std::vector<std::byte> studio = make_studio_header();
+    REQUIRE( cache.load_from_bytes( h, studio ).has_value() );
+
+    const Model *m = cache.resolve( h );
+    REQUIRE( m != nullptr );
+    CHECK( m->type() == ModelType::Studio );
+    CHECK( m->needload() == NeedLoad::Present );
+    REQUIRE( m->studio() != nullptr );
+    CHECK_EQ( m->studio()->view().num_bones(), 30 );
+    CHECK_EQ( cache.stats().models_loaded, std::uint64_t{ 1 } );
+
+    // Unknown magic is rejected.
+    const ModelHandle j = cache.find_or_alloc( "junk.dat" );
+    const std::vector<std::byte> junk( 8, std::byte{ 0 } );
+    const auto bad = cache.load_from_bytes( j, junk );
+    CHECK( !bad.has_value() );
+    CHECK( bad.error() == LoadError::BadMagic );
+
+    cache.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -187,6 +222,7 @@ int main()
     RUN_TEST( test_init_shutdown );
     RUN_TEST( test_model_registry );
     RUN_TEST( test_studio_parse );
+    RUN_TEST( test_model_load );
 
     std::printf( "test_content: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

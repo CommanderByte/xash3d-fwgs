@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string_view>
 
 namespace xash::filesystem { class Filesystem; }
@@ -92,6 +93,12 @@ public:
 
     // Number of currently-occupied slots (world included).
     [[nodiscard]] std::size_t live_count() const noexcept;
+
+    // Load a model into `h` from an in-memory file image, dispatching on the
+    // magic (O-3): IDST -> studio (others as their loaders land). Attaches the
+    // parsed payload and marks the slot Present. FS-decoupled for testability
+    // (OQ-1); the production path loads the bytes via the injected filesystem.
+    [[nodiscard]] Result<void> load_from_bytes( ModelHandle h, std::span<const std::byte> file );
 
 private:
     struct Impl;

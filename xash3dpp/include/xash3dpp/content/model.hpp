@@ -8,10 +8,13 @@
 //
 // @thread-safety: plain value types — no shared state.
 
+#include <xash3dpp/content/studio.hpp>
+
 #include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 
 namespace xash::content {
 
@@ -93,10 +96,28 @@ public:
         return !name_.empty() && name_.front() == '*';
     }
 
+    // ---- format payload (attached by the loaders; O-3 dispatch) ----------
+    void set_studio( StudioModel s ) noexcept
+    {
+        payload_ = std::move( s );
+        type_    = ModelType::Studio;
+    }
+    // Non-null only for a loaded studio model.
+    [[nodiscard]] const StudioModel* studio() const noexcept
+    {
+        return std::holds_alternative<StudioModel>( payload_ )
+                   ? &std::get<StudioModel>( payload_ )
+                   : nullptr;
+    }
+
 private:
     std::string name_;
     ModelType   type_     = ModelType::Bad;
     NeedLoad    needload_ = NeedLoad::Unreferenced;
+
+    // The format payload: unloaded, or one of the parsed model formats.
+    // Sprite/Alias/Brush alternatives land with their loaders (O-3).
+    std::variant<std::monostate, StudioModel> payload_;
 };
 
 } // namespace xash::content

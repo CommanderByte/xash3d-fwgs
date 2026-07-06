@@ -16,8 +16,12 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/utilities/swap.hpp>
 
+#include <cstdint>
+#include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace xash::content {
@@ -185,6 +189,36 @@ std::size_t ModelCache::live_count() const noexcept
     for (const auto &slot : impl_->slots_)
         if (slot.occupied) ++n;
     return n;
+}
+
+Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::byte> file )
+{
+    xash::core::assert_thread_role(xash::core::ThreadRole::Main);
+
+    Model *m = resolve(h);
+    if (!m)
+        return std::unexpected(LoadError::NotFound);
+    if (file.size() < sizeof(std::int32_t))
+        return std::unexpected(LoadError::Truncated);
+
+    // Dispatch on the file magic (legacy Mod_LoadModel switch; O-3).
+    const auto magic = ::xash::utilities::read_le<std::int32_t>(file.data());
+    switch (magic)
+    {
+    case k_studio_ident:
+    {
+        Result<StudioModel> sm = parse_studio(file);
+        if (!sm)
+            return std::unexpected(sm.error());
+        m->set_studio(std::move(*sm));
+        m->set_needload(NeedLoad::Present);
+        ++impl_->stats_.models_loaded;
+        return {};
+    }
+    // TODO(O-3): IDSP -> sprite, IDPO -> alias, 29/30/BSP2 -> brush (map_loader).
+    default:
+        return std::unexpected(LoadError::BadMagic);
+    }
 }
 
 } // namespace xash::content
