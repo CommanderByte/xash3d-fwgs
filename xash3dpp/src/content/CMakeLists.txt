@@ -33,6 +33,7 @@ target_link_libraries(xash3dpp_imagelib
 # --- content (model handle cache + non-brush loaders) ----------------------
 add_library(xash3dpp_content STATIC
     model/model_cache.cpp
+    model/studio.cpp
 )
 
 target_include_directories(xash3dpp_content
