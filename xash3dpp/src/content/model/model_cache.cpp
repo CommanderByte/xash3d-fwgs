@@ -36,6 +36,11 @@ namespace {
     return g == 0 ? std::uint16_t{ 1 } : g;
 }
 
+// Brush-model file magics (the version int for Q1/HL BSP; the "BSP2" ident).
+constexpr std::int32_t k_bsp_q1 = 29;
+constexpr std::int32_t k_bsp_hl = 30;
+constexpr std::int32_t k_bsp2   = ( '2' << 24 ) | ( 'P' << 16 ) | ( 'S' << 8 ) | 'B';
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -275,7 +280,12 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
         m->set_alias(std::move(*al));
         break;
     }
-    // TODO(O-3): 29/30/BSP2 -> brush (dispatch to map_loader, OQ-3).
+    case k_bsp_q1:
+    case k_bsp_hl:
+    case k_bsp2:
+        // Brush models (the world + inline "*N" submodels) are loaded by
+        // map_loader via register_world, not through this byte path (OQ-3).
+        return std::unexpected(LoadError::UnsupportedFeature);
     default:
         return std::unexpected(LoadError::BadMagic);
     }

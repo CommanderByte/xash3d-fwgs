@@ -246,6 +246,14 @@ static void test_model_load()
     CHECK( !bad.has_value() );
     CHECK( bad.error() == LoadError::BadMagic );
 
+    // A brush (BSP) magic is recognised but routed to map_loader, not here (OQ-3).
+    const ModelHandle w = cache.find_or_alloc( "maps/c0a0.bsp" );
+    std::vector<std::byte> bsp( 8, std::byte{ 0 } );
+    xash::utilities::write_le<std::int32_t>( bsp.data(), 30 );  // HLBSP version
+    const auto brush = cache.load_from_bytes( w, bsp );
+    CHECK( !brush.has_value() );
+    CHECK( brush.error() == LoadError::UnsupportedFeature );
+
     cache.shutdown();
 }
 
