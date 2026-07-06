@@ -9,6 +9,7 @@
 static int g_pass = 0, g_fail = 0;
 
 #include "../test_helpers.hpp"
+#include <xash3dpp/core/thread_role.hpp>
 
 using namespace xash::cmd_cvar;
 using namespace xash::cmd_cvar::test;
@@ -88,6 +89,10 @@ static void test_cmd_wait()
 
 int main()
 {
+    // 6B: cmd_cvar mutators assert ThreadRole::Main; the test thread
+    // must register the role (mirrors the server test harnesses).
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     RUN_TEST( test_add_and_execute );
     RUN_TEST( test_insert_ordering );
     RUN_TEST( test_cmd_wait );
