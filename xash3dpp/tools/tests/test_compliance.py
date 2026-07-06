@@ -22,7 +22,8 @@ from pathlib import Path
 # Make the sibling `xtools` package importable (tools/ is tests/'s parent).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from xtools.checks import (_DECL_RX, _G_DEF_RX, _allow_context,  # noqa: E402
+from xtools.checks import (_DECL_RX, _G_DEF_RX,  # noqa: E402
+                           _UNIQUE_PTR_T_RX, _allow_context,
                            _decl_args_are_bare_ids, _filter_allows, _violation)
 from xtools.rules import RULES  # noqa: E402
 
@@ -288,6 +289,41 @@ class AnnotationRules(unittest.TestCase):
         self.assertFalse(_hits("di-global-ref", "AssetManagerHandle g_handles[2];"))
         # A use is not a definition.
         self.assertIsNone(_G_DEF_RX.match("    g_jni.env = env;"))
+
+    def test_unique_ptr_inner_type_capture(self):
+        # The pool-owned suppression keys on this capture.
+        for line, want in (
+            ("    std::unique_ptr<File> f;", "File"),
+            ("std::unique_ptr<ISearchBackend> create_wad(...);", "ISearchBackend"),
+            ("    std::unique_ptr< xash::filesystem::File > f;",
+             "xash::filesystem::File"),
+            ("std::unique_ptr<class Foo> p;", "Foo"),
+        ):
+            m = _UNIQUE_PTR_T_RX.search(line)
+            self.assertIsNotNone(m, line)
+            self.assertEqual(m.group(1), want, line)
+
+    def test_collect_pool_owned_types(self):
+        # A class declaring operator delete is pool-owned; a plain one is not;
+        # a forward declaration opens no body.
+        import tempfile
+        from pathlib import Path
+        from xtools.checks import _collect_pool_owned_types
+        with tempfile.TemporaryDirectory() as d:
+            hpp = Path(d) / "sample.hpp"
+            hpp.write_text(
+                "class Owned {\n"
+                "public:\n"
+                "    static void operator delete(void* p) noexcept;\n"
+                "};\n"
+                "class Plain {\n"
+                "    int x;\n"
+                "};\n"
+                "class Fwd;\n", encoding="utf-8")
+            owned = _collect_pool_owned_types([hpp])
+        self.assertIn("Owned", owned)
+        self.assertNotIn("Plain", owned)
+        self.assertNotIn("Fwd", owned)
 
     def test_prereserve_suppression_matches_raw(self):
         # Regression for the exclude-on-code bug: the @pre-reserved: marker

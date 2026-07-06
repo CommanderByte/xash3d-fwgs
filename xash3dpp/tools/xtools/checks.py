@@ -30,6 +30,37 @@ ALLOW_RE = re.compile(r"compliance-allow\(\s*([\w\-, ]+?)\s*\)")
 _G_DEF_RX = re.compile(
     r"^(?:static\s+)?[\w:<>*&\s]+\s(g_\w+)\s*(?:\[[^\]]*\]\s*)*(?:=|;|\{)")
 
+# unique_ptr<T> inner type (first template arg, default deleter) — used to
+# check T against the pool-owned set for the unique-ptr-nonpimpl suppression.
+_UNIQUE_PTR_T_RX = re.compile(
+    r"std::unique_ptr\s*<\s*(?:class\s+|struct\s+)?([\w:]+?)\s*>")
+# `class`/`struct Name` opener and a class-scoped operator-delete declaration.
+_CLASS_OPEN_RX = re.compile(r"\b(?:class|struct)\s+(\w+)")
+_OP_DELETE_DECL_RX = re.compile(r"\boperator\s+delete\b")
+
+
+def _collect_pool_owned_types(paths: "list[Path]") -> "set[str]":
+    """Names of classes/structs that declare a class-scoped `operator delete`
+    (pool-owned classes — their default-deleter unique_ptr frees through
+    mem_free per Q-22).  A light per-file scan: a class name is pool-owned if
+    an `operator delete` appears in its body before the next top-level
+    class/struct opener.  Header-scoped only (declarations live there).  Pure
+    over code_lines — unit-tested."""
+    owned: set[str] = set()
+    for path in paths:
+        if path.suffix != ".hpp":
+            continue
+        current: str | None = None
+        for _lineno, code, _raw in code_lines(path):
+            opener = _CLASS_OPEN_RX.search(code)
+            if opener:
+                # A forward decl (`class Foo;`) opens no body — ignore it.
+                current = opener.group(1) if "{" in code or ";" not in code \
+                    else current
+            if current and _OP_DELETE_DECL_RX.search(code):
+                owned.add(current)
+    return owned
+
 
 def _rel(p: Path) -> str:
     try:
@@ -218,6 +249,13 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
     files_scanned = 0
     for sub, sub_files in groups:
         files_scanned += len(sub_files)
+        # Pool-owned class names (types declaring an `operator delete`): a
+        # std::unique_ptr<T> with the DEFAULT deleter over such a T frees
+        # through the class operator delete → mem_free, which IS the Q-22
+        # canonical idiom (File / ISearchBackend precedents) — not a
+        # unique-ptr-nonpimpl finding.  Collected group-wide so a header
+        # declaring the class suppresses uses in sibling headers (6B S4).
+        pool_owned = _collect_pool_owned_types(sub_files)
         file_texts: dict[Path, str] = {}
         for path in sub_files:
             scope = _scope_of(path)
@@ -254,6 +292,13 @@ def compliance_scan(subsystem: str | None, checks: str = "all",
                     subject = raw if rule.match_raw else code
                     m = rx.search(subject)
                     if m and not (ex and ex.search(raw)):
+                        # unique_ptr<T> over a pool-owned T is the sanctioned
+                        # idiom, not a finding (Q-22) — skip silently, no marker
+                        # needed at the use site.
+                        if rule.check == "unique-ptr-nonpimpl":
+                            tm = _UNIQUE_PTR_T_RX.search(code)
+                            if tm and tm.group(1) in pool_owned:
+                                continue
                         # Stash the allow-context (flagged line + its preceding
                         # comment block); _filter_allows does the marker match
                         # uniformly with the structured checks.
