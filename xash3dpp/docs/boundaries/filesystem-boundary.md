@@ -355,3 +355,68 @@ and is annotated as informally bounded.
 `stats_` lives in the pimpl and is updated under the same locks that guard the
 state it reflects (`paths_mutex` for `search_path_count`, `game_mutex` for
 `game_loaded`). Always-on; cost is one assignment per mutation.
+
+## Threading (as-built)
+
+Unlike the pure-function utility subsystems, the filesystem owns real mutable
+state and is **thread-safe by lock**, not by thread-confinement:
+
+- `init()` / `shutdown()` are **main-thread-only** — they write `pool_` /
+  `rootdir` / `basedir` / `rodir` without a lock, relying on the "before worker
+  threads start / after they join" lifecycle contract (README key invariants).
+- Query and load methods (`open`, `load_file`, `file_exists`, `file_size`,
+  `search`, `write_file`, `remove`, …) take a **shared** reader lock on
+  `paths_mutex` and are safe from any thread concurrently.
+- Path-mutating methods (`activate_game`, `rescan`, `add_game_directory`,
+  `add_game_hierarchy`, `clear_paths`, `mount_archive`) take an **exclusive**
+  writer lock (`paths_mutex` and/or `game_mutex`). `allow_direct_paths` is a
+  lock-free `std::atomic<bool>`.
+- `File` handles and `ISearchBackend` instances are caller-/facade-owned and
+  carry no internal synchronization; backends are immutable after construction.
+
+**QN thread-assert adjudication (6B S4)**: all nine mutator-name matches are
+`compliance-allow(thread-assert)` rather than `assert_thread_role(Main)`.
+`init`/`shutdown` are main-thread-by-contract but a runtime assert would
+`XASH_FATAL` the filesystem test harness (which registers no `ThreadRole`, and
+which is outside this hardening carve to edit); the remaining seven are
+lock-guarded any-thread paths where a Main assert would contradict the
+documented concurrent-read/exclusive-write model. See the reviewer-attention
+note — enforcing the init/shutdown asserts is a follow-up that must also
+register `ThreadRole::Main` in the four `tests/filesystem/*.cpp` harnesses.
+
+## Constant classification (QO)
+
+The literals `limits_scan` flags in filesystem source are **wire/disk-frozen
+or algorithm-frozen constants**, not tunable capacities (limits.hpp) nor
+behavioural knobs (cvars); per QO they stay as in-code constants next to the
+format/algorithm that defines them:
+
+| Literal | Site | Classification |
+|---------|------|----------------|
+| `56` | `pak_backend.cpp` `char name[56]` | PAK on-disk directory-entry name field (frozen file format) |
+| `16` | `wad_backend.cpp` `char name[16]`, `normalise_name(const char(&)[16])` | WAD3 lump-name field, NUL-padded/15 significant chars (frozen file format) |
+| `16` | `filesystem.{hpp,cpp}` `std::array<std::byte,16>` `md5_file` | MD5 digest size, 128 bits (frozen algorithm output) |
+
+The tunable structural capacities (`pak_max_files`, `wad_max_lumps`,
+`zip_max_files`, `zip_filename_max`, `zip_eocd_scan_max`,
+`filesystem_search_path_max`) already live in `limits.hpp` (see Fixed Limits).
+
+## Q-11 satellite verdict
+
+Not a separate-target satellite: the archive-format backends (PAK, ZIP, WAD,
+DIR, PK3DIR, Android asset) share the VFS's format concern, implement the small
+`ISearchBackend` interface the parent already exposes, live or die with the
+filesystem, and are useless standalone — 0 of the five "separate" criteria
+(Q-11). They correctly compile into `xash3dpp_filesystem`; `ISearchBackend` is
+intrinsic format dispatch, not a compat/policy seam.
+
+## Q-4 FilesystemInitParams — deferred (2026-07-06, 6B S4)
+
+`Filesystem::init` still takes positional args
+(`rootdir, basedir, gamedir, rodir`). Converting to a `FilesystemInitParams`
+struct would ripple past the two host call sites
+(`src/host/engine_context.cpp`, `src/host/host.cpp`) into **24 test call sites**
+across `tests/filesystem/test_file.cpp` (1) and `test_filesystem.cpp` (23) —
+beyond the S4 carve (host reach is limited to the two sanctioned lines; broad
+test edits are not sanctioned). **Deferred with owner `6B-S8-host`**, to be done
+alongside the host-params consolidation that already owns those call sites.

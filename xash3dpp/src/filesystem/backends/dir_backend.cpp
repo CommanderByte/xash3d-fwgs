@@ -18,7 +18,6 @@
 
 namespace xash::filesystem::backends {
 
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
@@ -98,21 +97,21 @@ DirBackend::open_file(std::string_view path, std::string_view mode) {
         if (resolved.empty() && !path.empty()) return nullptr;
         disk = xash::utilities::path_join(root_, resolved);
 
-        if (auto sz = platform::file_size(disk))
+        if (auto sz = ::xash::platform::file_size(disk))
             length = static_cast<FsOffset>(*sz);
     }
 
-    OsFd fd = platform::open_file(disk, mode_flags(mode));
+    OsFd fd = ::xash::platform::open_file(disk, mode_flags(mode));
     if (!fd.valid()) return nullptr;
 
-    return make_os_file(pool_, std::move(fd), length);
+    return create_os_file(pool_, std::move(fd), length);
 }
 
 std::optional<std::filesystem::file_time_type>
 DirBackend::file_time(std::string_view path) {
     const std::string resolved = resolve_path(path);
     if (resolved.empty() && !path.empty()) return std::nullopt;
-    return platform::file_time(xash::utilities::path_join(root_, resolved));
+    return ::xash::platform::file_time(xash::utilities::path_join(root_, resolved));
 }
 
 std::optional<std::string>
@@ -122,7 +121,7 @@ DirBackend::find_file(std::string_view path) {
 
     // Confirm the file actually exists (catches stale cache and native-mode
     // paths where Resolve returns the name unchanged).
-    if (!platform::file_size(xash::utilities::path_join(root_, resolved)).has_value())
+    if (!::xash::platform::file_size(xash::utilities::path_join(root_, resolved)).has_value())
         return std::nullopt;
 
     return resolved;
@@ -171,14 +170,14 @@ DirBackend::load_file(std::string_view path) {
     if (resolved.empty() && !path.empty()) return {};
 
     const std::string disk = xash::utilities::path_join(root_, resolved);
-    const auto sz = platform::file_size(disk);
+    const auto sz = ::xash::platform::file_size(disk);
     if (!sz || *sz == 0) return {};
 
-    OsFd fd = platform::open_file(disk, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(disk, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return {};
 
     std::vector<std::byte> buf(static_cast<std::size_t>(*sz));
-    if (platform::read(fd, buf.data(), buf.size()) !=
+    if (::xash::platform::read(fd, buf.data(), buf.size()) !=
             static_cast<std::int64_t>(*sz))
         return {};
 

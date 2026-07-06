@@ -69,7 +69,7 @@ template<typename T>
                                                    std::string_view      pattern )
 {
     using xash::utilities::match_pattern;
-    std::vector<std::string> results;
+    std::vector<std::string> results;  // @pre-reserved: cold local dedup accumulator on the search path; bounded by matching entries, no pre-sizing (reserve N/A)
 
     for ( const auto& e : entries ) {
         std::string temp = e.name;

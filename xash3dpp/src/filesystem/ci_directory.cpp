@@ -12,7 +12,6 @@
 
 namespace xash::filesystem {
 
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
@@ -22,7 +21,7 @@ using ::xash::platform::OsFd;
 CIDirectory::CIDirectory(std::string_view root_path)
     : root_{root_path}
 {
-    mode_ = platform::is_case_insensitive(root_path)
+    mode_ = ::xash::platform::is_case_insensitive(root_path)
                 ? Mode::Native
                 : Mode::Emulated;
 }
@@ -91,7 +90,7 @@ CIDirectory::get_or_populate(const std::string& dir) const
     if (it != cache_.end()) return it->second;
 
     const std::string full = xash::utilities::path_join(root_, dir);
-    auto entries = platform::list_directory(full);
+    auto entries = ::xash::platform::list_directory(full);
 
     // Sort case-insensitively so resolve's binary search is correct.
     std::sort(entries.begin(), entries.end(),

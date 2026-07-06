@@ -27,7 +27,6 @@
 
 namespace xash::filesystem::backends {
 
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
@@ -103,12 +102,12 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
                        std::string_view zip_path, SearchPathFlags flags)
     : ISearchBackend{pool}, path_{zip_path}, flags_{flags}
 {
-    auto fsz = platform::file_size(path_);
+    auto fsz = ::xash::platform::file_size(path_);
     if (!fsz || *fsz < static_cast<std::int64_t>(sizeof(DiskEocd))) return;
 
     const std::int64_t file_size = *fsz;
 
-    OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(path_, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return;
 
     // --- Phase 0: scan backwards for EOCD signature -------------------------
@@ -121,8 +120,8 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
     const std::int64_t scan_start = file_size - scan_len;
 
     std::vector<std::uint8_t> scan_buf(static_cast<std::size_t>(scan_len));
-    if (platform::seek(fd, scan_start, SEEK_SET) < 0) return;
-    if (platform::read(fd, scan_buf.data(), scan_buf.size()) != scan_len) return;
+    if (::xash::platform::seek(fd, scan_start, SEEK_SET) < 0) return;
+    if (::xash::platform::read(fd, scan_buf.data(), scan_buf.size()) != scan_len) return;
 
     std::int64_t eocd_pos = -1;  // offset from scan_start
     for (std::int64_t i = scan_len - static_cast<std::int64_t>(sizeof(DiskEocd));
@@ -143,7 +142,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
 
     // --- Phase 1: read central directory ------------------------------------
 
-    if (platform::seek(fd, static_cast<std::int64_t>(eocd.cd_offset), SEEK_SET) < 0)
+    if (::xash::platform::seek(fd, static_cast<std::int64_t>(eocd.cd_offset), SEEK_SET) < 0)
         return;
 
     static constexpr std::size_t k_MAX_FNAME = xash::limits::zip_filename_max;
@@ -162,7 +161,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
 
     for (std::uint16_t i = 0; i < eocd.total_records; ++i) {
         DiskCdfh cdfh{};
-        if (platform::read(fd, &cdfh, sizeof(cdfh)) !=
+        if (::xash::platform::read(fd, &cdfh, sizeof(cdfh)) !=
                 static_cast<std::int64_t>(sizeof(cdfh))) return;
         if (cdfh.signature != k_SIG_CDFH) return;
 
@@ -172,7 +171,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
                           cdfh.fname_len  < static_cast<std::uint16_t>(k_MAX_FNAME);
         if (keep) {
             std::string name(static_cast<std::size_t>(cdfh.fname_len), '\0');
-            if (platform::read(fd, name.data(), cdfh.fname_len) !=
+            if (::xash::platform::read(fd, name.data(), cdfh.fname_len) !=
                     static_cast<std::int64_t>(cdfh.fname_len)) return;
             phase1.push_back(PhaseEntry{
                 std::move(name),
@@ -183,12 +182,12 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
             });
         } else {
             if (cdfh.fname_len &&
-                platform::seek(fd, cdfh.fname_len, SEEK_CUR) < 0) return;
+                ::xash::platform::seek(fd, cdfh.fname_len, SEEK_CUR) < 0) return;
         }
 
         // Skip extra field and per-entry comment.
         const std::int32_t skip = cdfh.extra_len + cdfh.comment_len;
-        if (skip > 0 && platform::seek(fd, skip, SEEK_CUR) < 0) return;
+        if (skip > 0 && ::xash::platform::seek(fd, skip, SEEK_CUR) < 0) return;
     }
 
     if (phase1.empty()) return;
@@ -197,11 +196,11 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
 
     entries_.reserve(phase1.size());
     for (const auto& pe : phase1) {
-        if (platform::seek(fd, static_cast<std::int64_t>(pe.lfh_offset),
+        if (::xash::platform::seek(fd, static_cast<std::int64_t>(pe.lfh_offset),
                            SEEK_SET) < 0) return;
 
         DiskLfh lfh{};
-        if (platform::read(fd, &lfh, sizeof(lfh)) !=
+        if (::xash::platform::read(fd, &lfh, sizeof(lfh)) !=
                 static_cast<std::int64_t>(sizeof(lfh))) return;
         if (lfh.signature != k_SIG_LFH) return;
 
@@ -222,7 +221,7 @@ ZipBackend::ZipBackend(xash::memory::PoolHandle pool,
     // Sort case-insensitively — mirrors FS_SortZip(Q_stricmp) in zip.c.
     std::sort(entries_.begin(), entries_.end(), CiNameLess<Entry>{});
 
-    if (auto ft = platform::file_time(path_))
+    if (auto ft = ::xash::platform::file_time(path_))
         file_time_ = *ft;
 
     valid_ = true;
@@ -237,6 +236,10 @@ ZipBackend::create(xash::memory::PoolHandle pool,
                    std::string_view path, SearchPathFlags flags) {
     auto* raw = xash::memory::pool_new<ZipBackend>( pool, pool, path, flags );
     if (!raw) return nullptr;
+    // compliance-allow(raw-new-delete): ISearchBackend defines a pool-aware
+    // operator delete (mem_free); `delete raw` on the failed-construction path
+    // runs ~ZipBackend + mem_free — the same deallocation the success-path
+    // unique_ptr's deleter performs. Correct pairing with pool_new.
     if (!raw->valid_) { delete raw; return nullptr; }
     return std::unique_ptr<ISearchBackend>{ raw };
 }
@@ -273,11 +276,11 @@ ZipBackend::open_file(std::string_view path, std::string_view mode) {
     const Entry* e = find_entry(path);
     if (!e) return nullptr;
 
-    OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(path_, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return nullptr;
 
     const bool deflated = (e->method == k_METHOD_DEFLATED);
-    return make_os_file(pool_,
+    return create_os_file(pool_,
                         std::move(fd),
                         static_cast<FsOffset>(e->uncomp_size),
                         static_cast<FsOffset>(e->data_offset),
@@ -310,15 +313,15 @@ ZipBackend::load_file(std::string_view path) {
     const Entry* e = find_entry(path);
     if (!e || e->uncomp_size == 0) return {};
 
-    OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(path_, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return {};
 
-    if (platform::seek(fd, static_cast<std::int64_t>(e->data_offset), SEEK_SET) < 0)
+    if (::xash::platform::seek(fd, static_cast<std::int64_t>(e->data_offset), SEEK_SET) < 0)
         return {};
 
     if (e->method == k_METHOD_STORED) {
         std::vector<std::byte> buf(e->comp_size);
-        if (platform::read(fd, buf.data(), e->comp_size) !=
+        if (::xash::platform::read(fd, buf.data(), e->comp_size) !=
                 static_cast<std::int64_t>(e->comp_size))
             return {};
         return buf;
@@ -327,7 +330,7 @@ ZipBackend::load_file(std::string_view path) {
     if (e->method == k_METHOD_DEFLATED) {
         // Read the compressed blob, then decompress in one shot with miniz tinfl.
         std::vector<std::byte> comp(e->comp_size);
-        if (platform::read(fd, comp.data(), e->comp_size) !=
+        if (::xash::platform::read(fd, comp.data(), e->comp_size) !=
                 static_cast<std::int64_t>(e->comp_size))
             return {};
 

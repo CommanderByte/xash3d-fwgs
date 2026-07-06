@@ -4,6 +4,10 @@
 //
 // File is the public abstract base.  Callers always hold std::unique_ptr<File>.
 // The concrete OsFile class lives entirely inside src/filesystem/file.cpp.
+//
+// @thread-safety: a File handle is caller-owned and carries no internal
+// synchronization — confine each handle to a single thread. Distinct handles
+// (even onto the same underlying file) may be used from different threads.
 
 #include <cstddef>
 #include <cstdint>

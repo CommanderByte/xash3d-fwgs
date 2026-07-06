@@ -15,7 +15,6 @@
 
 namespace xash::filesystem::backends {
 
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
@@ -28,13 +27,13 @@ namespace {
 // length (obtained by seeking to end).  Both are 0/invalid on failure.
 struct AssetFd { OsFd fd; FsOffset length; };
 
-AssetFd open_asset_fd(platform::AssetManagerHandle* mgr,
+AssetFd open_asset_fd(::xash::platform::AssetManagerHandle* mgr,
                       std::string_view full_path) noexcept {
-    OsFd fd = platform::open_asset(mgr, full_path);
+    OsFd fd = ::xash::platform::open_asset(mgr, full_path);
     if (!fd.valid()) return {OsFd{}, 0};
 
-    const FsOffset len = platform::seek(fd, 0, SEEK_END);
-    platform::seek(fd, 0, SEEK_SET);
+    const FsOffset len = ::xash::platform::seek(fd, 0, SEEK_END);
+    ::xash::platform::seek(fd, 0, SEEK_SET);
     if (len < 0) return {OsFd{}, 0};
 
     return {std::move(fd), len};
@@ -53,7 +52,7 @@ AndroidBackend::AndroidBackend(xash::memory::PoolHandle pool,
     : ISearchBackend{pool},
       base_path_{base_path},
       flags_{flags},
-      mgr_{platform::get_asset_manager(engine_package)}
+      mgr_{::xash::platform::get_asset_manager(engine_package)}
 {}
 
 std::unique_ptr<ISearchBackend>
@@ -85,7 +84,7 @@ std::unique_ptr<File> AndroidBackend::open_file(std::string_view path,
     auto [fd, len] = open_asset_fd(mgr_, full);
     if (!fd.valid()) return nullptr;
 
-    return make_os_file(pool_, std::move(fd), len);
+    return create_os_file(pool_, std::move(fd), len);
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +113,7 @@ std::optional<std::string> AndroidBackend::find_file(std::string_view path) {
                                        : path;
 
     const std::string lookup = xash::utilities::path_join(base_path_, dir_sv);
-    const auto entries = platform::list_assets(mgr_, lookup);
+    const auto entries = ::xash::platform::list_assets(mgr_, lookup);
 
     for (const auto& entry : entries) {
         if (entry.size() == name_sv.size() &&
@@ -145,7 +144,7 @@ std::vector<std::string> AndroidBackend::search(std::string_view pattern,
                                        : pattern;
 
     const std::string lookup = xash::utilities::path_join(base_path_, dir_sv);
-    const auto entries = platform::list_assets(mgr_, lookup);
+    const auto entries = ::xash::platform::list_assets(mgr_, lookup);
 
     std::vector<std::string> result;
     for (const auto& entry : entries) {
@@ -160,6 +159,9 @@ std::vector<std::string> AndroidBackend::search(std::string_view pattern,
 // load_file
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): ISearchBackend is immutable after
+// construction (backend-interface.md); load_file is a const-correct read
+// invoked under the facade's shared_lock — any-thread by contract.
 std::vector<std::byte> AndroidBackend::load_file(std::string_view path) {
     if (!mgr_) return {};
 
@@ -168,7 +170,7 @@ std::vector<std::byte> AndroidBackend::load_file(std::string_view path) {
     if (!fd.valid() || len == 0) return {};
 
     std::vector<std::byte> buf(static_cast<std::size_t>(len));
-    const std::int64_t n = platform::read(fd, buf.data(), buf.size());
+    const std::int64_t n = ::xash::platform::read(fd, buf.data(), buf.size());
     if (n != len) buf.clear();
     return buf;
 }

@@ -40,7 +40,7 @@ private:
     std::string root_;
 
     // Emulated mode only: map from subdir path → sorted list of entry names.
-    mutable std::unordered_map<std::string, std::vector<std::string>> cache_;
+    mutable std::unordered_map<std::string, std::vector<std::string>> cache_; // @pre-reserved: warm lazily-populated per-directory listing cache; bounded by mounted directories, filled on first access, no pre-sizing (reserve N/A)
     mutable std::mutex                                                 cache_mutex_;
 
     // Populate (or return cached) entry list for `dir`.

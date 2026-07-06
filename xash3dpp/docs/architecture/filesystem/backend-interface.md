@@ -40,8 +40,8 @@ Replaces the legacy `pfnPrintInfo(char *dst, size_t size)` out-buffer pattern.
 
 Returns a new file handle allocated from `pool_`, or `nullptr` if the path
 does not exist in this backend. Archive backends (PAK, ZIP, WAD) call
-`make_os_file(pool_, fd, length, offset, deflated)` or construct a `MemFile`.
-`DirBackend` resolves `path` through `CIDirectory`, then calls `make_os_file`.
+`create_os_file(pool_, fd, length, offset, deflated)` or construct a `MemFile`.
+`DirBackend` resolves `path` through `CIDirectory`, then calls `create_os_file`.
 
 **Thread-safety**: archive backends are immutable after construction — `open_file`
 performs only reads on their entry tables and is safe to call concurrently.

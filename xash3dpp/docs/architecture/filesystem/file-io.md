@@ -113,10 +113,10 @@ When `deflated_ == true`:
 
 Calls `platform::flush(fd_)` (`fsync` on POSIX, `_commit` on Win32).
 
-### Factory: `make_os_file`
+### Factory: `create_os_file`
 
 ```cpp
-std::unique_ptr<File> make_os_file(
+std::unique_ptr<File> create_os_file(
     xash::memory::PoolHandle pool,
     OsFd     fd,
     FsOffset length,
@@ -210,11 +210,11 @@ a programmer error — there is no protection against it.
 
 - `Read` / `Write` return `-1` on I/O error (delegated from `platform::read`).
 - `Seek` returns `-1` if the target position is out of range.
-- `make_os_file` returns `nullptr` if `pool_new` fails (OOM).
+- `create_os_file` returns `nullptr` if `pool_new` fails (OOM).
 - No exceptions are thrown.
 
 ## See also
 
 - [backend-interface.md](./backend-interface.md) — backends that produce `unique_ptr<File>`
-- [archive-backends.md](./archive-backends.md) — how backends call `make_os_file` and `MemFile`
+- [archive-backends.md](./archive-backends.md) — how backends call `create_os_file` and `MemFile`
 - [platform-layer.md](./platform-layer.md) — `platform::read`, `platform::seek`, `platform::close_fd`

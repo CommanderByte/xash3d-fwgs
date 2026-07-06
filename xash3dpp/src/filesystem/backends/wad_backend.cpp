@@ -26,7 +26,6 @@
 
 namespace xash::filesystem::backends {
 
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
@@ -132,11 +131,11 @@ WadBackend::WadBackend(xash::memory::PoolHandle pool,
     stem_ = xash::utilities::file_base(path_);
     xash::utilities::to_lower(stem_);
 
-    OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(path_, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return;
 
     DiskHeader hdr{};
-    if (platform::read(fd, &hdr, sizeof(hdr)) != static_cast<std::int64_t>(sizeof(hdr)))
+    if (::xash::platform::read(fd, &hdr, sizeof(hdr)) != static_cast<std::int64_t>(sizeof(hdr)))
         return;
 
     if (hdr.ident != k_WAD2 && hdr.ident != k_WAD3) return;
@@ -144,12 +143,12 @@ WadBackend::WadBackend(xash::memory::PoolHandle pool,
     const int numlumps = hdr.numlumps;
     if (numlumps <= 0 || numlumps > k_MAX_LUMPS) return;
 
-    if (platform::seek(fd, static_cast<std::int64_t>(hdr.infotableofs), SEEK_SET) < 0)
+    if (::xash::platform::seek(fd, static_cast<std::int64_t>(hdr.infotableofs), SEEK_SET) < 0)
         return;
 
     std::vector<DiskLump> raw(static_cast<std::size_t>(numlumps));
     const std::int64_t lat_bytes = static_cast<std::int64_t>(numlumps) * sizeof(DiskLump);
-    if (platform::read(fd, raw.data(), static_cast<std::size_t>(lat_bytes)) != lat_bytes)
+    if (::xash::platform::read(fd, raw.data(), static_cast<std::size_t>(lat_bytes)) != lat_bytes)
         return;
 
     entries_.reserve(static_cast<std::size_t>(numlumps));
@@ -178,7 +177,7 @@ WadBackend::WadBackend(xash::memory::PoolHandle pool,
         return a.type < b.type;
     });
 
-    if (auto ft = platform::file_time(path_))
+    if (auto ft = ::xash::platform::file_time(path_))
         file_time_ = *ft;
 
     valid_ = true;
@@ -193,6 +192,10 @@ WadBackend::create(xash::memory::PoolHandle pool,
                    std::string_view path, SearchPathFlags flags) {
     auto* raw = xash::memory::pool_new<WadBackend>( pool, pool, path, flags );
     if (!raw) return nullptr;
+    // compliance-allow(raw-new-delete): ISearchBackend defines a pool-aware
+    // operator delete (mem_free); `delete raw` on the failed-construction path
+    // runs ~WadBackend + mem_free — the same deallocation the success-path
+    // unique_ptr's deleter performs. Correct pairing with pool_new.
     if (!raw->valid_) { delete raw; return nullptr; }
     return std::unique_ptr<ISearchBackend>{ raw };
 }
@@ -261,14 +264,14 @@ WadBackend::lookup(std::string_view path) const noexcept {
 
 std::vector<std::byte>
 WadBackend::read_lump_bytes(const Entry& e) const {
-    OsFd fd = platform::open_file(path_, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(path_, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return {};
 
-    if (platform::seek(fd, static_cast<std::int64_t>(e.offset), SEEK_SET) < 0)
+    if (::xash::platform::seek(fd, static_cast<std::int64_t>(e.offset), SEEK_SET) < 0)
         return {};
 
     std::vector<std::byte> buf(e.disk_size);
-    if (platform::read(fd, buf.data(), e.disk_size) !=
+    if (::xash::platform::read(fd, buf.data(), e.disk_size) !=
             static_cast<std::int64_t>(e.disk_size))
         return {};
 

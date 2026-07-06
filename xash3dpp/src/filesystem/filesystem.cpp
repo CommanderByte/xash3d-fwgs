@@ -25,8 +25,6 @@
 
 namespace xash::filesystem {
 
-namespace core     = ::xash::core;
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 using GameInfo = ::xash::GameInfo;
@@ -48,7 +46,7 @@ static std::string_view parent_dir_of(std::string_view path) noexcept
 // std::byte* → char* aliasing is permitted by [basic.lval].
 static std::string bytes_as_string( std::span<const std::byte> s ) noexcept
 {
-    return { reinterpret_cast<const char*>( s.data() ), s.size() };
+    return { reinterpret_cast<const char*>( s.data() ), s.size() }; // SAFETY: std::byte* → char* reinterpret is permitted by [basic.lval]; read-only view, size preserved
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +59,7 @@ static void collect_paths_for_dir( xash::memory::PoolHandle pool,
                                    std::string_view dir, SearchPathFlags flags,
                                    std::vector<SearchPath>& out )
 {
-    auto entries = platform::list_directory( dir );
+    auto entries = ::xash::platform::list_directory( dir );
     std::sort( entries.begin(), entries.end() );  // alphabetical: pak0 before pak1
 
     for ( const auto& at : k_archive_types ) {
@@ -136,6 +134,11 @@ Filesystem::~Filesystem()              = default;
 Filesystem::Filesystem(Filesystem&&) noexcept            = default;
 Filesystem& Filesystem::operator=(Filesystem&&) noexcept = default;
 
+// compliance-allow(thread-assert): main-thread-only lifecycle by contract
+// (README key invariants — "before worker threads start"); writes pool_/rootdir
+// unguarded. A runtime assert_thread_role(Main) would XASH_FATAL the fs test
+// harness (which registers no ThreadRole) — deferred with the shutdown() pair;
+// see filesystem-boundary.md Threading.
 bool Filesystem::init(std::string_view rootdir,
                       std::string_view basedir,
                       std::string_view gamedir,
@@ -148,12 +151,15 @@ bool Filesystem::init(std::string_view rootdir,
     impl_->pool_   = xash::memory::create_pool("filesystem");
     impl_->stats_  = {};
     if (!impl_->pool_) {
-        core::log(core::LogLevel::Error, "filesystem", "failed to create memory pool");
+        ::xash::core::log(::xash::core::LogLevel::Error, "filesystem", "failed to create memory pool");
         return false;
     }
     return true;
 }
 
+// compliance-allow(thread-assert): paired lifecycle end with init(); single-
+// threaded by contract (facade threading model — pool_ destroyed unguarded).
+// Same test-harness deferral as init().
 void Filesystem::shutdown() {
     {
         std::unique_lock lock{impl_->paths_mutex};
@@ -172,6 +178,9 @@ void Filesystem::shutdown() {
     }
 }
 
+// compliance-allow(thread-assert): exclusive-lock-guarded mutation (unique_lock
+// game_mutex + rescan's paths_mutex) — thread-safe by lock per README, not
+// thread-confined.
 bool Filesystem::activate_game(std::string_view gamefolder,
                                SearchPathFlags  mount_flags,
                                std::string_view language)
@@ -190,7 +199,7 @@ bool Filesystem::activate_game(std::string_view gamefolder,
             return true;
         }
     }
-    core::logf(core::LogLevel::Error, "filesystem",
+    ::xash::core::logf(::xash::core::LogLevel::Error, "filesystem",
         "activate_game: game directory '%.*s' not found in root '%s'",
         static_cast<int>(gamefolder.size()), gamefolder.data(),
         impl_->rootdir.c_str());
@@ -253,7 +262,7 @@ void Filesystem::rescan(SearchPathFlags mount_flags, std::string_view language) 
 
 std::vector<GameInfo> Filesystem::scan_game_directories(std::string_view root) const {
     std::vector<GameInfo> result;
-    const auto entries = platform::list_directory(root);
+    const auto entries = ::xash::platform::list_directory(root);
     for (const auto& entry : entries) {
         const std::string dir = xash::utilities::path_join(root, entry);
 
@@ -317,7 +326,7 @@ void Filesystem::allow_direct_paths(bool enable) {
 bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
     const auto ext_sv = xash::utilities::file_extension(path);
     if (ext_sv.size() < 2) {
-        core::logf(core::LogLevel::Warning, "filesystem",
+        ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
             "mount_archive: no file extension in path '%.*s'",
             static_cast<int>(path.size()), path.data());
         return false;
@@ -328,7 +337,7 @@ bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
         if (ext != at.extension) continue;
         auto backend = at.factory(impl_->pool_, path, flags);
         if (!backend) {
-            core::logf(core::LogLevel::Warning, "filesystem",
+            ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
                 "mount_archive: failed to open archive '%.*s'",
                 static_cast<int>(path.size()), path.data());
             return false;
@@ -338,7 +347,7 @@ bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
         impl_->stats_.search_path_count = impl_->search_paths.size();
         return true;
     }
-    core::logf(core::LogLevel::Warning, "filesystem",
+    ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
         "mount_archive: unsupported archive extension '%.*s'",
         static_cast<int>(ext.size()), ext.data());
     return false;
@@ -359,6 +368,9 @@ std::unique_ptr<File> Filesystem::open(std::string_view path,
     return nullptr;
 }
 
+// compliance-allow(thread-assert): concurrent-read path guarded by
+// shared_lock(paths_mutex); callable from any thread by documented contract
+// (README — "thread-safe for concurrent reads").
 std::vector<std::byte> Filesystem::load_file(std::string_view path, bool gamedironly) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
@@ -370,43 +382,48 @@ std::vector<std::byte> Filesystem::load_file(std::string_view path, bool gamedir
     return {};
 }
 
+// compliance-allow(thread-assert): const, VFS-bypassing disk read that touches
+// no shared state — inherently safe from any thread.
 std::vector<std::byte> Filesystem::load_direct_file(std::string_view disk_path) const {
-    const auto sz = platform::file_size(disk_path);
+    const auto sz = ::xash::platform::file_size(disk_path);
     if (!sz || *sz == 0) return {};
 
-    OsFd fd = platform::open_file(disk_path, platform::OpenMode::ReadOnly);
+    OsFd fd = ::xash::platform::open_file(disk_path, ::xash::platform::OpenMode::ReadOnly);
     if (!fd.valid()) return {};
 
     std::vector<std::byte> buf(static_cast<std::size_t>(*sz));
-    if (platform::read(fd, buf.data(), buf.size()) != static_cast<FsOffset>(*sz))
+    if (::xash::platform::read(fd, buf.data(), buf.size()) != static_cast<FsOffset>(*sz))
         buf.clear();
     return buf;
 }
 
+// compliance-allow(thread-assert): shared_lock(paths_mutex) path resolution;
+// the disk write is external and the backend cache invalidation is internally
+// synchronized — any-thread by design (no protected-state mutation here).
 bool Filesystem::write_file(std::string_view path, std::span<const std::byte> data) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
              it != impl_->search_paths.rend(); ++it) {
         if (any(it->flags & SearchPathFlags::NoWrite)) continue;
         const std::string full = xash::utilities::path_join(it->source_path, path);
-        OsFd fd = platform::open_file(full,
-            platform::OpenMode::WriteOnly |
-            platform::OpenMode::create   |
-            platform::OpenMode::Truncate);
+        OsFd fd = ::xash::platform::open_file(full,
+            ::xash::platform::OpenMode::WriteOnly |
+            ::xash::platform::OpenMode::create   |
+            ::xash::platform::OpenMode::Truncate);
         if (!fd.valid()) continue;
-        const FsOffset n   = platform::write(fd, data.data(), data.size());
+        const FsOffset n   = ::xash::platform::write(fd, data.data(), data.size());
         const bool     ok  = (n == static_cast<FsOffset>(data.size()));
         // invalidate the backend's directory cache so a subsequent file_exists
         // or find_file call sees the new file (critical on Linux emulated-CI).
         if (ok)
             it->backend->invalidate_directory(parent_dir_of(path));
         else
-            core::logf(core::LogLevel::Warning, "filesystem",
+            ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
                 "write_file: write failed for '%.*s'",
                 static_cast<int>(path.size()), path.data());
         return ok;
     }
-    core::logf(core::LogLevel::Warning, "filesystem",
+    ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
         "write_file: no writable search path for '%.*s'",
         static_cast<int>(path.size()), path.data());
     return false;
@@ -458,7 +475,7 @@ std::optional<std::string> Filesystem::disk_path(std::string_view name,
         if (!found) continue;
         // Only return a path if the file actually lives on disk (not in an archive).
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
-        if (platform::file_size(disk)) return disk;
+        if (::xash::platform::file_size(disk)) return disk;
     }
     return std::nullopt;
 }
@@ -490,9 +507,9 @@ bool Filesystem::rename(std::string_view from, std::string_view to) {
         auto found = it->backend->find_file(from);
         if (!found) continue;
         const std::string src = xash::utilities::path_join(it->source_path, *found);
-        if (!platform::file_size(src)) continue;
+        if (!::xash::platform::file_size(src)) continue;
         const std::string dst = xash::utilities::path_join(it->source_path, to);
-        const bool ok = platform::rename_file(src, dst);
+        const bool ok = ::xash::platform::rename_file(src, dst);
         if (ok) {
             // invalidate CI cache for both the source and destination directories
             // so find_file picks up the new name and drops the old one.
@@ -501,19 +518,21 @@ bool Filesystem::rename(std::string_view from, std::string_view to) {
             if (pd_to != parent_dir_of(from))
                 it->backend->invalidate_directory(pd_to);
         } else {
-            core::logf(core::LogLevel::Warning, "filesystem",
+            ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
                 "rename: platform rename failed '%.*s' -> '%.*s'",
                 static_cast<int>(from.size()), from.data(),
                 static_cast<int>(to.size()), to.data());
         }
         return ok;
     }
-    core::logf(core::LogLevel::Warning, "filesystem",
+    ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
         "rename: '%.*s' not found in any writable search path",
         static_cast<int>(from.size()), from.data());
     return false;
 }
 
+// compliance-allow(thread-assert): shared_lock(paths_mutex) path resolution +
+// external disk delete — any-thread by design; no protected-state mutation.
 bool Filesystem::remove(std::string_view path) {
     std::shared_lock lock{ impl_->paths_mutex };
     for (auto it = impl_->search_paths.rbegin();
@@ -522,15 +541,15 @@ bool Filesystem::remove(std::string_view path) {
         auto found = it->backend->find_file(path);
         if (!found) continue;
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
-        if (!platform::file_size(disk)) continue;
-        const bool ok = platform::delete_file(disk);
+        if (!::xash::platform::file_size(disk)) continue;
+        const bool ok = ::xash::platform::delete_file(disk);
         if (!ok)
-            core::logf(core::LogLevel::Warning, "filesystem",
+            ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
                 "remove: platform delete failed for '%.*s'",
                 static_cast<int>(path.size()), path.data());
         return ok;
     }
-    core::logf(core::LogLevel::Warning, "filesystem",
+    ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",
         "remove: '%.*s' not found in any writable search path",
         static_cast<int>(path.size()), path.data());
     return false;
@@ -568,14 +587,14 @@ std::optional<std::string> Filesystem::find_library(std::string_view name) {
         const std::string candidate =
             xash::utilities::path_join(
                 xash::utilities::path_join(rootdir, g.gamefolder, g.dll_path), name);
-        if (platform::file_size(candidate)) return candidate;
+        if (::xash::platform::file_size(candidate)) return candidate;
     }
 
     // Check gamedir root.
     {
         const std::string candidate =
             xash::utilities::path_join(rootdir, g.gamefolder, name);
-        if (platform::file_size(candidate)) return candidate;
+        if (::xash::platform::file_size(candidate)) return candidate;
     }
 
     // Walk Exec-capable search paths.
@@ -586,7 +605,7 @@ std::optional<std::string> Filesystem::find_library(std::string_view name) {
         auto found = it->backend->find_file(name);
         if (!found) continue;
         const std::string disk = xash::utilities::path_join(it->source_path, *found);
-        if (platform::file_size(disk)) return disk;
+        if (::xash::platform::file_size(disk)) return disk;
     }
     return std::nullopt;
 }

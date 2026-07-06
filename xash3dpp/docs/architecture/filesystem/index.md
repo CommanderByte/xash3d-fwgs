@@ -22,7 +22,7 @@ compatibility.
 | `private/filesystem/search_path.hpp` | `SearchPath` aggregate (`backend`, `source_path`, `flags`) |
 | `private/filesystem/archive_registry.hpp` | `ArchiveType`, `BackendFactory`, `k_archive_types` constexpr table |
 | `private/filesystem/archive_helpers.hpp` | `ci_find_by_name`, `archive_search_by_name` templates; `CiNameLess` |
-| `private/filesystem/os_file_factory.hpp` | `make_os_file()`, `mode_flags()` |
+| `private/filesystem/os_file_factory.hpp` | `create_os_file()`, `mode_flags()` |
 | `private/filesystem/mem_file.hpp` | `MemFile` fully-in-memory `File` implementation |
 | `private/filesystem/ci_directory.hpp` | `CIDirectory` — case-insensitive directory resolver |
 
@@ -42,7 +42,7 @@ compatibility.
 | File | Responsibility |
 |------|---------------|
 | `src/filesystem/filesystem.cpp` | `Filesystem::Impl`, all method bodies, path helpers |
-| `src/filesystem/file.cpp` | `OsFile` concrete class; `make_os_file()`; `File::operator delete` |
+| `src/filesystem/file.cpp` | `OsFile` concrete class; `create_os_file()`; `File::operator delete` |
 | `src/filesystem/ci_directory.cpp` | `CIDirectory` implementation (native-vs-emulated probe, lazy cache) |
 | `src/filesystem/backends/dir_backend.cpp` | `DirBackend` |
 | `src/filesystem/backends/pak_backend.cpp` | `PakBackend` (PAK header parse, sorted entry table) |
@@ -92,7 +92,7 @@ compatibility.
 | `crc32_file(path)` | `filesystem.cpp` | CRC-32 checksum of a file; returns `nullopt` on failure |
 | `md5_file(path)` | `filesystem.cpp` | MD5 digest of a file; returns 16-byte array or `nullopt` |
 | `find_library(name)` | `filesystem.cpp` | Resolve a game library name to an absolute disk path |
-| `make_os_file()` | `file.cpp` | Allocate and return a pool-backed `OsFile` |
+| `create_os_file()` | `file.cpp` | Allocate and return a pool-backed `OsFile` |
 | `mode_flags()` | `os_file_factory.hpp` | Map fopen mode string → `platform::OpenMode` |
 | `is_write_mode()` | `i_search_backend.hpp` | Return true if mode string implies write/append |
 | `ci_find_by_name()` | `archive_helpers.hpp` | Binary search entry by case-insensitive name |

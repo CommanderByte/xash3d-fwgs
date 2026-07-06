@@ -4,6 +4,9 @@
 // depending on the filesystem module.
 //
 // This header is kept for source-level backward compatibility only.
+//
+// @thread-safety: compatibility shim only — it re-exports the ::xash::GameInfo
+// plain value type (no shared state; usable from any thread).
 #include <xash3dpp/gameinfo.hpp>
 
 // Inject into xash::filesystem so existing #include users keep compiling.

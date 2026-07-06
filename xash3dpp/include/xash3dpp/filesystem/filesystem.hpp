@@ -5,6 +5,13 @@
 // No C ABI.  No const char * overloads.  All paths are std::string_view.
 // The Filesystem class uses pimpl so no internal type (SearchPath,
 // ISearchBackend, …) leaks into this header.
+//
+// @thread-safety: init()/shutdown() are main-thread-only (call before worker
+// threads start / after they join). Query and load methods are safe from any
+// thread concurrently — they hold a shared reader lock on the search-path list;
+// path-mutating methods (activate_game/rescan/add_*/clear_paths/mount_archive)
+// take an exclusive writer lock. Returned File handles are caller-owned and not
+// themselves synchronized (see file.hpp).
 
 #include <xash3dpp/filesystem/file.hpp>
 #include <xash3dpp/gameinfo.hpp>
@@ -28,7 +35,7 @@ using GameInfo = ::xash::GameInfo;
 
 // Result of a glob search across all active search paths.
 struct SearchResult {
-    std::vector<std::string> files;
+    std::vector<std::string> files;  // @pre-reserved: cold result set — matched paths returned by value to the caller; size == match count, no pre-sizing (reserve N/A)
 };
 
 // Observable snapshot of Filesystem runtime state.

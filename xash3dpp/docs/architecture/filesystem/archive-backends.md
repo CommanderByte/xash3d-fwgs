@@ -15,7 +15,7 @@ type. All six follow the same pattern:
    (entry table, file mtime, validity flag).
 1. After construction the object is never mutated; all operations are
    read-only on the entry table.
-1. `open_file` calls `make_os_file(pool_, fd, length, offset, deflated)` for
+1. `open_file` calls `create_os_file(pool_, fd, length, offset, deflated)` for
    streaming access, or constructs a `MemFile` for fully-buffered access.
 
 ______________________________________________________________________
@@ -36,7 +36,7 @@ ______________________________________________________________________
 
 - **`open_file`**: calls `resolve_path(path)` through `ci_` to get the
   canonical on-disk path, then calls `platform::open_file` and
-  `make_os_file(pool_, fd, size)`. Returns `nullptr` on write-mode requests
+  `create_os_file(pool_, fd, size)`. Returns `nullptr` on write-mode requests
   targeting a `NoWrite` path, or if the file does not exist.
 - **`find_file`**: calls `ci_.Resolve(subdir, filename)`.
 - **`search`**: calls `ci_.Glob(subdir, pattern, case_insensitive)`.
@@ -82,7 +82,7 @@ directory). Entries are sorted by `CiNameLess` after parsing.
   and sorts `entries_`, caches `file_time_`, closes the fd.
 - **`open_file`**: calls `find_entry(path)` (binary search via
   `ci_find_by_name`); on hit, opens the PAK file, seeks to `entry.offset`,
-  returns `make_os_file(pool_, fd, entry.size, entry.offset)`.
+  returns `create_os_file(pool_, fd, entry.size, entry.offset)`.
 - **`load_file`**: same as `open_file` but reads the full entry into a vector.
 - **`file_time`**: returns `file_time_` (the PAK's own mtime) regardless of
   which entry is queried.
@@ -130,7 +130,7 @@ ______________________________________________________________________
 - Uses miniz (`xash3dpp_miniz`) to parse the ZIP central directory.
 - Entries may be stored (no compression) or deflated.
 - For deflated entries, `open_file` opens the ZIP file, seeks to the local file
-  header, and returns `make_os_file(pool_, fd, uncompressed_size, data_offset, /*deflated=*/true)`.
+  header, and returns `create_os_file(pool_, fd, uncompressed_size, data_offset, /*deflated=*/true)`.
   `OsFile` performs incremental zlib inflation on `Read`.
 - For stored entries, `real_offset` is the data start and `deflated = false`.
 
@@ -178,7 +178,7 @@ calls the JNI-backed `android.content.res.AssetManager.list()`.
 
 - `open_file`: calls `platform::android::open_asset_fd(path)` to obtain a file
   descriptor (Android can return a native fd for APK-internal assets). Passes
-  the fd to `make_os_file(pool_, fd, len)`.
+  the fd to `create_os_file(pool_, fd, len)`.
 - `find_file`: uses a sorted entry table populated at construction, searched via
   `ci_find_by_name`.
 - `Create` sets `engine_package = false` for regular game assets; engine-internal

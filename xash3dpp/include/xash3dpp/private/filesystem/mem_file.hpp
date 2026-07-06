@@ -80,7 +80,7 @@ public:
     void UnGetc( int c ) override { ungetc_ = c; }
 
 private:
-    std::vector<std::byte> data_;
+    std::vector<std::byte> data_;  // @pre-reserved: sized once to the source blob length at construction; no incremental growth (reserve N/A)
     FsOffset               len_;
     FsOffset               pos_    = 0;
     int                    ungetc_ = EOF;

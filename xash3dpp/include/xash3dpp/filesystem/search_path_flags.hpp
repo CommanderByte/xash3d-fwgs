@@ -1,6 +1,9 @@
 #pragma once
 // xash3dpp — search path flag type
 // Legacy reference: filesystem/filesystem.h  (FS_STATIC_PATH, FS_NOWRITE_PATH, …)
+//
+// @thread-safety: a trivial scoped-enum bitflag value type — no shared state;
+// freely copyable and usable from any thread.
 
 #include <cstdint>
 

@@ -504,7 +504,7 @@ static void test_zip_backend_load_file_missing()
 static void test_zip_backend_open_file()
 {
     // Entries are stored (MZ_NO_COMPRESSION) so Read goes through the direct
-    // (non-inflate) path — exercises make_os_file with deflated=false.
+    // (non-inflate) path — exercises create_os_file with deflated=false.
     auto b = ZipBackend::create( g_pool, g_zip_path, SearchPathFlags::None );
     if (!b) { ++g_fail; return; }
     auto f = b->open_file( "scripts/test.txt", "rb" );

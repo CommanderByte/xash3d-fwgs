@@ -30,10 +30,10 @@ struct ArchiveType {
 
 // Forward-declare the factory functions so this header stays self-contained.
 namespace backends {
-std::unique_ptr<ISearchBackend> create_pak   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
-std::unique_ptr<ISearchBackend> create_zip   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
-std::unique_ptr<ISearchBackend> create_pk3dir(xash::memory::PoolHandle, std::string_view, SearchPathFlags);
-std::unique_ptr<ISearchBackend> create_wad   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+[[nodiscard]] std::unique_ptr<ISearchBackend> create_pak   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+[[nodiscard]] std::unique_ptr<ISearchBackend> create_zip   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+[[nodiscard]] std::unique_ptr<ISearchBackend> create_pk3dir(xash::memory::PoolHandle, std::string_view, SearchPathFlags);
+[[nodiscard]] std::unique_ptr<ISearchBackend> create_wad   (xash::memory::PoolHandle, std::string_view, SearchPathFlags);
 } // namespace backends
 
 inline constexpr std::array<ArchiveType, 4> k_archive_types = {{

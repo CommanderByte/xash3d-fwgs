@@ -21,7 +21,6 @@
 
 namespace xash::filesystem {
 
-namespace platform = ::xash::platform;
 using ::xash::platform::OsFd;
 
 // ---------------------------------------------------------------------------
@@ -100,7 +99,7 @@ OsFile::OsFile( OsFd fd, FsOffset length, FsOffset real_offset, bool deflated )
 {
     if ( deflated_ ) {
         zlib_.emplace();
-        platform::seek( fd_, real_offset_, SEEK_SET );
+        ::xash::platform::seek( fd_, real_offset_, SEEK_SET );
     }
 }
 
@@ -112,15 +111,15 @@ FsOffset OsFile::inflate_read( std::span<std::byte> out ) {
     ZlibState& zs = *zlib_;
     if ( zs.done || out.empty() ) return 0;
 
-    zs.z.next_out  = reinterpret_cast<mz_uint8*>( out.data() );
-    zs.z.avail_out = static_cast<unsigned int>( out.size() );
+    zs.z.next_out  = reinterpret_cast<mz_uint8*>( out.data() ); // SAFETY: std::byte* → mz_uint8* (unsigned char) — layout-compatible byte pointers; miniz writes into the caller-owned buffer sized to out.size()
+    zs.z.avail_out = static_cast<std::uint32_t>( out.size() );
 
     while ( zs.z.avail_out > 0 && !zs.done ) {
         if ( zs.z.avail_in == 0 ) {
-            const FsOffset got = platform::read( fd_, zs.in_buf.data(), zs.in_buf.size() );
+            const FsOffset got = ::xash::platform::read( fd_, zs.in_buf.data(), zs.in_buf.size() );
             if ( got <= 0 ) break;
             zs.z.next_in  = zs.in_buf.data();
-            zs.z.avail_in = static_cast<unsigned int>( got );
+            zs.z.avail_in = static_cast<std::uint32_t>( got );
         }
         const int ret = mz_inflate( &zs.z, MZ_SYNC_FLUSH );
         if ( ret == MZ_STREAM_END ) { zs.done = true; break; }
@@ -166,9 +165,9 @@ FsOffset OsFile::Read( std::span<std::byte> buf ) {
         const FsOffset got = inflate_read( buf.subspan( total, still_need ) );
         if ( got > 0 ) total += got;
     } else {
-        if ( platform::seek( fd_, real_offset_ + position_, SEEK_SET ) < 0 )
+        if ( ::xash::platform::seek( fd_, real_offset_ + position_, SEEK_SET ) < 0 )
             return total > 0 ? total : -1;
-        const FsOffset got = platform::read( fd_, buf.data() + total, still_need );
+        const FsOffset got = ::xash::platform::read( fd_, buf.data() + total, still_need );
         if ( got > 0 ) {
             position_ += got;
             total     += got;
@@ -190,7 +189,7 @@ FsOffset OsFile::Write( std::span<const std::byte> buf ) {
     buf_pos_ = 0;
     buf_len_ = 0;
 
-    const FsOffset n = platform::write( fd_, buf.data(), buf.size() );
+    const FsOffset n = ::xash::platform::write( fd_, buf.data(), buf.size() );
     if ( n > 0 ) position_ += n;
     return n;
 }
@@ -215,7 +214,7 @@ FsOffset OsFile::Seek( FsOffset offset, SeekOrigin origin ) {
     ungetc_  = EOF;
 
     if ( !deflated_ ) {
-        if ( platform::seek( fd_, real_offset_ + target, SEEK_SET ) < 0 )
+        if ( ::xash::platform::seek( fd_, real_offset_ + target, SEEK_SET ) < 0 )
             return -1;
         position_ = target;
         return target;
@@ -228,7 +227,7 @@ FsOffset OsFile::Seek( FsOffset offset, SeekOrigin origin ) {
         zs.z    = {};
         zs.done = false;
         mz_inflateInit2( &zs.z, -MZ_DEFAULT_WINDOW_BITS );
-        platform::seek( fd_, real_offset_, SEEK_SET );
+        ::xash::platform::seek( fd_, real_offset_, SEEK_SET );
         position_ = 0;
     }
 
@@ -259,7 +258,7 @@ FsOffset OsFile::Length() const { return length_; }
 
 bool OsFile::Eof() const { return Tell() >= length_; }
 
-void OsFile::Flush() { platform::flush( fd_ ); }
+void OsFile::Flush() { ::xash::platform::flush( fd_ ); }
 
 // ---------------------------------------------------------------------------
 // Getc / UnGetc / Gets
@@ -287,9 +286,9 @@ int OsFile::Getc() {
         if ( deflated_ ) {
             got = inflate_read( { buf_.data(), to_fill } );
         } else {
-            if ( platform::seek( fd_, real_offset_ + position_, SEEK_SET ) < 0 )
+            if ( ::xash::platform::seek( fd_, real_offset_ + position_, SEEK_SET ) < 0 )
                 return EOF;
-            got = platform::read( fd_, buf_.data(), to_fill );
+            got = ::xash::platform::read( fd_, buf_.data(), to_fill );
             if ( got > 0 ) position_ += got;
         }
         if ( got <= 0 ) return EOF;
@@ -332,10 +331,10 @@ void File::operator delete( void* p, std::size_t ) noexcept
 }
 
 // ---------------------------------------------------------------------------
-// make_os_file — factory used by backends
+// create_os_file — factory used by backends
 // ---------------------------------------------------------------------------
 
-std::unique_ptr<File> make_os_file( xash::memory::PoolHandle pool,
+std::unique_ptr<File> create_os_file( xash::memory::PoolHandle pool,
                                     OsFd fd, FsOffset length,
                                     FsOffset real_offset, bool deflated ) {
     return std::unique_ptr<File>{

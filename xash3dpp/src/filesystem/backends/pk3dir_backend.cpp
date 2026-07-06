@@ -46,6 +46,9 @@ std::vector<std::string> Pk3DirBackend::search(std::string_view pattern,
     return inner_.search(pattern, case_insensitive);
 }
 
+// compliance-allow(thread-assert): thin delegator to the immutable inner
+// DirBackend (backend-interface.md); a const-correct read invoked under the
+// facade's shared_lock — any-thread by contract.
 std::vector<std::byte> Pk3DirBackend::load_file(std::string_view path) {
     return inner_.load_file(path);
 }

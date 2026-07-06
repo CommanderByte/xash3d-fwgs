@@ -1,7 +1,7 @@
 #pragma once
 // xash3dpp — factory for OsFile instances  (internal)
 //
-// Backends that need streaming files call make_os_file() instead of
+// Backends that need streaming files call create_os_file() instead of
 // constructing OsFile directly; OsFile is private to file.cpp.
 //
 // mode_flags() converts a C-style fopen mode string to a platform::OpenMode
@@ -22,7 +22,7 @@ namespace xash::filesystem {
 // `real_offset` — byte offset of the entry within an archive (0 for plain files).
 // `deflated`    — true for zlib-compressed archive entries.
 // Defined in src/filesystem/file.cpp.
-[[nodiscard]] std::unique_ptr<File> make_os_file(xash::memory::PoolHandle pool,
+[[nodiscard]] std::unique_ptr<File> create_os_file(xash::memory::PoolHandle pool,
                                    ::xash::platform::OsFd fd,
                                    FsOffset length,
                                    FsOffset real_offset = 0,
