@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <vector>
 
 #include "../test_helpers.hpp"
@@ -312,6 +313,55 @@ static void test_model_introspection()
 }
 
 // ---------------------------------------------------------------------------
+// IModelPostProcess seam (OQ-4)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+struct RecordingPost final : xash::content::IModelPostProcess
+{
+    int  calls  = 0;
+    bool result = true;
+
+    bool on_model_loaded( xash::content::ModelHandle, xash::content::Model&,
+                          std::span<const std::byte> ) noexcept override
+    {
+        ++calls;
+        return result;
+    }
+};
+
+} // namespace
+
+static void test_model_postprocess()
+{
+    using namespace xash::content;
+
+    xash::filesystem::Filesystem fs;
+    RecordingPost post;
+    ModelCache cache;
+    const InitParams params{ fs, &post };
+    REQUIRE( cache.init( params ) );
+
+    // The hook fires on a successful load.
+    const ModelHandle h = cache.find_or_alloc( "models/player.mdl" );
+    REQUIRE( cache.load_from_bytes( h, make_studio_header() ).has_value() );
+    CHECK_EQ( post.calls, 1 );
+    CHECK( cache.resolve( h ) != nullptr );
+
+    // A rejecting hook fails the load and frees the model.
+    post.result = false;
+    const ModelHandle h2 = cache.find_or_alloc( "models/gauss.mdl" );
+    const auto r = cache.load_from_bytes( h2, make_studio_header() );
+    CHECK( !r.has_value() );
+    CHECK( r.error() == LoadError::UnsupportedFeature );
+    CHECK( cache.resolve( h2 ) == nullptr );   // freed on rejection
+    CHECK_EQ( post.calls, 2 );
+
+    cache.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -326,6 +376,7 @@ int main()
     RUN_TEST( test_model_load );
     RUN_TEST( test_model_crc );
     RUN_TEST( test_model_introspection );
+    RUN_TEST( test_model_postprocess );
 
     std::printf( "test_content: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

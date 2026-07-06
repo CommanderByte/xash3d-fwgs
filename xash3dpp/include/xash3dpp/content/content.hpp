@@ -27,15 +27,33 @@ namespace xash::filesystem { class Filesystem; }
 namespace xash::content {
 
 // ---------------------------------------------------------------------------
+// IModelPostProcess (OQ-4) — the post-load hook the renderer (legacy
+// Mod_ProcessRenderData) or dedicated-server physics (Mod_ProcessUserData)
+// implements. content calls out after a model's payload is attached; it depends
+// on this abstraction and never links toward the renderer. Returning false
+// fails the load (legacy frees the model). Optional — absent for headless loads.
+// ---------------------------------------------------------------------------
+
+struct IModelPostProcess
+{
+    virtual ~IModelPostProcess() = default;
+
+    [[nodiscard]] virtual bool on_model_loaded( ModelHandle handle, Model& model,
+                                                std::span<const std::byte> file ) noexcept = 0;
+};
+
+// ---------------------------------------------------------------------------
 // Injected dependencies (P-3 context-first — no file-scope globals).
 // ---------------------------------------------------------------------------
 
 struct InitParams {
     // Model / seqgroup / external-texture file loads.
     xash::filesystem::Filesystem& filesystem;
+    // Renderer / dedicated-server-physics post-load callback (OQ-4). Null on a
+    // headless / test load — the parse still runs, the hook is simply skipped.
+    IModelPostProcess* post_process = nullptr;
     // TODO(Chunk 7): imagelib::ImageDecoder& for skin/miptex decode (O-2);
-    //   the map_loader brush-dispatch seam (boundary OQ-3); an IModelPostProcess
-    //   for the renderer/physics DLL callback (boundary OQ-4).
+    //   the map_loader brush-dispatch seam (boundary OQ-3).
 };
 
 // ---------------------------------------------------------------------------

@@ -57,6 +57,10 @@ struct ModelCache::Impl
     //   and outlives this ModelCache. Set in init(), cleared in shutdown().
     xash::filesystem::Filesystem *fs_ = nullptr;
 
+    // @lifetime: non-owning; the optional post-load hook is owned by the
+    //   renderer/server and outlives this cache. Set in init(), cleared in shutdown().
+    IModelPostProcess *post_process_ = nullptr;
+
     // Slot 0 is reserved for the world; regular models occupy 1..N.
     std::vector<Slot> slots_;   // @pre-reserved: content_max_models (reserve at init; cold registry)
     ContentStats      stats_ {};
@@ -70,8 +74,9 @@ ModelCache& ModelCache::operator=(ModelCache&&) noexcept = default;
 bool ModelCache::init(const InitParams& params)
 {
     xash::core::assert_thread_role(xash::core::ThreadRole::Main);
-    impl_->fs_   = &params.filesystem;
-    impl_->pool_ = xash::memory::create_pool("content");
+    impl_->fs_           = &params.filesystem;
+    impl_->post_process_ = params.post_process;
+    impl_->pool_         = xash::memory::create_pool("content");
     if (!impl_->pool_)
         return false;
 
@@ -88,7 +93,8 @@ void ModelCache::shutdown()
         xash::memory::destroy_pool(impl_->pool_);
         impl_->pool_ = {};
     }
-    impl_->fs_ = nullptr;
+    impl_->fs_           = nullptr;
+    impl_->post_process_ = nullptr;
 }
 
 const ContentStats& ModelCache::stats() const noexcept { return impl_->stats_; }
@@ -247,6 +253,15 @@ Result<void> ModelCache::load_from_bytes( ModelHandle h, std::span<const std::by
     m->set_needload(NeedLoad::Present);
     m->set_crc(crc);
     m->set_crc_flags(m->crc_flags() | CrcFlags::ChecksumDone);
+
+    // Renderer / physics post-load hook (OQ-4); a rejection frees the model
+    // (legacy Mod_ProcessRenderData / Mod_ProcessUserData returning 0).
+    if (impl_->post_process_ && !impl_->post_process_->on_model_loaded(h, *m, file))
+    {
+        free_model(h);
+        return std::unexpected(LoadError::UnsupportedFeature);
+    }
+
     ++impl_->stats_.models_loaded;
     return {};
 }
