@@ -4,6 +4,7 @@
 
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/core/error.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/memory/memory.hpp>
 
 #include "../test_helpers.hpp"
@@ -29,15 +30,15 @@ static xash::HostInitParams make_dedicated_params()
 static void test_init_shutdown()
 {
     xash::Host host;
-    CHECK( host.status() == xash::HostStatus::kInit );
+    CHECK( host.status() == xash::HostStatus::Init );
 
     const auto params = make_dedicated_params();
     REQUIRE( host.init(params) );
-    CHECK( host.status() == xash::HostStatus::kRunning );
+    CHECK( host.status() == xash::HostStatus::Running );
     CHECK( host.dedicated() );
 
     host.RequestShutdown( "test" );
-    CHECK( host.status() == xash::HostStatus::kShutdown );
+    CHECK( host.status() == xash::HostStatus::Shutdown );
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,10 @@ static void test_signal_frame_abort()
 
 int main()
 {
+    // Host public entries assert ThreadRole::Main (QN thread-assert policy);
+    // present as the engine main thread, as the launcher / production does.
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     RUN_TEST( test_init_shutdown );
     RUN_TEST( test_bugcomp_default_zero );
     RUN_TEST( test_signal_frame_abort );

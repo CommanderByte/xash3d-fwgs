@@ -20,8 +20,11 @@
 #include <xash3dpp/host/host.hpp>
 
 #include <cstdarg>
-#include <cstdio>
 #include <cstdlib>
+
+// stats exempt: abi is a vendored-ABI declaration layer + a thin extern "C"
+// bridge with no mutable runtime state and no hot path — there is nothing to
+// instrument (reviewer §5; QN Observability exemption for state-free layers).
 
 // The singleton accessor's STATE lives in xash3dpp_host
 // (src/host/engine_context_accessor.cpp) — the host owns its lifecycle.
@@ -74,8 +77,10 @@ XASH_ABI_EXPORT void Host_Error( const char *fmt, ... )
 
     // No context is wired yet (called before init or after shutdown):
     // there is nothing to abort, so fall through to a hard exit so the
-    // game DLL contract is preserved.
-    std::fputs( "xash3dpp: Host_Error invoked with no live EngineContext\n",
-                stderr );
+    // game DLL contract is preserved.  core::log_fatal works without a live
+    // EngineContext (same sink as the log_va above), so route through it
+    // rather than raw stdio (QI: never printf/fputs for diagnostics).
+    xash::core::log_fatal( "host",
+                           "Host_Error invoked with no live EngineContext" );
     std::abort();
 }

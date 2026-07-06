@@ -11,6 +11,9 @@
 #include <cstddef>
 #include <cstdint>
 
+// @annotation-exempt: abi-pod — event_info_t / event_state_t are byte-exact,
+// pointer-free mirrors of the frozen legacy event queue; the QN annotation
+// matrix does not apply and @thread-safety is a caller contract (decisions-style QN).
 namespace xash::abi {
 
 // MAX_EVENT_QUEUE (world.h:117): 16 simultaneous events max, 64-deep ring.

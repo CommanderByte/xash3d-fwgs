@@ -13,17 +13,23 @@
 // xash3dpp/abi/ path and the xash::abi namespace.
 
 #include <xash3dpp/abi/engine_context_accessor.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 
 #include <atomic>
 
 namespace xash::abi {
 
 namespace {
-    std::atomic<EngineContext *> g_engine_ctx { nullptr };  // Q-2 exception (OQ-10)
+    // The ONE sanctioned global accessor for C-ABI callers (Q-2 exception, host
+    // OQ-10); the marker on this definition sanctions every reference below.
+    std::atomic<EngineContext *> g_engine_ctx { nullptr }; // compliance-allow(di-global-ref): Q-2 documented singleton exception (OQ-10)
 } // anonymous namespace
 
 void set_current_engine_context( EngineContext *ctx ) noexcept
 {
+    // Main-thread only: called once each from EngineContext::init/shutdown.
+    // The read path (current_engine_context) is lock-free and role-agnostic.
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     g_engine_ctx.store( ctx, std::memory_order_release );
 }
 

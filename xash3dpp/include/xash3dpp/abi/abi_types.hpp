@@ -12,6 +12,9 @@
 
 #include <cstdint>
 
+// @annotation-exempt: abi-pod — width-frozen primitive typedefs + the color24
+// POD are verbatim mirrors of the legacy SDK types; the QN annotation matrix
+// does not apply and @thread-safety is a caller contract (decisions-style QN).
 namespace xash::abi {
 
 using vec_t    = float;

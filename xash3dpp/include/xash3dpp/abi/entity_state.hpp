@@ -11,6 +11,9 @@
 
 #include <cstddef>
 
+// @annotation-exempt: abi-pod — entity_state_t / clientdata_t are byte-exact,
+// pointer-free mirrors of the frozen SDK structs; the QN annotation matrix does
+// not apply and @thread-safety is a caller contract (decisions-style QN).
 namespace xash::abi {
 
 // entityType values (legacy ENTITY_NORMAL / ENTITY_BEAM)

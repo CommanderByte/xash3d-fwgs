@@ -25,6 +25,13 @@
 #include <cstddef>
 #include <type_traits>
 
+// @annotation-exempt: abi-pod — every struct below is a byte-exact mirror of a
+// frozen legacy pmove POD (pmplane_t / pmtrace_t / physent_t / playermove_t).
+// physent_t and playermove_t embed raw ABI pointers (model_s*, movevars_t*) and
+// playermove_t's ~30 host-callback slots are a frozen function-pointer table
+// (fnptr-table); their ownership and calling contract are the engine/bridge's,
+// not this header's.  The QN annotation matrix does not apply to these vendored
+// PODs, and @thread-safety is a caller/engine contract (decisions-style QN).
 namespace xash::abi {
 
 // legacy: pm_shared/pm_defs.h — frozen array dimensions
@@ -88,8 +95,8 @@ struct physent_t
     char     name[32];   // Name of model, or "player" or "world".
     int      player;
     vec3_t   origin;     // Model's origin in world coordinates.
-    model_s *model;      // only for bsp models
-    model_s *studiomodel; // SOLID_BBOX, but studio clip intersections.
+    model_s *model;      // only for bsp models @annotation-exempt: abi-pod
+    model_s *studiomodel; // SOLID_BBOX, but studio clip intersections. @annotation-exempt: abi-pod
     vec3_t   mins, maxs; // only for non-bsp models
     int      info;       // index into edicts or cl_entities
     vec3_t   angles;     // rotated entities need this for hull testing
@@ -222,7 +229,7 @@ struct playermove_t
 
     char     physinfo[k_max_physinfo_string]; // Physics info string
 
-    movevars_t *movevars;
+    movevars_t *movevars; // @annotation-exempt: abi-pod
     vec3_t   player_mins[4];
     vec3_t   player_maxs[4];
 

@@ -6,6 +6,9 @@
 
 #include <cstddef>
 
+// @annotation-exempt: abi-pod — event_args_t is a byte-exact, pointer-free
+// mirror of the frozen SDK struct; the QN annotation matrix does not apply and
+// @thread-safety is a caller contract (decisions-style QN).
 namespace xash::abi {
 
 // flags values (legacy FEVENT_ORIGIN / FEVENT_ANGLES)

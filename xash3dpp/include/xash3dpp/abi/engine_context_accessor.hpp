@@ -8,6 +8,11 @@
 // symbols) cross an `extern "C"` boundary and have no other way to reach the
 // live EngineContext.  Engine-internal C++ code MUST go through normal
 // parameter-passing — never through this accessor.
+//
+// @thread-safety: the pointer is stored in a std::atomic (release on set,
+// acquire on read).  set_current_engine_context() is main-thread-only (called
+// once from EngineContext::init/shutdown); current_engine_context() is a
+// lock-free read callable from any C-ABI caller thread.
 
 namespace xash {
 struct EngineContext;

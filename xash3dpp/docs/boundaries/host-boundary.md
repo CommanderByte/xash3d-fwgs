@@ -315,7 +315,7 @@ Two separate state machines, both tracked in `host_parm_t`:
   `STATE_RUNFRAME`, `STATE_LOAD_LEVEL`, `STATE_LOAD_GAME`, `STATE_CHANGELEVEL`,
   `STATE_GAME_SHUTDOWN`. Drives `COM_Frame`.
 
-Current `HostStatus` (`kInit / kRunning / kSleep / kShutdown`) maps to the
+Current `HostStatus` (`Init / Running / Sleep / Shutdown`) maps to the
 first one. The second one needs a separate `MapLoadState` enum.
 
 ### Q-3 — Frame abort propagation (no `setjmp`/`longjmp`)
@@ -483,6 +483,23 @@ follow-up design session. Outcomes:
 
 ---
 
+## Deferred: `FilesystemInitParams` (Q-4 ergonomics) — DEFER-with-owner
+
+> **Decision (2026-07-06, 6B-S8-host): DEFER-with-owner(post-6B-fs-ergonomics).**
+> Converting `Filesystem::init(rootdir, basedir, gamedir, rodir)` to a named
+> `FilesystemInitParams` struct (Q-4 DI-params ergonomics) is *contained* on the
+> host side — only the two host call sites (`engine_context.cpp`, `host.cpp`)
+> plus the `filesystem.hpp` signature change. **But** the same signature ripples
+> into ~24 filesystem **test** call sites, which live in `tests/filesystem/**` —
+> outside the 6B-S8 carve (and outside host's ownership). This is an ergonomics
+> refactor, not a Q-22/QN conformance item, so it is **not** performed in this
+> hardening pass. Owner: a future filesystem-ergonomics slice that can update the
+> `filesystem/**` sources and their tests atomically. The host call sites are
+> already minimal (four ordered string views) and convert trivially once the
+> `filesystem/**` side lands the params struct.
+
+---
+
 ## Fixed Limits (`xash3dpp` rewrite)
 
 All compile-time capacity limits are defined in `xash3dpp/include/xash3dpp/limits.hpp` under the `// host subsystem` block and are override-able at build time.
@@ -499,13 +516,13 @@ All compile-time capacity limits are defined in `xash3dpp/include/xash3dpp/limit
 
 | Field | Type | Description |
 |---|---|---|
-| `status` | `HostStatus` | Current lifecycle state (`kInit`, `kRunning`, `kSleep`, `kShutdown`). |
+| `status` | `HostStatus` | Current lifecycle state (`Init`, `Running`, `Sleep`, `Shutdown`). |
 
 `Host::Impl::stats_` is kept in sync at every point where `Impl::status` is written:
 
 | Write site | Location |
 |---|---|
-| `Impl::shutdown()` — `kShutdown` | `host.cpp` |
-| `init()` — `kInit` | `host.cpp` |
-| `init()` — `kRunning` | `host.cpp` |
-| `Host::RequestShutdown()` — `kShutdown` | `host.cpp` |
+| `Impl::shutdown()` — `Shutdown` | `host.cpp` |
+| `init()` — `Init` | `host.cpp` |
+| `init()` — `Running` | `host.cpp` |
+| `Host::RequestShutdown()` — `Shutdown` | `host.cpp` |

@@ -20,6 +20,12 @@
 #include <cstdint>
 #include <type_traits>
 
+// @annotation-exempt: abi-pod — every struct below is a byte-exact mirror of a
+// frozen legacy SDK POD (entvars_t / edict_t / globalvars_t / link_t).  We do
+// not own their design: field order, types, and cross-link raw pointers are
+// dictated by the game-DLL ABI, so per-member @lifetime ownership annotations
+// do not apply (QN abi-pod).  @thread-safety is likewise a caller/engine
+// contract — these headers declare layout only, no operations.
 namespace xash::abi {
 
 // legacy: common/const.h — engine string handle (offset from pStringBase)
@@ -118,12 +124,12 @@ struct entvars_t
     int      button;
     int      impulse;
 
-    edict_t *chain;          // linked-list pointer
-    edict_t *dmg_inflictor;
-    edict_t *enemy;
-    edict_t *aiment;         // entity pointer when MOVETYPE_FOLLOW
-    edict_t *owner;
-    edict_t *groundentity;
+    edict_t *chain;          // linked-list pointer @annotation-exempt: abi-pod
+    edict_t *dmg_inflictor; // @annotation-exempt: abi-pod
+    edict_t *enemy; // @annotation-exempt: abi-pod
+    edict_t *aiment;         // entity pointer when MOVETYPE_FOLLOW @annotation-exempt: abi-pod
+    edict_t *owner; // @annotation-exempt: abi-pod
+    edict_t *groundentity; // @annotation-exempt: abi-pod
 
     int      spawnflags;
     int      flags;
@@ -158,7 +164,7 @@ struct entvars_t
     float    pain_finished;
     float    radsuit_finished;
 
-    edict_t *pContainingEntity;
+    edict_t *pContainingEntity; // @annotation-exempt: abi-pod
 
     int      playerclass;
     float    maxspeed;
@@ -194,10 +200,10 @@ struct entvars_t
     vec3_t   vuser2;
     vec3_t   vuser3;
     vec3_t   vuser4;
-    edict_t *euser1;
-    edict_t *euser2;
-    edict_t *euser3;
-    edict_t *euser4;
+    edict_t *euser1; // @annotation-exempt: abi-pod
+    edict_t *euser2; // @annotation-exempt: abi-pod
+    edict_t *euser3; // @annotation-exempt: abi-pod
+    edict_t *euser4; // @annotation-exempt: abi-pod
 };
 
 // legacy: engine/edict.h :25-46 (FWGS deviation from GoldSrc: leafnums is
@@ -219,7 +225,7 @@ struct edict_t
 
     float    freetime;       // sv.time when the object was freed
 
-    void    *pvPrivateData;  // Alloced and freed by engine, used by DLLs
+    void    *pvPrivateData;  // Alloced and freed by engine, used by DLLs @annotation-exempt: abi-pod
     entvars_t v;             // C exported fields from progs
 };
 
@@ -245,7 +251,7 @@ struct globalvars_t
     vec3_t      trace_endpos;
     vec3_t      trace_plane_normal;
     float       trace_plane_dist;
-    edict_t    *trace_ent;
+    edict_t    *trace_ent; // @annotation-exempt: abi-pod
     float       trace_inopen;
     float       trace_inwater;
     int         trace_hitgroup;
@@ -254,9 +260,9 @@ struct globalvars_t
     int         cdAudioTrack;
     int         maxClients;
     int         maxEntities;
-    const char *pStringBase;
+    const char *pStringBase; // @annotation-exempt: abi-pod
 
-    void       *pSaveData;     // (SAVERESTOREDATA *) pointer
+    void       *pSaveData;     // (SAVERESTOREDATA *) pointer @annotation-exempt: abi-pod
     vec3_t      vecLandmarkOffset;
 };
 

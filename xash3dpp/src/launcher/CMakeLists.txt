@@ -1,6 +1,6 @@
 add_executable(xash3dpp main.cpp)
 
-target_compile_features(xash3dpp PRIVATE cxx_std_20)
+target_compile_features(xash3dpp PRIVATE cxx_std_23)
 
 target_link_libraries(xash3dpp PRIVATE xash3dpp_host)
 

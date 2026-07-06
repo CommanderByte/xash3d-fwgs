@@ -15,6 +15,7 @@
 #include <xash3dpp/core/clock.hpp>
 #include <xash3dpp/core/error.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
@@ -42,18 +43,18 @@ struct Host::Impl
     int           developer = 0;
     std::uint32_t bugcomp   = 0;
 
-    HostStatus  status     = HostStatus::kInit;
+    HostStatus  status     = HostStatus::Init;
     HostStats   stats_     {};              // always-on snapshot; status field mirrored here
 
     // Frame-abort propagation (Quirk Q-3, OQ-1 hybrid).
     bool                  frame_abort_pending = false;
-    core::ErrorCode       frame_abort_code    = core::ErrorCode::Ok;
+    ::xash::core::ErrorCode       frame_abort_code    = ::xash::core::ErrorCode::Ok;
     std::array<char, ::xash::limits::host_frame_abort_detail_buf> frame_abort_detail {};
 
     // Injected deps — non-owning; null = standalone / test mode.
     // Must outlive this Impl.  Only written in init(); never written again.
     cmd_cvar::CmdCvarContext  *cmd_cvar   = nullptr;
-    core::Clock               *clock      = nullptr;
+    ::xash::core::Clock               *clock      = nullptr;
     MapLoader                 *map_loader = nullptr;
     filesystem::Filesystem    *ext_fs     = nullptr;
 
@@ -72,6 +73,7 @@ struct Host::Impl
 
     void shutdown() noexcept
     {
+        ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
         if ( !pool ) return;  // already shut down or never initialised
 
         // TODO Chunk 6: Server::shutdown()
@@ -89,7 +91,7 @@ struct Host::Impl
         destroy_pool( pool );
         pool = k_null_pool;
 
-        status        = HostStatus::kShutdown;
+        status        = HostStatus::Shutdown;
         stats_.status = status;
     }
 };
@@ -107,6 +109,7 @@ Host::~Host() = default;
 
 bool Host::init(const HostInitParams& p)
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl& s = *impl_;
 
     // Copy config from non-owning string_views into owned strings.
@@ -124,14 +127,14 @@ bool Host::init(const HostInitParams& p)
     s.map_loader = p.map_loader;
     s.ext_fs     = p.filesystem;
 
-    s.status        = HostStatus::kInit;
+    s.status        = HostStatus::Init;
     s.stats_.status = s.status;
 
     // --- Memory ----------------------------------------------------------
     s.pool = create_pool( "host" );
     if ( !s.pool )
     {
-        core::log( core::LogLevel::Error, "host",
+        ::xash::core::log( ::xash::core::LogLevel::Error, "host",
                    "create_pool(\"host\") failed (registry full)" );
         return false;
     }
@@ -145,7 +148,7 @@ bool Host::init(const HostInitParams& p)
 
         if ( !s.own_fs.init( s.rootdir, basedir, gamedir, s.rodir ) )
         {
-            core::log( core::LogLevel::Error, "host", "Filesystem::init failed" );
+            ::xash::core::log( ::xash::core::LogLevel::Error, "host", "Filesystem::init failed" );
             destroy_pool( s.pool );
             s.pool = k_null_pool;
             return false;
@@ -156,7 +159,7 @@ bool Host::init(const HostInitParams& p)
 
         if ( !gamedir.empty() && !s.own_fs.activate_game( gamedir, mount_flags ) )
         {
-            core::logf( core::LogLevel::Warning, "host",
+            ::xash::core::logf( ::xash::core::LogLevel::Warning, "host",
                         "game directory '%.*s' not found, running in base mode",
                         static_cast<int>( gamedir.size() ), gamedir.data() );
         }
@@ -178,14 +181,14 @@ bool Host::init(const HostInitParams& p)
 
     if ( s.developer > 0 )
     {
-        core::logf( core::LogLevel::Info, "host",
+        ::xash::core::logf( ::xash::core::LogLevel::Info, "host",
                     "host init complete  rootdir='%s'  game='%s'  "
                     "dedicated=%d  developer=%d",
                     s.rootdir.c_str(), s.gamedir.c_str(),
                     static_cast<int>( s.dedicated ), s.developer );
     }
 
-    s.status        = HostStatus::kRunning;
+    s.status        = HostStatus::Running;
     s.stats_.status = s.status;
     return true;
 }
@@ -197,17 +200,17 @@ bool Host::init(const HostInitParams& p)
 void Host::RunFrame()
 {
     Impl& s = *impl_;
-    if ( s.status == HostStatus::kShutdown ) return;
+    if ( s.status == HostStatus::Shutdown ) return;
 
     // Frame-abort recovery (Quirk Q-3, OQ-1) — runs at frame top so all
     // destructors from the aborted frame have already executed.
     if ( s.frame_abort_pending )
     {
-        core::log( core::LogLevel::Warning, "host",
+        ::xash::core::log( ::xash::core::LogLevel::Warning, "host",
                    "frame abort recovered; subsystem cleanup pending" );
         // TODO Chunk 6/12: SV_Shutdown(), CL_Drop(), CL_ClearEdicts(), Mod_FreeAll().
         s.frame_abort_pending   = false;
-        s.frame_abort_code      = core::ErrorCode::Ok;
+        s.frame_abort_code      = ::xash::core::ErrorCode::Ok;
         s.frame_abort_detail[0] = '\0';
     }
 
@@ -239,12 +242,13 @@ void Host::RunFrame()
 
 void Host::RequestShutdown(const char* /*reason*/) noexcept
 {
-    impl_->status        = HostStatus::kShutdown;
+    impl_->status        = HostStatus::Shutdown;
     impl_->stats_.status = impl_->status;
 }
 
 void Host::shutdown() noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     impl_->shutdown();
 }
 
@@ -252,7 +256,7 @@ void Host::shutdown() noexcept
 // signal_frame_abort — Quirk Q-3, Resolved-decision OQ-1
 // ---------------------------------------------------------------------------
 
-void Host::signal_frame_abort(core::ErrorCode code,
+void Host::signal_frame_abort(::xash::core::ErrorCode code,
                               std::string_view detail) noexcept
 {
     Impl& s = *impl_;
@@ -262,7 +266,7 @@ void Host::signal_frame_abort(core::ErrorCode code,
     // Decision ref: host-boundary.md Resolved-decision OQ-1
     if ( s.frame_abort_pending )
     {
-        platform::crash::print_trace();
+        ::xash::platform::crash::print_trace();
         XASH_FATAL( false, "recursive frame abort — escalating to process abort" );
     }
 
@@ -295,7 +299,7 @@ int Host::Main(const HostArgs& args)
 
     if ( !init( p ) ) return 1;
 
-    while ( impl_->status != HostStatus::kShutdown )
+    while ( impl_->status != HostStatus::Shutdown )
         RunFrame();
 
     impl_->shutdown();
@@ -311,10 +315,10 @@ bool            Host::dedicated()           const noexcept { return impl_->dedic
 double          Host::realtime()            const noexcept
 {
     // Forward through Clock when available; fall back to platform time.
-    return impl_->clock ? impl_->clock->realtime() : platform::get_time();
+    return impl_->clock ? impl_->clock->realtime() : ::xash::platform::get_time();
 }
 bool            Host::frame_abort_pending() const noexcept { return impl_->frame_abort_pending; }
-core::ErrorCode Host::frame_abort_code()    const noexcept { return impl_->frame_abort_code; }
+::xash::core::ErrorCode Host::frame_abort_code()    const noexcept { return impl_->frame_abort_code; }
 const HostStats& Host::stats()              const noexcept { return impl_->stats_; }
 
 } // namespace xash

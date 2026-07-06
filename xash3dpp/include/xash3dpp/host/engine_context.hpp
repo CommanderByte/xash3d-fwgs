@@ -43,13 +43,13 @@ struct EngineContextInitParams {
     // trust_oracle:  provided by the host at init; replaced by Server at
     //                Chunk 6 (server — implementation-plan numbering).
     // compat_policy: provided by get_compat_policy() (link-time selection).
-    cmd_cvar::ITrustOracle  *trust_oracle  = nullptr;
-    cmd_cvar::ICompatPolicy *compat_policy = nullptr;
+    cmd_cvar::ITrustOracle  *trust_oracle  = nullptr; // @lifetime: caller (must outlive EngineContext)
+    cmd_cvar::ICompatPolicy *compat_policy = nullptr; // @lifetime: caller (must outlive EngineContext)
 
     // Networking injected dependency (non-owning; must outlive EngineContext).
     // nullptr → platform::default_platform_sockets() (production singleton).
     // Tests inject a FakePlatformSockets here.
-    platform::IPlatformSockets *sockets = nullptr;
+    platform::IPlatformSockets *sockets = nullptr; // @lifetime: caller (must outlive EngineContext)
 
     // Mode flags — propagated into HostInitParams at init() time.
     bool dedicated = false;  // true when -dedicated was passed
@@ -63,6 +63,12 @@ struct EngineContextInitParams {
 // ---------------------------------------------------------------------------
 // EngineContext — flat struct owning all stateful subsystems in construction
 // (= dependency) order.
+//
+// @thread-safety: main-thread only.  init()/shutdown() run on ThreadRole::Main
+// and assert it; construction/destruction and all member subsystems are
+// main-thread owned.  The one cross-thread surface is the ABI accessor
+// (xash::abi::current_engine_context()), whose atomic pointer is set/cleared
+// here on the main thread and read lock-free by C-ABI callers.
 //
 // Chunk 6 adds:  server::Server              server;
 // Chunk 12 adds: client::Client              client;   (non-dedicated only)

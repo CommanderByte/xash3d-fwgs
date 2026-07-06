@@ -20,6 +20,14 @@
 #include <cstdint>
 #include <cstdio>
 
+// @annotation-exempt: abi-pod — this header is a wholly-vendored, layout-frozen
+// mirror of the game-DLL interface.  The support records (cvar_t, TraceResult,
+// SAVERESTOREDATA, ...) are frozen PODs (abi-pod); enginefuncs_t /
+// DLL_FUNCTIONS / NEW_DLL_FUNCTIONS are frozen function-pointer tables
+// (fnptr-table).  Field/slot order, types, and the raw cross-link pointers are
+// dictated by the ABI — we do not own their design, so the QN annotation matrix
+// (per-member @lifetime) does not apply, and @thread-safety is a caller/engine
+// contract, not this header's (QN §ANNOTATION_DISCIPLINE; decisions-style QN).
 namespace xash::abi {
 
 // legacy: eiface.h :22 — GetEntityAPI(2) negotiation value
@@ -82,12 +90,12 @@ struct TraceResult
     vec3_t   vecEndPos;      // final position
     float    flPlaneDist;
     vec3_t   vecPlaneNormal; // surface normal at impact
-    edict_t *pHit;           // entity the surface is on
+    edict_t *pHit;           // entity the surface is on @annotation-exempt: abi-pod
     int      iHitgroup;      // 0 == generic, non zero is specific body part
 };
 
 // legacy: eiface.h :98
-using CRC32_t = unsigned int;
+using CRC32_t = unsigned int; // compliance-allow(int-width): frozen ABI typedef, verbatim mirror of eiface.h:98 `typedef unsigned int CRC32_t`
 
 // legacy: common/cvardef.h :52 — "defined by server.dll"; stamped onto
 // every cvar the game registers through pfnCVarRegister so they can be
@@ -100,20 +108,20 @@ inline constexpr std::uint32_t k_fcvar_extdll = 1u << 3;
 // GoldSrc's int).
 struct cvar_t
 {
-    char         *name;
-    char         *string;
+    char         *name; // @annotation-exempt: abi-pod
+    char         *string; // @annotation-exempt: abi-pod
     std::uint32_t flags;
     float         value;
-    cvar_t       *next;
+    cvar_t       *next; // @annotation-exempt: abi-pod
 };
 
 // legacy: eiface.h :289-295 — passed to pfnKeyValue; the engine owns the
 // key/value copies and frees them after the call returns
 struct KeyValueData
 {
-    char *szClassName; // in: entity classname
-    char *szKeyName;   // in: name of key
-    char *szValue;     // in: value of key
+    char *szClassName; // in: entity classname @annotation-exempt: abi-pod
+    char *szKeyName;   // in: name of key @annotation-exempt: abi-pod
+    char *szValue;     // in: value of key @annotation-exempt: abi-pod
     int   fHandled;    // out: DLL sets to true if key-value pair was understood
 };
 
@@ -124,14 +132,14 @@ struct LEVELLIST
 {
     char     mapName[32];
     char     landmarkName[32];
-    edict_t *pentLandmark;
+    edict_t *pentLandmark; // @annotation-exempt: abi-pod
     vec3_t   vecLandmarkOrigin;
 };
 
 struct ENTITYTABLE
 {
     int      id;       // ordinal ID of this entity
-    edict_t *pent;     // pointer to the in-game entity
+    edict_t *pent;     // pointer to the in-game entity @annotation-exempt: abi-pod
     int      location; // offset from the base data of this entity
     int      size;     // byte size of this entity's data
     int      flags;    // bit mask of transitions this entity is in the PVS of
@@ -140,15 +148,17 @@ struct ENTITYTABLE
 
 inline constexpr int k_max_level_connections = 16; // eiface.h :318
 
-inline constexpr unsigned k_fenttable_player   = 0x80000000u;
-inline constexpr unsigned k_fenttable_removed  = 0x40000000u;
-inline constexpr unsigned k_fenttable_moveable = 0x20000000u;
-inline constexpr unsigned k_fenttable_global   = 0x10000000u;
+// compliance-allow(int-width): QO ABI-frozen FENTTABLE flags (eiface.h:319-322);
+// the values are frozen and 0x80000000u inherently requires unsigned width.
+inline constexpr unsigned k_fenttable_player   = 0x80000000u; // compliance-allow(int-width): QO ABI-frozen flag
+inline constexpr unsigned k_fenttable_removed  = 0x40000000u; // compliance-allow(int-width): QO ABI-frozen flag
+inline constexpr unsigned k_fenttable_moveable = 0x20000000u; // compliance-allow(int-width): QO ABI-frozen flag
+inline constexpr unsigned k_fenttable_global   = 0x10000000u; // compliance-allow(int-width): QO ABI-frozen flag
 
 struct SAVERESTOREDATA
 {
-    char        *pBaseData;    // start of all entity save data
-    char        *pCurrentData; // current buffer pointer for sequential access
+    char        *pBaseData;    // start of all entity save data @annotation-exempt: abi-pod
+    char        *pCurrentData; // current buffer pointer for sequential access @annotation-exempt: abi-pod
     int          size;         // current data size
     int          bufferSize;   // total space for data
     int          tokenSize;    // size of the linear list of tokens
@@ -157,7 +167,7 @@ struct SAVERESTOREDATA
     int          currentIndex; // holds a global entity table ID
     int          tableCount;   // number of elements in the entity table
     int          connectionCount; // number of elements in the levelList[]
-    ENTITYTABLE *pTable;       // array of ENTITYTABLE elements (1 per entity)
+    ENTITYTABLE *pTable;       // array of ENTITYTABLE elements (1 per entity) @annotation-exempt: abi-pod
     LEVELLIST    levelList[k_max_level_connections];
 
     // smooth transition
@@ -201,7 +211,7 @@ inline constexpr short k_ftypedesc_functiontable = 0x0008;
 struct TYPEDESCRIPTION
 {
     FIELDTYPE   fieldType;
-    const char *fieldName;
+    const char *fieldName; // @annotation-exempt: abi-pod
     int         fieldOffset;
     short       fieldSize;
     short       flags;
@@ -305,7 +315,7 @@ struct enginefuncs_t
     int      ( *pfnRegUserMsg )( const char *pszName, int iSize );
     void     ( *pfnAnimationAutomove )( const edict_t *pEdict, float flTime );
     void     ( *pfnGetBonePosition )( const edict_t *pEdict, int iBone, float *rgflOrigin, float *rgflAngles );
-    unsigned long ( *pfnFunctionFromName )( const char *pName );
+    unsigned long ( *pfnFunctionFromName )( const char *pName ); // compliance-allow(nodiscard-missing): frozen ABI fn-ptr table member
     const char *( *pfnNameForFunction )( unsigned long function );
     void     ( *pfnClientPrintf )( edict_t *pEdict, PRINT_TYPE ptype, const char *szMsg );
     void     ( *pfnServerPrint )( const char *szMsg );
@@ -344,14 +354,14 @@ struct enginefuncs_t
     void     ( *pfnBuildSoundMsg )( edict_t *entity, int channel, const char *sample, /*int*/ float volume, float attenuation, int fFlags, int pitch, int msg_dest, int msg_type, const float *pOrigin, edict_t *ed );
     int      ( *pfnIsDedicatedServer )( void );
     cvar_t  *( *pfnCVarGetPointer )( const char *szVarName );
-    unsigned int ( *pfnGetPlayerWONId )( edict_t *e );
+    unsigned int ( *pfnGetPlayerWONId )( edict_t *e ); // compliance-allow(int-width, nodiscard-missing): frozen ABI fn-ptr table member
 
     // YWB 8/1/99 TFF Physics additions
     void     ( *pfnInfo_RemoveKey )( char *s, const char *key );
     const char *( *pfnGetPhysicsKeyValue )( const edict_t *pClient, const char *key );
     void     ( *pfnSetPhysicsKeyValue )( const edict_t *pClient, const char *key, const char *value );
     const char *( *pfnGetPhysicsInfoString )( const edict_t *pClient );
-    unsigned short ( *pfnPrecacheEvent )( int type, const char *psz );
+    unsigned short ( *pfnPrecacheEvent )( int type, const char *psz ); // compliance-allow(nodiscard-missing): frozen ABI fn-ptr table member
     void     ( *pfnPlaybackEvent )( int flags, const edict_t *pInvoker, unsigned short eventindex, float delay, float *origin, float *angles, float fparam1, float fparam2, int iparam1, int iparam2, int bparam1, int bparam2 );
 
     unsigned char *( *pfnSetFatPVS )( const float *org );
@@ -383,7 +393,7 @@ struct enginefuncs_t
     void    *( *pfnSequenceGet )( const char *fileName, const char *entryName );
     void    *( *pfnSequencePickSentence )( const char *groupName, int pickMethod, int *picked );
     int      ( *pfnGetFileSize )( const char *filename );
-    unsigned int ( *pfnGetApproxWavePlayLen )( const char *filepath );
+    unsigned int ( *pfnGetApproxWavePlayLen )( const char *filepath ); // compliance-allow(int-width, nodiscard-missing): frozen ABI fn-ptr table member
     int      ( *pfnIsCareerMatch )( void );
     int      ( *pfnGetLocalizedStringLength )( const char *label );
     void     ( *pfnRegisterTutorMessageShown )( int mid );
@@ -460,7 +470,7 @@ struct DLL_FUNCTIONS
     void  ( *pfnRegisterEncoders )( void );
     int   ( *pfnGetWeaponData )( edict_t *player, weapon_data_t *info );
 
-    void  ( *pfnCmdStart )( const edict_t *player, const usercmd_s *cmd, unsigned int random_seed );
+    void  ( *pfnCmdStart )( const edict_t *player, const usercmd_s *cmd, unsigned int random_seed ); // compliance-allow(int-width): frozen ABI fn-ptr signature (random_seed)
     void  ( *pfnCmdEnd )( const edict_t *player );
 
     int   ( *pfnConnectionlessPacket )( const netadr_s *net_from, const char *args, char *response_buffer, int *response_buffer_size );

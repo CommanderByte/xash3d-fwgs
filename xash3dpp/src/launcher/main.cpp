@@ -4,6 +4,10 @@
 // Thin bootstrap: resolve rootdir from the executable path, scan argv for
 // the standard engine options, fill HostArgs, then call Host::Main.
 // No engine logic lives here.
+//
+// stats exempt: the launcher is a one-shot argv → HostArgs bootstrap with no
+// mutable runtime state and no per-frame path — there is nothing to instrument
+// (reviewer §5; QN Observability exemption for state-free entry points).
 
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/host/host.hpp>

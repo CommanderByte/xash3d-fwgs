@@ -84,10 +84,10 @@ struct HostInitParams
 
     // Injected deps — non-owning; must outlive Host.
     // nullptr = Host operates in standalone / test mode for that subsystem.
-    cmd_cvar::CmdCvarContext  *cmd_cvar   = nullptr;
-    core::Clock               *clock      = nullptr;
-    MapLoader                 *map_loader = nullptr;
-    filesystem::Filesystem    *filesystem = nullptr;
+    cmd_cvar::CmdCvarContext  *cmd_cvar   = nullptr; // @lifetime: caller (owns the CmdCvarContext; must outlive Host)
+    ::xash::core::Clock       *clock      = nullptr; // @lifetime: caller (owns the Clock; must outlive Host)
+    MapLoader                 *map_loader = nullptr; // @lifetime: caller (owns the MapLoader; must outlive Host)
+    filesystem::Filesystem    *filesystem = nullptr; // @lifetime: caller (owns the Filesystem; must outlive Host)
 };
 
 // ---------------------------------------------------------------------------
@@ -95,10 +95,10 @@ struct HostInitParams
 // ---------------------------------------------------------------------------
 enum class HostStatus
 {
-    kInit,       // engine is starting up
-    kRunning,    // normal frame loop
-    kSleep,      // minimised / background (client only, future)
-    kShutdown,   // cleanup in progress or completed
+    Init,        // engine is starting up
+    Running,     // normal frame loop
+    Sleep,       // minimised / background (client only, future)
+    Shutdown,    // cleanup in progress or completed
 };
 
 // ---------------------------------------------------------------------------
@@ -106,11 +106,17 @@ enum class HostStatus
 // ---------------------------------------------------------------------------
 struct HostStats
 {
-    HostStatus status = HostStatus::kInit;  // current lifecycle status
+    HostStatus status = HostStatus::Init;  // current lifecycle status
 };
 
 // ---------------------------------------------------------------------------
 // Host — engine singleton by convention.
+//
+// @thread-safety: main-thread only.  Every public mutating entry
+// (init/RunFrame/shutdown/RequestShutdown/signal_frame_abort) runs on
+// ThreadRole::Main and asserts it; there is no internal synchronisation and no
+// off-main surface.  (signal_frame_abort is also reachable via the Host_Error
+// ABI shim, whose main-thread/recursion policy is enforced here — see Q-4/OQ-1.)
 //
 // Typical usage (from a launcher):
 //
@@ -122,7 +128,7 @@ struct HostStats
 //
 //   xash::Host host;
 //   host.init(args);
-//   while (host.status() == xash::HostStatus::kRunning)
+//   while (host.status() == xash::HostStatus::Running)
 //       host.RunFrame();
 // ---------------------------------------------------------------------------
 class Host
@@ -151,7 +157,7 @@ public:
     //
     // |code|   — typed reason; appears in diagnostics and frame_abort_code().
     // |detail| — short, non-owning view; copied into a fixed buffer (no heap).
-    void signal_frame_abort(core::ErrorCode code,
+    void signal_frame_abort(::xash::core::ErrorCode code,
                             std::string_view detail) noexcept;
 
     // Observers
@@ -159,7 +165,7 @@ public:
     [[nodiscard]] bool             dedicated()          const noexcept;
     [[nodiscard]] double           realtime()           const noexcept;
     [[nodiscard]] bool             frame_abort_pending() const noexcept;
-    [[nodiscard]] core::ErrorCode  frame_abort_code()   const noexcept;
+    [[nodiscard]] ::xash::core::ErrorCode  frame_abort_code()   const noexcept;
     const HostStats&               stats()              const noexcept;
 
 private:

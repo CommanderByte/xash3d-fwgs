@@ -18,6 +18,7 @@
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/core/clock.hpp>
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/networking/networking.hpp>
@@ -28,6 +29,8 @@ namespace xash {
 
 bool EngineContext::init(const EngineContextInitParams &p) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     // --- Filesystem -------------------------------------------------------
     if ( !filesystem.init( p.rootdir, p.basedir, p.gamedir, p.rodir ) )
     {
@@ -158,6 +161,8 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
 
 void EngineContext::shutdown() noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     // Nullify the accessor FIRST so C-ABI callers cannot reach us mid-teardown.
     xash::abi::set_current_engine_context( nullptr );
 

@@ -8,6 +8,10 @@
 
 #include <cstdint>
 
+// @annotation-exempt: abi-pod — this header is only ABI/wire-frozen k_* constant
+// values (QO) that game DLLs compare entvars fields against; there are no
+// state-bearing types, so the QN annotation matrix does not apply and
+// @thread-safety is a caller contract (decisions-style QN).
 namespace xash::abi {
 
 // common/const.h :88-94 — entvars_t.solid
