@@ -18,6 +18,7 @@
 #include <windows.h>
 #include <shellapi.h>
 
+#include <cstdint>   // std::uint32_t
 #include <cstring>   // std::memcpy
 
 #include <xash3dpp/private/core/assert_main.hpp>
@@ -48,7 +49,7 @@ double get_time() noexcept
     static const ClockInit s_clock{};
     // Capture main-thread ID on first call (inside magic-static — thread-safe).
     static const bool s_main_captured = []() noexcept {
-        core::detail::capture_main_thread();
+        ::xash::core::detail::capture_main_thread();
         return true;
     }();
     (void)s_main_captured;
@@ -59,7 +60,7 @@ double get_time() noexcept
          / static_cast<double>( s_clock.freq );
 }
 
-void sleep( unsigned ms ) noexcept
+void sleep( std::uint32_t ms ) noexcept
 {
     Sleep( static_cast<DWORD>( ms ) );
 }
@@ -87,7 +88,7 @@ void *get_symbol( LibHandle lib, const char *name ) noexcept
 {
     if( !lib )
         return nullptr;
-    return reinterpret_cast<void *>(
+    return reinterpret_cast<void *>( // SAFETY: fn-ptr → void* — Win32 loader contract; GetProcAddress results round-trip through void* by API design
         GetProcAddress( static_cast<HMODULE>( lib.native ), name ) );
 }
 
@@ -120,7 +121,7 @@ std::string get_executable_dir()
     buf[n] = '\0';
 
     // extract_dir returns the directory component WITHOUT trailing separator.
-    auto dir = utilities::fix_slashes( utilities::extract_dir(
+    auto dir = ::xash::utilities::fix_slashes( ::xash::utilities::extract_dir(
         std::string_view{ buf, static_cast<std::size_t>( n ) } ) );
     // Callers expect a trailing '/' so they can append a filename directly.
     if( !dir.empty() && dir.back() != '/' )
@@ -147,7 +148,7 @@ std::string get_working_directory()
     std::string result{ buf, static_cast<std::size_t>( n ) };
     if( result.back() != '/' && result.back() != '\\' )
         result += '/';
-    return utilities::fix_slashes( result );
+    return ::xash::utilities::fix_slashes( result );
 }
 
 // ---------------------------------------------------------------------------

@@ -54,6 +54,18 @@ renderer subsystems).
   is invalidated by the next call; callers must copy if persistence is required.
 - All path-returning functions use forward slashes and append a trailing `/`.
 
+## Threading
+
+The module is thread-agnostic: stateless syscall wrappers over caller-owned
+handles — safe from any thread; concurrent operations on the SAME handle are
+the owner's responsibility. The two main-thread-only surfaces
+(`console::read_line`, `crash::install_handler`) assert the main thread at
+debug time, and `resolve_blocking` is Worker/NetIO-only. Every public header
+carries a `@thread-safety:` contract line (QN); the socket option setters and
+`flush(OsFd&)` are adjudicated `compliance-allow(thread-assert)` — stateless
+OS-handle wrappers whose thread affinity belongs to the handle owner (full
+detail in the boundary spec's Threading section).
+
 ## Relationship to legacy code
 
 The legacy engine scattered OS abstractions across `engine/platform/win32/sys_win.c`,

@@ -13,6 +13,11 @@
 //   All functions must be implemented for every new platform target.
 //   Platform #ifdef blocks are permitted only for optional ABI extensions
 //   (e.g. the Android AAsset bridge below).
+//
+// @thread-safety: stateless syscall wrappers over caller-owned fds and paths —
+// safe from any thread; concurrent operations on the SAME OsFd are the owner's
+// responsibility. Android bridge: JNI state is bound once (call_once) at
+// android_init_jni and read-only thereafter.
 
 #include <xash3dpp/platform/os_fd.hpp>
 
@@ -35,7 +40,7 @@ namespace xash::platform {
 // File open mode flags
 // ---------------------------------------------------------------------------
 
-enum class OpenMode : unsigned {
+enum class OpenMode : std::uint32_t {
     ReadOnly  = 0,
     WriteOnly = 1,
     ReadWrite = 2,
@@ -47,12 +52,12 @@ enum class OpenMode : unsigned {
 };
 
 constexpr OpenMode operator|( OpenMode a, OpenMode b ) noexcept {
-    return static_cast<OpenMode>( static_cast<unsigned>( a ) | static_cast<unsigned>( b ) );
+    return static_cast<OpenMode>( static_cast<std::uint32_t>( a ) | static_cast<std::uint32_t>( b ) );
 }
 constexpr OpenMode operator&( OpenMode a, OpenMode b ) noexcept {
-    return static_cast<OpenMode>( static_cast<unsigned>( a ) & static_cast<unsigned>( b ) );
+    return static_cast<OpenMode>( static_cast<std::uint32_t>( a ) & static_cast<std::uint32_t>( b ) );
 }
-constexpr bool any( OpenMode m ) noexcept { return static_cast<unsigned>( m ) != 0; }
+constexpr bool any( OpenMode m ) noexcept { return static_cast<std::uint32_t>( m ) != 0; }
 
 // ---------------------------------------------------------------------------
 // File open

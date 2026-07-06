@@ -71,7 +71,7 @@ void posix_fault_handler( int signum ) noexcept
 
 void install_handler() noexcept
 {
-    core::detail::assert_main_thread( "crash::install_handler" );
+    ::xash::core::detail::assert_main_thread( "crash::install_handler" );
     static std::atomic<bool> installed{ false };
     if( installed.exchange( true ) ) return;
 

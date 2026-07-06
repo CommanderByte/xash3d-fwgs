@@ -25,9 +25,11 @@ void write( std::string_view text ) noexcept
 {
     if( text.empty() ) return;
 
-    // __android_log_write requires a null-terminated string.
-    // Copy into a static buffer, truncating if necessary.
-    static char buf[::xash::limits::platform_console_buffer_size];
+    // __android_log_write requires a null-terminated string.  Copy into a
+    // reusable scratch buffer, truncating if necessary.  thread_local (not
+    // static) so write() honours the header's any-thread @thread-safety
+    // contract — concurrent log sinks must not share this buffer (6B S2).
+    thread_local char buf[::xash::limits::platform_console_buffer_size];
     const std::size_t copy_len = text.size() < sizeof( buf ) - 1
                                      ? text.size()
                                      : sizeof( buf ) - 1;

@@ -107,7 +107,7 @@ std::int64_t tell( OsFd &fd ) noexcept
     return static_cast<std::int64_t>( ::lseek( fd.get(), 0, SEEK_CUR ) );
 }
 
-void flush( OsFd &fd ) noexcept
+void flush( OsFd &fd ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     ::fsync( fd.get() );
 }

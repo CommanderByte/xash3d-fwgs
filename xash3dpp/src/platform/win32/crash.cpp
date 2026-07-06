@@ -17,6 +17,7 @@
 #include <windows.h>
 
 #include <cstdio>    // snprintf
+#include <cstdint>   // std::uint32_t
 #include <cstring>   // strlen
 #include <atomic>    // std::atomic
 
@@ -52,7 +53,7 @@ LONG WINAPI seh_filter( EXCEPTION_POINTERS * ) noexcept
 
 void install_handler() noexcept
 {
-    core::detail::assert_main_thread( "crash::install_handler" );
+    ::xash::core::detail::assert_main_thread( "crash::install_handler" );
     static std::atomic<bool> installed{ false };
     if( installed.exchange( true ) ) return;
     SetUnhandledExceptionFilter( seh_filter );
@@ -75,7 +76,7 @@ void print_trace() noexcept
     for( USHORT i = 0; i < n; ++i )
     {
         int len = std::snprintf( line, sizeof( line ), "  [%02u] %p\n",
-                                 static_cast<unsigned>( i ), frames[i] );
+                                 static_cast<std::uint32_t>( i ), frames[i] );
         if( len > 0 )
             WriteFile( h, line, static_cast<DWORD>( len ), &written, nullptr );
     }

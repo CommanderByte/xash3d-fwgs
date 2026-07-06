@@ -53,14 +53,14 @@ struct JniState {
     jmethodID get_assets          = nullptr;   // "(Z)Landroid/content/res/AssetManager;"
 };
 
-JniState g_jni;
+JniState g_jni; // compliance-allow(mutable-global, di-global-ref): Android JNI process glue — bound once at JNI_OnLoad before any engine context exists; call_once-guarded, read-only thereafter
 
 // Cached handles: [0] = engine APK, [1] = app APK.
-AssetManagerHandle g_handles[2];
+AssetManagerHandle g_handles[2]; // compliance-allow(mutable-global, di-global-ref): Android JNI process glue — populated once per slot (call_once), read-only thereafter
 
 // init flags — ensure g_jni and each handle are populated exactly once.
-std::once_flag g_jni_flag;
-std::once_flag g_init_flags[2];
+std::once_flag g_jni_flag; // compliance-allow(mutable-global, di-global-ref): Android JNI process glue — std::once_flag guarding the one-time JNI bind
+std::once_flag g_init_flags[2]; // compliance-allow(mutable-global, di-global-ref): Android JNI process glue — std::once_flag pair guarding per-slot handle init
 
 } // anonymous namespace
 

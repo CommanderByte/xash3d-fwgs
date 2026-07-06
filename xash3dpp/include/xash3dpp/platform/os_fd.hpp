@@ -11,6 +11,9 @@
 //   • Not copyable — ownership is exclusive.
 //   • Movable — transfer is O(1) and leaves the source invalid.
 //   • ~OsFd() calls close(), which is a no-op on an already-invalid descriptor.
+//
+// @thread-safety: thread-agnostic value type — confine each OsFd instance to
+// its owner's thread.
 
 namespace xash::platform {
 

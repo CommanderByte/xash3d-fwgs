@@ -14,6 +14,10 @@
 //   • print_trace() may be called from a signal/exception context; it must
 //     not call malloc.  Writing to a pre-allocated static buffer is fine.
 //   • Both functions are async-signal-safe on POSIX implementations.
+//
+// @thread-safety: install_handler() is main-thread-only, before any worker
+// thread exists (asserted at debug time); print_trace() is async-signal-safe
+// and callable from any thread or signal/exception context.
 
 namespace xash::platform::crash {
 

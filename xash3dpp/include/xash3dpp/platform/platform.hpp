@@ -11,7 +11,14 @@
 //   • open_library / get_symbol / close_library mirror POSIX dlopen/dlsym/dlclose
 //     and Win32 LoadLibraryW/GetProcAddress/FreeLibrary.
 //   • All path-returning functions use forward slashes and append a trailing '/'.
+//
+// @thread-safety: stateless OS wrappers — safe from any thread; get_time()'s
+// epoch (and main-thread capture) is a C++11 magic-static; a LibHandle value
+// is caller-confined — concurrent open/close of the SAME handle is the
+// owner's responsibility.
+// Stats: no hot-path counters — stats exempt (thin OS syscall wrappers).
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -24,12 +31,12 @@ namespace xash::platform {
 // Monotonic wall-clock time in seconds.  First call initialises the epoch.
 // Subsequent calls return elapsed seconds since that first call.
 // Legacy: Platform_DoubleTime → Sys_DoubleTime
-double get_time() noexcept;
+[[nodiscard]] double get_time() noexcept;
 
 // Yield the current thread for at least |ms| milliseconds.
 // Passing 0 is a legal hint to the scheduler; it may return immediately.
 // Legacy: Platform_Sleep
-void sleep( unsigned ms ) noexcept;
+void sleep( std::uint32_t ms ) noexcept;
 
 // ---------------------------------------------------------------------------
 // Dynamic library loading
@@ -39,7 +46,7 @@ void sleep( unsigned ms ) noexcept;
 // Default-constructed value represents "no library loaded".
 struct LibHandle
 {
-    void *native = nullptr;
+    void *native = nullptr; // @lifetime: OS loader owns the module; released via close_library()
     explicit operator bool() const noexcept { return native != nullptr; }
 };
 
@@ -48,7 +55,7 @@ struct LibHandle
 // POSIX: calls dlopen with RTLD_NOW | RTLD_LOCAL.
 // Legacy: Sys_LoadLibrary (the raw handle half; the export-table walk
 //         belongs to xash3dpp_utilities dynlib helpers).
-LibHandle open_library( std::string_view path ) noexcept;
+[[nodiscard]] LibHandle open_library( std::string_view path ) noexcept;
 
 // resolve a symbol by name from a loaded library.  Returns nullptr on failure.
 // Behaviour for a null LibHandle is defined: returns nullptr immediately.

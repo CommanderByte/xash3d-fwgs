@@ -42,7 +42,7 @@ void write( std::string_view text ) noexcept
 
 std::string_view read_line() noexcept
 {
-    core::detail::assert_main_thread( "console::read_line" );
+    ::xash::core::detail::assert_main_thread( "console::read_line" );
     static char       accum[xash::limits::platform_console_buffer_size];
     static std::size_t accum_len = 0;
     static char       result[xash::limits::platform_console_buffer_size];

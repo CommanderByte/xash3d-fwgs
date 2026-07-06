@@ -17,6 +17,7 @@
 #include <unistd.h>     // getcwd, readlink, fork, execvp, _exit, read, close
 #include <sys/types.h>  // pid_t, ssize_t
 #include <fcntl.h>      // open, O_RDONLY (for debugger detection)
+#include <cstdint>      // std::uint32_t
 #include <cstring>      // std::memcpy, std::strstr
 #include <cstdio>       // std::fprintf
 #include <cerrno>       // errno, EINTR
@@ -52,14 +53,14 @@ double get_time() noexcept
     static const double s_epoch = read_clock();
     // Capture main-thread ID on first call (inside magic-static — thread-safe).
     static const bool s_main_captured = []() noexcept {
-        core::detail::capture_main_thread();
+        ::xash::core::detail::capture_main_thread();
         return true;
     }();
     (void)s_main_captured;
     return read_clock() - s_epoch;
 }
 
-void sleep( unsigned ms ) noexcept
+void sleep( std::uint32_t ms ) noexcept
 {
     struct timespec ts{
         static_cast<time_t>( ms / 1000u ),
@@ -135,9 +136,9 @@ std::string get_executable_dir()
         return {};
 
     // extract_dir strips the filename and keeps the trailing separator.
-    auto dir = utilities::extract_dir( std::string_view{ buf } );
+    auto dir = ::xash::utilities::extract_dir( std::string_view{ buf } );
     // POSIX paths already use '/', but fix_slashes is a no-op in that case.
-    utilities::fix_slashes( dir );
+    ::xash::utilities::fix_slashes( dir );
     return dir;
 }
 
@@ -224,7 +225,7 @@ void shell_execute( std::string_view path, std::string_view params ) noexcept
         const char *opener = "xdg-open";
 #endif
         const char *argv[] = { opener, p, alen ? a : nullptr, nullptr };
-        execvp( opener, const_cast<char **>( argv ) );
+        execvp( opener, const_cast<char **>( argv ) ); // SAFETY: const_cast for execvp's historical char*const argv signature — POSIX guarantees the strings are not modified
         ::_exit( 1 );  // exec failed
     }
     // Parent: intentionally does not waitpid — fire-and-forget.

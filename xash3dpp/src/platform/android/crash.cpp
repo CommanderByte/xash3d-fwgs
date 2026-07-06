@@ -36,7 +36,7 @@ _Unwind_Reason_Code unwind_callback( struct _Unwind_Context *ctx, void *arg ) no
 {
     UnwindState *state = static_cast<UnwindState *>( arg );
     if( state->current == state->end ) return _URC_END_OF_STACK;
-    *state->current++ = reinterpret_cast<void *>( _Unwind_GetIP( ctx ) );
+    *state->current++ = reinterpret_cast<void *>( _Unwind_GetIP( ctx ) ); // SAFETY: unwinder IP cookie — _Unwind_GetIP yields a code address; stored as an opaque void* for logging only
     return _URC_NO_REASON;
 }
 

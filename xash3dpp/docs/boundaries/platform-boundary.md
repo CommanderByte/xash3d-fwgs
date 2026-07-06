@@ -46,7 +46,7 @@ a thin shim.
 | `write(fd, buf, size)` | function | Write `size` bytes; returns bytes written or -1 on error |
 | `seek(fd, offset, whence)` | function | POSIX-semantics seek (SEEK_SET/CUR/END); returns new offset or -1 |
 | `tell(fd)` | function | Current file offset; returns -1 on error |
-| `flush(fd)` | function | Flush OS write buffers (`fsync` / `_commit`) |
+| `flush(fd)` | function | Flush OS write buffers (`fsync` / `FlushFileBuffers` — Win32 avoids `_commit`, which asserts on read-only fds in the debug CRT) |
 | `close_fd(raw_fd)` | function | Close a raw int fd; used by `OsFd::close()` |
 | `file_size(path)` | function | File size in bytes, or `nullopt` on failure |
 | `file_time(path)` | function | Last-write timestamp (`file_time_type`), or `nullopt` on failure |
@@ -80,6 +80,7 @@ a thin shim.
 |--------|------|-------------|
 | `crash::install_handler()` | function | Register signal/SEH crash handler; idempotent; must be called from the main thread before any other threads |
 | `crash::print_trace()` | function | Write best-effort stack trace to stderr/logcat; async-signal-safe; no heap allocation |
+
 ### Socket I/O (`xash::platform`, `include/xash3dpp/platform/os_socket.hpp` + `platform_sockets.hpp`)
 
 All functions are annotated `// @thread-safety: T_NetIO-ready` — callable from
@@ -129,6 +130,7 @@ introduced with this surface).
 | Pre-`WSAStartup` call | `NotInitialised` |
 | `EAI_AGAIN` | `DnsAgain` |
 | Other `getaddrinfo` failure | `DnsFailure` |
+
 ## Dependencies (what this module calls)
 
 | Subsystem | Why |
@@ -216,7 +218,68 @@ called before any socket functions and `socket_shutdown()` called at teardown;
   `include/xash3dpp/platform/console.hpp` and the platform source files.
 - ~~**Signal / exception crash handler** — should this live in platform?~~ →
   Implemented as `crash::install_handler` / `crash::print_trace` in
-  `include/xash3dpp/platform/crash.hpp`.- ~~**Raw socket API** — should low-level socket ops (UDP, TCP, name resolution)
+  `include/xash3dpp/platform/crash.hpp`.
+- ~~**Raw socket API** — should low-level socket ops (UDP, TCP, name resolution)
   live in platform?~~ → Implemented as free functions + `OsSocket` RAII type
   in `include/xash3dpp/platform/os_socket.hpp`; the injectable seam
   `IPlatformSockets` is in `platform_sockets.hpp`.
+
+______________________________________________________________________
+
+## Threading
+
+Platform is thread-agnostic by construction: every entry point is a stateless
+syscall wrapper over a caller-owned handle (`OsFd`, `OsSocket`, `LibHandle`)
+or a pure OS query — safe from any thread; concurrent operations on the SAME
+handle are the owner's responsibility. Per QN, every public header carries a
+`@thread-safety:` contract line.
+
+- **Main-thread-only surfaces assert at debug time**: `console::read_line()`
+  (static line buffers) and `crash::install_handler()` (process-wide signal
+  disposition must precede thread spawning) open with `assert_main_thread`;
+  `get_time()` captures the main-thread ID on its first call (magic-static).
+- **Adjudicated non-asserting mutators**: the five socket option setters
+  (`set_non_blocking`, `set_broadcast`, `set_reuse_addr`, `set_recv_buffer`,
+  `set_send_buffer`, POSIX + Win32) and `flush(OsFd&)` carry
+  `compliance-allow(thread-assert)` — stateless OS-handle wrappers; thread
+  affinity belongs to the handle owner, and a main-thread assert would be
+  false precision on a `T_NetIO`-ready surface.
+- **Worker-only**: `resolve_blocking()` is synchronous `getaddrinfo` — never
+  from `ThreadRole::Main` (Worker today, `T_NetIO` when introduced).
+- **Owned mutable state** is confined to: magic-static clock epochs, static
+  console line buffers (main-thread-confined), the atomic WSA refcount, the
+  atomic crash-handler-installed flag, and the Android JNI process glue —
+  bound once at `JNI_OnLoad` via `call_once` and read-only thereafter,
+  adjudicated `compliance-allow(mutable-global, di-global-ref)` at the
+  definitions (no engine context exists at JNI-init time, so DI is
+  structurally impossible there).
+
+## Constant classification (QO)
+
+The eight magic/shadow literal candidates flagged in this module are all
+**fixed-size local scratch buffers — frozen implementation constants**, not
+tunable capacities (`limits.hpp`) nor behavioural knobs (cvars):
+
+- `char line[48]` (win32 + android `crash::print_trace`) — sized to the
+  `"  [%02u] %p\n"` frame line worst case; async-signal-safe static scratch.
+- `char status[4096]` (posix `is_debugger_present`) — one-shot read of
+  `/proc/self/status`; the kernel emits well under 4 KiB.
+- `char t[256], m[1024]` (win32 `message_box`) and `char p[1024], a[1024]`
+  (win32 `shell_execute`) — truncating stack copies that null-terminate
+  `string_view` arguments for the A-suffixed Win32 APIs.
+- `std::uint8_t tmp[65536]` (android `open_asset`) — AAsset streaming chunk
+  size. The value collisions with unrelated `XASH_LIMIT_*` defaults (65536,
+  4096, 1024, 256) are coincidental, not shadowed limits.
+
+Structural capacities used by this module already live in `limits.hpp`
+(`platform_console_buffer_size`, `platform_console_event_buf`,
+`platform_crash_frames_max`, `platform_path_buf_wchars`).
+
+## Q-11 satellite verdict
+
+Not a satellite candidate: platform is the mandatory OS-abstraction floor —
+no compat variance, no policy injection, exactly one implementation per OS
+selected at compile time (Q-11 score 0). The one injectable seam,
+`IPlatformSockets`, exists as a Q-7 intra-process test seam for the networking
+subsystem, not as a satellite feature; `DefaultPlatformSockets` is the only
+production implementation.

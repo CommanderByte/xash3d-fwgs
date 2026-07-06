@@ -101,7 +101,7 @@ OsFd open_memfd( std::string_view /*name*/ ) noexcept
         return OsFd{};
     }
 
-    int fd = ::_open_osfhandle( reinterpret_cast<intptr_t>( h ), _O_RDWR | _O_BINARY );
+    int fd = ::_open_osfhandle( reinterpret_cast<intptr_t>( h ), _O_RDWR | _O_BINARY ); // SAFETY: HANDLE → intptr_t bridge — CRT _open_osfhandle contract (HANDLE is pointer-sized)
     if( fd < 0 )
     {
         ::CloseHandle( h );
@@ -117,13 +117,13 @@ OsFd open_memfd( std::string_view /*name*/ ) noexcept
 std::int64_t read( OsFd &fd, void *buf, std::size_t size ) noexcept
 {
     return static_cast<std::int64_t>(
-        ::_read( fd.get(), buf, static_cast<unsigned>( size ) ) );
+        ::_read( fd.get(), buf, static_cast<std::uint32_t>( size ) ) );
 }
 
 std::int64_t write( OsFd &fd, const void *buf, std::size_t size ) noexcept
 {
     return static_cast<std::int64_t>(
-        ::_write( fd.get(), buf, static_cast<unsigned>( size ) ) );
+        ::_write( fd.get(), buf, static_cast<std::uint32_t>( size ) ) );
 }
 
 std::int64_t seek( OsFd &fd, std::int64_t offset, int whence ) noexcept
@@ -136,11 +136,11 @@ std::int64_t tell( OsFd &fd ) noexcept
     return static_cast<std::int64_t>( ::_telli64( fd.get() ) );
 }
 
-void flush( OsFd &fd ) noexcept
+void flush( OsFd &fd ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     // _commit() asserts on read-only fds in debug CRT; FlushFileBuffers returns
     // FALSE silently for read-only handles — which is the correct no-op behaviour.
-    const HANDLE h = reinterpret_cast<HANDLE>( ::_get_osfhandle( fd.get() ) );
+    const HANDLE h = reinterpret_cast<HANDLE>( ::_get_osfhandle( fd.get() ) ); // SAFETY: intptr_t → HANDLE bridge — CRT _get_osfhandle contract (round-trips the OS handle)
     if ( h && h != INVALID_HANDLE_VALUE )
         ::FlushFileBuffers( h );
 }

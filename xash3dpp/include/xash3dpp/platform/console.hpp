@@ -14,6 +14,10 @@
 //
 // Threading: all functions may be called from the main thread only unless
 //            noted otherwise.
+//
+// @thread-safety: write() is callable from any thread (it is the engine log
+// sink); read_line() is main-thread-only (asserted at debug time — it
+// accumulates into static line buffers).
 
 #include <string_view>
 

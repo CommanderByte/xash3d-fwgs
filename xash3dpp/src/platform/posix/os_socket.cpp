@@ -93,14 +93,14 @@ static NetAddress from_sockaddr( const sockaddr_storage &ss ) noexcept
     NetAddress a{};
     if( ss.ss_family == AF_INET )
     {
-        const auto *sa = reinterpret_cast<const sockaddr_in *>( &ss );
+        const auto *sa = reinterpret_cast<const sockaddr_in *>( &ss ); // SAFETY: sockaddr family pun — BSD sockets API contract; ss_family == AF_INET checked above
         a.family = IpFamily::V4;
         a.port   = ::ntohs( sa->sin_port );
         std::memcpy( a.addr.v4, &sa->sin_addr, 4 );
     }
     else
     {
-        const auto *sa = reinterpret_cast<const sockaddr_in6 *>( &ss );
+        const auto *sa = reinterpret_cast<const sockaddr_in6 *>( &ss ); // SAFETY: sockaddr family pun — BSD sockets API contract; non-AF_INET storage is AF_INET6 here
         a.family = IpFamily::V6;
         a.port   = ::ntohs( sa->sin6_port );
         std::memcpy( a.addr.v6, &sa->sin6_addr, 16 );
@@ -143,7 +143,7 @@ Result<OsSocket> open_udp_socket( IpFamily family, std::uint16_t port,
             const std::string s( bind_iface );
             ::inet_pton( AF_INET, s.c_str(), &sa.sin_addr );
         }
-        if( ::bind( fd, reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) < 0 )
+        if( ::bind( fd, reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) < 0 ) // SAFETY: sockaddr_in → sockaddr upcast — BSD bind() takes the generic header
             return std::unexpected( map_errno( errno ) );
     }
     else
@@ -156,7 +156,7 @@ Result<OsSocket> open_udp_socket( IpFamily family, std::uint16_t port,
             const std::string s( bind_iface );
             ::inet_pton( AF_INET6, s.c_str(), &sa.sin6_addr );
         }
-        if( ::bind( fd, reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) < 0 )
+        if( ::bind( fd, reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) < 0 ) // SAFETY: sockaddr_in6 → sockaddr upcast — BSD bind() takes the generic header
             return std::unexpected( map_errno( errno ) );
     }
 
@@ -184,7 +184,7 @@ Result<OsSocket> open_tcp_socket( IpFamily family ) noexcept
 // Socket options
 // ---------------------------------------------------------------------------
 
-bool set_non_blocking( const OsSocket &sock, bool on ) noexcept
+bool set_non_blocking( const OsSocket &sock, bool on ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     const int flags = ::fcntl( sock.get(), F_GETFL, 0 );
     if( flags < 0 )
@@ -193,27 +193,27 @@ bool set_non_blocking( const OsSocket &sock, bool on ) noexcept
     return ::fcntl( sock.get(), F_SETFL, new_flags ) == 0;
 }
 
-bool set_broadcast( const OsSocket &sock, bool on ) noexcept
+bool set_broadcast( const OsSocket &sock, bool on ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     const int val = on ? 1 : 0;
     return ::setsockopt( sock.get(), SOL_SOCKET, SO_BROADCAST,
                          &val, sizeof( val ) ) == 0;
 }
 
-bool set_reuse_addr( const OsSocket &sock, bool on ) noexcept
+bool set_reuse_addr( const OsSocket &sock, bool on ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     const int val = on ? 1 : 0;
     return ::setsockopt( sock.get(), SOL_SOCKET, SO_REUSEADDR,
                          &val, sizeof( val ) ) == 0;
 }
 
-bool set_recv_buffer( const OsSocket &sock, int bytes ) noexcept
+bool set_recv_buffer( const OsSocket &sock, int bytes ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     return ::setsockopt( sock.get(), SOL_SOCKET, SO_RCVBUF,
                          &bytes, sizeof( bytes ) ) == 0;
 }
 
-bool set_send_buffer( const OsSocket &sock, int bytes ) noexcept
+bool set_send_buffer( const OsSocket &sock, int bytes ) noexcept // compliance-allow(thread-assert): stateless OS-handle wrapper — thread affinity belongs to the handle owner
 {
     return ::setsockopt( sock.get(), SOL_SOCKET, SO_SNDBUF,
                          &bytes, sizeof( bytes ) ) == 0;
@@ -229,11 +229,11 @@ bool bind_socket( const OsSocket &sock, const NetAddress &address ) noexcept
     {
         sockaddr_in sa = to_sockaddr_v4( address );
         return ::bind( sock.get(),
-                       reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) == 0;
+                       reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) == 0; // SAFETY: sockaddr_in → sockaddr upcast — BSD bind() takes the generic header
     }
     sockaddr_in6 sa = to_sockaddr_v6( address );
     return ::bind( sock.get(),
-                   reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) == 0;
+                   reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ) == 0; // SAFETY: sockaddr_in6 → sockaddr upcast — BSD bind() takes the generic header
 }
 
 // ---------------------------------------------------------------------------
@@ -251,7 +251,7 @@ Result<std::size_t> sendto( const OsSocket &sock,
         do { n = ::sendto( sock.get(),
                            data.data(), data.size(),
                            MSG_NOSIGNAL,
-                           reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ); }
+                           reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ); } // SAFETY: sockaddr_in → sockaddr upcast — BSD sendto() takes the generic header
         while( n < 0 && errno == EINTR );
     }
     else
@@ -260,7 +260,7 @@ Result<std::size_t> sendto( const OsSocket &sock,
         do { n = ::sendto( sock.get(),
                            data.data(), data.size(),
                            MSG_NOSIGNAL,
-                           reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ); }
+                           reinterpret_cast<sockaddr *>( &sa ), sizeof( sa ) ); } // SAFETY: sockaddr_in6 → sockaddr upcast — BSD sendto() takes the generic header
         while( n < 0 && errno == EINTR );
     }
     if( n < 0 )
@@ -278,7 +278,7 @@ Result<std::size_t> recvfrom( const OsSocket &sock,
     do { n = ::recvfrom( sock.get(),
                          buffer.data(), buffer.size(),
                          0,
-                         reinterpret_cast<sockaddr *>( &ss ), &sslen ); }
+                         reinterpret_cast<sockaddr *>( &ss ), &sslen ); } // SAFETY: sockaddr_storage out-param pun — BSD recvfrom() contract; kernel writes ≤ sslen
     while( n < 0 && errno == EINTR );
 
     if( n < 0 )
@@ -323,7 +323,7 @@ Result<void> connect_stream( const OsSocket &sock,
     {
         sockaddr_in sa = to_sockaddr_v4( to );
         do { rc = ::connect( sock.get(),
-                             reinterpret_cast<sockaddr *>( &sa ),
+                             reinterpret_cast<sockaddr *>( &sa ), // SAFETY: sockaddr_in → sockaddr upcast — BSD connect() takes the generic header
                              sizeof( sa ) ); }
         while( rc < 0 && errno == EINTR );
     }
@@ -331,7 +331,7 @@ Result<void> connect_stream( const OsSocket &sock,
     {
         sockaddr_in6 sa = to_sockaddr_v6( to );
         do { rc = ::connect( sock.get(),
-                             reinterpret_cast<sockaddr *>( &sa ),
+                             reinterpret_cast<sockaddr *>( &sa ), // SAFETY: sockaddr_in6 → sockaddr upcast — BSD connect() takes the generic header
                              sizeof( sa ) ); }
         while( rc < 0 && errno == EINTR );
     }
@@ -351,7 +351,7 @@ std::optional<NetAddress> get_local_address( const OsSocket &sock ) noexcept
     sockaddr_storage ss{};
     socklen_t        len = sizeof( ss );
     if( ::getsockname( sock.get(),
-                       reinterpret_cast<sockaddr *>( &ss ), &len ) < 0 )
+                       reinterpret_cast<sockaddr *>( &ss ), &len ) < 0 ) // SAFETY: sockaddr_storage out-param pun — BSD getsockname() contract; kernel writes ≤ len
         return std::nullopt;
     return from_sockaddr( ss );
 }
@@ -381,14 +381,14 @@ Result<NetAddress> resolve_blocking( std::string_view host,
     {
         a.family = IpFamily::V4;
         std::memcpy( a.addr.v4,
-            &reinterpret_cast<const sockaddr_in *>( res->ai_addr )->sin_addr,
+            &reinterpret_cast<const sockaddr_in *>( res->ai_addr )->sin_addr, // SAFETY: sockaddr family pun — ai_family == AF_INET checked; getaddrinfo owns the storage
             4 );
     }
     else
     {
         a.family = IpFamily::V6;
         std::memcpy( a.addr.v6,
-            &reinterpret_cast<const sockaddr_in6 *>( res->ai_addr )->sin6_addr,
+            &reinterpret_cast<const sockaddr_in6 *>( res->ai_addr )->sin6_addr, // SAFETY: sockaddr family pun — non-AF_INET result is AF_INET6 (hints filtered); getaddrinfo owns the storage
             16 );
     }
     ::freeaddrinfo( res );

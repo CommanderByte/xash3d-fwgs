@@ -12,6 +12,10 @@
 //
 // Per Q-7 (decisions-architecture.md): IPlatformSockets is an intra-process
 // seam (same binary, same compiler); it does NOT cross a DLL boundary.
+//
+// @thread-safety: T_NetIO-ready — the seam mirrors the os_socket.hpp free
+// functions (see that header's per-function contracts);
+// default_platform_sockets() is a thread-safe C++11 magic-static.
 
 #include <xash3dpp/platform/os_socket.hpp>
 
