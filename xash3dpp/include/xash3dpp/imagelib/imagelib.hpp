@@ -13,6 +13,7 @@
 //   threads; until then treat a single instance as main-thread.
 
 #include <xash3dpp/imagelib/errors.hpp>
+#include <xash3dpp/imagelib/image.hpp>
 
 #include <cstddef>
 #include <cstdint>
