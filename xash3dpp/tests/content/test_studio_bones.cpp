@@ -391,6 +391,49 @@ static void test_attachment_world_position()
     CHECK( !xash::content::attachment_world_position( nhdr, in, 0, solver, &o2, nullptr ) );
 }
 
+static void test_studio_hitbox_hulls()
+{
+    using xash::content::StudioHitboxHull;
+
+    // 1 bone (identity, pos {1,2,3}), 1 hitbox (bone 0, group 3,
+    // bbmin {-1,-2,-3}, bbmax {4,5,6}). Entity identity + origin {10,20,30}
+    // -> bone matrix I | {11,22,33}; planes are axis-aligned, dists exact.
+    StudioBuilder b;
+    const std::size_t bone_off = b.add_bone( -1, { -1, -1, -1, -1, -1, -1 }, { 1, 2, 3, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } );
+    const std::array<std::vector<std::int16_t>, 6> empty{};
+    const std::size_t anim_off = b.add_anim_block( { empty } );
+    const std::size_t seq_off  = b.add_seqdesc( 1, 0, 0, 1, static_cast<std::int32_t>( anim_off ), 0 );
+    const std::size_t hb_off   = b.add_hitbox( 0, 3, -1.0f, -2.0f, -3.0f, 4.0f, 5.0f, 6.0f );
+    b.header_i32( 140, 1 ); b.header_i32( 144, static_cast<std::int32_t>( bone_off ) );
+    b.header_i32( 164, 1 ); b.header_i32( 168, static_cast<std::int32_t>( seq_off ) );
+    b.header_i32( 156, 1 ); b.header_i32( 160, static_cast<std::int32_t>( hb_off ) ); // numhitboxes / index
+    const auto &bytes = b.bytes();
+    const StudioView hdr{ bytes };
+
+    BoneSetupInput in;
+    in.origin = { 10.0f, 20.0f, 30.0f };
+    BuiltinBoneSolver solver;
+
+    // size 0 -> no Minkowski expansion; bone translation T = {11,22,33}.
+    std::array<StudioHitboxHull, 1> hulls{};
+    const int n = xash::content::studio_hitbox_hulls( hdr, in, { 0, 0, 0 }, solver, hulls );
+    CHECK( n == 1 );
+    CHECK( hulls[0].hitgroup == 3 );
+    CHECK( hulls[0].planes[0].normal.x == 1.0f && hulls[0].planes[0].dist == 15.0f ); // 11+4
+    CHECK( hulls[0].planes[1].dist == 10.0f );                                        // 11-1
+    CHECK( hulls[0].planes[2].normal.y == 1.0f && hulls[0].planes[2].dist == 27.0f ); // 22+5
+    CHECK( hulls[0].planes[3].dist == 20.0f );                                        // 22-2
+    CHECK( hulls[0].planes[4].normal.z == 1.0f && hulls[0].planes[4].dist == 39.0f ); // 33+6
+    CHECK( hulls[0].planes[5].dist == 30.0f );                                        // 33-3
+
+    // size {2,3,4} -> even faces += |normal|.size, odd faces -=.
+    const int n2 = xash::content::studio_hitbox_hulls( hdr, in, { 2, 3, 4 }, solver, hulls );
+    CHECK( n2 == 1 );
+    CHECK( hulls[0].planes[0].dist == 17.0f && hulls[0].planes[1].dist == 8.0f );  // 15+2, 10-2
+    CHECK( hulls[0].planes[2].dist == 30.0f && hulls[0].planes[3].dist == 17.0f ); // 27+3, 20-3
+    CHECK( hulls[0].planes[4].dist == 43.0f && hulls[0].planes[5].dist == 26.0f ); // 39+4, 30-4
+}
+
 int main()
 {
     RUN_TEST( test_calc_bones_rle_position );
@@ -407,6 +450,7 @@ int main()
 
     RUN_TEST( test_bone_world_position );
     RUN_TEST( test_attachment_world_position );
+    RUN_TEST( test_studio_hitbox_hulls );
 
     std::printf( "test_studio_bones: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

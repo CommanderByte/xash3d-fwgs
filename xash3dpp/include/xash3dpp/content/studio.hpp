@@ -34,6 +34,7 @@ inline constexpr std::size_t k_studio_bonectrl_stride   = 24;  // mstudiobonecon
 inline constexpr std::size_t k_studio_anim_stride       = 12;  // mstudioanim_t (uint16 offset[6])
 inline constexpr std::size_t k_studio_seqdesc_stride    = 176; // mstudioseqdesc_t
 inline constexpr std::size_t k_studio_attachment_stride = 88;  // mstudioattachment_t
+inline constexpr std::size_t k_studio_hitbox_stride     = 32;  // mstudiobbox_t
 
 // mstudiobonecontroller_t motion-type flags (engine/studio.h). The low bits are
 // the axis/rotation type (masked by k_studio_types); k_studio_rloop marks a
@@ -169,6 +170,25 @@ private:
     std::size_t                off_ = 0;
 };
 
+// mstudiobbox_t (32 B): bone@0, group@4, bbmin(vec3)@8, bbmax(vec3)@20. The
+// hitbox is an axis-aligned box in `bone`'s local frame; the studio hull turns
+// it into six oriented planes in world space (Mod_SetStudioHullPlane).
+class HitboxView
+{
+public:
+    HitboxView() = default;
+    HitboxView( std::span<const std::byte> data, std::size_t off ) noexcept : data_( data ), off_( off ) {}
+
+    [[nodiscard]] std::int32_t            bone() const noexcept;
+    [[nodiscard]] std::int32_t            group() const noexcept;
+    [[nodiscard]] ::xash::utilities::Vec3 bbmin() const noexcept;
+    [[nodiscard]] ::xash::utilities::Vec3 bbmax() const noexcept;
+
+private:
+    std::span<const std::byte> data_;
+    std::size_t                off_ = 0;
+};
+
 // ---------------------------------------------------------------------------
 // StudioView — typed, bounds-safe read surface over a studiohdr_t byte image.
 // Out-of-range reads return 0 / empty rather than faulting (untrusted files).
@@ -211,6 +231,7 @@ public:
     [[nodiscard]] BoneControllerView bonecontroller( int j ) const noexcept;
     [[nodiscard]] SeqDescView        seqdesc( int i ) const noexcept;
     [[nodiscard]] AttachmentView     attachment( int i ) const noexcept;
+    [[nodiscard]] HitboxView         hitbox( int i ) const noexcept;
 
     [[nodiscard]] std::span<const std::byte> data() const noexcept { return data_; }
     [[nodiscard]] bool valid() const noexcept { return data_.size() >= k_studio_header_size; }

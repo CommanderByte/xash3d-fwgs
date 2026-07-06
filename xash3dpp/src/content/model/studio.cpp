@@ -67,6 +67,12 @@ constexpr std::size_t kSeqSeqGroup   = 156;
 constexpr std::size_t kAttBone = 36;
 constexpr std::size_t kAttOrg  = 40; // vec3
 
+// mstudiobbox_t field offsets (within a 32-byte chunk).
+constexpr std::size_t kHbBone  = 0;
+constexpr std::size_t kHbGroup = 4;
+constexpr std::size_t kHbMin   = 8;  // vec3
+constexpr std::size_t kHbMax   = 20; // vec3
+
 // Bounds-checked little-endian reads over the studiohdr byte image; an
 // out-of-range offset returns 0 (untrusted files never fault a reader).
 [[nodiscard]] std::int32_t rd_i32( std::span<const std::byte> d, std::size_t off ) noexcept
@@ -128,6 +134,17 @@ std::int32_t AttachmentView::bone() const noexcept { return rd_i32( data_, off_ 
 ::xash::utilities::Vec3 AttachmentView::org() const noexcept
 {
     return { rd_f32( data_, off_ + kAttOrg ), rd_f32( data_, off_ + kAttOrg + 4 ), rd_f32( data_, off_ + kAttOrg + 8 ) };
+}
+
+std::int32_t HitboxView::bone() const noexcept  { return rd_i32( data_, off_ + kHbBone ); }
+std::int32_t HitboxView::group() const noexcept { return rd_i32( data_, off_ + kHbGroup ); }
+::xash::utilities::Vec3 HitboxView::bbmin() const noexcept
+{
+    return { rd_f32( data_, off_ + kHbMin ), rd_f32( data_, off_ + kHbMin + 4 ), rd_f32( data_, off_ + kHbMin + 8 ) };
+}
+::xash::utilities::Vec3 HitboxView::bbmax() const noexcept
+{
+    return { rd_f32( data_, off_ + kHbMax ), rd_f32( data_, off_ + kHbMax + 4 ), rd_f32( data_, off_ + kHbMax + 8 ) };
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +223,12 @@ AttachmentView StudioView::attachment( int i ) const noexcept
 {
     return AttachmentView{ data_, static_cast<std::size_t>( attachment_index() )
         + k_studio_attachment_stride * static_cast<std::size_t>( i ) };
+}
+
+HitboxView StudioView::hitbox( int i ) const noexcept
+{
+    return HitboxView{ data_, static_cast<std::size_t>( hitbox_index() )
+        + k_studio_hitbox_stride * static_cast<std::size_t>( i ) };
 }
 
 // ---------------------------------------------------------------------------

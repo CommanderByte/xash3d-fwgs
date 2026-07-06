@@ -14,6 +14,7 @@
 #include <xash3dpp/utilities/quaternion.hpp>
 
 #include <array>
+#include <cmath>
 
 namespace xash::content {
 
@@ -382,6 +383,74 @@ bool attachment_world_position( const StudioView &hdr, BoneSetupInput in, int at
     if( out_angles != nullptr )
         *out_angles = ::xash::utilities::angles_from_matrix( worldPose );
     return true;
+}
+
+namespace {
+
+using ::xash::utilities::Matrix3x4;
+using ::xash::utilities::Vec3;
+
+// DotProductFabs (xash3d_mathlib.h): |a| . b, component-wise absolute dot.
+[[nodiscard]] float dot_fabs( const Vec3 &a, const Vec3 &b ) noexcept
+{
+    return std::fabs( a.x ) * b.x + std::fabs( a.y ) * b.y + std::fabs( a.z ) * b.z;
+}
+
+// Mod_SetStudioHullPlane: a plane whose normal is column `axis` of the bone
+// matrix, at `offset` along it, ± the Minkowski expansion by `size` (odd faces
+// subtract, even faces add — the legacy planenum & 1 test).
+[[nodiscard]] StudioHullPlane make_hull_plane( const Matrix3x4 &bone, int axis, float offset,
+                                               const Vec3 &size, bool odd ) noexcept
+{
+    StudioHullPlane pl;
+    pl.normal = { bone.m[0][axis], bone.m[1][axis], bone.m[2][axis] };
+    pl.dist   = pl.normal.x * bone.m[0][3] + pl.normal.y * bone.m[1][3]
+              + pl.normal.z * bone.m[2][3] + offset;
+    if( odd )
+        pl.dist -= dot_fabs( pl.normal, size );
+    else
+        pl.dist += dot_fabs( pl.normal, size );
+    return pl;
+}
+
+} // namespace
+
+int studio_hitbox_hulls( const StudioView &hdr, const BoneSetupInput &in,
+                         const ::xash::utilities::Vec3 &size, IBoneSolver &solver,
+                         std::span<StudioHitboxHull> out ) noexcept
+{
+    const int numbones    = hdr.num_bones();
+    const int numhitboxes = hdr.num_hitboxes();
+    if( numbones <= 0 || numhitboxes <= 0
+        || out.size() < static_cast<std::size_t>( numhitboxes ) )
+        return 0;
+
+    std::array<Matrix3x4, ::xash::limits::studio_max_bones> bones{};
+    BoneSetupInput pose = in;
+    pose.bone = -1; // all bones
+    if( solver.setup_bones( hdr, pose, bones ) == 0 )
+        return 0;
+
+    for( int i = 0; i < numhitboxes; ++i )
+    {
+        const HitboxView hb = hdr.hitbox( i );
+        int bone = hb.bone();
+        if( bone < 0 || bone >= numbones )
+            bone = 0; // hardening: clamp a bad bone reference
+        const Matrix3x4 &m = bones[static_cast<std::size_t>( bone )];
+        const Vec3 mn = hb.bbmin();
+        const Vec3 mx = hb.bbmax();
+
+        StudioHitboxHull &h = out[static_cast<std::size_t>( i )];
+        h.hitgroup  = hb.group();
+        h.planes[0] = make_hull_plane( m, 0, mx.x, size, false );
+        h.planes[1] = make_hull_plane( m, 0, mn.x, size, true );
+        h.planes[2] = make_hull_plane( m, 1, mx.y, size, false );
+        h.planes[3] = make_hull_plane( m, 1, mn.y, size, true );
+        h.planes[4] = make_hull_plane( m, 2, mx.z, size, false );
+        h.planes[5] = make_hull_plane( m, 2, mn.z, size, true );
+    }
+    return numhitboxes;
 }
 
 } // namespace xash::content

@@ -109,4 +109,34 @@ public:
                                               ::xash::utilities::Vec3 *out_origin,
                                               ::xash::utilities::Vec3 *out_angles ) noexcept;
 
+// ---------------------------------------------------------------------------
+// Studio hitbox hulls (Mod_HullForStudio / Mod_SetStudioHullPlane)
+// ---------------------------------------------------------------------------
+
+// One face of a studio hitbox hull: a world-space plane (legacy mplane_t with
+// type 5, non-axial). normal · x <= dist is the inside half-space.
+struct StudioHullPlane
+{
+    ::xash::utilities::Vec3 normal{};
+    float                   dist = 0.0f;
+};
+
+// A studio hitbox as an oriented box: six planes (axis columns of the bone
+// matrix; even faces use bbmax + the Minkowski expansion, odd faces bbmin -)
+// plus the hit group. The server wires these into its trace hull + hitgroup.
+struct StudioHitboxHull
+{
+    StudioHullPlane planes[6];
+    int             hitgroup = 0;
+};
+
+// Mod_HullForStudio (the plane-production half): setup_bones for the pose, then
+// emit six oriented planes per hitbox, Minkowski-expanded by the trace box
+// half-extents `size`. Fills out[0..numhitboxes) and returns the hitbox count,
+// or 0 (bad/empty header, or `out` too small). NO pitch flip and no CS-shield
+// skip — the caller (which has the edict + host features) applies those.
+[[nodiscard]] int studio_hitbox_hulls( const StudioView &hdr, const BoneSetupInput &in,
+                                       const ::xash::utilities::Vec3 &size, IBoneSolver &solver,
+                                       std::span<StudioHitboxHull> out ) noexcept;
+
 } // namespace xash::content

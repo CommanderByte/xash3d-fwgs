@@ -130,6 +130,19 @@ public:
         return off;
     }
 
+    // mstudiobbox_t (32 B) — bone@0, group@4, bbmin(vec3)@8, bbmax(vec3)@20.
+    std::size_t add_hitbox( std::int32_t bone, std::int32_t group,
+                            float minx, float miny, float minz,
+                            float maxx, float maxy, float maxz )
+    {
+        const std::size_t off = grow( k_studio_hitbox_stride );
+        put_i32( off + 0, bone );
+        put_i32( off + 4, group );
+        put_f32( off + 8, minx );  put_f32( off + 12, miny );  put_f32( off + 16, minz );
+        put_f32( off + 20, maxx ); put_f32( off + 24, maxy );  put_f32( off + 28, maxz );
+        return off;
+    }
+
     // mstudioattachment_t (88 B) — bone@36, org(vec3)@40.
     std::size_t add_attachment( std::int32_t bone, float ox, float oy, float oz )
     {
