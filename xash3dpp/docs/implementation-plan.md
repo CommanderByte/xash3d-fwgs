@@ -29,7 +29,7 @@ ______________________________________________________________________
 | networking | 24 | ✓ | ✓ | **Complete** (Layers 0–4 incl. delta encoder + satellites, wired into EngineContext; DNS/bz2 deferred) |
 | server | 1 | ✓ | ✓ | **Complete** (Chunk 6 — dedicated-server milestone ACHIEVED 2026-07-05: real 32-bit `hl.dll` loads + `c0a0` spawns + one map frame runs clean; OQ-8 milestone-trimmed backlog tracked in the deferred inventory) |
 | client | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
-| content | 0 | ✗ | ✗ | **Skeleton** |
+| content | 13 | ✓ | ✓ | **Partial** (model cache + 3 loaders + 7 image codecs + studio **bone solver** [OQ-5 ✅ bit-exact vs Q-18 goldens] + pose pfns; `SV_ClipMoveToEntity` studio hitbox trace-loop gated on the hl.dll smoke — see Chunk 7) |
 | demo | 0 | ✗ | ✗ | **Skeleton** |
 | input | 0 | ✗ | ✗ | **Skeleton** |
 | physics | 0 | ✗ | ✗ | **Skeleton** |
@@ -190,15 +190,21 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### Chunk 7 — content pipeline (model & image loaders)
+### Chunk 7 — content pipeline (model & image loaders) — ◑ IN PROGRESS (studio bone solver ✅ 2026-07-06)
 
-**Subsystems**: `content`\
+**Subsystems**: `content` (+ `utilities`/`map_loader`/`server` studio wiring)\
 **Depends on**: filesystem, utilities, memory *(all done)*\
-**Recon/Boundary**: none yet — run `/analyse-subsystem content` before scaffold\
-**Legacy reference**: `engine/common/imagelib/` (BMP, DDS, TGA, KTX2, WAD), `mod_studio.c`, `mod_alias.c`, `mod_sprite.c`\
-**Complexity note**: Studio model has bone/sequence/mesh/texture sub-formats; the hardest part is texture format normalisation (WAD→RGBA, DXT→RGBA) done identically to GoldSrc for visual compat. `common/com_model.h` struct layout is frozen for client DLL reads.\
-**ABI surfaces touched**: `common/com_model.h` structs read by client DLL — layout frozen.\
-**Deliverable**: Typed model handle lookup; WAD texture pack/unpack test; studio header parse test
+**Recon/Boundary**: `docs/boundaries/content-boundary.md` + `docs/modernization-opportunities/content-modernization.md` (OQ-1/2/3/4/6/8 decided; OQ-5 bone-math ✅ done; OQ-7 residue open)\
+**Legacy reference**: `engine/common/imagelib/` (BMP, DDS, TGA, KTX2, WAD), `mod_studio.c`, `mod_alias.c`, `mod_sprite.c`, `public/xash3d_mathlib.c`/`matrixlib.c` (bone math)\
+**ABI surfaces touched**: `common/com_model.h` / `engine/studio.h` structs read by DLL — layout frozen (read by hardcoded offset, never vendored).\
+**Deliverable**: Typed model handle lookup; WAD texture pack/unpack test; studio header parse test — **all done**, plus the full studio bone solver.\
+**What shipped**: `ModelCache` handle registry + 3 non-brush loaders + magic dispatch + CRC (OQ-6) + purge FSM (OQ-8) + `IModelPostProcess` (OQ-4); 7 image codecs (WAD/TGA/BMP/DDS/KTX2/MIP/PNG) + palette machinery; the **studio bone solver (OQ-5)** — `utilities` quaternion/matrix primitives (bit-exact vs the Q-18 verbatim-legacy goldens), `content` merged RLE `calc_bones` + `setup_bones` driver + `IBoneSolver` seam, the bone-position / attachment pose queries + studio hitbox hull-planes; the content pipeline wired into the server (lazy `ModelCache` in `ModelResolver`, `IModelResolver::studio_bytes`), the three studio game-DLL pfns unstubbed (`pfnGetModelPtr`/`GetBonePosition`/`GetAttachment`), and `map_loader BoxHull::set_planes` (the oriented-box hull for hitboxes).\
+**Deferred (recorded)**:
+
+- **Studio server hitbox trace-loop** — the geometric core is done (`content::studio_hitbox_hulls` + `BoxHull::set_planes`); the `SV_ClipMoveToEntity` per-hitbox loop + `EntityView` pose accessors + `SV_HullForStudioModel` gating (trace-size scaling, `sv_clienttrace`, player-blend, CS shield-skip) + the `pm_trace.cpp` mirror + the 16-entry LRU cache are the finishing step, **gated on the hl.dll smoke** (their parity can't be verified without verbatim-legacy trace goldens). Closes server-boundary OQ-2. Markers: `clip.cpp:180`, `pmove.cpp:159`.
+- **Renderer (Chunk 13)**: internal `Image`↔`rgbdata_t` adapter (OQ-1); `Image_Process` resample/flip/quantise (NeuQuant); MDL/SPR/LMP/FNT/PAL **image-lump** codecs; the `content → imagelib` + `content → map_loader` CMake links; lightmaps/glpolys; texture upload.
+- **OQ-7 residue**: `XASH_LOW_MEMORY` texel truncation, external `…T.mdl` texture merge, dedicated-server sprite half-load, the Quake sprite pitch-inversion bug, and **external seqgroups** (`seqgroup>0` `…NN.mdl` — the bone solver degrades these to bind pose).
+- **Host feature-flag wiring**: `host.features` (`ENGINE_COMPENSATE_QUAKE_BUG` / `ENGINE_COMPUTE_STUDIO_LERP`) is unwired (== 0); the studio pfns/hull consume it via the legacy defaults (flip on, attachment angles untouched) until it lands (already deferred in `physics.cpp:1542`).
 
 ______________________________________________________________________
 

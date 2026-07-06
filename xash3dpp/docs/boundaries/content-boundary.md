@@ -302,11 +302,17 @@ ______________________________________________________________________
   dedicated-vs-client branch is the implementer's: the server registers a
   physics `on_model_loaded`, the client a render-data one — content calls out to
   whichever is injected, never linking toward the renderer.
-- **OQ-5 — studio bone-math placement.** *Still open* — lands with the studio
-  server-collision work (`Mod_HullForStudio` / bone setup). The swappable
-  game-DLL bone solver (`Server_GetBlendingInterface`) becomes a
-  `content::IBoneSolver` seam; the pure `R_StudioCalcBones`/`SlerpBones` kernel
-  is a `xash3d_mathlib`/`utilities` promotion candidate.
+- **OQ-5 — studio bone-math placement. ✅ RESOLVED 2026-07-06 (implemented):**
+  the pure `R_StudioCalcBones` / `QuaternionSlerp` / matrix kernel was promoted to
+  `utilities` (`quaternion.hpp` + `matrix.cpp` — bit-exact against the Q-18
+  verbatim-legacy goldens, `tests/goldens/studio_math_goldens.inc`); the
+  struct-walking merged RLE decoder + the `SV_StudioSetupBones` driver live in
+  `content` (`bone_solver.cpp`); the swappable game-DLL solver
+  (`Server_GetBlendingInterface`) is the `content::IBoneSolver` seam
+  (`BuiltinBoneSolver` builtin). **Placement note:** `IBoneSolver` is NOT a
+  `ModelCache::InitParams` dependency — bone setup runs at trace/query time over a
+  `StudioView`, so the solver is injected at the server studio consumers, not at
+  model-load time.
 - **OQ-6 — CRC cheat-detection ownership. ✅ RESOLVED (implemented):** the
   per-model CRC + `CrcFlags` live on the `ModelCache` registry;
   `ModelCache::need_crc` / `validate_crc` are the server-facing surface, and

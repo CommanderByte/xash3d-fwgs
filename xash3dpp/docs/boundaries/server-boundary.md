@@ -379,13 +379,17 @@ Q-11 test applied (≥2 "separate" criteria → separate target):
   fat-vis walk; server consumes via the query API only). Byte-parity
   golden fixture against GoldSrc dumps (mod_bmodel.c:3845-3859 parity
   note) gates it. Lands as Chunk 6 scope.
-- **OQ-2 — Studio hitbox hulls.** `SV_HullForStudioModel` / `pfnGetBonePosition` /
-  `pfnGetAttachment` / `SV_StudioSetupBones` need studio model parsing
-  (Chunk 7). Chunk 6 ships the bbox fallback behind an
-  `IStudioHullProvider` option seam (null provider = bbox path +
-  `sv_clienttrace`-gated scale honoured); Chunk 7 plugs in the real
-  provider. Must not block the dedicated milestone (stock HL gameplay
-  degrades: player hitboxes become boxes until Chunk 7).
+- **OQ-2 — Studio hitbox hulls.** *Geometric core done 2026-07-06 (Chunk 7):*
+  `SV_StudioSetupBones` + `pfnGetBonePosition` / `pfnGetAttachment` / `pfnGetModelPtr`
+  are unstubbed (the `content` bone solver reached via `IModelResolver::studio_bytes`,
+  a lazy `ModelCache`), and the hitbox hull geometry is implemented + tested —
+  `content::studio_hitbox_hulls` (`Mod_SetStudioHullPlane`) + the oriented-box trace
+  hull (`map_loader BoxHull::set_planes`). *Still open (gated on the hl.dll smoke):*
+  the `SV_ClipMoveToEntity` per-hitbox trace loop + `SV_HullForStudioModel` gating
+  (trace-size scaling, `sv_clienttrace` scale, player-blend, CS shield-skip) + the
+  `pm_trace.cpp` mirror + the 16-entry LRU — their parity needs verbatim-legacy
+  trace goldens. The null-provider bbox fallback stays until then (stock HL
+  degrades: player hitboxes are boxes).
 - **OQ-3 — HPAK.** Where does the custom.hpk archive live
   (content/filesystem/server satellite)? Needed for player-decal
   customizations; the dedicated milestone can stub uploads off
