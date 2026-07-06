@@ -1018,9 +1018,13 @@ def finish_check(subsystem: str, run_tests: bool = False,
     add(5, "NAMING_FN / NAMING_ENUM", "pass" if not nm else "fail",
         "%d k-prefixed enum values" % len(nm))
 
-    # 6 tests exist + macros
-    tdir = TESTS / sub
-    tfiles = list(tdir.rglob("*.cpp")) if tdir.is_dir() else []
+    # 6 tests exist + macros.  Most subsystems keep tests under tests/<sub>/,
+    # but the abi layout/ABI-pin tests live under tests/server/abi/ (they were
+    # authored alongside the server and exercise the vendored struct layouts at
+    # both pointer widths) — count that location too so abi isn't a false fail.
+    _TEST_DIR_ALIASES = {"abi": [TESTS / "server" / "abi"]}
+    tdirs = [TESTS / sub, *_TEST_DIR_ALIASES.get(sub, [])]
+    tfiles = [p for d in tdirs if d.is_dir() for p in d.rglob("*.cpp")]
     macro_issues = _scan_test_macros(sub)
     add(6, "Tests present + test_helpers.hpp",
         "pass" if tfiles and not macro_issues else "fail",
