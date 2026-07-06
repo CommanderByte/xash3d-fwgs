@@ -6,6 +6,7 @@ set(test_sources
     test_hash
     test_math
     test_matrix
+    test_quaternion
     test_path
     test_string
     test_swap

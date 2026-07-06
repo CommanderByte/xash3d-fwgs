@@ -58,6 +58,19 @@ static constexpr int ROLL  = 2;
 
 [[nodiscard]] constexpr bool is_nan( float v ) noexcept { return v != v; }
 
+// Legacy SinCos parity. The engine's SinCos() (xash3d_mathlib.h) computes the
+// sine/cosine with the DOUBLE-precision sin()/cos() — the float argument is
+// promoted — then narrows the result to float on store. Studio bone math is
+// bit-sensitive to this exact rounding, so every studio-math primitive routes
+// its trig through here and NEVER through std::sin(float)/std::cos(float)
+// (which would pick the single-precision sinf/cosf and diverge in the low bits).
+struct SinCos { float s, c; };
+[[nodiscard]] inline SinCos sincos( float radians ) noexcept
+{
+    const double r = static_cast<double>( radians );
+    return { static_cast<float>( std::sin( r ) ), static_cast<float>( std::cos( r ) ) };
+}
+
 // ---------------------------------------------------------------------------
 // Vec3 operations
 // ---------------------------------------------------------------------------

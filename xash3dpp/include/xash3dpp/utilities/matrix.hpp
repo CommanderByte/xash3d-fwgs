@@ -44,8 +44,16 @@ struct Matrix3x4
 // Invert an orthonormal transform (rotation-only, no scale).
 [[nodiscard]] Matrix3x4 invert_ortho( const Matrix3x4 &m ) noexcept;
 
-// Build from origin + euler angles (deg).
+// Build from origin + euler angles (deg). Bit-exact port of the legacy
+// Matrix3x4_CreateFromEntity with scale = 1 (see create_from_entity).
 [[nodiscard]] Matrix3x4 from_angles( const Vec3 &origin, const Vec3 &angles ) noexcept;
+
+// Build from origin + euler angles (deg) + uniform scale — the full legacy
+// Matrix3x4_CreateFromEntity (public/matrixlib.c). Reproduces the four
+// mutually-exclusive branches keyed on which euler component is nonzero (the
+// reduced branches emit literal 0/scale, not a unified trig formula) and the
+// double-precision SinCos rounding — required for studio bone-matrix parity.
+[[nodiscard]] Matrix3x4 create_from_entity( const Vec3 &origin, const Vec3 &angles, float scale ) noexcept;
 
 // ---------------------------------------------------------------------------
 // Matrix4x4 — general projective transform

@@ -3,6 +3,7 @@ add_library(xash3dpp_utilities STATIC
     path.cpp
     hash.cpp
     matrix.cpp
+    quaternion.cpp
     utf.cpp
     atlas.cpp
     build.cpp

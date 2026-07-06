@@ -76,44 +76,58 @@ Matrix3x4 invert_ortho( const Matrix3x4 &m ) noexcept
     return r;
 }
 
-Matrix3x4 from_angles( const Vec3 &origin, const Vec3 &angles ) noexcept
+// Legacy Matrix3x4_CreateFromEntity forms its per-axis angle as
+// `angles[i] * (M_PI2 / 360.0f)` — evaluated in DOUBLE (M_PI2 = 2*M_PI, the
+// double literal) and narrowed to a float `angle` before SinCos. k_deg2rad_e
+// reproduces that exact factor; the float k_deg2rad above is the single-
+// precision convenience factor kept for the non-studio callers.
+inline constexpr double k_pi_d      = 3.14159265358979323846;      // legacy M_PI
+inline constexpr double k_deg2rad_e = ( k_pi_d * 2.0 ) / 360.0;    // legacy M_PI2/360.0f
+
+Matrix3x4 create_from_entity( const Vec3 &origin, const Vec3 &angles, float scale ) noexcept
 {
-    // Direct port of Matrix3x4_CreateFromEntity (scale = 1).
-    // angles: x=pitch, y=yaw, z=roll (degrees)
-    float sr, sp, sy, cr, cp, cy;
+    // Direct port of Matrix3x4_CreateFromEntity (public/matrixlib.c). The four
+    // branches, the literal 0/scale slots in the reduced branches, the double
+    // SinCos, and the exact term/scale ordering are all parity-load-bearing.
+    // angles: x=pitch, y=yaw, z=roll (degrees).
     Matrix3x4 r{};
 
     if( angles.z != 0.0f )
     {
-        sy = std::sin( angles.y * k_deg2rad );  cy = std::cos( angles.y * k_deg2rad );
-        sp = std::sin( angles.x * k_deg2rad );  cp = std::cos( angles.x * k_deg2rad );
-        sr = std::sin( angles.z * k_deg2rad );  cr = std::cos( angles.z * k_deg2rad );
-        r.m[0][0] = cp*cy;              r.m[0][1] = sr*sp*cy + cr*-sy;  r.m[0][2] = cr*sp*cy + -sr*-sy;  r.m[0][3] = origin.x;
-        r.m[1][0] = cp*sy;              r.m[1][1] = sr*sp*sy + cr*cy;   r.m[1][2] = cr*sp*sy + -sr*cy;   r.m[1][3] = origin.y;
-        r.m[2][0] = -sp;                r.m[2][1] = sr*cp;               r.m[2][2] = cr*cp;                r.m[2][3] = origin.z;
+        const auto [sy, cy] = sincos( static_cast<float>( angles.y * k_deg2rad_e ) );
+        const auto [sp, cp] = sincos( static_cast<float>( angles.x * k_deg2rad_e ) );
+        const auto [sr, cr] = sincos( static_cast<float>( angles.z * k_deg2rad_e ) );
+        r.m[0][0] = ( cp*cy ) * scale;  r.m[0][1] = ( sr*sp*cy + cr*-sy ) * scale;  r.m[0][2] = ( cr*sp*cy + -sr*-sy ) * scale;  r.m[0][3] = origin.x;
+        r.m[1][0] = ( cp*sy ) * scale;  r.m[1][1] = ( sr*sp*sy + cr*cy ) * scale;   r.m[1][2] = ( cr*sp*sy + -sr*cy ) * scale;   r.m[1][3] = origin.y;
+        r.m[2][0] = ( -sp ) * scale;    r.m[2][1] = ( sr*cp ) * scale;              r.m[2][2] = ( cr*cp ) * scale;               r.m[2][3] = origin.z;
     }
     else if( angles.x != 0.0f )
     {
-        sy = std::sin( angles.y * k_deg2rad );  cy = std::cos( angles.y * k_deg2rad );
-        sp = std::sin( angles.x * k_deg2rad );  cp = std::cos( angles.x * k_deg2rad );
-        r.m[0][0] = cp*cy;  r.m[0][1] = -sy;  r.m[0][2] = sp*cy;  r.m[0][3] = origin.x;
-        r.m[1][0] = cp*sy;  r.m[1][1] =  cy;  r.m[1][2] = sp*sy;  r.m[1][3] = origin.y;
-        r.m[2][0] = -sp;    r.m[2][1] = 0.0f; r.m[2][2] = cp;     r.m[2][3] = origin.z;
+        const auto [sy, cy] = sincos( static_cast<float>( angles.y * k_deg2rad_e ) );
+        const auto [sp, cp] = sincos( static_cast<float>( angles.x * k_deg2rad_e ) );
+        r.m[0][0] = ( cp*cy ) * scale;  r.m[0][1] = ( -sy ) * scale;  r.m[0][2] = ( sp*cy ) * scale;  r.m[0][3] = origin.x;
+        r.m[1][0] = ( cp*sy ) * scale;  r.m[1][1] = ( cy ) * scale;   r.m[1][2] = ( sp*sy ) * scale;  r.m[1][3] = origin.y;
+        r.m[2][0] = ( -sp ) * scale;    r.m[2][1] = 0.0f;             r.m[2][2] = ( cp ) * scale;     r.m[2][3] = origin.z;
     }
     else if( angles.y != 0.0f )
     {
-        sy = std::sin( angles.y * k_deg2rad );  cy = std::cos( angles.y * k_deg2rad );
-        r.m[0][0] = cy;   r.m[0][1] = -sy;  r.m[0][2] = 0.0f;  r.m[0][3] = origin.x;
-        r.m[1][0] = sy;   r.m[1][1] =  cy;  r.m[1][2] = 0.0f;  r.m[1][3] = origin.y;
-        r.m[2][0] = 0.0f; r.m[2][1] = 0.0f; r.m[2][2] = 1.0f;  r.m[2][3] = origin.z;
+        const auto [sy, cy] = sincos( static_cast<float>( angles.y * k_deg2rad_e ) );
+        r.m[0][0] = ( cy ) * scale;  r.m[0][1] = ( -sy ) * scale;  r.m[0][2] = 0.0f;   r.m[0][3] = origin.x;
+        r.m[1][0] = ( sy ) * scale;  r.m[1][1] = ( cy ) * scale;   r.m[1][2] = 0.0f;   r.m[1][3] = origin.y;
+        r.m[2][0] = 0.0f;            r.m[2][1] = 0.0f;             r.m[2][2] = scale;  r.m[2][3] = origin.z;
     }
     else
     {
-        r.m[0][0] = 1.0f;  r.m[0][3] = origin.x;
-        r.m[1][1] = 1.0f;  r.m[1][3] = origin.y;
-        r.m[2][2] = 1.0f;  r.m[2][3] = origin.z;
+        r.m[0][0] = scale;  r.m[0][3] = origin.x;
+        r.m[1][1] = scale;  r.m[1][3] = origin.y;
+        r.m[2][2] = scale;  r.m[2][3] = origin.z;
     }
     return r;
+}
+
+Matrix3x4 from_angles( const Vec3 &origin, const Vec3 &angles ) noexcept
+{
+    return create_from_entity( origin, angles, 1.0f );
 }
 
 // ---------------------------------------------------------------------------
