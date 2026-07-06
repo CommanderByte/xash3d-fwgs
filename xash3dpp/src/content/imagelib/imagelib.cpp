@@ -93,6 +93,7 @@ Result<Image> ImageDecoder::decode( std::string_view name, std::span<const std::
     // Codec registry — one entry per codec as they land (O-2).
     static const IImageCodec *const registry[] = {
         &wad_codec(),
+        &tga_codec(),
     };
 
     for( const IImageCodec *codec : registry )

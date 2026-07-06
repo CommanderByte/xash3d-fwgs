@@ -19,4 +19,10 @@ namespace xash::imagelib {
 // legacy writer; round-trips with ImageDecoder::decode() on a ".wad" name.
 [[nodiscard]] Result<std::vector<std::byte>> save_wad( const Image &img );
 
+// Encode an image as an uncompressed type-2 TGA buffer (legacy Image_SaveTGA):
+// 24-bit when the image has no alpha, 32-bit when it carries HasAlpha. Written
+// B,G,R[,A] and vertically flipped, so it round-trips with ImageDecoder::decode()
+// on a ".tga" name. Accepts the Rgb8/Bgr8/Rgba8/Bgra8 formats legacy supported.
+[[nodiscard]] Result<std::vector<std::byte>> save_tga( const Image &img );
+
 } // namespace xash::imagelib

@@ -34,5 +34,6 @@ struct IImageCodec
 // Per-codec singleton accessors (defined in each codec_*.cpp). ImageDecoder
 // assembles the registry from these — one line per codec as they land.
 [[nodiscard]] const IImageCodec &wad_codec() noexcept;
+[[nodiscard]] const IImageCodec &tga_codec() noexcept;
 
 } // namespace xash::imagelib
