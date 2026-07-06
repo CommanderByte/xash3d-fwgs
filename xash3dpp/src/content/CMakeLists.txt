@@ -16,6 +16,8 @@ add_library(xash3dpp_imagelib STATIC
     imagelib/imagelib.cpp
     imagelib/codec_wad.cpp
     imagelib/codec_tga.cpp
+    imagelib/codec_bmp.cpp
+    imagelib/codec_dds.cpp
 )
 
 target_include_directories(xash3dpp_imagelib

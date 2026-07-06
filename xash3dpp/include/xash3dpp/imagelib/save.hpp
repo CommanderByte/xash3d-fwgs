@@ -25,4 +25,10 @@ namespace xash::imagelib {
 // on a ".tga" name. Accepts the Rgb8/Bgr8/Rgba8/Bgra8 formats legacy supported.
 [[nodiscard]] Result<std::vector<std::byte>> save_tga( const Image &img );
 
+// Encode an image as an uncompressed Windows BMP buffer (legacy Image_SaveBMP):
+// 8-bit indexed (+ palette), 24-bit (RGB/BGR) or 32-bit (RGBA/BGRA), with the row
+// width padded to a multiple of 4. Byte-compatible with the legacy writer;
+// round-trips with ImageDecoder::decode() on a ".bmp" name.
+[[nodiscard]] Result<std::vector<std::byte>> save_bmp( const Image &img );
+
 } // namespace xash::imagelib
