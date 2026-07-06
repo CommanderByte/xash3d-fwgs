@@ -277,6 +277,41 @@ static void test_model_crc()
 }
 
 // ---------------------------------------------------------------------------
+// P-4 typed introspection snapshot
+// ---------------------------------------------------------------------------
+
+static void test_model_introspection()
+{
+    using namespace xash::content;
+
+    xash::filesystem::Filesystem fs;
+    ModelCache cache;
+    REQUIRE( cache.init( { fs } ) );
+
+    CHECK( cache.register_world( "maps/c0a0.bsp" ).valid() );
+    const ModelHandle h = cache.find_or_alloc( "models/player.mdl" );
+    REQUIRE( cache.load_from_bytes( h, make_studio_header() ).has_value() );
+
+    const auto infos = cache.model_infos();
+    CHECK_EQ( infos.size(), std::size_t{ 2 } );   // world + player
+
+    bool found_player = false;
+    for ( const auto &mi : infos )
+    {
+        if ( mi.name == "models/player.mdl" )
+        {
+            found_player = true;
+            CHECK( mi.type == ModelType::Studio );
+            CHECK( mi.needload == NeedLoad::Present );
+            CHECK( mi.crc != 0u );
+        }
+    }
+    CHECK( found_player );
+
+    cache.shutdown();
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -290,6 +325,7 @@ int main()
     RUN_TEST( test_studio_parse );
     RUN_TEST( test_model_load );
     RUN_TEST( test_model_crc );
+    RUN_TEST( test_model_introspection );
 
     std::printf( "test_content: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

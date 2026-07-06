@@ -18,7 +18,9 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace xash::filesystem { class Filesystem; }
 
@@ -109,6 +111,20 @@ public:
 
     // True iff a loaded model of that name has the given CRC (Mod_ValidateCRC).
     [[nodiscard]] bool validate_crc( std::string_view name, std::uint32_t crc ) const noexcept;
+
+    // ---- P-4 typed introspection (debug / MCP / stats consumers) ---------
+    // An owned snapshot of one registered model — safe to hold past a load.
+    struct ModelInfo
+    {
+        std::string   name;
+        ModelType     type     = ModelType::Bad;
+        NeedLoad      needload = NeedLoad::Unreferenced;
+        std::uint32_t crc      = 0;
+    };
+
+    // Snapshot every occupied slot (cold introspection path; the typed surface
+    // debug/MCP/stats consumers read instead of poking registry internals).
+    [[nodiscard]] std::vector<ModelInfo> model_infos() const;
 
 private:
     struct Impl;

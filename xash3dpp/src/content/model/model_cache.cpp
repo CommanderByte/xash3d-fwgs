@@ -275,4 +275,19 @@ bool ModelCache::validate_crc( std::string_view name, std::uint32_t crc ) const 
     return false;
 }
 
+std::vector<ModelCache::ModelInfo> ModelCache::model_infos() const
+{
+    std::vector<ModelInfo> out;
+    out.reserve(live_count());
+    for (const auto &slot : impl_->slots_)
+    {
+        if (slot.occupied)
+            out.push_back(ModelInfo{ std::string(slot.model.name()),
+                                     slot.model.type(),
+                                     slot.model.needload(),
+                                     slot.model.crc() });
+    }
+    return out;
+}
+
 } // namespace xash::content
