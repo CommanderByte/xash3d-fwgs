@@ -69,7 +69,7 @@ void register_thread_role(ThreadRole role) noexcept;
 // Returns the current thread's registered role.
 ThreadRole current_thread_role() noexcept;
 
-// Debug-only assertion — no-op in release builds.
+// Fires in EVERY build (matches thread_role.hpp as-built: XASH_FATAL on mismatch; corrected 2026-07-19 — this doc previously said debug-only).
 void assert_thread_role(ThreadRole expected) noexcept;
 
 } // namespace xash::core
@@ -145,14 +145,22 @@ This is the first chunk where real-time threading constraints apply:
 
 ```text
 T_MAIN ──── submits play/stop events via sound command queue
-T_AudioDecoder ──── reads command queue, decodes OGG/Opus → PCM ring
+T_AudioDecoder ──── reads command queue, decodes + PAINTS/MIXES → PCM ring
 T_AudioCallback ─── (OS-driven) copies PCM ring → hardware buffer
 ```
+
+**Amended 2026-07-19 (chunks-8/9/10 campaign B6):** paint/spatialize-apply
+run on `T_AudioDecoder` (the original wording covered only decode); all
+listener/entity/gate inputs are read on T_MAIN and ship as POD snapshots in
+the command stream (sound-boundary SND-OQ-1). Decoder scope is wav-first —
+"OGG/Opus" reflects the eventual codec set, not the Chunk 9 slice.
 
 The audio callback must never allocate, block on a mutex, or stall on I/O.
 The only shared state between `T_AudioDecoder` and `T_AudioCallback` is the
 PCM ring buffer — a lock-free SPSC (single-producer, single-consumer) ring of
-pre-decoded 32-bit float frames (see §5.2).
+mixed device-format `int16` interleaved-stereo frames (see §5.2; amended
+2026-07-19 from the original float wording — byte-identity with the legacy
+16-bit DMA ring is the Chunk 9 parity strategy).
 
 ### 3.5 Chunks 8/10/11/12 (save, input, physics, client) — Model B unchanged
 
@@ -263,13 +271,15 @@ ______________________________________________________________________
 | WORKER → MAIN | results | `JobToken::status` atomic + `unique_ptr` move | Polled by main once per frame |
 | MAIN → AudioDecoder | play/stop events | MPSC command queue (lock-free) | Commands are POD; no allocation in enqueue |
 | AudioDecoder → AudioCallback | PCM data | Lock-free SPSC ring buffer | Fixed-size; decoder stalls if full (graceful) |
+| AudioDecoder → MAIN | drain/flush acknowledgment | epoch/generation atomic (see sound-boundary SND-OQ-2) | Main frees sfx/wavdata only after the decoder's epoch ack — added 2026-07-19 (campaign B6); legacy had no reverse channel (single-threaded) |
 | MAIN → Render | scene description | Double-buffered `RenderFrame` | See §6.2 |
 | Render → MAIN | completion signal | `std::atomic<uint64_t>` frame counter | Main reads to detect stall |
 | MAIN ↔ NetIO | packets | MPSC inbound + MPSC outbound queues | Loopback bypasses both; see §7.2 |
 
 ### 5.2 PCM ring buffer (AudioDecoder ↔ AudioCallback)
 
-The ring is a fixed-size array of `float` samples (stereo interleaved), sized
+The ring is a fixed-size array of `int16` samples (stereo interleaved,
+device format — amended 2026-07-19, was `float`; see §3.4 note), sized
 for approximately 100 ms of audio at the target sample rate. The decoder owns
 the write pointer; the callback owns the read pointer. No atomic CAS is required —
 SPSC with sequential producer/consumer is safe with a single `release` store and

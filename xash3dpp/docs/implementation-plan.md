@@ -569,6 +569,11 @@ ______________________________________________________________________
 ### Extension-door infrastructure (design brief first)
 
 - **HB-4 — Thread-spawn + `ThreadRole`-register primitive** *(DOOR, P-1)* —
+  **✅ BRIEF DELIVERED 2026-07-19** (`design/thread-spawn-and-inbox-brief.md`,
+  chunks-8/9/10 campaign B2; register entry Q-24): spawn/naming/priority →
+  platform (lands Chunk 9 slice S9.0), MpscQueue/SpscRing → core (S9.7a),
+  host RunFrame inbox-drain slot designed-NOT-built (first consumer G-1/G-3).
+  Original text follows for the record —
   no OS thread-spawn primitive exists yet: core owns the `ThreadRole` enum +
   `assert_thread_role`, platform hosts `thread_role.cpp` (natural owner, no
   spawn), host owns the P-1 inbox-drain slot (`RunFrame`, marked by

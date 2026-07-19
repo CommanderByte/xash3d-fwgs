@@ -187,7 +187,7 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
-All 22 questions (Q-1 … Q-22) are decided.
+All 24 questions (Q-1 … Q-24) are decided.
 
 ### Question index
 
@@ -204,6 +204,7 @@ All 22 questions (Q-1 … Q-22) are decided.
 | Q-9 | OWNERSHIP | Q-19 | PHS_PLACEMENT |
 | Q-10 | PLUGIN_VERSION | Q-20 | EDICT_STORE |
 | Q-21 | EXTENSION_POSTURE | Q-22 | LIFECYCLE_MODEL |
+| Q-23 | DEVICE_BACKEND_STOP_LINE | Q-24 | QUEUE_FAMILY_HOME |
 
 File order is historical — Q-14 appears before Q-13 below; do not renumber.
 
@@ -232,12 +233,24 @@ decided by this table.
 | `server-boundary` | OQ-1 (PHS placement) | ✅ decided 2026-07-04 — promoted to **Q-19 (PHS_PLACEMENT)** | — |
 | `server-boundary` | OQ-2 (studio-hull option seam) | **resolved 2026-07-19** (IModelResolver::studio_hulls provider + StudioHullCache; trace loop live in world/clip.cpp + pm_trace.cpp) | impl |
 | `server-boundary` | OQ-3 (HPAK placement) | open (may stub uploads for the milestone) | impl |
-| `server-boundary` | OQ-4 (listen-server capability seam) | open (shape now, null impl for dedicated) | impl |
+| `server-boundary` | OQ-4 (listen-server capability seam) | **resolved 2026-07-19** (chunks-8/9/10 campaign B1): injected-capability interfaces per consumer — save's .HL2 inputs are the first (decal list / dynamic sounds / music state providers, null on dedicated, null block still legacy-loadable per save-boundary Compat scope); listen-server real impls land Chunk 12 | — |
 | `server-boundary` | OQ-5 (`entvars_t` internal representation) | ✅ decided 2026-07-04 — promoted to **Q-20 (EDICT_STORE)** | — |
-| `server-boundary` | OQ-6 (64-bit string-pool strategy) | open (legacy-Windows baseline = heap arena + INT-range fallback) | impl |
+| `server-boundary` | OQ-6 (64-bit string-pool strategy) | open (legacy-Windows baseline = heap arena + INT-range fallback); **campaign note 2026-07-19**: confirmed sufficient for Chunk 8 restore — string_t offsets produced at load are transient (never persisted to disk; the wire format stores token-indexed name strings), so restore works under any pool strategy | impl |
 | `server-boundary` | OQ-7 (compat routing via ICompatPolicy) | open (proposal in-doc) | impl |
 | `server-boundary` | OQ-8 (dedicated-milestone scope trims) | open (stub-marker proposal in-doc) | impl |
 | `server-boundary` | OQ-9 (threading posture) | open (assumption: all entry points main-thread) | analysis |
+| `save-boundary` | SAV-OQ-1 (format extension door) | **decided 2026-07-19** (campaign B4): reserved `.HLX` side-block namespace (matches the `*.HL?` cleanup glob, invisible to legacy exact-name readers); self-describing magic+version+size; Chunk 8 ships skip logic + foreign-block round-trip test only, no producer | scaffold |
+| `save-boundary` | SAV-OQ-2 (IFieldSink adoption) | **decided 2026-07-19** (campaign B4): adopt — writer split behind `IFieldSink` (engine-side framing seam only; game-DLL field codec untouched); load path structured as pure parse helpers | scaffold |
+| `save-boundary` | SAV-OQ-3 (FIELD_FUNCTION reverse symbol lookup) | **decided 2026-07-19** (campaign B4): platform owns the dynlib reverse-lookup primitive (`name_for_symbol` / export enumeration); save owns only the TYPEDESCRIPTION glue + per-DLL ordinal cache | impl |
+| `sound-boundary` | SND-OQ-1 (provider thread contract) | **resolved (ratified)**: providers read ONLY on T_Main; POD `ListenerSnapshot`/`MixGateSnapshot`/`RegistrationSnapshot` ship via the MPSC command stream; mouth write-back via marshal/atomic slot | scaffold |
+| `sound-boundary` | SND-OQ-2 (quiesce/drain + wavdata epoch + shutdown order) | open (recommended shape in-doc: flush command + epoch ack, decoder pins wavdata epoch, join pump→decoder→ring teardown) | impl |
+| `sound-boundary` | SND-OQ-3 (audio MPSC queue-full policy) | **decided 2026-07-19** (campaign B3): reserved-capacity STOP/CHANGE fast lane — STOP-class commands can never be dropped by a START-full queue; START overflow blocks the producer (T_Main) briefly rather than dropping (bounded, asserted in debug) | scaffold |
+| `sound-boundary` | SND-OQ-4 (music streaming shape) | **decided 2026-07-19** (campaign B3): fence `s_stream.c` out of the initial Chunk 9 scope; the codec seam reserves an `IAudioStream` vend (per-format open/read/seek/tell/close mirroring `streamfmt_t`) so the follow-up streaming slice is additive | — |
+| `sound-boundary` | SND-OQ-5 (SPSC ring payload) | **decided 2026-07-19** (campaign B3/B6): `int16_t` interleaved stereo device-format frames (byte-identity with the legacy DMA ring; threading-model §5.2 amended from its original float wording) | scaffold |
+| `sound-boundary` | SND-OQ-6 (DSP `idsp_room == 29` off-by-one) | open (reproduce-with-defined-behavior vs clamp; parity-first bias = pad the preset table with a defined sentinel entry) | — (blocks DSP port sign-off only) |
+| `input-boundary` | INP-OQ-1 (command-context mechanism) | **decided 2026-07-19** (campaign B5, see `audits/2026-07-chunk8-10-campaign.md`): cmd_cvar gains a non-breaking context overload — `cmd_add(name, CommandCtxFn, void *user, flags, desc)` with `CommandCtxFn = void (*)(void *user)`; existing capture-less registrations untouched; the P-3 exception class does not grow | impl |
+| `input-boundary` | INP-OQ-2 (touch/OSK drawing fence) | **decided 2026-07-19**: input owns the data model (typed, iterable per P-4); all `ref.dllFuncs` draw calls are Chunk 12/13 surface (fence list in deep-dive-input.md) | — |
+| `input-boundary` | INP-OQ-3 (clipboard placement) | re-deferred to the Chunk 12/13 window decision (platform-boundary's clipboard OQ stays open; no input-core consumer exists) | — |
 
 ______________________________________________________________________
 
@@ -1011,6 +1024,59 @@ Applies to all new code; the completed subsystems are brought into
 conformance by Chunk 6B.
 
 ______________________________________________________________________
+
+### DEVICE_BACKEND_STOP_LINE (Q-23): subsystem seams now, SDL backends with the window work
+
+**Decided 2026-07-19** (chunks-8/9/10 campaign, user-ratified). `xash3dpp_platform`
+stays SDL-free — its boundary disclaims audio/input/window. Chunk 9 programs
+against a pull-shaped `IAudioDevice` seam (SNDDMA semantics recorded as a
+crosswalk table in `sound-boundary.md`, snake_case interface) with
+`NullDevice`/`SinkDevice` backends (sink = virtually clocked test consumer —
+no wall-clock pacing; the hi-res-sleep platform OQ stays deferred). Chunk 10
+programs against `IEventSource` (typed events + polled `pointer_delta()`)
+plus a **separate** null-backed `IWindowControls` (exactly the
+hWnd-dereferencing set + cursor composite; device-side functions stay on the
+event source — a composite/replay source could never forward `grab()`).
+Touch/OSK event models land; their renderer drawing is fenced to Chunk 12/13.
+
+**SDL backend placement is deferred, not decided**: at Chunk 12/13 the Q-11
+test is run then — expected outcome: event pump + window → a
+`xash3dpp_window` satellite; the SDL audio device → its own satellite
+(standalone `SDL_INIT_AUDIO`, runs without a window, so it must not be
+parked in a window target by default). The declined alternative (SDL audio
+backend inside Chunk 9) is recorded: rejected to keep the tree SDL-free
+until a windowing consumer exists. Platform-boundary's clipboard OQ is
+explicitly re-deferred to that same decision point.
+
+Obligations recorded here: the `IWindowControls` split (input-boundary),
+the SoundAPI main-thread-bound fallback constraint (sound-boundary External
+ABI), and the dedicated-linkage rule — `xash3dpp_sound`/`xash3dpp_input`
+are leaf static libs; only the future Chunk-12 client aggregate may depend
+on them (verified via /dependency-graph at campaign close).
+
+### QUEUE_FAMILY_HOME (Q-24): the P-1 queue family lives in core; spawn/priority/naming live in platform
+
+**Decided 2026-07-19** (campaign B1/B2; design brief:
+`design/thread-spawn-and-inbox-brief.md`). The P-1 primitive family —
+generic `core::MpscQueue<T>` and `core::SpscRing<T>` (portable atomics,
+trivially-copyable POD payloads, no allocation in enqueue, fixed capacities
+from `limits.hpp`) — lives in `core`, beside `ThreadRole`/`Clock`. Q-11 is
+**inapplicable** (these are primitives, not satellite features — the Q-11
+table scores products, not vocabulary). Genericity is pinned by a non-audio
+instantiation test in core's own suite; sound (Chunk 9) is the first
+production consumer and validates the MPSC **primitive**, explicitly NOT
+the Main-inbox drain-slot contract (host `RunFrame` drain), which stays
+designed-not-built in the brief until its first consumer (G-1/G-3).
+
+The OS-boilerplate half — `platform::spawn_thread(role, name, priority,
+fn)` (registers `ThreadRole` on entry, names the thread for debuggers,
+priority declared with real-time semantics stubbed until the SDL audio
+device) — lives in `platform`, per its boundary's recorded door-keep
+("threads forbidden until P-1 lands"; the trigger is Chunk 9's
+T_AudioDecoder, the first thread ever spawned in the tree). JobToken/worker
+pool accession: when the pool is scheduled it joins this same family
+(`MpscQueue` + spawn primitive) — the Chunk-7 hook shortfall (pool never
+landed) is annotated in `extension-goals.md` §4.
 
 ## 4. Application Schedule
 

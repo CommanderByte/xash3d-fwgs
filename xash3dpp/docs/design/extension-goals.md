@@ -288,9 +288,10 @@ at that chunk's boundary-spec / plan-implementation step:
 |-------|------|
 | 6 (post-milestone) | The deferred S9-completion backlog stays chunk-inherited (unchanged); the structural half of the old pairing moved to Chunk 6B |
 | **6B — hardening retrofit** | Every completed subsystem brought to Q-22/QN/QO conformance (lifecycle promotion, pool routing, annotation backfill, thread asserts, P-5 narrowest-state sweep); parity-gated subsystems behaviour-preserving with gates re-run; scope-fenced against the stub backlog |
-| 7 — content | Worker pool + `JobToken` land ⇒ design the P-1 inbox as part of the same queue family; content loaders stay context-first (P-3) |
+| 7 — content | Worker pool + `JobToken` land ⇒ design the P-1 inbox as part of the same queue family; content loaders stay context-first (P-3). *Status 2026-07-19: the pool did NOT land with Chunk 7 — the queue-family design moved to the HB-4 brief / Q-24 (Chunk 9 lands the family in core; JobToken accedes to it when the pool is scheduled)* |
 | 8 — save | The field-map serializer is state→bytes machinery; **consider** shaping it for reuse by debug dumps / snapshots (P-2/P-4) — do not contort it if parity says otherwise |
-| 9 — sound | First production MPSC queue (audio commands) — validates the P-1 queue family |
+| 9 — sound | First production MPSC queue (audio commands) — validates the P-1 queue *primitive* (genericity pinned by a non-audio instantiation test in core); the Main-inbox drain-slot contract is explicitly NOT discharged (stays with the HB-4 brief until a G-1/G-3 consumer) |
+| 10 — input | Bindings/key/key_dest state as typed snapshots (P-4: `bindings_snapshot()` + key-state query); input commands registered via cmd_add = G-5 script entry points; `IEventSource` synthetic-event injection is the scripted-scenario / service actuation door (G-5/G-1, Main-marshalled per P-1) |
 | 11 — physics | Per-body `PhysicsContext`, no new global pmove state (threading-model §8.2) — **binding**, this is G-2's physics door |
 | 12 — client | The thread-model decision lands before this chunk (existing landmine); the listen-server path is the first real off-main pressure — expect the §8.3 cvar `shared_mutex` retrofit and the first P-1 consumers |
 | 13 — renderer | `RenderFrame` is the P-2 reference implementation; the overlay is G-4's first visual frontend |
