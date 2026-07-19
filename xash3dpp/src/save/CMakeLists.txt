@@ -13,6 +13,7 @@ add_library(xash3dpp_save STATIC
     entity_table.cpp
     descriptor_codec.cpp
     level_state_writer.cpp
+    level_state_loader.cpp
 )
 
 target_include_directories(xash3dpp_save

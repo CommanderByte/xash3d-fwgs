@@ -8,3 +8,6 @@ xash3dpp_add_test(test_entity_table LIBS xash3dpp_save)
 
 # xash3dpp — save tests (Chunk 8, slice S8.3: SaveGameState .HL1 writer core)
 xash3dpp_add_test(test_hl1_writer LIBS xash3dpp_save)
+
+# xash3dpp — save tests (Chunk 8, slice S8.4: LoadGameState .HL1 loader core)
+xash3dpp_add_test(test_hl1_loader LIBS xash3dpp_save)

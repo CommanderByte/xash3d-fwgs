@@ -188,6 +188,15 @@ Result<void> SaveBuffer::seek( std::size_t pos ) noexcept
     return {};
 }
 
+Result<std::span<const std::byte>>
+SaveBuffer::view_at( std::size_t pos, std::size_t n ) const noexcept
+{
+    // Bounds-check without overflow: test `pos` first, then the remaining span.
+    if ( pos > data_size_ || n > data_size_ - pos )
+        return std::unexpected( SaveError::TruncatedBlock );
+    return std::span<const std::byte>( base_ + pos, n );
+}
+
 void SaveBuffer::to_abi( ::xash::abi::SAVERESTOREDATA &out ) noexcept
 {
     ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );

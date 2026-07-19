@@ -81,6 +81,18 @@ public:
     // Move the read/write cursor.  pos must be <= capacity.
     [[nodiscard]] Result<void> seek( std::size_t pos ) noexcept;
 
+    // Restore-side bounded read view at an ABSOLUTE position, WITHOUT moving the
+    // cursor (Chunk 8, slice S8.4).  This is the read-at-location primitive the
+    // per-entity restore loop needs: `pSaveData->pCurrentData = pSaveData->
+    // pBaseData + pTable->location` (sv_save.c:1667) projects to a bounded
+    // [pos, pos+n) window over the loaded data region.  Unlike read_bytes it does
+    // not advance `cursor_`, so each entity is positioned independently of the
+    // last.  Pure read (assert-free by design, matching data()).  TruncatedBlock
+    // if [pos, pos+n) is not wholly within the valid data region.
+    // @lifetime: SaveBuffer — the returned span aliases owned storage.
+    [[nodiscard]] Result<std::span<const std::byte>>
+    view_at( std::size_t pos, std::size_t n ) const noexcept;
+
     // Project a vendored SAVERESTOREDATA over this buffer for the game-DLL
     // window (SaveInit shape: cursor at base, tokenSize 0 until StoreHashTable
     // runs, pTokens = the all-NULL token window the DLL fills).  Overwrites
