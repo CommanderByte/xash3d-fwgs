@@ -24,6 +24,7 @@
 #include <cstring>
 #include <deque>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace xash::cmd_cvar {
@@ -152,6 +153,17 @@ inline void cvar_list_set_next(Cvar *cv, Cvar *next) noexcept
     char *dst = static_cast<char *>(::xash::memory::mem_alloc(pool, n));
     if (!dst) return nullptr;
     std::memcpy(dst, src, n);
+    return dst;
+}
+
+// Bounded overload: duplicates exactly src.size() bytes + NUL — src need
+// not be NUL-terminated (HB-1/M-5: never strlen a string_view's data()).
+[[nodiscard]] inline char *pool_dup(::xash::memory::PoolHandle pool, std::string_view src) noexcept
+{
+    char *dst = static_cast<char *>(::xash::memory::mem_alloc(pool, src.size() + 1));
+    if (!dst) return nullptr;
+    std::memcpy(dst, src.data(), src.size());
+    dst[src.size()] = '\0';
     return dst;
 }
 

@@ -3,7 +3,10 @@
 
 #include "test_stubs.hpp"
 
+#include <xash3dpp/utilities/string.hpp>
+
 #include <cstdio>
+#include <string_view>
 
 static int g_pass = 0, g_fail = 0;
 
@@ -59,6 +62,44 @@ static void test_create_and_find()
     CHECK( cv->abi.name != nullptr );
     CHECK( ctx.cvar_find("test_cvar") == cv );
     CHECK( ctx.cvar_find("TEST_CVAR") == cv ); // case-insensitive
+
+    ctx.shutdown();
+}
+
+// ---------------------------------------------------------------------------
+// HB-1/M-5: lookups and creation are bounded — a non-NUL-terminated
+// string_view slice of a larger buffer must behave identically to the
+// terminated form and never read past view.size().
+// ---------------------------------------------------------------------------
+
+static void test_unterminated_view_lookup()
+{
+    UntrustedOracle oracle;
+    NullPolicy      policy;
+    auto ctx = make_test_context(oracle, policy);
+
+    // "hb1_cvarXXX" — the slice stops before the XXX garbage tail.
+    const char raw[] = { 'h','b','1','_','c','v','a','r','X','X','X' };
+    const std::string_view slice( raw, 8 ); // "hb1_cvar", no NUL at data()+8
+
+    Cvar *cv = ctx.cvar_get_or_create( slice, "1", 0 );
+    CHECK( cv != nullptr );
+    // The stored name must be exactly the 8 sliced bytes, NUL-terminated.
+    CHECK( cv->abi.name != nullptr );
+    CHECK( xash::utilities::strcmp( cv->abi.name, "hb1_cvar" ) == 0 );
+    // Same slice finds it; the terminated spelling finds the same cvar.
+    CHECK( ctx.cvar_find( slice ) == cv );
+    CHECK( ctx.cvar_find( "hb1_cvar" ) == cv );
+    CHECK( ctx.cvar_find( "HB1_CVAR" ) == cv ); // case-insensitive
+
+    // Command path: bounded add/exists/describe/remove.
+    const char rawc[] = { 'h','b','1','_','c','m','d','Z','Z' };
+    const std::string_view cslice( rawc, 7 ); // "hb1_cmd"
+    ctx.cmd_add( cslice, nullptr, 0, "hb1 test" );
+    CHECK( ctx.cmd_exists( cslice ) );
+    CHECK( ctx.cmd_exists( "hb1_cmd" ) );
+    ctx.cmd_remove( cslice );
+    CHECK( !ctx.cmd_exists( "hb1_cmd" ) );
 
     ctx.shutdown();
 }
@@ -127,6 +168,7 @@ int main()
     RUN_TEST( test_init_shutdown );
     RUN_TEST( test_find_unknown );
     RUN_TEST( test_create_and_find );
+    RUN_TEST( test_unterminated_view_lookup );
     RUN_TEST( test_set_value );
     RUN_TEST( test_unlink );
 

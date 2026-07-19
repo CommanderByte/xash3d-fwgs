@@ -85,18 +85,22 @@ Commands are stored in `CmdHashMap<Command>` for O(1) lookup and a linked list t
 
 ## Built-in commands
 
-Registered in `base_cmd.cpp` during `init()`:
+Registered in `context_init.cpp` during `init()` (`base_cmd.cpp` is a
+placeholder TU — see index):
 
 | Command | Behaviour |
 |---|---|
 | `echo` | Writes arguments to the platform console |
-| `alias` | Defines a command alias (expands to stored text on invocation) |
-| `exec` | Loads and appends a `.cfg` file to `cmd_text` |
+| `alias` / `unalias` | Define / remove a command alias (expands to stored text on invocation) |
+| `exec` | **Unimplemented stub** (`context_init.cpp:186`; tracked by `stub_scan` + boundary "Lags the spec") |
+| `stuffcmds` | **Unimplemented stub** (`context_init.cpp:181`) |
 | `wait` | Increments `cmd_wait` by 1 (defers next frame's dispatch) |
-| `if` / `else` / `endif` | Conditional scripting blocks (requires `cmd_scripting` non-zero) |
 | `cmdlist` | Dumps all registered commands to the console |
 | `cvarlist` | Dumps all registered cvars to the console |
 | `hashstats` | Prints bucket-fill distribution for `cvar_map`, `cmd_map`, `alias_map` |
+
+`if`/`else`/`endif` conditional scripting (D9) is **not built** — no such
+commands are registered anywhere in the tree (boundary doc "D9: Not built").
 
 `hashstats` is registered in all build tiers; the output is only meaningful when debugging hash-map performance.
 

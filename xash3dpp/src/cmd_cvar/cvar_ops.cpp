@@ -26,14 +26,15 @@ void CmdCvarContext::add_cvar_observer(ICvarObserver *observer,
 Cvar *CmdCvarContext::cvar_find(std::string_view name) noexcept
 {
     if (name.empty()) return nullptr;
-    const char *cname = name.data();
 
     // GoldSrc compat: redirect legacy renamed cvars before lookup.
+    // (Bounded string_view path throughout — HB-1/M-5; a returned redirect
+    // is a static NUL-terminated string.)
     if (impl_->compat_policy) {
-        const char *redir = impl_->compat_policy->redirect_cvar_name(cname);
-        if (redir) cname = redir;
+        const char *redir = impl_->compat_policy->redirect_cvar_name(name);
+        if (redir) return impl_->cvar_map.find(redir);
     }
-    return impl_->cvar_map.find(cname);
+    return impl_->cvar_map.find(name);
 }
 
 void CmdCvarContext::cvar_register_engine(Cvar &cv) noexcept
@@ -98,23 +99,23 @@ Cvar *CmdCvarContext::cvar_get_or_create(std::string_view name,
                                           std::uint32_t  flags) noexcept
 {
     if (name.empty()) return nullptr;
-    const char *cname = name.data();
 
-    // Compat redirect.
+    // Compat redirect (a returned redirect is a static NUL-terminated string).
+    std::string_view effective = name;
     if (impl_->compat_policy) {
-        const char *redir = impl_->compat_policy->redirect_cvar_name(cname);
-        if (redir) cname = redir;
+        const char *redir = impl_->compat_policy->redirect_cvar_name(name);
+        if (redir) effective = redir;
     }
 
     // Return existing cvar if already registered.
-    Cvar *existing = impl_->cvar_map.find(cname);
+    Cvar *existing = impl_->cvar_map.find(effective);
     if (existing) return existing;
 
     // Pool-allocate a new Cvar.
     Cvar *cv = static_cast<Cvar *>(::xash::memory::mem_calloc(impl_->pool, sizeof(Cvar)));
     if (!cv) return nullptr;
 
-    cv->abi.name   = pool_dup(impl_->pool, cname);
+    cv->abi.name   = pool_dup(impl_->pool, effective); // bounded string_view dup
     // Allocate SEPARATE copies for abi.string and def_string so that
     // cvar_set_direct() can free abi.string without dangling def_string.
     cv->abi.string = pool_dup(impl_->pool, default_value ? default_value : "");

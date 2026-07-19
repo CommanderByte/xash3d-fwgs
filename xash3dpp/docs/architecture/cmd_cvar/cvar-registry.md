@@ -71,14 +71,26 @@ Standard flags frozen for DLL ABI compatibility:
 | `FCVAR_PRINTABLEONLY` | `1 << 7` | String must be printable ASCII |
 | `FCVAR_UNLOGGED` | `1 << 8` | `cvar_set` not written to log |
 | `FCVAR_NOEXTRAWHITESPACE` | `1 << 9` | Leading/trailing whitespace stripped |
-| `FCVAR_CHANGED` | `1 << 10` | Set by engine on write; cleared by polling DLL |
-| `FCVAR_FILTERABLE` | `1 << 11` | Blocked by `cl_filterstuffcmd` when untrusted |
-| `FCVAR_PRIVILEGED` | `1 << 12` | Set only from trusted (non-stuffcmd) source |
-| `FCVAR_MOVEVARS` | `1 << 13` | Triggers movevars rebuild on change |
-| `FCVAR_VIDRESTART` | `1 << 14` | Triggers video restart on change |
-| `FCVAR_GAMEUIDLL` | `1 << 15` | Registered by the menu DLL |
-| `FCVAR_USER_CREATED` | `1 << 16` | Created by `get_or_create`; not from a DLL |
-| `FCVAR_DLL_WRAPPER` | `1 << 17` | Engine wraps a DLL-owned `CvarAbi *` |
+| `FCVAR_PRIVILEGED` | `1 << 10` | Set only from trusted (local) context |
+| `FCVAR_FILTERABLE` | `1 << 11` | Treated as privileged when `cl_filterstuffcmd > 0` |
+| `FCVAR_GLCONFIG` | `1 << 12` | Saved to `<renderer>.cfg` |
+| `FCVAR_CHANGED` | `1 << 13` | Set by engine on every write; polled by legacy DLLs |
+| `FCVAR_GAMEUIDLL` | `1 << 14` | Registered by the menu DLL |
+| `FCVAR_CHEAT` | `1 << 15` | Blocked when `sv_cheats == 0` |
+| `FCVAR_RENDERINFO` | `1 << 16` | Saved to `video.cfg` |
+| `FCVAR_READ_ONLY` | `1 << 17` | Display only; cannot be set by user |
+| `FCVAR_EXTENDED` | `1 << 18` | Reserved: future `cvar_v2_t` layout signal |
+| `FCVAR_ALLOCATED` | `1 << 19` | String memory owned by the engine |
+| `FCVAR_VIDRESTART` | `1 << 20` | Triggers video-subsystem recreate |
+| `FCVAR_TEMPORARY` | `1 << 21` | May be unlinked between map loads |
+| `FCVAR_MOVEVARS` | `1 << 22` | Mirrored in `movevars_t` |
+| `FCVAR_USER_CREATED` | `1 << 23` | Created by a `set` command (no DLL owner) |
+| `FCVAR_DLL_WRAPPER` | `1 << 24` | Pool-alloc'd engine wrapper around a DLL `CvarAbi` |
+| `FCVAR_REFDLL` | `1 << 29` | Registered by the renderer DLL |
+| `FCVAR_LATCH` | `1 << 30` | Change deferred until server restart |
+
+*(Table regenerated 2026-07-19 from `include/xash3dpp/cmd_cvar/cvar.hpp` —
+the previous revision listed a different, incomplete bit layout.)*
 
 ## Registration paths
 

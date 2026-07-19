@@ -15,10 +15,9 @@ void CmdCvarContext::cmd_add(std::string_view name,
                               const char    *desc) noexcept
 {
     if (name.empty()) return;
-    const char *cname = name.data();
 
     // If a command already exists with the same name:
-    Command *existing = impl_->cmd_map.find(cname);
+    Command *existing = impl_->cmd_map.find(name);
     if (existing) {
         if (existing->flags & FCMD_OVERRIDABLE) {
             // Silently replace: update fn + flags + desc.
@@ -33,13 +32,13 @@ void CmdCvarContext::cmd_add(std::string_view name,
 
     // Check compat policy: should this command be flagged FCMD_OVERRIDABLE?
     std::uint32_t effective_flags = flags;
-    if (impl_->compat_policy && impl_->compat_policy->is_overridable_command(cname))
+    if (impl_->compat_policy && impl_->compat_policy->is_overridable_command(name))
         effective_flags |= FCMD_OVERRIDABLE;
 
     Command *cmd = static_cast<Command *>(::xash::memory::mem_calloc(impl_->pool, sizeof(Command)));
     if (!cmd) return;
 
-    cmd->name        = pool_dup(impl_->pool, cname);
+    cmd->name        = pool_dup(impl_->pool, name); // bounded string_view dup
     cmd->desc        = pool_dup(impl_->pool, desc ? desc : "");
     cmd->fn          = fn;
     cmd->flags       = effective_flags;
@@ -58,7 +57,7 @@ void CmdCvarContext::cmd_remove(std::string_view name) noexcept
 {
     if (name.empty()) return;
 
-    Command *cmd = impl_->cmd_map.remove(name.data());
+    Command *cmd = impl_->cmd_map.remove(name);
     if (!cmd) return;
 
     // Rebuild ABI list without this entry.
@@ -109,7 +108,7 @@ void CmdCvarContext::cmd_unlink(std::uint32_t flags_mask) noexcept
 CommandDesc CmdCvarContext::cmd_describe(std::string_view name) const noexcept
 {
     if (name.empty()) return {};
-    const Command *cmd = impl_->cmd_map.find(name.data());
+    const Command *cmd = impl_->cmd_map.find(name);
     if (!cmd) return {};
     return { cmd->name, cmd->desc, cmd->flags };
 }
@@ -117,7 +116,7 @@ CommandDesc CmdCvarContext::cmd_describe(std::string_view name) const noexcept
 bool CmdCvarContext::cmd_exists(std::string_view name) const noexcept
 {
     if (name.empty()) return false;
-    return impl_->cmd_map.find(name.data()) != nullptr;
+    return impl_->cmd_map.find(name) != nullptr;
 }
 
 // ---------------------------------------------------------------------------

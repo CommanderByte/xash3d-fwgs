@@ -16,9 +16,9 @@ struct TrustedOracle final : ITrustOracle {
 };
 
 struct NullPolicy final : ICompatPolicy {
-    const char *redirect_cvar_name(const char *name)        const noexcept override;
-    bool        is_filterable_exempt(const char *cmd_name)  const noexcept override;
-    bool        is_overridable_command(const char *cmd_name)const noexcept override;
+    const char *redirect_cvar_name(std::string_view name)         const noexcept override;
+    bool        is_filterable_exempt(std::string_view cmd_name)   const noexcept override;
+    bool        is_overridable_command(std::string_view cmd_name) const noexcept override;
 };
 
 // Convenience: build an initialised context for a test.

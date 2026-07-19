@@ -350,6 +350,15 @@ ______________________________________________________________________
 
 ### M-5: `std::string_view` → C-string over-read at every name-lookup site (NEW)
 
+> **RESOLVED 2026-07-19 (HB-1, consolidation audit).** Implemented exactly as
+> suggested below: `CmdHashMap` gained bounded `std::string_view`
+> `find`/`remove` overloads and a size-bounded djb2 hash; `pool_dup` gained a
+> bounded `string_view` overload; the six `.data()` sites in
+> `cvar_ops.cpp`/`cmd_ops.cpp` now pass the view through; and the private
+> `ICompatPolicy` methods take `std::string_view` (Q-17 enumeration in the
+> commit). Covered by `test_unterminated_view_lookup` in
+> `tests/cmd_cvar/test_cvar_registry.cpp`. Retained below for the record.
+
 **Status: New / Remaining (found 2026-07-06).** This is the direct by-product
 of M-2: the public API accepts `std::string_view`, but the lookup layer
 (`CmdHashMap::hash`, `find`, `remove`) and `utilities::stricmp` all iterate

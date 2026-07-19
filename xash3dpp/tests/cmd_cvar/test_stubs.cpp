@@ -13,8 +13,8 @@ bool UntrustedOracle::stuffcmd_is_trusted() const noexcept { return false; }
 bool TrustedOracle::stuffcmd_is_trusted() const noexcept { return true; }
 
 // NullPolicy — no quirks active.
-const char *NullPolicy::redirect_cvar_name(const char *)       const noexcept { return nullptr; }
-bool        NullPolicy::is_filterable_exempt(const char *)      const noexcept { return false; }
-bool        NullPolicy::is_overridable_command(const char *)    const noexcept { return false; }
+const char *NullPolicy::redirect_cvar_name(std::string_view)     const noexcept { return nullptr; }
+bool        NullPolicy::is_filterable_exempt(std::string_view)   const noexcept { return false; }
+bool        NullPolicy::is_overridable_command(std::string_view) const noexcept { return false; }
 
 } // namespace xash::cmd_cvar::test

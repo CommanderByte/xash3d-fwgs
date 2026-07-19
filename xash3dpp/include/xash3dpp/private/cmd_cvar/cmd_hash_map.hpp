@@ -2,7 +2,9 @@
 // xash3dpp — CmdHashMap<V>: case-insensitive fixed-bucket hash map (PRIVATE)
 // Used by the cmd_cvar subsystem to store cvars, commands, and aliases.
 //
-// Key type  : const char* (NUL-terminated, case-insensitive via ASCII fold)
+// Key type  : const char* (NUL-terminated, case-insensitive via ASCII fold).
+//             Lookups also accept std::string_view and are BOUNDED — the
+//             view need not be NUL-terminated (HB-1/M-5).
 // Value     : non-owning V* pointer; caller manages the lifetime of *V.
 // Nodes     : pool-backed via memory::mem_alloc / mem_free.
 // Bucket cnt: limits::cvar_hash_buckets (compile-time constant, override-able).
@@ -22,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 namespace xash::cmd_cvar {
 
@@ -61,16 +64,22 @@ public:
     // Core operations
     // ---------------------------------------------------------------------------
 
-    // find() — case-insensitive lookup; nullptr on miss.
-    [[nodiscard]] V *find(const char *name) const noexcept {
-        if (!name) return nullptr;
+    // find() — case-insensitive lookup; nullptr on miss. Bounded: 'name'
+    // may be a slice of a larger buffer with no NUL at data()+size().
+    [[nodiscard]] V *find(std::string_view name) const noexcept {
         Node *n = buckets_[hash(name)];
         while (n) {
-            if (::xash::utilities::stricmp(n->key, name) == 0)
+            if (::xash::utilities::ci_compare(n->key, name) == 0)
                 return n->value;
             n = n->next;
         }
         return nullptr;
+    }
+
+    // C-string convenience overload (null-safe).
+    [[nodiscard]] V *find(const char *name) const noexcept {
+        if (!name) return nullptr;
+        return find(std::string_view{name});
     }
 
     // insert() — caller guarantees (name) is unique in the map.
@@ -89,13 +98,13 @@ public:
     }
 
     // remove() — unlinks and frees the node; returns the stored V*, or nullptr.
-    [[nodiscard]] V *remove(const char *name) noexcept {
-        if (!name) return nullptr;
+    // Bounded like find().
+    [[nodiscard]] V *remove(std::string_view name) noexcept {
         const std::size_t b  = hash(name);
         Node            **pp = &buckets_[b];
         while (*pp) {
             Node *n = *pp;
-            if (::xash::utilities::stricmp(n->key, name) == 0) {
+            if (::xash::utilities::ci_compare(n->key, name) == 0) {
                 *pp = n->next;
                 V *v = n->value;
                 ::xash::memory::mem_free(n);
@@ -104,6 +113,12 @@ public:
             pp = &n->next;
         }
         return nullptr;
+    }
+
+    // C-string convenience overload (null-safe).
+    [[nodiscard]] V *remove(const char *name) noexcept {
+        if (!name) return nullptr;
+        return remove(std::string_view{name});
     }
 
     // for_each() — iterate all values.  Fn signature: void(V*).
@@ -154,11 +169,12 @@ private:
         Node       *next { nullptr };
     };
 
-    // djb2-style hash with ASCII case-fold.
-    static std::size_t hash(const char *s) noexcept {
+    // djb2-style hash with ASCII case-fold, bounded by the view's size
+    // (same value as the former while(*s) form for NUL-terminated input).
+    static std::size_t hash(std::string_view s) noexcept {
         std::uint32_t h = 5381u;
-        while (*s) {
-            unsigned char c = static_cast<unsigned char>(*s++);
+        for (char ch : s) {
+            unsigned char c = static_cast<unsigned char>(ch);
             if (c >= 'A' && c <= 'Z')
                 c = static_cast<unsigned char>(c + ('a' - 'A'));
             h = ((h << 5u) + h) ^ c;

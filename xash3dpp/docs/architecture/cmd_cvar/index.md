@@ -31,7 +31,7 @@
 | `cmd.cpp` | Command skeleton (unused includes removed; ops in `cmd_ops.cpp`) |
 | `cmd_ops.cpp` | `cmd_add`, `cmd_remove`, `cmd_unlink`, `cmd_describe`, `cmd_exists`, `cmd_execute_string` |
 | `cmd_dispatch.cpp` | `cbuf_execute`, tokenizer, privilege dispatch |
-| `base_cmd.cpp` | Built-in commands: `echo`, `alias`, `cmdlist`, `cvarlist`, `hashstats`, `exec`, `wait`, `if`/`else` |
+| `base_cmd.cpp` | Placeholder TU (static_asserts only) — reserved for the sorted autocomplete table (HB-11); built-ins actually register in `context_init.cpp` |
 | `compat_goldsrc.cpp` | `GoldSrcCompatPolicy` implementation (linked when `XASH_GOLDSRC_COMPAT=1`) |
 | `compat_null.cpp` | `NullCompatPolicy` implementation (linked when `XASH_GOLDSRC_COMPAT=0`) |
 

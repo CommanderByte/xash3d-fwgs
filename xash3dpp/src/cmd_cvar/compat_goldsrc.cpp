@@ -75,7 +75,7 @@ static constexpr bool cstr_span_contains(const Arr &arr, std::string_view needle
 
 class GoldSrcCompatPolicy final : public ICompatPolicy {
 public:
-    const char *redirect_cvar_name(const char *name) const noexcept override
+    const char *redirect_cvar_name(std::string_view name) const noexcept override
     {
         for (const auto &r : kCvarRedirects) {
             if (r.from == name)
@@ -84,12 +84,12 @@ public:
         return nullptr;
     }
 
-    bool is_filterable_exempt(const char *cmd_name) const noexcept override
+    bool is_filterable_exempt(std::string_view cmd_name) const noexcept override
     {
         return cstr_span_contains(kFilterableExemptions, cmd_name);
     }
 
-    bool is_overridable_command(const char *cmd_name) const noexcept override
+    bool is_overridable_command(std::string_view cmd_name) const noexcept override
     {
         return cstr_span_contains(kOverridableCommands, cmd_name);
     }

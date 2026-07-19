@@ -35,7 +35,7 @@ struct ICvarObserver {
 };
 ```
 
-Registered via `CmdCvarContext::add_cvar_observer(observer, flag_mask)`. The observer is called **synchronously on the game thread** immediately after the cvar's value and `FCVAR_CHANGED` are updated. `old_value` points to the previous string value and is valid only for the duration of the call.
+Registered via `CmdCvarContext::add_cvar_observer(observer, flag_mask)`. The observer is called **synchronously on the game thread** immediately after the cvar's value and `FCVAR_CHANGED` are updated. `old_value` receives the cvar's **default string** (`def_string`), *not* the pre-write value — a recorded behavioural drift vs legacy (see the boundary doc's "Observer `old_value`" gap note); it is valid only for the duration of the call.
 
 ### flag_mask filtering
 
@@ -92,7 +92,6 @@ All injected dependencies are bundled into a single named-parameters struct:
 struct CmdCvarInitParams {
     ITrustOracle  *trust_oracle   = nullptr;  // required
     ICompatPolicy *compat_policy  = nullptr;  // required; typically global singleton
-    const char    *cmdline        = nullptr;  // +arg parsing; may be nullptr
 };
 ```
 
