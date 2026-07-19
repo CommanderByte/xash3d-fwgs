@@ -154,13 +154,13 @@ ______________________________________________________________________
 Ordered; none change behaviour today, all are door-keepers for the extension
 goals:
 
-1. **Close the assertion gap (P-8).** Add `assert_thread_role(ThreadRole::Main)`
-   to `RunFrame`, `RequestShutdown`, and `signal_frame_abort`. These are the
-   entry points the header already *claims* assert Main; the missing checks are
-   exactly what would catch the first accidental off-main frame pump or ABI
-   abort. `signal_frame_abort` is `noexcept` — the assert is a debug-only
-   trap, no cost in release. (This is the single highest-value host threading
-   fix and a direct P-8 conformance item for Chunk 6B.)
+1. **Close the assertion gap (P-8).** ~~Add `assert_thread_role(ThreadRole::Main)`
+   to `RunFrame`, `RequestShutdown`, and `signal_frame_abort`.~~
+   **DONE 2026-07-19 (consolidation audit, HB-3):** all three entry points now
+   open with the assert (`host.cpp` RunFrame / RequestShutdown /
+   signal_frame_abort), matching the header contract. The enforcement gap this
+   doc headlined is closed; the census is now 9 sites across 3 files
+   (was 6/3).
 2. **When the P-1 main-thread inbox lands (Chunk 7 queue family),** drain it in
    `RunFrame` at a defined frame point — `RunFrame` is *the* consumer end of the
    inbox that G-1 (MCP mutations) and G-3 (debug-thread actions) marshal into.

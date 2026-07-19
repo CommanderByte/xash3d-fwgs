@@ -111,6 +111,7 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
         hp.clock      = &clock;
         hp.map_loader = &map_loader;
         hp.filesystem = &filesystem;
+        hp.server     = &server; // borrowed pump target; Server::init runs below, frame() no-ops until then
         if ( !host.init( hp ) )
         {
             core::log( core::LogLevel::Error, "engine_context", "Host::init failed" );

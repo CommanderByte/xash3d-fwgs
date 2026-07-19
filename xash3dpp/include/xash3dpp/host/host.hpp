@@ -23,6 +23,7 @@ namespace xash::core       { enum class ErrorCode : std::uint32_t; }
 namespace xash::core       { class Clock; }
 namespace xash::cmd_cvar   { class CmdCvarContext; }
 namespace xash::filesystem { class Filesystem; }
+namespace xash::server     { class Server; }
 namespace xash             { class MapLoader; }
 
 namespace xash {
@@ -88,6 +89,7 @@ struct HostInitParams
     ::xash::core::Clock       *clock      = nullptr; // @lifetime: caller (owns the Clock; must outlive Host)
     MapLoader                 *map_loader = nullptr; // @lifetime: caller (owns the MapLoader; must outlive Host)
     filesystem::Filesystem    *filesystem = nullptr; // @lifetime: caller (owns the Filesystem; must outlive Host)
+    server::Server            *server     = nullptr; // @lifetime: caller (EngineContext owns the Server incl. its init/shutdown; Host only drives frame())
 };
 
 // ---------------------------------------------------------------------------

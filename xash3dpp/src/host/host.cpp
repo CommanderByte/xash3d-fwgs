@@ -20,6 +20,7 @@
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/memory/memory.hpp>
+#include <xash3dpp/server/server.hpp>
 #include <xash3dpp/platform/crash.hpp>
 #include <xash3dpp/platform/platform.hpp>
 
@@ -55,6 +56,7 @@ struct Host::Impl
     // Must outlive this Impl.  Only written in init(); never written again.
     cmd_cvar::CmdCvarContext  *cmd_cvar   = nullptr;
     ::xash::core::Clock               *clock      = nullptr;
+    ::xash::server::Server            *server     = nullptr; // @lifetime: engine (EngineContext owns; borrowed for frame())
     MapLoader                 *map_loader = nullptr;
     filesystem::Filesystem    *ext_fs     = nullptr;
 
@@ -76,7 +78,9 @@ struct Host::Impl
         ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
         if ( !pool ) return;  // already shut down or never initialised
 
-        // TODO Chunk 6: Server::shutdown()
+        // Server shutdown is EngineContext's job (it owns the Server and its
+        // dependency-ordered teardown — engine_context.cpp); drop the borrow.
+        server = nullptr;
         // TODO Chunk 12: Client::shutdown()
         // Networking is owned by EngineContext, not Host — see engine_context.cpp.
 
@@ -125,6 +129,7 @@ bool Host::init(const HostInitParams& p)
     s.cmd_cvar   = p.cmd_cvar;
     s.clock      = p.clock;
     s.map_loader = p.map_loader;
+    s.server     = p.server;
     s.ext_fs     = p.filesystem;
 
     s.status        = HostStatus::Init;
@@ -173,8 +178,9 @@ bool Host::init(const HostInitParams& p)
 
     // Networking is owned and initialised by EngineContext — see engine_context.cpp.
 
-    // --- Server (Chunk 6) ------------------------------------------------
-    // TODO Chunk 6: Server::init()
+    // --- Server ----------------------------------------------------------
+    // Server::init runs in EngineContext::init (dependency order: after
+    // host); Host only borrows the pointer and drives frame().
 
     // --- Client (Chunk 12, non-dedicated only) ----------------------------
     // TODO Chunk 12: if (!s.dedicated) Client::init()
@@ -199,6 +205,8 @@ bool Host::init(const HostInitParams& p)
 
 void Host::RunFrame()
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     Impl& s = *impl_;
     if ( s.status == HostStatus::Shutdown ) return;
 
@@ -213,6 +221,12 @@ void Host::RunFrame()
         s.frame_abort_code      = ::xash::core::ErrorCode::Ok;
         s.frame_abort_detail[0] = '\0';
     }
+
+    // --- Clock tick (frame gate) ----------------------------------------
+    // Advances realtime/frametime and applies the FPS/throttle/sleep policy
+    // (legacy Host_FilterTime + Host_CalcSleep, owned by core::Clock).
+    // false → not yet time for a frame; skip this tick entirely.
+    if ( s.clock && !s.clock->tick() ) return;
 
     // --- Platform event pump -------------------------------------------
     // TODO Chunk 12: Platform::PollEvents() (client-side input / window events)
@@ -230,7 +244,10 @@ void Host::RunFrame()
     // TODO: platform::console::read_line() + cbuf_add_text + cbuf_execute
 
     // --- Server frame ---------------------------------------------------
-    // TODO Chunk 6: Server::RunFrame()
+    // Host_ServerFrame equivalent (sv_main.c:678 via Server::frame): no-ops
+    // internally until the server is initialized, so a menu-only or
+    // standalone-test host ticks through harmlessly.
+    if ( s.server ) s.server->frame( s.clock ? s.clock->frametime() : 0.0 );
 
     // --- Client frame (non-dedicated) -----------------------------------
     // TODO Chunk 12: Client::RunFrame()
@@ -242,6 +259,7 @@ void Host::RunFrame()
 
 void Host::RequestShutdown(const char* /*reason*/) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     impl_->status        = HostStatus::Shutdown;
     impl_->stats_.status = impl_->status;
 }
@@ -259,6 +277,11 @@ void Host::shutdown() noexcept
 void Host::signal_frame_abort(::xash::core::ErrorCode code,
                               std::string_view detail) noexcept
 {
+    // Main-only by contract (host.hpp): the Host_Error ABI shim reaches this
+    // on the game-DLL call stack, which is always Main (HB-3 assert added
+    // 2026-07-19; the threading doc's recorded enforcement gap).
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     Impl& s = *impl_;
 
     // Quirk Q-4: recursive abort within the same frame escalates to process abort.

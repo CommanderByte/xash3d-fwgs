@@ -596,12 +596,20 @@ not new seams.
 | **P-6** services are satellites | **Yes** | MCP / debug-thread / scripting are separate targets that *consume* the frame drain + accessor; the engine never links toward them. `current_engine_context()`'s role-agnostic read path is the sanctioned reach-in |
 | **G-2** game ABI v2 | Door-keep | `Host_Error` is a frozen `GAME_EXPORT` C shim (Q-14/OQ-10); keep the raw C signature confined to `xash3dpp_abi`, routing to the typed `signal_frame_abort` — a v2 ABI hands a context, shrinking the exception class |
 | **G-5** scripting runtime | Door-keep (indirect) | Host owns no script surface; it owns the frame edge a cold-path REPL/tooling loop would tick against and the `cbuf`/inbox drain a script's `cmd_*` calls flow through. No work owed beyond keeping the drain point single and typed |
+| **G-1** in-engine MCP service | Consumer of the P-1 drain | An MCP tool's mutations marshal into the inbox `RunFrame` will drain (P-1 row); its reads consume `HostStats`/`ClockStats` (P-2/P-4). Host-side obligation is already stated by those rows: one frame edge, one drain slot |
+| **G-3** dedicated debug thread | Door-keep | The debug thread synchronises to the frame edge (Frame-cadence row) and registers its `ThreadRole` via core; with the 2026-07-19 assert closure every host mutator now *enforces* Main, which is the guarantee G-3's marshal-back model rests on |
+| **G-4** expanded in-game debugging | Consumer via P-4 | Overlay/console frontends tick against the frame edge and read the typed `Host::stats()`/`status()` surface; extend `HostStats`, never poke `Impl` |
+| **P-5** narrowest-state signatures | **Yes — orchestrator carve-out** | `RunFrame`/`init`/`shutdown` legitimately span the whole host aggregate (Q-22 orchestrator exception); every other public entry (`realtime`, `stats`, `status`, `signal_frame_abort`) touches only the narrow state it names |
+| **P-7** pool-owned RAII lifecycle | **N/A — pimpl only** | Host's only heap object is the sanctioned `unique_ptr<Impl>` pimpl (the P-7 carve-out); it pool-allocates nothing (`create_<thing>` idiom has no site). Injected subsystems are owned by `EngineContext` by value |
 
 **Net verdict:** host owes **no new seam** — its job is *preservation*: keep one
 frame edge, one sanctioned global, and the `cbuf_execute` slot ready to become
-the P-1 drain. The one binding follow-up is closing the `assert_thread_role`
-gap (below / P-8), because the whole "marshal back to Main" model rests on Main
-being enforced at the frame pump.
+the P-1 drain. The formerly-binding follow-up — the `assert_thread_role` gap
+(P-8) — was **closed 2026-07-19** (consolidation audit, HB-3): RunFrame /
+RequestShutdown / signal_frame_abort now assert Main, and the same pass wired
+the real pump: `RunFrame` gates on `Clock::tick()` and drives
+`Server::frame(frametime)` (the Chunk-6 TODO is gone; `Server::init`/`shutdown`
+stay owned by `EngineContext` in dependency order).
 
 ---
 
