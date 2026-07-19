@@ -30,6 +30,8 @@
 #include <xash3dpp/map_loader/world.hpp> // HullBoundsTable
 #include <xash3dpp/utilities/math.hpp>
 
+namespace xash::cmd_cvar { class CmdCvarContext; }
+
 namespace xash::map_loader {
 struct WorldData;
 }
@@ -54,6 +56,9 @@ struct PmTraceEnv
     EdictArena                          *arena  = nullptr; // @lifetime: engine
     const ::xash::map_loader::HullBoundsTable *player_bounds = nullptr; // @lifetime: engine
     bool pusher_ext = false; // ENGINE_PHYSICS_PUSHER_EXT (transform_bbox path)
+    // OQ-2: mod_studiocache gate for the studio hull provider (PM has no
+    // sv_clienttrace/FTRACE gating — PM_AllowHitBoxTrace is flag||usehull==2).
+    ::xash::cmd_cvar::CmdCvarContext *cvars = nullptr; // @lifetime: engine
 };
 
 // PM_PlayerTraceExt (:325): sweep [start,end] against `ents[0..numents)` with

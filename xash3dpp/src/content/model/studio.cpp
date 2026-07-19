@@ -61,6 +61,8 @@ constexpr std::size_t kSeqMotionType = 68;
 constexpr std::size_t kSeqMotionBone = 72;
 constexpr std::size_t kSeqNumBlends  = 120;
 constexpr std::size_t kSeqAnimIndex  = 124;
+constexpr std::size_t kSeqBlendStart = 136; // float blendstart[2]
+constexpr std::size_t kSeqBlendEnd   = 144; // float blendend[2]
 constexpr std::size_t kSeqSeqGroup   = 156;
 
 // mstudioattachment_t field offsets (within an 88-byte chunk).
@@ -128,6 +130,8 @@ std::int32_t SeqDescView::motiontype() const noexcept { return rd_i32( data_, of
 std::int32_t SeqDescView::motionbone() const noexcept { return rd_i32( data_, off_ + kSeqMotionBone ); }
 std::int32_t SeqDescView::numblends() const noexcept  { return rd_i32( data_, off_ + kSeqNumBlends ); }
 std::int32_t SeqDescView::animindex() const noexcept  { return rd_i32( data_, off_ + kSeqAnimIndex ); }
+float        SeqDescView::blend_start0() const noexcept { return rd_f32( data_, off_ + kSeqBlendStart ); }
+float        SeqDescView::blend_end0() const noexcept   { return rd_f32( data_, off_ + kSeqBlendEnd ); }
 std::int32_t SeqDescView::seqgroup() const noexcept   { return rd_i32( data_, off_ + kSeqSeqGroup ); }
 
 std::int32_t AttachmentView::bone() const noexcept { return rd_i32( data_, off_ + kAttBone ); }

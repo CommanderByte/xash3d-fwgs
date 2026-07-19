@@ -230,7 +230,7 @@ decided by this table.
 | `host-boundary` | OQ-1 … OQ-11 | closed, except **OQ-8 deferred** (Sys_NewInstance restart mechanism; re-evaluate after server/client chunks) | none currently |
 | `map_loader-boundary` | — (post-implementation spec; its "(OQ-2)" cite means host-boundary#OQ-2) | — | — |
 | `server-boundary` | OQ-1 (PHS placement) | ✅ decided 2026-07-04 — promoted to **Q-19 (PHS_PLACEMENT)** | — |
-| `server-boundary` | OQ-2 (studio-hull option seam) | open (seam shape at scaffold; null provider until Chunk 7) | impl |
+| `server-boundary` | OQ-2 (studio-hull option seam) | **resolved 2026-07-19** (IModelResolver::studio_hulls provider + StudioHullCache; trace loop live in world/clip.cpp + pm_trace.cpp) | impl |
 | `server-boundary` | OQ-3 (HPAK placement) | open (may stub uploads for the milestone) | impl |
 | `server-boundary` | OQ-4 (listen-server capability seam) | open (shape now, null impl for dedicated) | impl |
 | `server-boundary` | OQ-5 (`entvars_t` internal representation) | ✅ decided 2026-07-04 — promoted to **Q-20 (EDICT_STORE)** | — |

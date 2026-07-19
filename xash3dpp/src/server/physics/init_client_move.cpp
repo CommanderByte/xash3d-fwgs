@@ -82,6 +82,7 @@ void store_vec( float *p, const Vec3 &v ) noexcept
     env.arena     = bridge->arena;
     env.player_bounds = bridge->player_bounds;
     env.pusher_ext    = bridge->move_env->pusher_ext;
+    env.cvars         = bridge->move_env->cvars; // OQ-2: mod_studiocache gate
     return env.world != nullptr && env.arena != nullptr &&
            env.models != nullptr && env.player_bounds != nullptr;
 }

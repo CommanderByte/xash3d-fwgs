@@ -107,6 +107,10 @@ static_assert( offsetof( legacy::mstudiobbox_t, bbmin )          == 8 );
 static_assert( offsetof( legacy::mstudiobbox_t, bbmax )          == 20 );
 static_assert( offsetof( legacy::mstudioattachment_t, bone )     == 36 );
 static_assert( offsetof( legacy::mstudioattachment_t, org )      == 40 );
+// SV_StudioPlayerBlend inputs (SeqDescView::blend_start0/blend_end0).
+static_assert( offsetof( legacy::mstudioseqdesc_t, blendstart )  == 136 );
+static_assert( offsetof( legacy::mstudioseqdesc_t, blendend )    == 144 );
+static_assert( offsetof( legacy::mstudioseqdesc_t, numblends )   == 120 );
 
 static void test_layout_pins()
 {

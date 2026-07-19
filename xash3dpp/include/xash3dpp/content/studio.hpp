@@ -34,6 +34,11 @@ inline constexpr std::size_t k_studio_bonectrl_stride   = 24;  // mstudiobonecon
 inline constexpr std::size_t k_studio_anim_stride       = 12;  // mstudioanim_t (uint16 offset[6])
 inline constexpr std::size_t k_studio_seqdesc_stride    = 176; // mstudioseqdesc_t
 inline constexpr std::size_t k_studio_attachment_stride = 88;  // mstudioattachment_t
+
+// studiohdr flags (engine/studio.h client-side model flags; copied verbatim
+// to model->flags at load). STUDIO_TRACE_HITBOX forces hitbox tracing even
+// for a sized (non-point) trace box (SV_HullForStudioModel gate).
+inline constexpr std::int32_t k_studio_trace_hitbox = 1 << 9;
 inline constexpr std::size_t k_studio_hitbox_stride     = 32;  // mstudiobbox_t
 
 // mstudiobonecontroller_t motion-type flags (engine/studio.h). The low bits are
@@ -147,6 +152,10 @@ public:
     [[nodiscard]] std::int32_t motionbone() const noexcept;
     [[nodiscard]] std::int32_t numblends() const noexcept;
     [[nodiscard]] std::int32_t animindex() const noexcept;
+    // blendstart[0]/blendend[0] @136/@144 — the SV_StudioPlayerBlend pitch
+    // window (server hull gating, OQ-2).
+    [[nodiscard]] float        blend_start0() const noexcept;
+    [[nodiscard]] float        blend_end0() const noexcept;
     [[nodiscard]] std::int32_t seqgroup() const noexcept;
 
 private:

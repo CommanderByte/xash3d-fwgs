@@ -457,11 +457,37 @@ rule held, with one documented carve-out (`g_bridge`, below).
   (`clients/info_string.cpp`) and the `abi/` slot bodies are C-string
   `strcmp`/`strncpy`, not `string_view.data()` over-reads.
 
-**Deferred to Chunk 7+ (tracked, not milestone-blocking):** the studio-hitbox
-trace loop + LRU (OQ-2 geometric core done, trace parity gated on hl.dll
-goldens), HPAK custom-resource archive (OQ-3), the listen-server capability
-seam (OQ-4, shaped null-only), the Chunk 8 save serializer behind the four
-stubbed primitives, and the aspirational cvar/command registration.
+**OQ-2 RESOLVED 2026-07-19** — the studio-hitbox trace loop is live end to
+end: `studio_pose_for_entity` gating + `studio_player_blend`
+(`world/hulls.cpp`), the per-hitbox merge loop (`world/clip.cpp`), the
+`IModelResolver::studio_hulls` provider with the legacy pooled 16-entry
+`StudioHullCache` (`model_resolver.{hpp,cpp}`, cleared on level change), and
+the pmove mirror (`physics/pm_trace.cpp`). Adjudicated legacy quirks
+(faithful-for-defined-inputs, matching the info-string precedent):
+
+- **CS shield skip compaction**: legacy skips WRITING hull slot 21
+  (`gamestate == 1`) but still iterates `0..n-2`, tracing a STALE slot and
+  never the final real hitbox. The defined traced set — `{0..20, 22..n-2}`
+  (or all-but-last when `n <= 21`) — is reproduced by compaction; the
+  stale-slot read has no defined semantics. Hitgroups travel with each hull,
+  so compaction cannot misattribute them.
+- **Unconditional miss hitgroup**: `SV_ClipMoveToEntity` stamps
+  `Mod_HitgroupForStudioHull(last_hitgroup)` even on a clean miss — a full
+  miss reports hull 0's hitgroup. Reproduced (pinned in
+  `test_studio_trace`).
+- **Shield state outside the cache key**: legacy probes the pose cache
+  BEFORE computing `bSkipShield`, so a same-pose lookup returns whatever
+  skip state was cached. Reproduced.
+- **Absent-cvar defaults**: `sv_clienttrace`/`r_studiocache` reads fall
+  back to the legacy registered defaults (1) via `cvar_find` when the cvar
+  is not registered (a raw `cvar_variable_value` read would silently flip
+  both features off). `r_studiocache` is the legacy *console* name — the C
+  identifier is `mod_studiocache` (model.c:31).
+
+**Still deferred to Chunk 8+ (tracked):** HPAK custom-resource archive
+(OQ-3), the listen-server capability seam (OQ-4, shaped null-only), the
+Chunk 8 save serializer behind the four stubbed primitives, and the
+aspirational cvar/command registration.
 
 ______________________________________________________________________
 

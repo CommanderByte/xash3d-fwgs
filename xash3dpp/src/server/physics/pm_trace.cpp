@@ -24,7 +24,10 @@
 
 #include <xash3dpp/abi/edict.hpp>
 #include <xash3dpp/abi/server_consts.hpp>
+#include <xash3dpp/cmd_cvar/context.hpp>
+#include <xash3dpp/content/studio.hpp> // StudioView (pe->studiomodel rule)
 #include <xash3dpp/core/thread_role.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/map_loader/trace.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
@@ -100,9 +103,35 @@ physent_brush( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
     return env.models->brush_model( physent_modelindex( env, pe ));
 }
 
+// SV_CopyEdictToPhysEnt's pe->studiomodel rule (sv_pmove.c:74-101),
+// recomputed at trace time (the gather stashes no model pointers): never for
+// SOLID_NOT/SOLID_BSP; a SOLID_BBOX studio model only when it carries
+// STUDIO_TRACE_HITBOX; any studio model otherwise (slidebox/default).
+// is_studio() is only the !brush proxy — sprites and modelless bbox entities
+// must NOT count here: legacy nests the PM_STUDIO_IGNORE skip inside
+// `if( pe->studiomodel )` (pm_trace.c:385-388), so they are still bbox-traced
+// under the flag, and a flagless SOLID_BBOX studio never takes the hitbox
+// path even at usehull 2 (PM_AllowHitBoxTrace sees a NULL studiomodel).
+[[nodiscard]] bool
+pm_studiomodel_set( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
+{
+    if ( env.models == nullptr )
+        return false;
+    if ( pe->solid == abi::k_solid_not || pe->solid == abi::k_solid_bsp )
+        return false;
+    const auto bytes = env.models->studio_bytes( physent_modelindex( env, pe ));
+    if ( bytes.empty() )
+        return false; // not a studio model (legacy mod->type != mod_studio)
+    if ( pe->solid == abi::k_solid_bbox )
+        return ( ::xash::content::StudioView( bytes ).flags() &
+                 ::xash::content::k_studio_trace_hitbox ) != 0;
+    return true;
+}
+
 // pmtrace_t assembled from a computed (world-frame) kernel result + ent index.
 [[nodiscard]] abi::pmtrace_t make_pmtrace( const ml::TraceResult &t,
-                                           int ent ) noexcept
+                                           int ent,
+                                           int hitgroup = 0 ) noexcept
 {
     abi::pmtrace_t pm{};
     pm.allsolid   = t.allsolid ? 1 : 0;
@@ -114,8 +143,45 @@ physent_brush( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
     store_vec( pm.plane.normal, t.plane.normal );
     pm.plane.dist = t.plane.dist;
     pm.ent        = ent;
-    pm.hitgroup   = 0;
+    pm.hitgroup   = hitgroup;
     return pm;
+}
+
+// OQ-2: PM_HullForStudio (pm_trace.c:185) — the pose request for a studio
+// physent: trace box = the player hull's half extents; pose fields straight
+// off the physent; NO shield skip (legacy passes pEdict = NULL) and the
+// point hull (usehull 2) force-opens the hitbox gate (PM_AllowHitBoxTrace's
+// second arm; the STUDIO_TRACE_HITBOX arm lives with the provider).
+[[nodiscard]] int
+pm_studio_hulls( const PmTraceEnv &env, const abi::physent_t *pe, int usehull,
+                 std::span<::xash::content::StudioHitboxHull> out ) noexcept
+{
+    const ml::HullBounds &pb =
+        ( *env.player_bounds )[static_cast<std::size_t>( usehull )];
+
+    StudioHullPose pose;
+    pose.frame    = pe->frame;
+    pose.sequence = pe->sequence;
+    pose.angles   = vec_of( pe->angles );
+    pose.origin   = vec_of( pe->origin );
+    pose.size     = ( pb.maxs - pb.mins ) * 0.5f;
+    for ( int i = 0; i < 4; ++i )
+        pose.controllers[i] = pe->controller[i];
+    pose.blending[0]   = pe->blending[0];
+    pose.blending[1]   = pe->blending[1];
+    pose.skip_shield   = false;
+    pose.force_complex = usehull == 2;
+    // Registered default "1" when the cvar is absent (cvar_variable_value
+    // would read an unregistered name as 0 and silently disable the cache).
+    // Console name "r_studiocache" — the legacy C identifier is
+    // mod_studiocache (model.c:31 CVAR_DEFINE).
+    const ::xash::cmd_cvar::Cvar *sc =
+        env.cvars != nullptr ? env.cvars->cvar_find( "r_studiocache" )
+                             : nullptr;
+    pose.use_cache = env.cvars == nullptr || sc == nullptr ||
+                     sc->abi.value != 0.0f;
+
+    return env.models->studio_hulls( physent_modelindex( env, pe ), pose, out );
 }
 
 // The three hull kinds the pmove trace resolves a physent to (studio always
@@ -269,7 +335,8 @@ pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
     total.allsolid = false; // legacy trace_total is memset to 0 (allsolid false)
     total.fraction = 1.0f;
     total.endpos   = end;
-    int total_ent  = -1;
+    int total_ent      = -1;
+    int total_hitgroup = 0; // Mod_HitgroupForStudioHull of the winning hit
 
     for ( int i = 0; i < numents; ++i )
     {
@@ -303,39 +370,103 @@ pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
             pe->solid == abi::k_solid_custom )
             continue;
 
-        // studio physents skip when PM_STUDIO_IGNORE is set (the hitbox path
-        // is Chunk 7; otherwise they fall through to the bbox hull).
-        if ( !brush.has_value() && ( flags & abi::k_pm_studio_ignore ) &&
-             env.models != nullptr &&
-             env.models->is_studio( physent_modelindex( env, pe )))
+        // pe->studiomodel recomputed (see pm_studiomodel_set); the custom
+        // exclusion mirrors legacy branch order — SOLID_CUSTOM dispatches
+        // before the studiomodel branch is ever reached.
+        const bool studio_set =
+            !brush.has_value() && pe->solid != abi::k_solid_custom &&
+            pm_studiomodel_set( env, pe );
+
+        // studio physents skip when PM_STUDIO_IGNORE is set (otherwise:
+        // the OQ-2 hitbox path below, else the bbox hull fallback).
+        if ( studio_set && ( flags & abi::k_pm_studio_ignore ))
             continue;
+
+        // OQ-2 studio hitbox path (PM_AllowHitBoxTrace && !PM_STUDIO_BOX):
+        // count == 0 (gate closed / no studio data) → bbox fallback below.
+        ::xash::content::StudioHitboxHull
+            studio_buf[::xash::limits::studio_max_bones];
+        int studio_count = 0;
+        if ( studio_set && !( flags & abi::k_pm_studio_box ) &&
+             env.player_bounds != nullptr )
+        {
+            studio_count = pm_studio_hulls(
+                env, pe, usehull,
+                std::span<::xash::content::StudioHitboxHull>( studio_buf ));
+        }
 
         ml::BoxHull   box_storage;
         ml::TraceHull hull{};
         Vec3          offset{};
-        const HullKind kind =
-            select_hull( env, pe, usehull, brush, box_storage, hull, offset );
+        if ( studio_count == 0 )
+        {
+            const HullKind kind =
+                select_hull( env, pe, usehull, brush, box_storage, hull, offset );
 
-        if ( kind == HullKind::Custom )
-            continue; // SV_ClipPMoveToEntity no-hit stub (S8 physics iface)
+            if ( kind == HullKind::Custom )
+                continue; // SV_ClipPMoveToEntity no-hit stub (S8 physics iface)
+        }
+        // studio: world-space oriented hulls — no origin offset
+        // (PM_HullForStudio path: VectorClear(offset)); `hull` stays the
+        // zero default, matching the legacy studio hull's zero clip_mins in
+        // the (exotic) rotated transform_bbox branch.
 
         const LocalRay r = to_local( env, pe, usehull, hull, offset, start, end );
 
         ml::TraceResult t{};      // PM_InitPMTrace: allsolid=true, fraction=1,
         t.endpos = end;           // endpos = world end.
-        (void)ml::recursive_hull_check( hull, hull.firstclipnode, 0.0f, 1.0f,
-                                        r.start_l, r.end_l, t );
+        int hitgroup = 0;
+        if ( studio_count > 0 )
+        {
+            // Per-hitbox loop (pm_trace.c:482-501): identical merge to the
+            // world-side clip loop — first/deeper hit wins, startsolid is
+            // sticky, the winning hull's hitgroup is stamped.
+            int last_hitgroup = 0;
+            for ( int j = 0; j < studio_count; ++j )
+            {
+                ml::TracePlane planes[6];
+                for ( int p = 0; p < 6; ++p )
+                {
+                    planes[p].normal = studio_buf[j].planes[p].normal;
+                    planes[p].dist   = studio_buf[j].planes[p].dist;
+                }
+                const ml::TraceHull h = box_storage.set_planes(
+                    std::span<const ml::TracePlane>( planes ));
+
+                ml::TraceResult th{};
+                th.endpos = end;
+                (void)ml::recursive_hull_check( h, h.firstclipnode, 0.0f, 1.0f,
+                                                r.start_l, r.end_l, th );
+
+                if ( j == 0 || th.allsolid || th.startsolid ||
+                     th.fraction < t.fraction )
+                {
+                    const bool sticky = t.startsolid;
+                    t = th;
+                    if ( sticky )
+                        t.startsolid = true;
+                    last_hitgroup = j;
+                }
+            }
+            hitgroup = studio_buf[last_hitgroup].hitgroup;
+        }
+        else
+        {
+            (void)ml::recursive_hull_check( hull, hull.firstclipnode, 0.0f, 1.0f,
+                                            r.start_l, r.end_l, t );
+        }
 
         finalize( t, r, start, end );
 
         if ( t.fraction < total.fraction )
         {
-            total     = t;
-            total_ent = i;
+            total          = t;
+            total_ent      = i;
+            total_hitgroup = hitgroup;
         }
     }
 
-    return make_pmtrace( total, total_ent );
+    return make_pmtrace( total, total_ent, total_hitgroup );
 }
 
 // ---------------------------------------------------------------------------
@@ -369,14 +500,32 @@ int pm_test_player_position( const PmTraceEnv &env, abi::playermove_t &pm,
              pe->skin != ml::k_contents_none )
             continue;
 
+        // OQ-2 studio hitbox path (legacy PM_TestPlayerPosition also routes
+        // through PM_AllowHitBoxTrace over pe->studiomodel; the point test
+        // then walks every hull).  No PM_STUDIO_IGNORE/BOX flags here.
+        ::xash::content::StudioHitboxHull
+            studio_buf[::xash::limits::studio_max_bones];
+        int studio_count = 0;
+        if ( !brush.has_value() && pe->solid != abi::k_solid_custom &&
+             env.player_bounds != nullptr && pm_studiomodel_set( env, pe ))
+        {
+            studio_count = pm_studio_hulls(
+                env, pe, usehull,
+                std::span<::xash::content::StudioHitboxHull>( studio_buf ));
+        }
+
         ml::BoxHull   box_storage;
         ml::TraceHull hull{};
         Vec3          offset{};
-        const HullKind kind =
-            select_hull( env, pe, usehull, brush, box_storage, hull, offset );
+        if ( studio_count == 0 )
+        {
+            const HullKind kind =
+                select_hull( env, pe, usehull, brush, box_storage, hull, offset );
 
-        if ( kind == HullKind::Custom )
-            continue; // SV_ClipPMoveToEntity no-hit stub (S8 physics iface)
+            if ( kind == HullKind::Custom )
+                continue; // SV_ClipPMoveToEntity no-hit stub (S8 physics iface)
+        }
+        // studio: world-space hulls, zero offset (PM_HullForStudio path).
 
         // point transform (CM_TransformedPointContents): rotate/offset `pos`.
         Vec3       pos_l;
@@ -415,9 +564,29 @@ int pm_test_player_position( const PmTraceEnv &env, abi::playermove_t &pm,
             pos_l = pos - offset;
         }
 
-        if ( ml::hull_point_contents( hull, hull.firstclipnode, pos_l ) ==
-             ml::k_contents_solid )
+        if ( studio_count > 0 )
+        {
+            // per-hitbox point test (pm_trace.c:647-652)
+            for ( int j = 0; j < studio_count; ++j )
+            {
+                ml::TracePlane planes[6];
+                for ( int p = 0; p < 6; ++p )
+                {
+                    planes[p].normal = studio_buf[j].planes[p].normal;
+                    planes[p].dist   = studio_buf[j].planes[p].dist;
+                }
+                const ml::TraceHull h = box_storage.set_planes(
+                    std::span<const ml::TracePlane>( planes ));
+                if ( ml::hull_point_contents( h, h.firstclipnode, pos_l ) ==
+                     ml::k_contents_solid )
+                    return i;
+            }
+        }
+        else if ( ml::hull_point_contents( hull, hull.firstclipnode, pos_l ) ==
+                  ml::k_contents_solid )
+        {
             return i;
+        }
     }
 
     return -1; // didn't hit anything

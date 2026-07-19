@@ -12,10 +12,10 @@
 > **Complete (13 TUs)** per `status_table.py` — model cache + 3 model loaders
 > (studio/sprite/alias) + 7 image codecs + the studio bone solver (OQ-5,
 > bit-exact vs the Q-18 goldens) + the pose/attachment/hull query pfns. The
-> `SV_ClipMoveToEntity` studio-hitbox trace-loop is the one finishing step,
-> gated on the hl.dll smoke (Chunk 7). **`implementation-plan.md` still labels
-> the row "Partial"/"IN PROGRESS" — status drift, flagged in the reconciliation
-> section below.**\
+> `SV_ClipMoveToEntity` studio-hitbox trace-loop **landed 2026-07-19** (the
+> smoke gate opened the same day) — Chunk 7 is ✅ DONE and the plan row
+> agrees (the status drift recorded below was reconciled by the 2026-07-19
+> consolidation audit).\
 > **Depends on**: `filesystem`, `utilities`, `memory`, `map_loader` *(all done)*\
 > **Legacy reference**: `engine/common/model.c`, `mod_studio.c`, `mod_sprite.c`,
 > `mod_alias.c` (brush path → `mod_bmodel.c`, already `map_loader`);
@@ -326,12 +326,13 @@ untrusted-file-safe).
 (`Mod_GetBonePosition`), `attachment_world_position`
 (`Mod_StudioGetAttachment`), and the geometric core of the hitbox hull
 (`studio_hitbox_hulls` → six oriented Minkowski-expanded planes per hitbox +
-hitgroup) are shipped. The **remaining** step is the *server* side:
-`SV_ClipMoveToEntity`'s per-hitbox trace loop + `EntityView` pose accessors +
-`SV_HullForStudioModel` gating (trace-size scaling, `sv_clienttrace`,
-player-blend, CS shield-skip) + the 16-entry LRU cache — **gated on the hl.dll
-smoke** because their parity needs verbatim-legacy trace goldens (closes
-server-boundary OQ-2; markers `clip.cpp:180`, `pmove.cpp:159`).
+hitgroup) are shipped. The server side **landed 2026-07-19**:
+`SV_ClipMoveToEntity`'s per-hitbox trace loop, the `EntityView` pose
+accessors, `SV_HullForStudioModel` gating (size scaling, `sv_clienttrace`,
+player-blend, CS shield-skip), the pmove mirror, and the legacy pooled
+16-entry pose cache — server-boundary **OQ-2 resolved** (quirk adjudications
+recorded there). Content's provider surface for it is
+`IModelResolver::studio_hulls` over `studio_hitbox_hulls` + `StudioView`.
 
 **imagelib (O-2) — as-built.** `ImageDecoder` is a pimpl instance; `decode()`
 lowercases the extension and walks the read-only `IImageCodec* const registry[]`

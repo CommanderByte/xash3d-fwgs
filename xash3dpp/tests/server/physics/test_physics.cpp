@@ -661,6 +661,16 @@ static void test_pm_box_physent()
     CHECK_EQ( miss.ent, -1 );
     CHECK( miss.fraction == 1.0f );
 
+    // PM_STUDIO_IGNORE must NOT skip a non-studio bbox physent: legacy nests
+    // the skip inside `if( pe->studiomodel )` (pm_trace.c:385-388), and
+    // SV_CopyEdictToPhysEnt leaves studiomodel NULL when the model resolves
+    // to no studio data — the entity is still bbox-traced under the flag.
+    const abi::pmtrace_t still_hit = sv::pm_player_trace_ext(
+        env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 },
+        abi::k_pm_studio_ignore, pm.physents, 1, -1, nullptr );
+    CHECK_EQ( still_hit.ent, 0 );
+    CHECK( still_hit.fraction > 0.0f && still_hit.fraction < 1.0f );
+
     // PM_TraceLine: PHYSENTSONLY hits the box; ANYVISIBLE walks visents (empty).
     pm.numvisent = 0;
     const abi::pmtrace_t phys = sv::pm_trace_line(

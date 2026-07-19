@@ -156,10 +156,13 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
         clear_vec3( pe->maxs );
         break;
     case abi::k_solid_bbox:
-        // TODO(chunk7/OQ-2): if the studio model carries STUDIO_TRACE_HITBOX,
-        // legacy sets pe->studiomodel for hitbox tracing; until the studio
-        // hull provider lands this falls back to the bbox exactly like the
-        // legacy no-hitbox-data path.
+        // OQ-2 (resolved 2026-07-19): legacy stashes pe->studiomodel here for
+        // hitbox tracing; xash3dpp keeps the handle null BY DESIGN — the
+        // trace family resolves studio hulls at trace time via
+        // pe->info -> arena -> modelindex -> IModelResolver::studio_hulls
+        // (pm_trace.cpp pm_studio_hulls), so nothing needs stashing. The
+        // physent already carries the full pose (frame/sequence/angles/
+        // origin/controller/blending, copied below).
         (void)is_studio;
         copy_vec3( pe->mins, ed->v.mins );
         copy_vec3( pe->maxs, ed->v.maxs );

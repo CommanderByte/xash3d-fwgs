@@ -12,6 +12,7 @@
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
+#include <xash3dpp/limits.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 #include <xash3dpp/utilities/matrix.hpp>
 
@@ -177,13 +178,40 @@ SvTrace clip_move_to_entity( const MoveEnv &env, abi::edict_t *ent,
     SvTrace out;
     out.t.endpos = end; // PM_InitTrace
 
-    // TODO(chunk7): studio hitbox hulls via IStudioHullProvider (OQ-2);
-    // the null provider falls back to the bbox path below, exactly like
-    // the legacy no-hitbox-data fallback (hullcount 1, hitgroup 0).
+    // OQ-2 studio hitbox path (SV_HullForStudioModel): gating builds the
+    // pose; the resolver owns geometry + the 16-entry cache. count == 0
+    // (no studio data / gate closed) falls through to the bbox path,
+    // exactly like the legacy NULL-hull fallback (hullcount 1, hitgroup 0).
+    // Stack: ~13 KB here (+~26 KB transiently inside studio_hulls) is safe —
+    // this frame never recurses; the areanode walk above it is depth <= 4
+    // (legacy AREA_DEPTH) and iterates entities per node.
+    ::xash::content::StudioHitboxHull
+        studio_hulls_buf[::xash::limits::studio_max_bones];
+    int studio_count = 0;
+    if ( env.models != nullptr && env.models->is_studio( view.modelindex() ))
+    {
+        if ( const auto pose = studio_pose_for_entity( env, ent, mins, maxs ))
+            studio_count = env.models->studio_hulls(
+                view.modelindex(), *pose,
+                std::span<::xash::content::StudioHitboxHull>(
+                    studio_hulls_buf ));
+    }
+
     ml::BoxHull box_storage;
-    const auto sel = hull_for_entity( env, ent, mins, maxs, box_storage );
-    if ( !sel.has_value() )
-        return out; // logged; bridge maps to the host error policy (Q-5)
+    std::optional<SvHull> sel;
+    if ( studio_count > 0 )
+    {
+        // Studio hulls are world-space oriented boxes: no origin offset
+        // (legacy VectorClear(offset)); the hull view is built per hitbox
+        // in the loop below.
+        sel.emplace();
+    }
+    else
+    {
+        sel = hull_for_entity( env, ent, mins, maxs, box_storage );
+        if ( !sel.has_value() )
+            return out; // logged; bridge maps to the host error policy (Q-5)
+    }
 
     // rotate start and end into the model's frame of reference
     const bool rotated =
@@ -249,8 +277,44 @@ SvTrace clip_move_to_entity( const MoveEnv &env, abi::edict_t *ent,
         end_l   = end - offset;
     }
 
-    // single hull (hitbox arrays arrive with the Chunk 7 studio provider)
-    out.t = ml::trace_hull( sel->hull, start_l, end_l );
+    if ( studio_count > 0 )
+    {
+        // Per-hitbox loop (sv_world.c:915-936): each oriented box becomes a
+        // six-plane hull in the shared BoxHull storage; the merge keeps the
+        // first or deeper hit with the startsolid-STICKY quirk (a merged-in
+        // startsolid survives later overwrites), then the winning hull's
+        // hitgroup (Mod_HitgroupForStudioHull) is stamped on the result.
+        int last_hitgroup = 0;
+        for ( int i = 0; i < studio_count; ++i )
+        {
+            ml::TracePlane planes[6];
+            for ( int p = 0; p < 6; ++p )
+            {
+                planes[p].normal = studio_hulls_buf[i].planes[p].normal;
+                planes[p].dist   = studio_hulls_buf[i].planes[p].dist;
+            }
+            const ml::TraceHull hull = box_storage.set_planes(
+                std::span<const ml::TracePlane>( planes ));
+
+            ml::TraceResult hit = ml::trace_hull( hull, start_l, end_l );
+
+            if ( i == 0 || hit.allsolid || hit.startsolid ||
+                 hit.fraction < out.t.fraction )
+            {
+                const bool sticky = out.t.startsolid;
+                out.t = hit;
+                if ( sticky )
+                    out.t.startsolid = true;
+                last_hitgroup = i;
+            }
+        }
+        out.hitgroup = studio_hulls_buf[last_hitgroup].hitgroup;
+    }
+    else
+    {
+        // single hull
+        out.t = ml::trace_hull( sel->hull, start_l, end_l );
+    }
 
     if ( out.t.fraction != 1.0f )
     {

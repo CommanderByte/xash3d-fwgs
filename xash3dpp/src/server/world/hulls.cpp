@@ -8,6 +8,8 @@
 #include <xash3dpp/private/server/world_trace.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
+#include <xash3dpp/cmd_cvar/context.hpp>
+#include <xash3dpp/content/studio.hpp>
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/private/server/entity_view.hpp>
 
@@ -105,6 +107,157 @@ hull_for_entity( const MoveEnv &env, abi::edict_t *ent, const Vec3 &mins,
                                          view.maxs() - mins );
     out.offset = view.origin();
     return out;
+}
+
+namespace {
+
+[[nodiscard]] bool vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept
+{
+    return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
+}
+
+// Cvar read with the LEGACY REGISTERED DEFAULT when the cvar is absent —
+// cvar_variable_value returns 0 for unregistered names, which would silently
+// flip sv_clienttrace/mod_studiocache to their non-default (off) behaviour.
+[[nodiscard]] float cvar_or_default( ::xash::cmd_cvar::CmdCvarContext *cvars,
+                                     const char *name, float def ) noexcept
+{
+    if ( cvars == nullptr )
+        return def;
+    const ::xash::cmd_cvar::Cvar *cv = cvars->cvar_find( name );
+    return cv != nullptr ? cv->abi.value : def;
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// SV_StudioPlayerBlend (sv_world.c:78)
+// ---------------------------------------------------------------------------
+
+void studio_player_blend( const ::xash::content::SeqDescView &seq,
+                          int *blend, float *pitch ) noexcept
+{
+    const float blend_start = seq.blend_start0();
+    const float blend_end   = seq.blend_end0();
+
+    // calc up/down pointing
+    *blend = static_cast<int>( *pitch * 3.0f );
+
+    if ( static_cast<float>( *blend ) < blend_start )
+    {
+        *pitch -= blend_start / 3.0f;
+        *blend  = 0;
+    }
+    else if ( static_cast<float>( *blend ) > blend_end )
+    {
+        *pitch -= blend_end / 3.0f;
+        *blend  = 255;
+    }
+    else
+    {
+        if ( blend_end - blend_start < 0.1f ) // catch qc error
+            *blend = 127;
+        else
+            *blend = static_cast<int>(
+                255.0f * ( static_cast<float>( *blend ) - blend_start ) /
+                ( blend_end - blend_start ));
+        *pitch = 0.0f;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SV_HullForStudioModel — the gating half (sv_world.c:281-349)
+// ---------------------------------------------------------------------------
+
+std::optional<StudioHullPose>
+studio_pose_for_entity( const MoveEnv &env, abi::edict_t *ent,
+                        const ::xash::utilities::Vec3 &mins,
+                        const ::xash::utilities::Vec3 &maxs ) noexcept
+{
+    if ( env.models == nullptr )
+        return std::nullopt;
+
+    const EntityView view( ent );
+    const ::xash::utilities::Vec3 raw_size = maxs - mins;
+
+    float scale         = 0.5f;
+    bool  use_complex   = false;
+    ::xash::utilities::Vec3 size = raw_size;
+
+    const bool simplebox =
+        env.trace_flags != nullptr &&
+        ( *env.trace_flags & k_ftrace_simplebox ) != 0;
+    const bool is_client =
+        ( view.flags() & ( abi::k_fl_client | abi::k_fl_fakeclient )) != 0;
+
+    if ( vector_is_null( raw_size ) && !simplebox )
+    {
+        use_complex = true;
+
+        if ( is_client )
+        {
+            // sv_clienttrace: 0 = no hitbox tracing for clients (bbox);
+            // otherwise it scales the point-trace test box. Registered
+            // default "1" (sv_main.c) when the cvar is absent.
+            const float clienttrace =
+                cvar_or_default( env.cvars, "sv_clienttrace", 1.0f );
+            if ( clienttrace == 0.0f )
+            {
+                use_complex = false;
+            }
+            else
+            {
+                scale = clienttrace * 0.5f;
+                size  = { 1.0f, 1.0f, 1.0f };
+            }
+        }
+    }
+
+    // The STUDIO_TRACE_HITBOX force-gate lives with the provider (it owns
+    // the header); a pose with force_complex=false still reaches it so the
+    // flag can force the hitbox path for sized boxes (legacy OR-condition).
+    StudioHullPose pose;
+    pose.frame         = view.frame();
+    pose.sequence      = view.sequence();
+    pose.origin        = view.origin();
+    pose.angles        = view.angles();
+    pose.size          = size * scale;      // VectorScale(size, scale, size)
+    pose.skip_shield   = view.gamestate() == 1; // CS shield (Mod_HullForStudio)
+    pose.force_complex = use_complex;
+    // Console name "r_studiocache" — the legacy C identifier is
+    // mod_studiocache (model.c:31 CVAR_DEFINE).
+    pose.use_cache =
+        cvar_or_default( env.cvars, "r_studiocache", 1.0f ) != 0.0f;
+
+    const auto ctrl  = view.controller();
+    const auto blend = view.blending();
+    for ( int i = 0; i < 4; ++i )
+        pose.controllers[i] = ctrl[static_cast<std::size_t>( i )];
+    pose.blending[0] = blend[0];
+    pose.blending[1] = blend[1];
+
+    if ( is_client )
+    {
+        // Client pose override: neutral controllers + pitch-derived blend
+        // (SV_StudioPlayerBlend over the sequence's blend window).
+        const auto bytes = env.models->studio_bytes( view.modelindex() );
+        if ( !bytes.empty() )
+        {
+            const ::xash::content::StudioView hdr( bytes );
+            const auto seq = hdr.seqdesc( view.sequence() );
+            int   iblend = 0;
+            float pitch  = pose.angles.x;
+            studio_player_blend( seq, &iblend, &pitch );
+            pose.angles.x = pitch;
+
+            pose.controllers[0] = pose.controllers[1] = 0x7F;
+            pose.controllers[2] = pose.controllers[3] = 0x7F;
+            pose.blending[0]    = static_cast<std::uint8_t>( iblend );
+            pose.blending[1]    = 0;
+        }
+    }
+
+    return pose;
 }
 
 } // namespace xash::server

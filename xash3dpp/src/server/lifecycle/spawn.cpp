@@ -88,6 +88,11 @@ void install_world_bridge( ServerRuntime &rt, const ml::WorldData &world ) noexc
     rt.move_env.models     = &rt.models;
     rt.move_env.area_root  = rt.links.root();
     rt.move_env.worldspawn = ws;
+    // OQ-2 studio hull gating inputs: live cvar reads (sv_clienttrace,
+    // mod_studiocache) + the game-set per-call trace flags
+    // (svgame.globals->trace_flags; FTRACE_SIMPLEBOX).
+    rt.move_env.cvars       = rt.cvars;
+    rt.move_env.trace_flags = &rt.globals.trace_flags;
 
     rt.link_env            = LinkEnv{};
     rt.link_env.world      = &world;

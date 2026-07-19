@@ -18,6 +18,7 @@
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/abi/edict.hpp>
+#include <xash3dpp/content/bone_solver.hpp> // StudioHitboxHull (OQ-2)
 #include <xash3dpp/map_loader/trace.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/world_links.hpp>
@@ -25,8 +26,11 @@
 #include <xash3dpp/utilities/matrix.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
+
+namespace xash::cmd_cvar { class CmdCvarContext; }
 
 namespace xash::server {
 
@@ -65,6 +69,43 @@ struct IModelResolver
     {
         return {};
     }
+
+    // OQ-2 studio hitbox hulls (Mod_HullForStudio's geometry+cache half).
+    // `pose` is the fully-gated request the world/pm callers build
+    // (SV_HullForStudioModel / PM_HullForStudio policy: size pre-scaled,
+    // player blend applied, angles NOT yet pitch-flipped — the provider owns
+    // the quake-bug flip, the 16-entry pose cache, and the CS shield skip).
+    // Returns the hull count written to `out`, or 0 when the model has no
+    // studio data or hitbox tracing is not enabled for it (header lacks
+    // STUDIO_TRACE_HITBOX and pose.force_complex is false) — the caller then
+    // takes the bbox fallback, exactly like the legacy NULL-hull path.
+    [[nodiscard]] virtual int
+    studio_hulls( int /*modelindex*/, const struct StudioHullPose & /*pose*/,
+                  std::span<::xash::content::StudioHitboxHull> /*out*/ ) noexcept
+    {
+        return 0;
+    }
+};
+
+// The gated studio-hull request (legacy SV_HullForStudioModel's locals).
+// size carries the scale (0.5, or sv_clienttrace*0.5 with size (1,1,1));
+// angles carry the player-blend pitch adjustment but NOT the quake-bug
+// flip; controllers/blending are the entvars bytes or the client
+// 0x7F×4 / {iBlend, 0} override; skip_shield mirrors `v.gamestate == 1`
+// (CS shield); force_complex is the legacy useComplexHull outcome;
+// use_cache gates the 16-entry pose cache (legacy mod_studiocache cvar).
+struct StudioHullPose
+{
+    float                   frame    = 0.0f;
+    int                     sequence = 0;
+    ::xash::utilities::Vec3 angles{};
+    ::xash::utilities::Vec3 origin{};
+    ::xash::utilities::Vec3 size{};
+    std::uint8_t            controllers[4]{};
+    std::uint8_t            blending[2]{};
+    bool                    skip_shield   = false;
+    bool                    force_complex = false;
+    bool                    use_cache     = true;
 };
 
 struct SvTrace; // fwd
@@ -129,7 +170,16 @@ struct MoveEnv
     bool quake_hull_select = false; // world FWORLD_SKYSPHERE (quake maps)
     bool quake_compat      = false; // host ENGINE_QUAKE_COMPATIBLE
     bool pusher_ext        = false; // host ENGINE_PHYSICS_PUSHER_EXT
+
+    // OQ-2 studio hull gating inputs (read LIVE at trace time, matching the
+    // legacy per-call cvar/global reads):
+    ::xash::cmd_cvar::CmdCvarContext *cvars = nullptr; // @lifetime: engine (sv_clienttrace + mod_studiocache)
+    const int *trace_flags = nullptr; // @lifetime: engine (svgame.globals->trace_flags; FTRACE_SIMPLEBOX)
 };
+
+// FTRACE_SIMPLEBOX (common/const.h:60): game requested plain-box tracing
+// for this call — suppresses the zero-size complex-hull upgrade.
+inline constexpr int k_ftrace_simplebox = 1 << 0;
 
 // SV_HullForBsp/SV_HullForEntity result: hull view + the offset added to
 // the tested object's origin to reach hull-local space.
@@ -160,6 +210,22 @@ hull_for_entity( const MoveEnv &env, ::xash::abi::edict_t *ent,
                  const ::xash::utilities::Vec3 &mins,
                  const ::xash::utilities::Vec3 &maxs,
                  ::xash::map_loader::BoxHull &box_storage ) noexcept;
+
+// SV_StudioPlayerBlend (sv_world.c:78): map the view pitch into the
+// sequence's blend window; adjusts *pitch in place and yields the 0..255
+// blend byte. Pure — exposed for tests.
+void studio_player_blend( const ::xash::content::SeqDescView &seq,
+                          int *blend, float *pitch ) noexcept;
+
+// SV_HullForStudioModel's GATING half (sv_world.c:281-349 up to the
+// Mod_HullForStudio call): decides whether this entity takes the studio
+// hitbox path and builds the pose request (size scaling, sv_clienttrace,
+// player blend, CS shield flag). nullopt = take the bbox fallback.
+// Exposed for tests.
+[[nodiscard]] std::optional<StudioHullPose>
+studio_pose_for_entity( const MoveEnv &env, ::xash::abi::edict_t *ent,
+                        const ::xash::utilities::Vec3 &mins,
+                        const ::xash::utilities::Vec3 &maxs ) noexcept;
 
 // ---------------------------------------------------------------------------
 // Transforms (world/clip.cpp; exposed for tests)

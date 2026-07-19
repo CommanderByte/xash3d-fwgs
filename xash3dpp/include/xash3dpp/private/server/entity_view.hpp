@@ -15,6 +15,9 @@
 #include <xash3dpp/abi/edict.hpp>
 #include <xash3dpp/utilities/math.hpp>
 
+#include <cstdint>
+#include <span>
+
 namespace xash::server {
 
 using Vec3 = ::xash::utilities::Vec3;
@@ -108,6 +111,19 @@ public:
     [[nodiscard]] float air_finished() const noexcept { return e_->v.air_finished; }
     [[nodiscard]] float pain_finished() const noexcept { return e_->v.pain_finished; }
     [[nodiscard]] float radsuit_finished() const noexcept { return e_->v.radsuit_finished; }
+
+    // --- studio pose (OQ-2 hull gating + the studio pfns) -----------------
+    [[nodiscard]] float frame() const noexcept { return e_->v.frame; }
+    [[nodiscard]] int   sequence() const noexcept { return e_->v.sequence; }
+    [[nodiscard]] int   gamestate() const noexcept { return e_->v.gamestate; }
+    [[nodiscard]] std::span<const std::uint8_t, 4> controller() const noexcept
+    {
+        return std::span<const std::uint8_t, 4>( e_->v.controller, 4 );
+    }
+    [[nodiscard]] std::span<const std::uint8_t, 2> blending() const noexcept
+    {
+        return std::span<const std::uint8_t, 2>( e_->v.blending, 2 );
+    }
 
     void set_solid( int v ) noexcept { e_->v.solid = v; }
     void set_movetype( int v ) noexcept { e_->v.movetype = v; }
