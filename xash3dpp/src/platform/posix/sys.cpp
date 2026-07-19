@@ -21,6 +21,7 @@
 #include <cstring>      // std::memcpy, std::strstr
 #include <cstdio>       // std::fprintf
 #include <cerrno>       // errno, EINTR
+#include <optional>     // std::optional (name_for_symbol)
 
 #include <xash3dpp/private/core/assert_main.hpp>
 
@@ -102,6 +103,47 @@ void close_library( LibHandle &lib ) noexcept
         return;
     dlclose( lib.native );
     lib = {};
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic library reverse lookup (SAV-OQ-3) — see platform.hpp for the full
+// contract.
+// ---------------------------------------------------------------------------
+
+std::optional<std::string_view> name_for_symbol( LibHandle lib, const void *addr ) noexcept
+{
+    if( !lib || !addr )
+        return std::nullopt;
+
+    // NOTE: dladdr() is a glibc/BSD libc extension, not POSIX — same caveat
+    // as legacy's lib_posix.c:155 comment. It resolves ANY process address
+    // to its containing shared object + nearest symbol; |lib| is not
+    // consulted by the lookup itself, exactly like legacy's
+    // COM_NameForFunction (lib_posix.c:153-166), which ignores its
+    // hInstance parameter entirely on POSIX.
+    //
+    // deliberately NOT cross-checked against |lib|: dlopen()'s returned
+    // handle is an opaque, implementation-defined token (on glibc it is a
+    // pointer to internal link_map bookkeeping, NOT the module's load
+    // address) — there is no portable, standard-library way to verify it
+    // equals dladdr()'s dli_fbase. |lib| is still required to be non-null
+    // (a real caller error otherwise) but the caller is responsible for
+    // passing an |addr| that actually belongs to |lib|, same as legacy.
+    Dl_info info{};
+    if( dladdr( addr, &info ) == 0 || info.dli_sname == nullptr )
+        return std::nullopt;
+
+    return std::string_view{ info.dli_sname };
+}
+
+bool enumerate_exports( LibHandle /*lib*/, ExportVisitor /*visit*/, void * /*userdata*/ ) noexcept
+{
+    // Unsupported on POSIX: dladdr() maps address -> symbol but has no
+    // enumeration primitive, and lib_posix.c has no equivalent at all — it
+    // never builds an ordinals table (COM_FunctionFromName resolves purely
+    // by name via dlsym). Mirrors legacy's capability level exactly rather
+    // than inventing one (e.g. hand-parsing ELF section headers).
+    return false;
 }
 
 // ---------------------------------------------------------------------------

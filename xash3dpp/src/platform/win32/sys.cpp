@@ -18,8 +18,9 @@
 #include <windows.h>
 #include <shellapi.h>
 
-#include <cstdint>   // std::uint32_t
+#include <cstdint>   // std::uint32_t, std::uintptr_t
 #include <cstring>   // std::memcpy
+#include <optional>  // std::optional (name_for_symbol / locate_export_table)
 
 #include <xash3dpp/private/core/assert_main.hpp>
 
@@ -98,6 +99,148 @@ void close_library( LibHandle &lib ) noexcept
         return;
     FreeLibrary( static_cast<HMODULE>( lib.native ) );
     lib = {};
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic library reverse lookup (SAV-OQ-3) — see platform.hpp for the
+// full contract and the lib_win.c cites for the forwarder/ordinal-only
+// handling below.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Located export directory of a mapped PE image, with the tables already
+// resolved to absolute pointers (RVA + module base — a loaded image has its
+// sections mapped at their VirtualAddress offsets, so this is a direct
+// pointer add; no PointerToRawData translation is needed, unlike legacy's
+// file-based LibraryLoadSymbols).
+struct PeExportTable
+{
+    std::uintptr_t base;
+    const DWORD    *names;         // AddressOfNames: RVA[] -> name-string RVA
+    const WORD     *name_ordinals; // AddressOfNameOrdinals: RVA[] -> functions[] index
+    const DWORD    *functions;     // AddressOfFunctions: RVA[] -> code/forwarder RVA
+    DWORD           num_names;
+    DWORD           num_functions;
+    DWORD           export_dir_rva;
+    DWORD           export_dir_size;
+};
+
+// Walk the mapped PE headers of |lib| and locate its export directory.
+// Returns nullopt if |lib| is null or the image has no (or a malformed)
+// export directory — defensive only; every module this engine loads is
+// itself a well-formed PE image validated by the OS loader.
+[[nodiscard]] std::optional<PeExportTable> locate_export_table( LibHandle lib ) noexcept
+{
+    if( !lib )
+        return std::nullopt;
+
+    // SAFETY: HMODULE IS the module's mapped base address per the Win32
+    // loader contract (LoadLibrary's return value doubles as the image
+    // base). Every reinterpret_cast below is a PE-header walk over that
+    // OS-mapped, OS-validated image — the same header chain lib_win.c reads
+    // from the file, here read directly from memory instead.
+    auto base = reinterpret_cast<std::uintptr_t>( lib.native );
+
+    const auto *dos = reinterpret_cast<const IMAGE_DOS_HEADER *>( base ); // SAFETY: see above
+    if( dos->e_magic != IMAGE_DOS_SIGNATURE )
+        return std::nullopt;
+
+    const auto *nt = reinterpret_cast<const IMAGE_NT_HEADERS *>( // SAFETY: see above
+        base + static_cast<std::uintptr_t>( dos->e_lfanew ) );
+    if( nt->Signature != IMAGE_NT_SIGNATURE )
+        return std::nullopt;
+
+    const IMAGE_DATA_DIRECTORY &export_dir =
+        nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if( export_dir.VirtualAddress == 0 || export_dir.Size == 0 )
+        return std::nullopt; // no export directory (e.g. a plain EXE)
+
+    const auto *dir = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY *>( // SAFETY: see above
+        base + export_dir.VirtualAddress );
+
+    PeExportTable table{};
+    table.base            = base;
+    table.names           = reinterpret_cast<const DWORD *>( base + dir->AddressOfNames );        // SAFETY: see above
+    table.name_ordinals   = reinterpret_cast<const WORD  *>( base + dir->AddressOfNameOrdinals );  // SAFETY: see above
+    table.functions       = reinterpret_cast<const DWORD *>( base + dir->AddressOfFunctions );     // SAFETY: see above
+    table.num_names       = dir->NumberOfNames;
+    table.num_functions   = dir->NumberOfFunctions;
+    table.export_dir_rva  = export_dir.VirtualAddress;
+    table.export_dir_size = export_dir.Size;
+    return table;
+}
+
+// True if |func_rva| is a forwarder RVA — i.e. it points inside the export
+// directory's own address range (a null-terminated "OtherDll.OtherFunc"
+// string) instead of at executable code. Standard PE forwarder-detection
+// convention; legacy's COM_NameForFunction (lib_win.c:581-601) does not
+// perform this check — see the @deviation note in platform.hpp.
+[[nodiscard]] bool is_forwarder_rva( const PeExportTable &table, DWORD func_rva ) noexcept
+{
+    return func_rva >= table.export_dir_rva &&
+           func_rva <  table.export_dir_rva + table.export_dir_size;
+}
+
+} // namespace
+
+std::optional<std::string_view> name_for_symbol( LibHandle lib, const void *addr ) noexcept
+{
+    if( !addr )
+        return std::nullopt;
+
+    auto table = locate_export_table( lib );
+    if( !table )
+        return std::nullopt;
+
+    auto target = reinterpret_cast<std::uintptr_t>( addr ); // SAFETY: address-as-integer comparison only, never dereferenced here
+
+    // Only the AddressOfNames-sized arrays are walked — an export present by
+    // ordinal only (no name) is never in these arrays and is silently
+    // unmatched, exactly like legacy's LibraryLoadSymbols.
+    for( DWORD i = 0; i < table->num_names; ++i )
+    {
+        WORD ordinal = table->name_ordinals[i];
+        if( ordinal >= table->num_functions )
+            continue; // malformed table — defensive only
+
+        DWORD func_rva = table->functions[ordinal];
+        if( is_forwarder_rva( *table, func_rva ) )
+            continue;
+
+        if( table->base + func_rva != target )
+            continue;
+
+        const char *name = reinterpret_cast<const char *>( table->base + table->names[i] ); // SAFETY: name RVA into the same mapped image
+        return std::string_view{ name };
+    }
+    return std::nullopt;
+}
+
+bool enumerate_exports( LibHandle lib, ExportVisitor visit, void *userdata ) noexcept
+{
+    if( !visit )
+        return false;
+
+    auto table = locate_export_table( lib );
+    if( !table )
+        return false;
+
+    for( DWORD i = 0; i < table->num_names; ++i )
+    {
+        WORD ordinal = table->name_ordinals[i];
+        if( ordinal >= table->num_functions )
+            continue; // malformed table — defensive only
+
+        DWORD func_rva = table->functions[ordinal];
+        if( is_forwarder_rva( *table, func_rva ) )
+            continue;
+
+        const char *name = reinterpret_cast<const char *>( table->base + table->names[i] ); // SAFETY: name RVA into the same mapped image
+        const void *fn    = reinterpret_cast<const void *>( table->base + func_rva );        // SAFETY: code RVA into the same mapped image; already forwarder-filtered above
+        visit( std::string_view{ name }, fn, userdata );
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------

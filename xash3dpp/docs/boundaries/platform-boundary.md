@@ -17,6 +17,12 @@
 > diagnostics tier (`core/log.cpp`, `core/thread_role.cpp` built into this
 > target) are reflected below. New sections added this pass:
 > **Extension axes (Q-21)**; the **Threading** section gained a class table.
+>
+> **2026-07-19 addendum (SAV-OQ-3):** `name_for_symbol()` / `enumerate_exports()`
+> landed in `win32/sys.cpp` + `posix/sys.cpp` — the dynlib reverse-lookup
+> primitive (address → exported name) `save-boundary.md`'s SAV-OQ-3 recommended
+> shape asked platform to own, for Chunk 8's `FIELD_FUNCTION` codec. Reflected
+> in the Interface table, Quirks, and Threading below.
 
 ## Responsibility
 
@@ -46,6 +52,9 @@ a thin shim.
 | `open_library(path)` | function | Load a shared library (UTF-8 path); returns `{}` on failure |
 | `get_symbol(lib, name)` | function | Resolve exported symbol by name; returns nullptr on failure |
 | `close_library(lib)` | function | Unload library and zero the handle; no-op if null |
+| `name_for_symbol(lib, addr)` | function | Reverse lookup: exported name for an address (SAV-OQ-3). `optional<string_view>`, view lives in the module's own image — no allocation, valid until `close_library` |
+| `ExportVisitor` | type alias | `void(*)(string_view name, const void *addr, void *userdata) noexcept` — callback for `enumerate_exports` |
+| `enumerate_exports(lib, visit, userdata)` | function | Visit every named, non-forwarder export of `lib`. Win32: full PE export-table walk. POSIX: **unsupported**, always returns `false` (no `dladdr` enumeration primitive; matches `lib_posix.c`'s capability level) |
 | `get_executable_dir()` | function | Directory of the engine executable (forward slashes, trailing `/`) |
 | `get_working_directory()` | function | Current working directory (forward slashes, trailing `/`) |
 | `is_debugger_present()` | function | True if a debugger is attached; false on unsupported platforms |
@@ -188,6 +197,27 @@ called before any socket functions and `socket_shutdown()` called at teardown;
   backslashes.
 - `close_library` zeroes the `LibHandle::native` field on success. Calling it
   on an already-null handle is a no-op.
+- `name_for_symbol` (SAV-OQ-3, Win32) walks the **mapped** PE export directory
+  of the already-loaded module — no file re-read, unlike legacy's file-based
+  `LibraryLoadSymbols` (`lib_win.c:84-304`). Only the `AddressOfNames`-sized
+  arrays are walked, so ordinal-only exports (no name) never match, exactly
+  like legacy. Forwarder exports (an `AddressOfFunctions` RVA landing inside
+  the export directory's own address range) are explicitly detected and
+  skipped — legacy's `COM_NameForFunction` (`lib_win.c:581-601`) has **no**
+  such check and would treat a forwarder's RVA as a code offset; this is a
+  deliberate bug-fix deviation from legacy, not an observed parity break.
+- `name_for_symbol` (POSIX) uses `dladdr()` exactly like legacy's
+  `COM_NameForFunction` (`lib_posix.c:153-166`), including its POSIX-only
+  imprecision: `lib` is required to be non-null but is **not** cross-checked
+  against the resolved object (`dlopen()`'s handle is an opaque,
+  implementation-defined token — not portably comparable to `dladdr()`'s
+  `dli_fbase`), so a match can in principle come from a different loaded
+  module than `lib`. Same limitation as legacy, which ignores its
+  `hInstance` parameter entirely on POSIX.
+- `enumerate_exports` is Win32-only; POSIX always returns `false` and never
+  invokes the callback (`dladdr` has no enumeration primitive, and
+  `lib_posix.c` has no ordinals table at all — `COM_FunctionFromName` there
+  resolves purely by name via `dlsym`).
 - `message_box` on POSIX writes to `stderr`. Builds that include SDL2 can
   override this behaviour at the renderer/host layer.
 - `shell_execute` uses `fork` + `execvp` on POSIX (fire-and-forget); if
@@ -305,7 +335,7 @@ handle are the owner's responsibility. Per QN, every public header carries a
 | **Adjudicated non-asserting mutators** | `flush(OsFd&)`, `set_non_blocking`, `set_broadcast`, `set_reuse_addr`, `set_recv_buffer`, `set_send_buffer` (win32 + posix — 6 × 2 = 12 sites) | `compliance-allow(thread-assert)` — stateless OS-handle wrappers; a Main assert would be false precision on a `T_NetIO`-ready surface |
 | **Worker/NetIO-only** | `resolve_blocking` (win32 + posix) | Synchronous `getaddrinfo`; **must not** run on `ThreadRole::Main` |
 | **`T_NetIO`-ready any-thread** | all other `os_socket` free functions (`open_udp_socket`, `sendto`, `recvfrom`, `send_stream`, `recv_stream`, `connect_stream`, …) | Header-annotated `@thread-safety: T_NetIO-ready`; callable from Main today, NetIO tomorrow, no code change |
-| **Any-thread stateless** | `sleep`, `open_library`/`get_symbol`/`close_library`, `open_file`/`read`/`write`/`seek`/`tell`, `file_size`/`file_time`/`list_directory`, `message_box`, `shell_execute`, `console::write` | Pure syscall wrappers; no shared mutable state |
+| **Any-thread stateless** | `sleep`, `open_library`/`get_symbol`/`close_library`, `name_for_symbol`/`enumerate_exports`, `open_file`/`read`/`write`/`seek`/`tell`, `file_size`/`file_time`/`list_directory`, `message_box`, `shell_execute`, `console::write` | Pure syscall wrappers; no shared mutable state |
 | **Mutable-global adjudications** | WSA refcount `std::atomic<int>` (win32 `os_socket.cpp`); crash-installed `static bool`/atomic (win32 + posix + android `crash.cpp`); Android JNI glue `g_jni` / `g_handles[2]` / `g_jni_flag` / `g_init_flags[2]` (android `os_io.cpp`) | Atomics for the refcount/flag; JNI glue is `compliance-allow(mutable-global, di-global-ref)` — bound once at `JNI_OnLoad` via `call_once` before any engine context exists, read-only thereafter |
 
 The **diagnostics tier is hosted in this target** (`core/log.cpp`,
