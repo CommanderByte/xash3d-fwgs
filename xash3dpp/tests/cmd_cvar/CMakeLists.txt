@@ -13,6 +13,7 @@ target_link_libraries(cmd_cvar_test_stubs PUBLIC xash3dpp_cmd_cvar)
 # ---------------------------------------------------------------------------
 
 xash3dpp_add_test(test_cvar_registry LIBS cmd_cvar_test_stubs)
+xash3dpp_add_test(test_commands LIBS cmd_cvar_test_stubs)
 xash3dpp_add_test(test_cmd_buffer LIBS cmd_cvar_test_stubs)
 xash3dpp_add_test(test_privilege LIBS cmd_cvar_test_stubs Threads::Threads)
 xash3dpp_add_test(test_compat LIBS cmd_cvar_test_stubs)

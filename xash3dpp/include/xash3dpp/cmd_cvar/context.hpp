@@ -139,6 +139,17 @@ public:
                  std::uint32_t  flags = 0,
                  const char    *desc  = nullptr) noexcept;
 
+    // Context overload (campaign B5 decision): non-breaking addition beside
+    // the capture-less overload above. fn is invoked with 'user' on every
+    // dispatch instead of taking no arguments. Existing capture-less
+    // registrations and the legacy ABI-facing registration paths (e.g.
+    // pfnAddServerCommand) are untouched.
+    void cmd_add(std::string_view name,
+                 CommandCtxFn   fn,
+                 void          *user,
+                 std::uint32_t  flags = 0,
+                 const char    *desc  = nullptr) noexcept; // @lifetime: user is borrowed (caller-owned; must outlive the registration)
+
     void cmd_remove(std::string_view name) noexcept;
 
     // Unlink all commands whose flags intersect mask (mirrors cvar_unlink).

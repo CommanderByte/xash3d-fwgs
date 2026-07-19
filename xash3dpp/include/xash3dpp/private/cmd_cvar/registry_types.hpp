@@ -8,6 +8,9 @@
 //   Full internal record for a registered command.
 //   'name' and 'desc' are pool-owned NUL-terminated strings.
 //   'abi_next' forms the legacy linked list returned by Cmd_GetList equivalents.
+//   Exactly one of 'fn' / 'ctx_fn' is non-null for a given entry: 'ctx_fn'
+//   (with its paired 'user' pointer) when registered via the CommandCtxFn
+//   cmd_add() overload, else 'fn' for the legacy capture-less overload.
 //
 // AliasDef
 //   Alias record: maps a name to an expansion string.
@@ -27,7 +30,9 @@ namespace xash::cmd_cvar {
 struct Command {
     char         *name;        // pool-owned  @lifetime: impl-pool (pool_dup'd; freed on cmd_unlink/shutdown)
     char         *desc;        // pool-owned; may be nullptr  @lifetime: impl-pool (pool_dup'd; freed on cmd_unlink/shutdown)
-    CommandFn     fn;
+    CommandFn     fn;          // legacy capture-less callback; nullptr when ctx_fn is used
+    CommandCtxFn  ctx_fn;      // context callback; nullptr when fn is used
+    void         *user;        // @lifetime: borrowed (caller-owned; must outlive the registration); only meaningful when ctx_fn is non-null
     std::uint32_t flags;       // CommandFlags bitmask
     std::uint32_t owner_flags; // mirrors CvarFlags domain for unlink matching
     Command      *abi_next;    // ABI linked-list for Cmd_GetList  @lifetime: registry (list link; nodes owned by impl-pool)

@@ -15,6 +15,14 @@ namespace xash::cmd_cvar {
 // Layout-identical to the legacy xcommand_t typedef.
 using CommandFn = void (*)();
 
+// Context-carrying function pointer type for command callbacks.
+// Non-breaking addition beside CommandFn (campaign B5 decision record,
+// docs/audits/2026-07-chunk8-10-campaign.md): lets a registration carry a
+// caller-owned user-data pointer without growing the capture-less-static
+// exception class (P-3). Not layout-identical to any legacy type — the
+// legacy ABI-facing registration paths keep using CommandFn.
+using CommandCtxFn = void (*)(void *user);
+
 // ---------------------------------------------------------------------------
 // CommandFlags
 // ---------------------------------------------------------------------------

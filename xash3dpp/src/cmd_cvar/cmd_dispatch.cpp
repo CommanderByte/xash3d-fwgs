@@ -150,7 +150,8 @@ static void execute_tokenized(auto &impl, CmdCvarContext &ctx,
     if (cmd) {
         if ((cmd->flags & FCMD_PRIVILEGED) && !is_privileged) return;
         tls_ctx = &ctx;
-        if (cmd->fn) cmd->fn();
+        if (cmd->ctx_fn)   cmd->ctx_fn(cmd->user); // CommandCtxFn overload
+        else if (cmd->fn)  cmd->fn();              // legacy capture-less overload
         tls_ctx = nullptr;
         return;
     }

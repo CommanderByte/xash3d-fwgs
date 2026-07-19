@@ -9,22 +9,32 @@ namespace xash::cmd_cvar {
 // Command registry
 // ---------------------------------------------------------------------------
 
-void CmdCvarContext::cmd_add(std::string_view name,
-                              CommandFn      fn,
-                              std::uint32_t  flags,
-                              const char    *desc) noexcept
+// Shared cmd_add body for both the legacy capture-less overload and the
+// CommandCtxFn overload.  Impl is a private nested type of CmdCvarContext,
+// so this stays a (non-member) abbreviated function template — matching
+// dispatch_cmd()/execute_tokenized() in cmd_dispatch.cpp — rather than
+// naming CmdCvarContext::Impl directly (see that file's comment).
+static void cmd_add_impl(auto &impl,
+                          std::string_view name,
+                          CommandFn        fn,
+                          CommandCtxFn     ctx_fn,
+                          void            *user,
+                          std::uint32_t    flags,
+                          const char      *desc) noexcept
 {
     if (name.empty()) return;
 
     // If a command already exists with the same name:
-    Command *existing = impl_->cmd_map.find(name);
+    Command *existing = impl.cmd_map.find(name);
     if (existing) {
         if (existing->flags & FCMD_OVERRIDABLE) {
-            // Silently replace: update fn + flags + desc.
-            existing->fn    = fn;
-            existing->flags = flags;
+            // Silently replace: update fn/ctx_fn/user + flags + desc.
+            existing->fn     = fn;
+            existing->ctx_fn = ctx_fn;
+            existing->user   = user;
+            existing->flags  = flags;
             if (existing->desc) ::xash::memory::mem_free(existing->desc);
-            existing->desc = pool_dup(impl_->pool, desc ? desc : "");
+            existing->desc = pool_dup(impl.pool, desc ? desc : "");
         }
         // else: duplicate — silently ignore (matches legacy behaviour).
         return;
@@ -32,15 +42,17 @@ void CmdCvarContext::cmd_add(std::string_view name,
 
     // Check compat policy: should this command be flagged FCMD_OVERRIDABLE?
     std::uint32_t effective_flags = flags;
-    if (impl_->compat_policy && impl_->compat_policy->is_overridable_command(name))
+    if (impl.compat_policy && impl.compat_policy->is_overridable_command(name))
         effective_flags |= FCMD_OVERRIDABLE;
 
-    Command *cmd = static_cast<Command *>(::xash::memory::mem_calloc(impl_->pool, sizeof(Command)));
+    Command *cmd = static_cast<Command *>(::xash::memory::mem_calloc(impl.pool, sizeof(Command)));
     if (!cmd) return;
 
-    cmd->name        = pool_dup(impl_->pool, name); // bounded string_view dup
-    cmd->desc        = pool_dup(impl_->pool, desc ? desc : "");
+    cmd->name        = pool_dup(impl.pool, name); // bounded string_view dup
+    cmd->desc        = pool_dup(impl.pool, desc ? desc : "");
     cmd->fn          = fn;
+    cmd->ctx_fn      = ctx_fn;
+    cmd->user        = user;
     cmd->flags       = effective_flags;
     cmd->owner_flags = 0; // set by the DLL registration wrapper
     cmd->abi_next    = nullptr;
@@ -48,9 +60,26 @@ void CmdCvarContext::cmd_add(std::string_view name,
     if (!cmd->name) { ::xash::memory::mem_free(cmd); return; } // OOM
 
     // Prepend to ABI list + hash map.
-    cmd->abi_next        = impl_->cmd_list_head;
-    impl_->cmd_list_head = cmd;
-    impl_->cmd_map.insert(cmd->name, cmd);
+    cmd->abi_next     = impl.cmd_list_head;
+    impl.cmd_list_head = cmd;
+    impl.cmd_map.insert(cmd->name, cmd);
+}
+
+void CmdCvarContext::cmd_add(std::string_view name,
+                              CommandFn      fn,
+                              std::uint32_t  flags,
+                              const char    *desc) noexcept
+{
+    cmd_add_impl(*impl_, name, fn, nullptr, nullptr, flags, desc);
+}
+
+void CmdCvarContext::cmd_add(std::string_view name,
+                              CommandCtxFn   fn,
+                              void          *user,
+                              std::uint32_t  flags,
+                              const char    *desc) noexcept
+{
+    cmd_add_impl(*impl_, name, nullptr, fn, user, flags, desc);
 }
 
 void CmdCvarContext::cmd_remove(std::string_view name) noexcept
