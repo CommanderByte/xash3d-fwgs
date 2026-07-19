@@ -14,7 +14,6 @@ tools/ is stdlib-only.
 from __future__ import annotations
 
 import importlib
-import subprocess
 import sys
 from pathlib import Path
 
@@ -23,8 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 import xtools  # noqa: E402
-from xtools import REPO, venv_python  # noqa: E402
-from xtools import buildtools, checks, proc, report, rules, scan, state  # noqa: E402
+from xtools import buildtools, checks, mdlint, proc, report, rules, scan, state  # noqa: E402
 from xtools import crosswalk as crosswalk_mod  # noqa: E402
 from xtools import sync as xsync  # noqa: E402
 from xtools import vsenv  # noqa: E402
@@ -41,7 +39,7 @@ mcp = FastMCP("xash-tools")
 
 _XTOOLS_DIR = Path(__file__).resolve().parent / "xtools"
 _RELOAD_ORDER = [xtools, proc, report, vsenv, rules, scan,
-                 buildtools, checks, crosswalk_mod, state, xsync]
+                 buildtools, checks, mdlint, crosswalk_mod, state, xsync]
 
 
 def _xtools_mtimes() -> dict[str, float]:
@@ -248,22 +246,9 @@ def slice_diff(base: str = "", include_patch: bool = False,
 @mcp.tool()
 def markdown_lint(paths: list[str]) -> dict:
     """Lint markdown files with the repo's pymarkdownlnt config. Paths are
-    repo-relative."""
-    abs_paths = [str(REPO / p) for p in paths]
-    # --config must be explicit: pymarkdown's discovery is cwd-relative and
-    # cwd is the REPO ROOT, so xash3dpp/.pymarkdown.json was silently ignored
-    # (md013 etc. fired despite being disabled).  Fixed 2026-07-06 (B2).
-    config = REPO / "xash3dpp" / ".pymarkdown.json"
-    proc = subprocess.run(
-        [str(venv_python()), "-m", "pymarkdown", "--config", str(config),
-         "scan", *abs_paths],
-        stdin=subprocess.DEVNULL,  # never inherit the MCP stdio pipe
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        cwd=str(REPO), timeout=300,
-    )
-    issues = [l for l in (proc.stdout or "").splitlines() if l.strip()]
-    return {"exit_code": proc.returncode, "issues": issues[:200],
-            "issue_count": len(issues)}
+    repo-relative. (CLI twin: tools/markdown_lint.py.)"""
+    _maybe_reload()
+    return mdlint.lint(paths)
 
 
 if __name__ == "__main__":

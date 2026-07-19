@@ -398,7 +398,8 @@ def workflow_sync(stage: int = 2) -> dict:
     # every prompt invoking an MCP-exposed script must mention the MCP twin
     mcp_scripts = ("build", "test", "refresh_compile_db", "compliance_scan",
                    "status_table", "finish_check", "stub_scan", "limits_scan",
-                   "workflow_sync", "whereami", "checkpoint")  # dep_scan: CLI-only
+                   "workflow_sync", "whereami", "checkpoint",
+                   "markdown_lint")  # dep_scan: CLI-only
     script_rx = re.compile(r"tools[\\/](%s)\.py" % "|".join(mcp_scripts))
     for p in prompts:
         body = p.read_text(encoding="utf-8", errors="replace")
