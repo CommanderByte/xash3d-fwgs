@@ -15,3 +15,7 @@ xash3dpp_add_test(test_hl1_loader LIBS xash3dpp_save)
 # xash3dpp — save tests (Chunk 8, slice S8.5: .sav container + save-directory
 # + SV_GetSaveComment + .HL2/.HL3 + SAV-OQ-1)
 xash3dpp_add_test(test_sav_container LIBS xash3dpp_save xash3dpp_filesystem)
+
+# xash3dpp — save tests (Chunk 8, slice S8.6: landmark-transition machinery
+# — LoadAdjacentEnts + CreateEntityTransitionList + EntityInSolid + decal hook)
+xash3dpp_add_test(test_adjacent_transfer LIBS xash3dpp_save)

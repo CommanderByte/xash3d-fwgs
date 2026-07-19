@@ -173,6 +173,141 @@ static void test_container_roundtrip_and_extension_blind()
 }
 
 // ===========================================================================
+// 2b. Container: pfnSaveGlobalState/pfnRestoreGlobalState callback seam —
+//     the 7-hazard verification pack found this gap: read_sav_container's
+//     IRestoreGlobalState::restore_global_state call (container_codec.cpp:
+//     191-194, the pre-spawn pfnRestoreGlobalState position, sv_save.c:1822)
+//     had no test exercising (a) it firing exactly once, (b) the blob bytes
+//     it receives round-tripping byte-exact from a writer-side
+//     ISaveGlobalState, or (c) its ORDER relative to embedded-record
+//     extraction.
+// ===========================================================================
+
+namespace
+{
+constexpr std::string_view k_global_marker_token = "GlobalMarker";
+
+// Arbitrary non-trivial marker bytes (not all-zero/all-same, so an
+// accidentally-uninitialized buffer can't satisfy the byte-compare below).
+constexpr std::array<std::byte, 6> k_global_marker_blob = {
+    std::byte{ 0xDE }, std::byte{ 0xAD }, std::byte{ 0xBE },
+    std::byte{ 0xEF }, std::byte{ 0x01 }, std::byte{ 0x02 },
+};
+
+// Writer-side fake ISaveGlobalState: emits exactly ONE field record (token
+// "GlobalMarker", payload = k_global_marker_blob) right after the GameHeader
+// block — standing in for a real pfnSaveGlobalState producer.
+struct FakeSaveGlobalState final : save::ISaveGlobalState
+{
+    int call_count = 0;
+
+    save::Result<void>
+    save_global_state( save::IFieldSink &sink, save::TokenTable &tokens ) noexcept override
+    {
+        ++call_count;
+        auto tok = tokens.insert( k_global_marker_token );
+        if ( !tok.has_value() )
+            return std::unexpected( tok.error() );
+        return sink.write_field_record( *tok, k_global_marker_blob );
+    }
+};
+
+// Reader-side fake IRestoreGlobalState. Verifies:
+//   (a) called exactly once                          -> call_count
+//   (b) blob bytes round-trip byte-exact               -> captured_payload
+//   (c) ORDER: fires strictly before record extraction -> records_size_at_call
+//
+// read_sav_container is single-shot: every observable side effect happens
+// inside the one call, so nothing OUTSIDE that call can interleave with it
+// to witness ordering directly, and the callback itself only receives
+// `data`/`offset`/`tokens` — never a view onto `out`. To still get a real
+// ordering witness (rather than trusting the source's lexical order), this
+// fake is wired by the test, BEFORE calling read_sav_container, with a
+// pointer to the SAME SavContainerResult::records vector the call will
+// eventually populate. Per container_codec.cpp:191-207, the
+// restore_global_state call happens strictly before `out.records.clear()`
+// and the extraction loop that fills it, so a snapshot of
+// `records_ptr->size()` taken DURING this callback reads 0 (records starts
+// out default-empty and extraction hasn't run yet) precisely because
+// extraction has not happened yet; had the engine ever run extraction FIRST,
+// this snapshot would instead read `map_count` (nonzero — the test embeds
+// one file) — which the test separately confirms IS the size once
+// read_sav_container returns. That before/after size contrast (0 during the
+// callback vs. map_count after return) is the strongest ordering evidence
+// read_sav_container's signature admits.
+struct FakeRestoreGlobalState final : save::IRestoreGlobalState
+{
+    int                     call_count           = 0;
+    std::vector<std::byte>  captured_payload;
+    std::size_t             records_size_at_call = static_cast<std::size_t>( -1 );
+    const std::vector<save::ExtractedRecord> *records_ptr = nullptr; // @lifetime: caller — wired before read_sav_container runs.
+
+    save::Result<void>
+    restore_global_state( std::span<const std::byte> data, std::size_t &offset,
+                          const save::TokenTable &tokens ) noexcept override
+    {
+        ++call_count;
+        if ( records_ptr != nullptr )
+            records_size_at_call = records_ptr->size();
+
+        auto rec = save::next_field_record( data, offset );
+        if ( !rec.has_value() )
+            return std::unexpected( rec.error() );
+        if ( tokens.token_at( rec->token_idx ) != k_global_marker_token )
+            return std::unexpected( save::SaveError::BadFieldRecord );
+
+        captured_payload.assign( rec->payload.begin(), rec->payload.end() );
+        return {};
+    }
+};
+} // namespace
+
+static void test_container_restore_global_state_callback()
+{
+    const std::vector<std::byte> hl1_data = to_bytes( "GLOBALCB-LEVEL-BYTES" );
+    std::array<save::EmbeddedFile, 1> files = { {
+        { "map1.HL1", hl1_data },
+    } };
+
+    save::SavContainerParams params;
+    params.map_name = "map1";
+    params.comment  = "global state callback test";
+
+    FakeSaveGlobalState writer_fake;
+
+    auto wbuf = save::create_save_buffer( g_pool, 4096, 16, 0.0f );
+    REQUIRE( wbuf != nullptr );
+    std::vector<std::byte> image;
+    REQUIRE( save::write_sav_container( params, &writer_fake, files, *wbuf, image ).has_value() );
+    CHECK_EQ( writer_fake.call_count, 1 );
+
+    FakeRestoreGlobalState reader_fake;
+    save::SavContainerResult result;
+    reader_fake.records_ptr = &result.records; // wire BEFORE the call — see class doc above.
+
+    auto rbuf = save::create_save_buffer( g_pool, 4096, 16, 0.0f );
+    REQUIRE( rbuf != nullptr );
+    REQUIRE( save::read_sav_container( image, &reader_fake, *rbuf, result ).has_value() );
+
+    // (a) called exactly once.
+    CHECK_EQ( reader_fake.call_count, 1 );
+
+    // (b) blob round-trip: the writer-side fake's payload survives byte-exact
+    // through write_sav_container -> read_sav_container's GameHeader-relative
+    // cursor hand-off.
+    REQUIRE( reader_fake.captured_payload.size() == k_global_marker_blob.size() );
+    CHECK( bytes_eq( reader_fake.captured_payload, std::span<const std::byte>( k_global_marker_blob ) ) );
+
+    // (c) ORDER: at call time, no records had been extracted yet (0); after
+    // read_sav_container returns, exactly `map_count` (1) have — proof the
+    // callback fired strictly before record extraction ran.
+    CHECK_EQ( reader_fake.records_size_at_call, 0u );
+    REQUIRE( result.records.size() == 1u );
+    CHECK( result.records[0].name == "map1.HL1" );
+    CHECK( bytes_eq( result.records[0].data, hl1_data ) );
+}
+
+// ===========================================================================
 // 3. SAV-OQ-1 — .HLX foreign-block round-trip + the self-describing header
 //    shape + ClearSaveDir's `*.HL?` glob covering `.HLX`.
 // ===========================================================================
@@ -1024,6 +1159,7 @@ int main()
 
     RUN_TEST( test_container_gameheader_golden );
     RUN_TEST( test_container_roundtrip_and_extension_blind );
+    RUN_TEST( test_container_restore_global_state_callback );
     RUN_TEST( test_hlx_door );
     RUN_TEST( test_client_state_empty_golden );
     RUN_TEST( test_client_state_populated_roundtrip );

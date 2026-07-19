@@ -29,6 +29,11 @@ enum class SaveError : std::uint32_t
     BadFieldRecord,   // a per-field record's declared size is inconsistent with the buffer
     BufferExhausted,  // a write would exceed the working buffer's bounded capacity
     IoError,          // the filesystem I/O wrapper's read/write/rename/remove call failed (Chunk 8, slice S8.5)
+    TransitionBroken, // a landmark changelevel could not complete: the back-connection to the
+                      // previous map is missing, or an adjacent level's entity table could not be
+                      // rewritten (Chunk 8, slice S8.6).  Legacy raises Host_Error for both
+                      // (sv_save.c:1999-2001, 2013-2014); the orchestrator (server-core, S8.7)
+                      // owns the host-level fatal — save surfaces the typed failure and stops.
 };
 
 // ---------------------------------------------------------------------------

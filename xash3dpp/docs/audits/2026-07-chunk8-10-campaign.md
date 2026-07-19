@@ -87,6 +87,7 @@ P-3 exception class for no gain.
 | 23 | C/S8.5 | SV_GetSaveComment day-of-month not zero-padded ("Jan5" vs strftime's "Jan05"); test codified the wrong value | parity gate (38/41 confirmed) | DIVERGENCE | FIXED pre-commit: pad2 + both padding shapes pinned (UTC dates independently recomputed at re-verify) |
 | 24 | C/S8.5 | FIELD_MODELNAME/SOUNDNAME raw 4-byte string_t copy — legacy WriteString family emits the resolved TEXT inline (STATICENTITY wire incompatibility) | parity gate | **DIVERGENCE (wire-breaking)** | FIXED pre-commit: text-family dispatch + FieldTextBinding companion table + StaticEntityEntry (entity_state_t is ABI-frozen); hand-built legacy witness added; false-premise codec comment corrected |
 | 25 | C/S8.5 | age_save_list omits the GL_FreeImage .bmp thumbnail eviction (client/renderer capability) | parity gate | OBSERVATION (scoped) | deferral made explicit: doc comment + save-boundary Dependencies row (Chunk-12 caller obligation) |
+| 26 | C/S8.6 | Mid-chunk 7-hazard verification pack (H1-H7) | 7-agent workflow | 4 CONFIRMED / 2 SEAM-DEFERRED (H1 orchestration + H3 edict materialization — documented S8.7 seams; RAII SaveBuffer structurally closes the ledger-#3 leak) / 1 test-gap | H7 gap closed pre-commit: test_container_restore_global_state_callback pins the pre-extraction firing position with a pointer-wired before/after snapshot |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
 

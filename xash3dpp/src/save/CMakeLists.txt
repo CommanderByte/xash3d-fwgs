@@ -19,6 +19,7 @@ add_library(xash3dpp_save STATIC
     save_comment.cpp
     client_state.cpp
     entity_patch.cpp
+    adjacent_transfer.cpp
 )
 
 target_include_directories(xash3dpp_save
