@@ -322,3 +322,282 @@ functions in server.h). The interface a split would need to expose:
    layouts and the token/field wire encoding are game-DLL-visible and must
    be vendored verbatim (eiface.h:298-399, physint.h:133/154, progdefs.h
    pSaveData).
+
+______________________________________________________________________
+
+## Format internals (2026-07-19 recon)
+
+> Byte-level map of the `.sav`/`.HL1`/`.HL2`/`.HL3` container format, recon'd
+> from `engine/server/sv_save.c` (2,492 lines) + `engine/eiface.h` for
+> Chunk 8. Companion to §1-§9 above, which covered the server-boundary
+> ordering/seam only. Feeds `boundaries/save-boundary.md` §External ABI
+> contracts and §Quirks. Source pass: V8.2 (A1 recon fragment).
+
+### Headers and magic/version tags
+
+Two independent on-disk magic+version pairs:
+
+| File | Magic (`int`) | Version (`int`) | Legacy site |
+|---|---|---|---|
+| `.HL1` | `SAVEFILE_HEADER` = `'VALV'` | `SAVEGAME_VERSION` = `0x0071` | sv_save.c:31-34 |
+| `.sav` / `.HL2` | `SAVEGAME_HEADER` = `'JSAV'` | `CLIENT_SAVEGAME_VERSION` = `0x0067` (`.HL2` only; `.sav` container reuses `SAVEGAME_VERSION`) | sv_save.c:31-34 |
+
+Compat is **exact-match only** — no forward/backward tolerance band.
+`SV_GetSaveComment`'s standalone parse (sv_save.c:2317-2347) enumerates every
+outcome: `tag == 0x0065` → distinct "old version, unsupported" case (a
+specific prior version number, not a generic "too old"); `tag <
+SAVEGAME_VERSION` → `"<old version>"`; `tag > SAVEGAME_VERSION` → `"<invalid version>"`; any tag `!= SAVEGAME_HEADER` at all → `"<corrupted>"` outright.
+
+Fixed capacity constants baked into the format (not just implementation
+limits — files are written/read against these exact bounds):
+`SAVE_HEAPSIZE` = 0x400000 (4 MiB working buffer), `SAVE_HASHSTRINGS` =
+0xFFF (4095 max unique tokens). sv_save.c:36-37.
+
+### `.HL1` top-level byte layout (sv_save.c:1592-1603)
+
+```text
+int   id           ('VALV')
+int   version      (0x71)
+int   size         (entity+header+adjacency+lightstyle data size; EXCLUDES token+table)
+int   tableCount
+int   tokenCount
+int   tokenSize
+byte  tokens[tokenSize]        (flat NUL-terminated token blob)
+byte  table[tableSize]         (ETABLE records; tableSize NOT stored on disk,
+                                 recomputed at load from tableCount x per-record parse)
+byte  data[size]               (SAVE_HEADER, ADJACENCY x N, LIGHTSTYLE x N,
+                                 then per-entity payloads via pfnSave)
+```
+
+Wire order is: header → adjacency → lightstyle → entity payloads, THEN
+entity table, THEN token table are *written* — but the on-disk byte
+sequence puts tokens before the table before the data blob (the writer
+computes `tableSize` as a delta after emitting all ETABLE records, then
+serializes in tokens→table→data order). sv_save.c:1568-1574, 1592-1603.
+
+### Header structs (field order == wire order)
+
+`TYPEDESCRIPTION` arrays define both the C struct layout and the on-disk
+field order — each `pfnSaveWriteFields` call walks the array in
+declaration order, so C struct order **is** wire order.
+
+**GAME_HEADER** (root of `.sav`) — sv_save.c:40-45, 91-96:
+
+```text
+char mapName[32]
+char comment[80]
+int  mapCount
+```
+
+**SAVE_HEADER** (root of `.HL1`) — sv_save.c:47-62, 98-113 — 13 fields, wire
+order == struct order:
+
+```text
+int   skillLevel
+int   entityCount
+int   connectionCount
+int   lightStyleCount
+float time            (FIELD_TIME)
+char  mapName[32]
+char  skyName[32]
+int   skyColor_r, skyColor_g, skyColor_b
+float skyVec_x, skyVec_y, skyVec_z
+```
+
+**SAVE_CLIENT** (root of `.HL2` body) — sv_save.c:64-76, 139-152:
+
+```text
+int   decalCount, entityCount, soundCount, tempEntsCount
+char  introTrack[64]
+char  mainTrack[64]
+int   trackPosition
+short viewentity        (serialized via FIELD_CHARACTER, sizeof(short) — 2 raw
+                          bytes, NOT FIELD_SHORT; legacy comment: "mods based
+                          on HLU SDK disallow usage of FIELD_SHORT")
+float wateralpha, wateramp
+```
+
+**SAVE_LIGHTSTYLE** (repeated record, count = `header.lightStyleCount`) —
+sv_save.c:78-83, 123-128:
+
+```text
+int   index
+char  style[256]
+float time
+```
+
+### Token table flatten format (StoreHashTable / BuildHashTable)
+
+Write (sv_save.c:792-814): iterate `pTokens[0..tokenCount)` in **table-slot
+order** (not sorted, not skipping empty slots); write each token's raw bytes
+then one `\0` terminator (a NULL/empty slot writes just the `\0`).
+`tokenSize` = total bytes across all `tokenCount` slots including every
+terminator.
+
+Read (sv_save.c:823-844) is the exact inverse: read `tokenSize` raw bytes
+into a blob, then re-split it `tokenCount` times on `\0`; `pTokens[i]` =
+pointer into the blob, or `NULL` if that slot's string was empty. Because
+the read is fixed-count (not delimiter-scanned for a variable number of
+empties), an empty slot is exactly 1 byte in the blob, preserving 1:1
+slot↔index correspondence between write and read.
+
+### Per-field record encoding (proven by SV_GetSaveComment's hand-parse)
+
+The generic per-field wire format `pfnSaveWriteFields`/`pfnSaveReadFields`
+use is game-DLL-owned code (not present in this repo), but
+`SV_GetSaveComment` hand-decodes the `.sav` root `GameHeader` block **without
+calling into the game DLL at all**, and its byte-for-byte parse is
+authoritative evidence of the format:
+
+```text
+short fieldBlockSize    (byte size of the whole block's field-payload area;
+                          used only to skip past the field-count prefix)
+short tokenIndex        (index into the token table — the block's NAME is
+                          itself token-table-indirected, not inline text)
+int   nNumberOfFields    (stored at pData + fieldBlockSize, i.e. the skip
+                          target for the field array start)
+repeat nNumberOfFields times:
+    short fieldSize
+    short tokenIndex     (field's NAME via token table)
+    byte  payload[fieldSize]
+```
+
+sv_save.c:2390-2407 (block header pair), 2404-2436 (field-count + per-field
+triplet loop). This 2+2+N byte-triplet is the atomic per-field record used
+throughout the format.
+
+**Untrusted-input asymmetry**: `SV_GetSaveComment`'s standalone parse
+bounds-checks `tokenCount` against `[0, SAVE_HASHSTRINGS]` and `tokenSize`
+against `[0, SAVE_HEAPSIZE]` before trusting them (sv_save.c:2358-2370,
+rejecting with `"<corrupted hashtable>"`). The **real load path**
+(`LoadSaveData` for `.HL1`, `SaveReadHeader` for `.sav`) performs **no
+equivalent check** — `tokenCount`/`tokenSize`/`size` flow straight from
+`FS_Read` into `SaveInit()` → `Mem_Calloc(host.mempool, sizeof(SAVERESTOREDATA)
+
+- size)` unchecked (sv_save.c:927-939 vs 2358-2370). A corrupted file only
+
+crashes safely on the "preview" path; the real load path is exposed to
+integer-overflow/huge-alloc on the identical bytes.
+
+### ENTITYTABLE (ETABLE) serialization
+
+`ENTITYTABLE` has 6 in-memory fields but `gEntityTable` serializes only 5:
+`id, location, size, flags, classname`, in that order — **`pent` (the live
+`edict_t*`) is explicitly excluded** from the wire format (not
+derivable/stable across processes); it is reconstructed at load time by
+`CreateEntitiesInRestoreList`/`SV_EdictNum`, never read from disk.
+eiface.h:306-316, sv_save.c:130-137.
+
+### Container record format (DirectoryCopy / DirectoryExtract) — the `.sav` outer shell
+
+Each embedded file inside `.sav` (i.e. each `.HL1`/`.HL2`/`.HL3` per level)
+is one fixed-shape container record, **no per-record magic or checksum**:
+
+```text
+byte  name[260]      (MAX_OSPATH, zero-padded; filename WITHOUT directory
+                       prefix, via COM_FileWithoutPath; memset(0) first "to
+                       prevent garbage in output file")
+int   fileSize
+byte  data[fileSize]
+```
+
+sv_save.c:647-670 (write), 679-706 (read — mirrors exactly). Write side is
+scoped by a hardcoded `*.HL?` glob at the `SaveGameSlot` call site
+(sv_save.c:1721/1724/1769) — **only** files matching that glob are ever
+embedded by this engine. Read side (`DirectoryExtract`) has **no such
+restriction**: it is driven purely by a `fileCount` parameter
+(`gameHeader.mapCount`, itself read straight off disk from `GAME_HEADER`) and
+extracts every record verbatim regardless of embedded name/extension —
+extracted path = `DEFAULT_SAVE_DIRECTORY + name` (COM_FixSlashes applied),
+full name+extension taken verbatim from the record, no allowlist anywhere in
+the function.
+
+### `.HL3` (EntityPatchWrite/Read) — the simplest sub-format
+
+No header, no magic, no version — just a count + int array:
+
+```text
+int patchCount
+int tableIndex[patchCount]     (index into pSaveData->pTable[], the entity-
+                                 table slot number — NOT an edict index)
+```
+
+sv_save.c:1014-1046 (write: emits one `int` per ETABLE entry with
+`FENTTABLE_REMOVED` set), 1056-1077 (read: applies each index directly as
+`pSaveData->pTable[entityId].flags = FENTTABLE_REMOVED` — a **plain
+assignment**, not `SetBits`, so it would clobber other flag bits already set
+on that table entry if adjacency reload hadn't already run first; in
+practice `ParseSaveTables` always runs before `EntityPatchRead`, so table
+entries are still zero-initialized flags at this point). No bounds check on
+`entityId` against `tableCount`.
+
+### `SV_GetSaveComment` hand-parse — output buffer layout
+
+Beyond the field-record parse above, `SV_GetSaveComment`'s output packing is
+itself a fixed, undocumented-elsewhere layout (sv_save.c:2469-2479):
+
+```text
+comment[0 .. CS_SIZE)                        = description               (CS_SIZE = 64)
+comment[CS_SIZE .. CS_SIZE+CS_TIME)          = date string                (CS_TIME = 16)
+comment[CS_SIZE+CS_TIME .. CS_SIZE+2*CS_TIME)= time string
+comment[CS_SIZE+2*CS_TIME .. +CS_SIZE)       = description + CS_SIZE     (a SECOND
+                                                 chunk of the SAME description
+                                                 buffer — description is expected
+                                                 up to 2*CS_SIZE = 128 chars,
+                                                 split across two non-adjacent
+                                                 output regions)
+```
+
+Any caller of `SV_GetSaveComment` (menu DLL via `pfnGetSaveComment`) must
+know this exact fixed offset layout; it is undocumented anywhere except the
+function body itself.
+
+### Extension-tolerance verdict (feeds SAV-OQ-1)
+
+**The legacy loader extracts blindly and does not choke on an unrecognized
+embedded filename/extension — but it also does not "ignore" it in the sense
+of skipping it: it writes it to disk under whatever name/extension is
+embedded, and no downstream consumer ever re-validates or re-globs the
+extracted set against an allowlist.** An orphaned file with an unknown
+extension is *inert* (never read, never auto-deleted), not *fatal*.
+
+Evidence chain:
+
+- **Extraction has no extension check** (sv_save.c:679-706): the loop is
+  driven purely by `fileCount` (== `gameHeader.mapCount`, itself read off
+  disk, sv_save.c:1803-1820); it never inspects `szName`'s extension. The
+  only failure mode is `FS_Open` returning NULL (invalid path chars after
+  `COM_FixSlashes`, or a filesystem error), which aborts the **remaining**
+  records — records already processed before the failure stay on disk.
+- **The count is entirely self-declared by the file** (sv_save.c:2155-2156):
+  `DirectoryExtract` is called with `gameHeader.mapCount` straight from the
+  save's own header, so a corrupted/crafted save can declare any count, and
+  every one of those records extracts verbatim regardless of embedded name.
+- **The only generic post-extraction cleanup globs `*.HL?`** (`ClearSaveDir`,
+  sv_save.c:499-512) — single-char wildcard, `HL1`/`HL2`/`HL3` only. A record
+  extracted with an unrecognized extension/name is **not matched** and is
+  therefore never cleaned up by the normal "level transition, re-extract
+  fresh" cycle: it is orphaned on disk indefinitely, not choked on, not
+  detected.
+- **`DirectoryCount`, the only other generic-glob consumer, is save-time
+  only** (sv_save.c:369-381, called from `SaveGameSlot` with the same
+  hardcoded `*.HL?` pattern) — it never runs against a just-extracted file
+  set at load time, so it cannot notice or reject an orphan either.
+- **Every consumer that actually reads an extracted file opens it by exact,
+  hand-built name** (`"%s.HL1"`, `"%s.HL2"`, `"%s.HL3"` — sv_save.c:861-864,
+  907-914, 1020, 1062) — never by directory enumeration or content-sniffing.
+  So even a maliciously-named extracted file is load-bearing only if some
+  *other* subsystem later opens that exact filename by chance, which no code
+  in `sv_save.c` itself does. (Path traversal via the embedded name is
+  bounded only by `COM_FixSlashes`, which is filesystem-owned per
+  sibling-scope — not re-derived here.)
+
+**Net effect**: an extra embedded record with an unknown name/extension is
+extract-and-persist, never extract-and-reject and never extract-and-choke.
+Extension-scoping happens only on the write side (`*.HL?` at
+`SaveGameSlot`) and the cleanup side (`ClearSaveDir`'s `*.HL?`) — both of
+which an extraneous record simply falls outside of. This is the evidentiary
+basis for SAV-OQ-1's recommendation that any new xash3dpp side-block
+extension (`.HLX`) be chosen specifically to fall *inside* the `*.HL?`
+cleanup glob while remaining outside every legacy exact-name reader's
+hand-built filename set.
