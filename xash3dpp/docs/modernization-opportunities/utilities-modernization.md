@@ -180,6 +180,16 @@ ______________________________________________________________________
 
 ### M-4: `ci_less` comparator over-reads past `string_view` bounds (new 2026-07-06)
 
+> **RESOLVED 2026-07-19 (HB-1, consolidation audit).** `string.hpp` now
+> implements a bounded three-way `ci_compare(string_view, string_view)`
+> (view-size-bounded lexicographic compare, ASCII A-Z fold, length
+> tiebreak) and `ci_less`/`ci_equal` forward to it. Ordering for
+> NUL-terminated inputs is unchanged; the over-read on non-terminated
+> views is gone. Covered by `test_ci_compare` in
+> `tests/utilities/test_string.cpp` (non-terminated slice + embedded-NUL
+> cases). The filesystem M-7 consumer inherits the fix through `ci_less`.
+> Retained below for the record.
+
 - **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` lines ~50–56.
 
 - **Current pattern**: the case-insensitive ordering comparator forwards to the

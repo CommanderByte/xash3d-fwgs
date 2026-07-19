@@ -46,18 +46,39 @@ char *strncpy( char *dst, const char *src, std::size_t size ) noexcept;
 [[nodiscard]] int stricmp( const char *a, const char *b ) noexcept;
 [[nodiscard]] int strnicmp( const char *a, const char *b, std::size_t n ) noexcept;
 
+// Bounded case-insensitive three-way comparison for string_view pairs
+// (ASCII A-Z fold, matching Q_stricmp). Never dereferences past either
+// view — the views need not be NUL-terminated (HB-1: the previous
+// strnicmp-over-.data() form was a latent over-read on non-terminated
+// views). Embedded NULs compare as ordinary bytes. Returns <0 / 0 / >0;
+// on a common prefix the shorter view orders first, which is the exact
+// ordering strnicmp produces for NUL-terminated inputs.
+[[nodiscard]] inline int ci_compare( std::string_view a, std::string_view b ) noexcept
+{
+    const std::size_t n = a.size() < b.size() ? a.size() : b.size();
+    for( std::size_t i = 0; i < n; ++i )
+    {
+        unsigned char ca = static_cast<unsigned char>( a[i] );
+        unsigned char cb = static_cast<unsigned char>( b[i] );
+        if( ca >= 'A' && ca <= 'Z' ) ca = static_cast<unsigned char>( ca + ( 'a' - 'A' ) );
+        if( cb >= 'A' && cb <= 'Z' ) cb = static_cast<unsigned char>( cb + ( 'a' - 'A' ) );
+        if( ca != cb ) return ca < cb ? -1 : 1;
+    }
+    if( a.size() == b.size() ) return 0;
+    return a.size() < b.size() ? -1 : 1;
+}
+
 // Case-insensitive predicates for string_view pairs.
 // Suitable as std::sort / std::lower_bound comparators.
 // Subsumes private ci_less / ci_equal / iequal_sv helpers in the backends.
 [[nodiscard]] inline bool ci_less( std::string_view a, std::string_view b ) noexcept
 {
-    const std::size_t n = ( a.size() > b.size() ? a.size() : b.size() ) + 1;
-    return strnicmp( a.data(), b.data(), n ) < 0;
+    return ci_compare( a, b ) < 0;
 }
 [[nodiscard]] inline bool ci_equal( std::string_view a, std::string_view b ) noexcept
 {
     if ( a.size() != b.size() ) return false;
-    return strnicmp( a.data(), b.data(), a.size() ) == 0;
+    return ci_compare( a, b ) == 0;
 }
 
 // ASCII-only in-place and value-returning lowercase conversion.

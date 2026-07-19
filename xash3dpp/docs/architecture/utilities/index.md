@@ -4,7 +4,7 @@
 
 | Target | Type | `cxx_std` | External deps |
 |--------|------|-----------|---------------|
-| `xash3dpp_utilities` | STATIC | 20 | none |
+| `xash3dpp_utilities` | STATIC | 23 | none |
 
 ## Public headers
 

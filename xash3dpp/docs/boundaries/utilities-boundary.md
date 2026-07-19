@@ -220,7 +220,10 @@ substrate (P-4) that every future service reuses and the annotation discipline
 | **P-6** services are satellites | **N/A (leaf dep)** | Utilities is a leaf everything links *toward*; it never links toward a service. `xash3dpp_miniz` is a separate STATIC target (Q-11-clean). |
 | **P-7** pool-owned RAII lifecycle | **N/A** | No heap ownership; value types are stack/caller-owned, `pool_new` not used. |
 | **P-8** annotation discipline | **Yes — satisfied** | Every header carries `@thread-safety:`; the two non-asserting mutators are `compliance-allow(thread-assert)`-marked (documents-and-marks, not documents-but-never-asserts). |
+| **G-1** in-engine MCP service | Enabling substrate (see P-4) | No utilities-owned state to expose; the value-typed hashers/`Tokenizer`/format helpers are what an MCP frontend composes. Door obligation identical to P-4: stay value-typed and header-declared. |
 | **G-2** game ABI v2 | Door-keep (thin) | The CRC32 free functions are bound as raw `enginefuncs_t` slots today; a v2 ABI would bind the same callables through a context-carrying descriptor. No utilities change is forced — the shim moves, the implementation does not. |
+| **G-3** dedicated debug thread | N/A (stateless leaf) | Pure functions are callable from any thread by construction; utilities publishes no sim state a debug thread would snapshot. No door obligation beyond staying stateless. |
+| **G-4** expanded in-game debugging | Enabling substrate (see P-4) | `pretify_mem`/`match_pattern`/hashers are overlay building blocks; no utilities-side surface to add. |
 | **G-5** scripting runtime | Door-keep | `match_pattern`, the hashers, `Tokenizer`, and `swap` are the kind of cold-path primitives a tooling VM binds; keeping them `noexcept` and exception-free suits the `/EHs-c- /GR-` isolated-island constraint. No API change needed now. |
 | **Q-11** satellite / **Q-12** compat | No | Single concrete implementation, no compat variance, no policy injection (score 0). See Q-11 verdict below. |
 

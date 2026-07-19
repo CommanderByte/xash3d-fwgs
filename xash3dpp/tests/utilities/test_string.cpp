@@ -1,6 +1,7 @@
 // xash3dpp — string utility tests
-// Covers: strncpy, stricmp, strnicmp, snprintf, atoi, atof, atov,
-//         strip_colors, pretify_mem, match_pattern, parse_token, Tokenizer
+// Covers: strncpy, stricmp, strnicmp, ci_compare/ci_less/ci_equal, snprintf,
+//         atoi, atof, atov, strip_colors, pretify_mem, match_pattern,
+//         parse_token, Tokenizer
 
 #include <xash3dpp/utilities/string.hpp>
 #include <cstring>
@@ -42,6 +43,38 @@ static void test_stricmp()
     CHECK( xash::utilities::stricmp( "ABC", "abc" ) == 0 );
     CHECK( xash::utilities::stricmp( "abc", "abd" ) < 0 );
     CHECK( xash::utilities::stricmp( "abd", "abc" ) > 0 );
+}
+
+static void test_ci_compare()
+{
+    using namespace xash::utilities;
+    // Ordering parity with stricmp for NUL-terminated inputs.
+    CHECK( ci_compare( "ABC", "abc" ) == 0 );
+    CHECK( ci_compare( "abc", "abd" ) < 0 );
+    CHECK( ci_compare( "abd", "abc" ) > 0 );
+    // Common prefix: shorter view orders first (strnicmp-equivalent).
+    CHECK( ci_compare( "ab", "abc" ) < 0 );
+    CHECK( ci_compare( "abc", "ab" ) > 0 );
+    CHECK( ci_compare( "", "" ) == 0 );
+    CHECK( ci_compare( "", "a" ) < 0 );
+    // HB-1: bounded on non-NUL-terminated views — slices of a larger
+    // buffer whose next byte would change the result if over-read.
+    const char buf[] = { 'w', 'a', 'd', 'A', 'w', 'a', 'd', 'Z' };
+    const std::string_view lhs( buf, 3 );      // "wad" (next byte 'A')
+    const std::string_view rhs( buf + 4, 3 );  // "wad" (next byte 'Z')
+    CHECK( ci_compare( lhs, rhs ) == 0 );
+    CHECK( ci_equal( lhs, rhs ) );
+    CHECK( !ci_less( lhs, rhs ) );
+    CHECK( !ci_less( rhs, lhs ) );
+    // Embedded NULs are ordinary bytes, not terminators.
+    const std::string_view nul_a( "a\0b", 3 );
+    const std::string_view nul_c( "a\0c", 3 );
+    CHECK( ci_compare( nul_a, nul_c ) < 0 );
+    CHECK( !ci_equal( nul_a, nul_c ) );
+    // ci_less strict-weak-ordering sanity.
+    CHECK( ci_less( "Alpha", "beta" ) );
+    CHECK( !ci_less( "beta", "Alpha" ) );
+    CHECK( !ci_less( "GAMMA", "gamma" ) );
 }
 
 static void test_atoi()
@@ -178,6 +211,7 @@ int main()
     RUN_TEST( test_strcmp );
     RUN_TEST( test_stricmp );
     RUN_TEST( test_strnicmp );
+    RUN_TEST( test_ci_compare );
     RUN_TEST( test_snprintf );
     RUN_TEST( test_atoi );
     RUN_TEST( test_atof );
