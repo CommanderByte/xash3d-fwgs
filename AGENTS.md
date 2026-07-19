@@ -47,8 +47,8 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 - `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-22 register;
   §3a is the boundary-spec OQ crosswalk (blocks-scaffold rows gate work);
   §4.3 applies to all new code.
-- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (21) +
-  `.github/agents/*.agent.md` (3) — the single source of truth for the
+- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (22) +
+  `.github/agents/*.agent.md` (4) — the single source of truth for the
   workflow. Adapters in `.claude/commands|agents/` and
   `.opencode/commands|agents/` are thin delegators — **edit the `.github/`
   originals, never the adapters**.
@@ -91,7 +91,7 @@ agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
 
 - Codex has no per-command mechanism: to run a workflow step, **open
   `.github/prompts/<name>.prompt.md`, read it, and follow it exactly**
-  (same 21 steps the other frameworks expose as commands).
+  (same 22 steps the other frameworks expose as commands).
 - To list prompts or print the exact framework-specific invocation, run
   `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py list` or
   `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command codex <name> [args]`.
@@ -105,7 +105,7 @@ agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
 
 ## opencode notes
 
-- The 21 workflow steps are `/`-commands from `.opencode/commands/`
+- The 22 workflow steps are `/`-commands from `.opencode/commands/`
   (same names as the prompt stems); subagents live in `.opencode/agents/`.
 - `agent_workflow.py command opencode <name> [args]` prints the same
   invocation from the canonical `.github/prompts/` metadata.

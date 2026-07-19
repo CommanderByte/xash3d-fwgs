@@ -81,7 +81,8 @@ decision session), then scaffold. `whereami` reports the blocking rows.
   over grep dumps for symbol navigation — compile-accurate and far
   cheaper to interpret.
 - **Subagents verify, they don't explore.** Spawn `xash3dpp-reviewer`,
-  `abi-watchdog`, or `legacy-parity-auditor` for verification gates; do
+  `abi-watchdog`, `legacy-parity-auditor`, or `extension-door-auditor` for
+  verification gates; do
   exploratory reading inline where you can act on it. **A gate finding —
   and any fix it suggests — is a hypothesis:** verify it against the legacy
   reference before acting, especially for parity-sensitive code. A
@@ -274,9 +275,11 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `dependency-graph` | Verify EngineContext init order has no cycles | No |
 | `bisect` | Find the commit that introduced a regression | No |
 | `limits-audit` | Check all magic numbers are in limits.hpp | No |
+| `audit-extension-doors` | Verify a subsystem's Extension axes (Q-21) section against the current north-star set | No |
 | `abi-watchdog` | Verify xash3dpp/ does not conflict with frozen ABI surfaces | No |
 | `xash3dpp-reviewer` | Full correctness + ABI safety review of xash3dpp/ code | No |
 | `legacy-parity-auditor` | Adversarial behavioural-parity audit vs the legacy C reference, before the finish-subsystem gate | No |
+| `extension-door-auditor` | Verify a subsystem's extension posture (Q-21): axes complete, claims match code, door-debt recorded | No |
 
 ---
 

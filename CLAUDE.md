@@ -46,8 +46,8 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 - `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-22 register;
   §3a is the boundary-spec OQ crosswalk (blocks-scaffold rows gate work);
   §4.3 applies to all new code.
-- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (21) +
-  `.github/agents/*.agent.md` (3) — the single source of truth for the
+- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (22) +
+  `.github/agents/*.agent.md` (4) — the single source of truth for the
   workflow. Adapters in `.claude/commands|agents/` and
   `.opencode/commands|agents/` are thin delegators — **edit the `.github/`
   originals, never the adapters**.
@@ -88,10 +88,10 @@ agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
 
 ## Claude Code specifics
 
-- Slash commands (thin adapters over `.github/prompts/`, all 21):
+- Slash commands (thin adapters over `.github/prompts/`, all 22):
   /analyse-modernization, /analyse-subsystem, /analyse-threading,
-  /analyse-utility-consolidation, /assess-impact, /bisect,
-  /dependency-graph, /detail-audit, /document-architecture,
+  /analyse-utility-consolidation, /assess-impact, /audit-extension-doors,
+  /bisect, /dependency-graph, /detail-audit, /document-architecture,
   /finish-subsystem, /implement-audit, /init, /limits-audit,
   /migrate-to-memory, /plan-implementation, /pre-pr, /retriever,
   /scaffold-subsystem, /status-and-next, /sweep-module, /write-unit-tests.
@@ -99,7 +99,8 @@ agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
   `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py list` or
   `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command claude <name> [args]`.
 - Subagent types: `xash3dpp-reviewer`, `abi-watchdog`,
-  `legacy-parity-auditor` (charters in `.github/agents/`).
+  `legacy-parity-auditor`, `extension-door-auditor` (charters in
+  `.github/agents/`).
 - Commit trailer: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - After editing `.mcp.json`, restart the session for MCP changes to apply.
 - Claude Code reads `.mcp.json` directly; the `xash-tools` server is pinned
