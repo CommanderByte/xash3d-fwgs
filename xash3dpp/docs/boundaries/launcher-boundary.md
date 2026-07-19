@@ -155,7 +155,8 @@ ______________________________________________________________________
 | **P-4** typed introspection | N/A | No state to introspect. (The flavor/mode switch above surfaces *into* `HostArgs`, which host owns — not a launcher query surface) |
 | **P-5** narrowest-state signatures | **Yes (already)** | `get_arg`/`has_flag` take the narrowest inputs (`argc`, `argv`, key); the entry hands `Host` exactly one `HostArgs` |
 | **P-6** services are satellites | N/A | The launcher is the top-level executable, not a satellite |
-| **P-7** over-aligned / allocator hooks | N/A | No allocation |
+| **P-7** pool-owned RAII lifecycle | N/A | No allocation of any kind (the answer is unchanged from this row's earlier "over-aligned alloc" phrasing — the retired axis wording is corrected 2026-07-19) |
+| **P-8** annotation discipline | **Yes — by-role posture recorded (HB-9)** | Zero `assert_thread_role` sites is the DESIGN: the launcher IS the Main provider (`register_thread_role(Main)` is its first statement) and owns no mutable state to guard. Recorded so the absence is never misread as an enforcement gap |
 | **G-3 / G-4 / G-5** | N/A | No debug-thread, overlay, or scripting surface; the launcher hands off before any such consumer exists |
 
 **Net verdict:** the launcher owes **no new seam**. Its only extension relevance
