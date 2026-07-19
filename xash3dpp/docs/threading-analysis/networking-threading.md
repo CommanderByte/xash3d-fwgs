@@ -36,7 +36,7 @@ The networking subsystem is designed for **single-thread I/O** on the
 Enforcement is **documentation-only** today: there is no `assert_main_thread`
 or thread-role debug check at any public entry point. The `@thread-safety:
 T_NetIO-ready` markers on `get_packet` / `send_packet`
-([networking.hpp:100, 108](../../include/xash3dpp/networking/networking.hpp))
+([networking.hpp:101, 109](../../include/xash3dpp/networking/networking.hpp))
 are the only inline annotations.
 
 A separate observability surface — `NetworkContext::stats()` — is **safe to
@@ -65,12 +65,12 @@ read concurrently from any thread** because every Tier-1 counter is
 
 | Symbol | File | Class | Notes |
 |--------|------|-------|-------|
-| `NetworkContext::Impl::loopback` | `src/networking/context_impl.hpp` | Race-shared | Mutable dual-ring buffer; no internal lock. Documented as caller-synchronised; relies on `T_NetIO` confinement. |
-| `NetworkContext::Impl::packet_pool` | `src/networking/context_impl.hpp` | Race-shared | Free-stack allocator state; no internal lock. Caller-synchronised. |
-| `NetworkContext::Impl::lag_queues[2]` | `src/networking/context_impl.hpp` | Race-shared | Mutable deque per side; no lock. Caller-synchronised. |
-| `NetworkContext::Impl::reassemblers[2]` | `src/networking/context_impl.hpp` | Race-shared | Per-side split-reassembly tables; no lock. Caller-synchronised. |
+| `NetworkContext::Impl::loopback` | `include/xash3dpp/private/networking/context_impl.hpp` | Race-shared | Mutable dual-ring buffer; no internal lock. Documented as caller-synchronised; relies on `T_NetIO` confinement. |
+| `NetworkContext::Impl::packet_pool` | `include/xash3dpp/private/networking/context_impl.hpp` | Race-shared | Free-stack allocator state; no internal lock. Caller-synchronised. |
+| `NetworkContext::Impl::lag_queues[2]` | `include/xash3dpp/private/networking/context_impl.hpp` | Race-shared | Mutable deque per side; no lock. Caller-synchronised. |
+| `NetworkContext::Impl::reassemblers[2]` | `include/xash3dpp/private/networking/context_impl.hpp` | Race-shared | Per-side split-reassembly tables; no lock. Caller-synchronised. |
 | `Netchan::Impl::*` | `src/networking/netchan.cpp` | Race-shared | Outgoing sequence, reliable buffer, `outgoing_fragments[2]`, `incoming_streams[2]`, `frag_offset[2]`. No lock — every method requires single-thread access. |
-| `NetworkContext::Impl::os_sockets[2]` | `src/networking/context_impl.hpp` | Lifecycle-race | Opened/closed by `config()` / `shutdown()`; data-race with any concurrent `get_packet`/`send_packet` not explicitly prevented (caller-synchronised by convention). |
+| `NetworkContext::Impl::os_sockets[2]` | `include/xash3dpp/private/networking/context_impl.hpp` | Lifecycle-race | Opened/closed by `config()` / `shutdown()`; data-race with any concurrent `get_packet`/`send_packet` not explicitly prevented (caller-synchronised by convention). |
 | `MasterListClient::{ctx_, cfg_}` | `src/networking/master_list.cpp` | Race-shared | Reference holders only; `heartbeat()` / `send_shutdown()` route through `NetworkContext::send_packet`, inheriting its T_NetIO confinement requirement. |
 | `DeltaTables::Impl::tables[8]` | `src/networking/delta/delta_tables.cpp` | Race-shared | Field vectors, encoder callbacks, `initialized` flags; no lock. Every `DeltaTables` method except `stats()` is caller-synchronised — the owning subsystem (server per game instance, client per session) serialises init/parse/encode/decode. Custom-encode callbacks additionally mutate `DeltaField::inactive` in place during writes. |
 | `DeltaTables::Impl::stats` | `src/networking/delta/delta_tables.cpp` | Safe-RO | `DeltaStats` Tier-1 relaxed atomics (`tables_parsed`, `structs_encoded/decoded`); `stats()` is the only delta observation point that may be read from any thread. |

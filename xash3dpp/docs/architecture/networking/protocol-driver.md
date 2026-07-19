@@ -13,6 +13,7 @@ the Q-12 per-subsystem policy: compat decisions are made per channel at
 connection time, not engine-wide.
 
 Two interfaces form the seam:
+
 - `IProtocolDriver` — the per-channel policy (split format, delta table set)
 - `IProtocolDriverRegistry` — a factory registry for looking up drivers by
   wire protocol number
@@ -26,6 +27,7 @@ enum class SplitFormat : std::uint8_t { Xash, GoldSrc };
 ```
 
 Selects the on-wire fragment header shape for a given channel:
+
 - `Xash` — 10-byte `SplitHeaderXash`, 16-bit packed `packet_id`
 - `GoldSrc` — 9-byte `SplitHeaderGoldSrc`, 8-bit nibble-packed `packet_id`
 
@@ -111,8 +113,9 @@ protocol versions implement this and pass it via `NetworkInitParams`.
 |--------|---------|-------|
 | `resolve(protocol)` | `IProtocolDriver *` | Non-owning; returns nullptr for unknown protocol numbers |
 
-When `NetworkInitParams::protocol_registry` is `nullptr`, only the built-in
-`GoldSrcProtocolDriver` is available.
+When `NetworkInitParams::protocol_registry` is `nullptr`, the built-in
+default registry serves **both** shipped drivers: `XashProtocolDriver`
+(protocol 49) and `GoldSrcProtocolDriver` (protocol 48).
 
 ---
 
@@ -121,7 +124,7 @@ When `NetworkInitParams::protocol_registry` is `nullptr`, only the built-in
 The default driver, always linked into `xash3dpp_networking`. Implements
 `IProtocolDriver` for the GoldSrc wire protocol.
 
-```
+```text
 name()          → "goldsrc"
 split_format()  → SplitFormat::GoldSrc
 delta_tables()  → DeltaTableSet::GoldSrc
@@ -145,10 +148,12 @@ differences. These are not part of the public API; they are called by the
 split-packet producers and decoders in Layer 2.
 
 **`compat_goldsrc.cpp`**:
+
 - Nibble-pack/unpack helpers for `SplitHeaderGoldSrc::packet_id`
 - Overflow guard using `goldsrc_nibble_max` (= 15)
 
 **`compat_xash.cpp`**:
+
 - Byte-pack/unpack helpers for `SplitHeaderXash::packet_id`
   (`high_byte = number`, `low_byte = count`)
 
@@ -170,8 +175,9 @@ for their own thread safety. The built-in GoldSrc driver has no mutable state.
 
 ## Error handling
 
-`IProtocolDriverRegistry::find_driver()` returns `nullptr` for unknown protocol
-numbers — callers must check before dereferencing.
+`IProtocolDriverRegistry::resolve()` returns `nullptr` for unknown protocol
+numbers — callers must check before dereferencing. (It is the registry's only
+lookup method; an earlier revision named a nonexistent `find_driver()`.)
 
 ## See also
 

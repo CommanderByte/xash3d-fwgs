@@ -218,7 +218,7 @@ DeltaTables::~DeltaTables() = default;
 DeltaTables::DeltaTables( DeltaTables && ) noexcept            = default;
 DeltaTables &DeltaTables::operator=( DeltaTables && ) noexcept = default;
 
-bool DeltaTables::init( ::xash::filesystem::Filesystem &fs ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
+bool DeltaTables::init( ::xash::filesystem::Filesystem &fs ) noexcept // compliance-allow(thread-assert): sim-thread single-thread caller contract (NOT NetIO — networking-threading.md flip nuance) — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     const std::vector<std::byte> file = fs.load_file( "delta.lst" );
     if( file.empty())
@@ -270,7 +270,7 @@ void DeltaTables::init_client() noexcept
         impl_->initialized = true;
 }
 
-void DeltaTables::clear() noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
+void DeltaTables::clear() noexcept // compliance-allow(thread-assert): sim-thread single-thread caller contract (NOT NetIO — networking-threading.md flip nuance) — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     if( !impl_->initialized )
         return;
@@ -324,7 +324,7 @@ int DeltaTables::find_field( const DeltaField *fields, const char *fieldname ) c
     return -1;
 }
 
-void DeltaTables::set_field( DeltaField *fields, const char *fieldname ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
+void DeltaTables::set_field( DeltaField *fields, const char *fieldname ) noexcept // compliance-allow(thread-assert): sim-thread single-thread caller contract (NOT NetIO — networking-threading.md flip nuance) — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     DeltaTable *dt = impl_->find_struct_by_fields( fields );
     if( !dt || !fieldname || !fieldname[0] )
@@ -356,7 +356,7 @@ void DeltaTables::unset_field( DeltaField *fields, const char *fieldname ) noexc
     }
 }
 
-void DeltaTables::set_field_by_index( DeltaField *fields, int field_number ) noexcept // compliance-allow(thread-assert): T_NetIO single-thread caller contract — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
+void DeltaTables::set_field_by_index( DeltaField *fields, int field_number ) noexcept // compliance-allow(thread-assert): sim-thread single-thread caller contract (NOT NetIO — networking-threading.md flip nuance) — delta-table state has no internal sync; owning subsystem serialises init/parse/encode (networking-threading.md)
 {
     DeltaTable *dt = impl_->find_struct_by_fields( fields );
     if( !dt || field_number < 0
