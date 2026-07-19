@@ -601,6 +601,7 @@ not new seams.
 | **G-4** expanded in-game debugging | Consumer via P-4 | Overlay/console frontends tick against the frame edge and read the typed `Host::stats()`/`status()` surface; extend `HostStats`, never poke `Impl` |
 | **P-5** narrowest-state signatures | **Yes — orchestrator carve-out** | `RunFrame`/`init`/`shutdown` legitimately span the whole host aggregate (Q-22 orchestrator exception); every other public entry (`realtime`, `stats`, `status`, `signal_frame_abort`) touches only the narrow state it names |
 | **P-7** pool-owned RAII lifecycle | **N/A — pimpl only** | Host's only heap object is the sanctioned `unique_ptr<Impl>` pimpl (the P-7 carve-out); it pool-allocates nothing (`create_<thing>` idiom has no site). Injected subsystems are owned by `EngineContext` by value |
+| **P-8** annotation discipline | **Yes — satisfied (2026-07-19)** | The Threading subsection below carries the full adjudication; row added for the uniform table convention (`q21_scan` gate): every host mutator now asserts Main (the HB-3 closure — 9 sites / 3 files per `census`), headers carry `@thread-safety:`, and the one `compliance-allow(di-global-ref)` (`g_engine_ctx`) is inline-annotated |
 
 **Net verdict:** host owes **no new seam** — its job is *preservation*: keep one
 frame edge, one sanctioned global, and the `cbuf_execute` slot ready to become

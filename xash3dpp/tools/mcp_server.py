@@ -24,6 +24,7 @@ from mcp.server.fastmcp import FastMCP  # noqa: E402
 import xtools  # noqa: E402
 from xtools import buildtools, checks, mdlint, proc, report, rules, scan, state  # noqa: E402
 from xtools import crosswalk as crosswalk_mod  # noqa: E402
+from xtools import q21  # noqa: E402
 from xtools import sync as xsync  # noqa: E402
 from xtools import vsenv  # noqa: E402
 
@@ -39,7 +40,7 @@ mcp = FastMCP("xash-tools")
 
 _XTOOLS_DIR = Path(__file__).resolve().parent / "xtools"
 _RELOAD_ORDER = [xtools, proc, report, vsenv, rules, scan,
-                 buildtools, checks, mdlint, crosswalk_mod, state, xsync]
+                 buildtools, checks, mdlint, q21, crosswalk_mod, state, xsync]
 
 
 def _xtools_mtimes() -> dict[str, float]:
@@ -241,6 +242,28 @@ def slice_diff(base: str = "", include_patch: bool = False,
     _maybe_reload()
     return state.slice_diff(base=base, include_patch=include_patch,
                             max_patch_lines=max_patch_lines)
+
+
+@mcp.tool()
+def q21_scan() -> dict:
+    """Q-21 axis-coverage scan: every boundary doc's 'Extension axes (Q-21)'
+    section diffed against the CURRENT G-*/P-* set in extension-goals.md
+    (the set is additive). Findings = missing axis rows / missing section;
+    unknown_axes is informational. Mechanical pre-pass for the
+    extension-door-auditor agent. (CLI twin: tools/q21_scan.py.)"""
+    _maybe_reload()
+    return q21.scan()
+
+
+@mcp.tool()
+def census(subsystem: str = "") -> dict:
+    """Per-subsystem ground-truth census: src TU count, assert_thread_role
+    call sites/files, compliance-allow tallies by rule, stub markers, test
+    liveness — the numbers boundary/threading docs quote. Doc refreshes
+    paste from this; audits diff quoted-vs-actual. (CLI twin:
+    tools/census.py.)"""
+    _maybe_reload()
+    return checks.census(subsystem or None)
 
 
 @mcp.tool()

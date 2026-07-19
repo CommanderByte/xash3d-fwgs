@@ -967,6 +967,82 @@ def status_table() -> dict:
     return {"rows": rows, "complete_with_stubs": complete_with_stubs}
 
 
+# --------------------------------------------------------------------------- #
+# census — per-subsystem ground-truth numbers (T2, 2026-07 tooling wave)
+# --------------------------------------------------------------------------- #
+
+_THREAD_ASSERT_CALL_RX = re.compile(
+    r"\bassert_thread_role\s*\(|\bassert_main_thread\s*\(")
+
+
+def _thread_assert_sites(sub: str) -> dict:
+    """Plain assert-CALL census over the subsystem's src TUs (comments
+    blanked) — the number boundary docs quote (e.g. server '92 sites / 26
+    files'), NOT the mutator-gap heuristic `_scan_thread_assert` uses."""
+    sites = 0
+    files: dict[str, int] = {}
+    for path in subsystem_files(sub):
+        if _scope_of(path) != "src":
+            continue
+        n = 0
+        for _, code, _ in code_lines(path):
+            n += len(_THREAD_ASSERT_CALL_RX.findall(code))
+        if n:
+            files[_rel(path)] = n
+            sites += n
+    return {"sites": sites, "files": files}
+
+
+def _tally_allows(text: str) -> dict[str, int]:
+    """Pure: count `compliance-allow(...)` markers by check id; a marker
+    naming several checks (comma list) counts once per named check."""
+    out: dict[str, int] = {}
+    for m in ALLOW_RE.finditer(text):
+        for check in m.group(1).split(","):
+            c = check.strip()
+            if c:
+                out[c] = out.get(c, 0) + 1
+    return out
+
+
+def census(subsystem: str | None = None) -> dict:
+    """Per-subsystem ground-truth numbers the boundary/threading docs keep
+    quoting (and hand-counting, and getting stale — the 2026-07 audit's D1
+    findings were overwhelmingly numbers): src TU count, thread-assert call
+    sites/files, compliance-allow tallies by rule, stub markers, test
+    liveness.  Informational — always 'clean'.  Doc refreshes paste from
+    this; audits diff quoted-vs-actual."""
+    subs = resolve_scope(subsystem)
+    out: dict[str, dict] = {}
+    totals = {"src_tu_count": 0, "assert_sites": 0, "allows": 0,
+              "stub_markers": 0, "test_files": 0, "live_tests": 0}
+    for sub in subs:
+        src_dir = SRC / sub
+        srcs = sorted(src_dir.rglob("*.cpp")) if src_dir.is_dir() else []
+        ta = _thread_assert_sites(sub)
+        allows: dict[str, int] = {}
+        for path in subsystem_files(sub):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for check, n in _tally_allows(text).items():
+                allows[check] = allows.get(check, 0) + n
+        st = stub_scan(sub)
+        out[sub] = {
+            "src_tu_count": len(srcs),
+            "assert_thread_role": ta,
+            "compliance_allows_by_rule": dict(sorted(allows.items())),
+            "stub_markers": {"total": st["todo_count"],
+                             "by_tag": st.get("by_tag", {})},
+            "tests": st["tests"],
+        }
+        totals["src_tu_count"] += len(srcs)
+        totals["assert_sites"] += ta["sites"]
+        totals["allows"] += sum(allows.values())
+        totals["stub_markers"] += st["todo_count"]
+        totals["test_files"] += st["tests"]["files"]
+        totals["live_tests"] += st["tests"]["live"]
+    return {"subsystems": out, "totals": totals}
+
+
 def status_markdown(data: dict) -> str:
     lines = ["| Subsystem | src/ files | include/ | tests/ | Status |",
              "|-----------|------------|----------|--------|--------|"]

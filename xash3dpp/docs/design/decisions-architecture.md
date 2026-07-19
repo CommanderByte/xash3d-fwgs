@@ -942,8 +942,12 @@ document for extension posture. Concretely:
 
 Enforcement is by the workflow surface (the `analyse-subsystem` and
 `analyse-modernization` prompts carry the hooks) and reviewer attention at
-the normal gates; no automated scanner rule yet — add one if a door
-violation ever slips a review.
+the normal gates, PLUS — since 2026-07-19 — the mechanical
+`tools/q21_scan.py` gate: it diffs every boundary doc's "Extension axes"
+table against the current axis set above and exits 1 on a missing row (the
+drift class that produced 56 missing rows in the 2026-07 consolidation
+audit). Claim-vs-code judgment remains with the `extension-door-auditor`
+agent; add further scanner rules if a door violation ever slips a review.
 
 ______________________________________________________________________
 

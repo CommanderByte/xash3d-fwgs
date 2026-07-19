@@ -44,6 +44,11 @@ For every `G-*` goal and `P-*` primitive currently listed in
 `extension-goals.md`, the boundary section must state a verdict. A reasoned
 "none apply" / not-applicable is a valid verdict (Q-21 says so explicitly).
 
+This check is MECHANIZED: `xash3dpp/tools/q21_scan.py` (MCP: xash-tools
+`q21_scan`) parses the section tables and diffs them against the current
+axis set. Run it first and VERIFY its result rather than re-deriving the
+diff by hand; your judgment work is checks 2 and 3.
+
 - Axis with no row/verdict at all → **WARNING** (call out axes newer than
   the section's refresh date explicitly)
 - Blanket "n/a" with no reasoning → **WARNING**

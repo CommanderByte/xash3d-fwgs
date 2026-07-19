@@ -26,15 +26,19 @@ and the output format — lives in
 `.github/agents/extension-door-auditor.agent.md`. **Read that charter first
 and follow it exactly** for the `$ARGUMENTS` subsystem.
 
-Ground the P-3 statics probe mechanically before judging:
+Ground the mechanical halves before judging:
 
 ```powershell
+& .venv\Scripts\python.exe xash3dpp\tools\q21_scan.py --json
 & .venv\Scripts\python.exe xash3dpp\tools\compliance_scan.py $ARGUMENTS --checks all --json
 ```
 
-*(MCP: xash-tools `compliance_scan` with `subsystem="$ARGUMENTS"` — same
-data.)* Use its globals/statics findings as the fact base; the charter's
-judgment calls remain yours.
+*(MCP: xash-tools `q21_scan` / `compliance_scan` with
+`subsystem="$ARGUMENTS"` — same data.)* `q21_scan` IS the charter's
+axis-completeness check (check 1) — read your subsystem's row from its
+`boundaries` map and verify rather than re-derive; `compliance_scan`'s
+globals/statics findings are the P-3 fact base. The charter's judgment
+calls (claim accuracy, door-debt honesty) remain yours.
 
 ---
 
