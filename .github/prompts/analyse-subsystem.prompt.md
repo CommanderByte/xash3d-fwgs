@@ -88,8 +88,10 @@ candidate. Record the verdict (same target / separate target) with one-line rati
 
 ## Extension axes (Q-21)
 Evaluate this subsystem against `docs/design/extension-goals.md`: which goals
-(G-1..G-4) or primitives (P-1..P-6) does it touch, and what seam shape must
-this boundary provide or protect? A reasoned "none apply" is a valid answer.
+(G-n) or primitives (P-n) does it touch, and what seam shape must this
+boundary provide or protect? The axis set is whatever extension-goals.md
+lists AT READ TIME (it is additive — never evaluate against a cached list;
+Q-21 rule). A reasoned "none apply" is a valid answer.
 | Goal / primitive | Applies? | Required seam or door |
 |------------------|----------|-----------------------|
 | ...              | ...      | ...                   |

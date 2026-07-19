@@ -103,8 +103,12 @@ in a brief comment at the top of the implementation stub.
 
 ## Step 1 — Write the boundary doc
 
-Create `xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md` before writing any
-code. Use this template:
+**If `xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md` already exists** (an
+analyse-subsystem pass authored it), SKIP this step — never overwrite or
+restructure an existing spec; the only permitted scaffold-time addition is
+appending the Source-folder-layout note from Step 2. Otherwise create
+`xash3dpp/docs/boundaries/$ARGUMENTS-boundary.md` before writing any code.
+Use this template:
 
 ```markdown
 # <Subsystem> Boundary Spec
