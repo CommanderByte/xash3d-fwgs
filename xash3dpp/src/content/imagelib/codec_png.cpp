@@ -82,8 +82,8 @@ void put_be32( std::vector<std::byte> &v, std::uint32_t x )
 {
     // SAFETY: std::byte* -> const unsigned char* is permitted for object-
     // representation access; miniz reads exactly len caller-bounded bytes, no write.
-    return static_cast<std::uint32_t>( mz_crc32(
-        MZ_CRC32_INIT, reinterpret_cast<const unsigned char *>( s.data() + off ), len ) );
+    const auto *bytes = reinterpret_cast<const unsigned char *>( s.data() + off );
+    return static_cast<std::uint32_t>( mz_crc32( MZ_CRC32_INIT, bytes, len ) );
 }
 
 // True if the four bytes at `off` equal the four-character chunk tag.

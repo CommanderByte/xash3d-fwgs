@@ -316,8 +316,9 @@ the merged-RLE `calc_bones` (transcribed line-for-line from the legacy
 decoder), `calc_rotations`, and the `setup_bones` driver. `IBoneSolver` /
 `BuiltinBoneSolver` is the swappable game-DLL seam (`Server_GetBlendingInterface`
 analog); it is injected at the *server* studio consumers, not at model-load
-time. `StudioView` + its sub-views (`BoneView`, `AnimView`, `SeqDescView`,
-`AttachmentView`, `HitboxView`) are the typed, bounds-safe G-2/P-4 read
+time. `StudioView` + its six sub-views (`BoneView`, `BoneControllerView`,
+`AnimView`, `SeqDescView`, `AttachmentView`, `HitboxView`) are the typed,
+bounds-safe G-2/P-4 read
 surface over the frozen `studiohdr_t` byte image (out-of-range reads return 0,
 untrusted-file-safe).
 
@@ -393,7 +394,13 @@ first parallel workload, and the legacy code is singleton-hostile.
 | **P-4** typed introspection | **Yes — ✅ door OPEN** | `ModelCache::model_infos()` (`{name,type,needload,crc}` per slot) and `StudioView` (typed, bounds-safe read over the frozen `studiohdr_t`) are the shipped `EntityView` analog — no `extern mod_known`, no raw offset poke. This is the G-1/G-3/G-4 query surface |
 | **P-5** narrowest-state signatures | **Yes — ✅ met** | Loaders are free functions over `std::span<const std::byte>` returning `Result<T>`; the bone kernel takes a `BoneSetupInput` + `StudioView`, not a runtime aggregate |
 | **P-6** services are satellites | **Yes — ✅ met** | `xash3dpp_imagelib` is a **separate** CMake target (9 TUs) from `xash3dpp_content` (4 TUs), per the Q-11 verdict; `miniz` is linked PRIVATE to imagelib only |
+| **P-7** pool-owned RAII lifecycle | **N/A — pimpl + values** | `ModelCache` is a pimpl value type (`make_unique<Impl>`, the sanctioned P-7 carve-out); models own their bytes as `std::vector` members; the codecs are stateless. No pool-owned `create_<thing>` object exists — if one ever appears (e.g. a pool-backed model arena) it takes the canonical shape |
+| **P-8** annotation discipline | **Yes — satisfied (denominatored)** | content-threading.md's census (9 `ModelCache` mutator asserts + 3 `ImageDecoder` sites) verified exact by the 2026-07-19 audit; `annotation-coverage` marker classes clean after this pass (the two `InitParams` `@lifetime` tags + the `StudioView::name` `// SAFETY:` landed with it) |
+| **G-1** in-engine MCP service | Consumer via P-4 | MCP model queries read `model_infos()` + `StudioView` — the shipped typed surface; no content-side service code |
 | **G-2** game ABI v2 | **Door-keep, ✅ confined** | The raw `void*` studiohdr handed to game DLLs is produced only at the ABI edge (`ModelCache::studio_extradata` returns `s->bytes().data()`); everywhere else the engine reads through `StudioView`. A v2 ABI can hand a typed `StudioView` instead of the pointer without touching the loaders — the confinement point is one accessor |
+| **G-3** dedicated debug thread | Consumer (see P-2) | An off-main reader consumes the published snapshot (`model_infos()`), never a live `resolve()` ref — the P-2 row's double-buffer bring-up is the entire G-3 obligation here |
+| **G-4** expanded in-game debugging | Consumer via P-4 | Model-cache overlays read the same typed surface (`model_infos()` slots + `StudioView`); nothing content-side beyond keeping it typed |
+| **G-5** scripting runtime | Nothing owed now | §G-5's script surface v0 names no content affordance; a tooling VM would consume the same P-4 typed queries. Revisit only if a script binding wants model queries directly |
 | **Q-12** compat scope | **Yes — door** | A `content::ICompatPolicy` for the GoldSrc WAD / palette / decal / luma quirks (Quake-vs-HL palette classification, gradient decals), link-selected by `XASH_GOLDSRC_COMPAT`. The palette machinery (`palette.cpp`) already isolates the two built-in tables; the compat seam wraps the quirk *selection*, not the tables |
 
 ______________________________________________________________________

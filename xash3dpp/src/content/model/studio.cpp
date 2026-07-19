@@ -172,6 +172,8 @@ std::string_view StudioView::name() const noexcept
 {
     if( data_.size() < kOffName + 64 )
         return {};
+    // SAFETY: std::byte* -> const char* object-representation read of the
+    // bounds-checked char[64] name field; scanned below, never written.
     const char *p = reinterpret_cast<const char *>( data_.data() + kOffName );
     std::size_t n = 0;
     while( n < 64 && p[n] != '\0' )

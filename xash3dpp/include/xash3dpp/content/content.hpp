@@ -48,10 +48,10 @@ struct IModelPostProcess
 
 struct InitParams {
     // Model / seqgroup / external-texture file loads.
-    xash::filesystem::Filesystem& filesystem;
+    xash::filesystem::Filesystem& filesystem;   // @lifetime: caller (outlives the ModelCache; stored in Impl at init)
     // Renderer / dedicated-server-physics post-load callback (OQ-4). Null on a
     // headless / test load — the parse still runs, the hook is simply skipped.
-    IModelPostProcess* post_process = nullptr;
+    IModelPostProcess* post_process = nullptr;  // @lifetime: caller (borrowed hook; outlives the ModelCache or stays null)
     // TODO(Chunk 7): imagelib::ImageDecoder& for skin/miptex decode (O-2);
     //   the map_loader brush-dispatch seam (boundary OQ-3).
 };
