@@ -485,4 +485,29 @@ inline constexpr std::size_t studio_max_controllers = 32; // matches legacy MAXS
 inline constexpr std::size_t studio_max_controllers = XASH_LIMIT_STUDIO_MAX_CONTROLLERS;
 #endif
 
+// save subsystem
+// ON-DISK FORMAT constants baked into the .sav/.HL1-3 container (a file is
+// written and read against these exact bounds, and by external tools), NOT
+// tunable implementation budgets.  Legacy reference: engine/server/sv_save.c.
+// NOTE: max level connections (16) is NOT redefined here — it is the frozen ABI
+// value ::xash::abi::k_max_level_connections (abi/eiface.hpp:149, eiface.h:318,
+// the SAVERESTOREDATA.levelList[] bound); save code uses that constant directly.
+#ifndef XASH_LIMIT_SAVE_HEAP_SIZE
+inline constexpr std::size_t save_heap_size = 0x400000; // SAVE_HEAPSIZE — 4 MiB working buffer (sv_save.c:36)
+#else
+inline constexpr std::size_t save_heap_size = XASH_LIMIT_SAVE_HEAP_SIZE;
+#endif
+
+#ifndef XASH_LIMIT_SAVE_HASH_STRINGS
+inline constexpr std::size_t save_hash_strings = 0xFFF; // SAVE_HASHSTRINGS — 4095 max unique tokens (sv_save.c:37)
+#else
+inline constexpr std::size_t save_hash_strings = XASH_LIMIT_SAVE_HASH_STRINGS;
+#endif
+
+#ifndef XASH_LIMIT_SAVE_CONTAINER_NAME_FIELD
+inline constexpr std::size_t save_container_name_field = 260; // FORMAT field width (NOT an OS path limit): zero-padded embedded-record name[MAX_OSPATH] in each .sav container record (sv_save.c:497,647-706)
+#else
+inline constexpr std::size_t save_container_name_field = XASH_LIMIT_SAVE_CONTAINER_NAME_FIELD;
+#endif
+
 } // namespace xash::limits
