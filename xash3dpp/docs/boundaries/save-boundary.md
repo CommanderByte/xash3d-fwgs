@@ -166,6 +166,15 @@ The four primitives + `SV_GetSaveComment` sit **behind**
 | sv_save.c:1858-1888 | Global-entity **merge**: pre-read classname/globalname, `SV_FindGlobalEntity`, `pfnRestore(...,1)`; on failure repoint the table at the existing entity + `FL_KILLME` | `pNewEnt = SV_FindGlobalEntity( tmpVars.classname, tmpVars.globalname ); … if( svgame.dllFuncs.pfnRestore( pent, pSaveData, 1 ) > 0 ) … else { … SetBits( pent->v.flags, FL_KILLME );` | high |
 | sv_save.c:1900-1910 | Post-transfer pruning: transferred non-player-in-solid ⇒ `FL_KILLME`; moved entity marked `FENTTABLE_REMOVED` | `if( !FBitSet( pTable->flags, FENTTABLE_PLAYER ) && EntityInSolid( pent )) … SetBits( pent->v.flags, FL_KILLME ); … else { pTable->flags = FENTTABLE_REMOVED; movedCount++;` | high |
 
+- **S8.3 writer dependency** (sv_save.c:1541-1559, the `SaveGameState` row
+  loop that builds `ENTITYTABLE` rows before calling `pfnSave`): the loop
+  reads `pTable->pent` directly — `SV_IsValidEdict( pTable->pent )` gates
+  the `pfnSave` call, and `FBitSet( pTable->pent->v.flags, FL_CLIENT )` sets
+  `FENTTABLE_PLAYER`. The S8.3 writer must therefore populate `row(i).pent`
+  from the edict arena before invoking `pfnSave` (both FENTTABLE_PLAYER
+  tagging and validity screening depend on it); `EntityTable::init()`
+  leaves `pent` null, matching the read side.
+
 ### Format-level quirks (compat-relevant)
 
 | legacy file:line | claim | verbatim evidence | confidence |

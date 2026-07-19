@@ -6,6 +6,9 @@
 #include <xash3dpp/private/save/save_buffer.hpp>
 
 #include <xash3dpp/core/thread_role.hpp>
+#include <xash3dpp/utilities/string.hpp>
+
+#include <array>
 
 namespace xash::save {
 
@@ -17,6 +20,28 @@ namespace
     return static_cast<std::uint16_t>(
         static_cast<std::uint16_t>( std::to_integer<std::uint8_t>( b[0] ) ) |
         ( static_cast<std::uint16_t>( std::to_integer<std::uint8_t>( b[1] ) ) << 8 ) );
+}
+
+// Little-endian int32 encode/decode for the block-header field-count payload.
+[[nodiscard]] std::array<std::byte, 4> encode_i32_le( std::int32_t v ) noexcept
+{
+    const auto u = static_cast<std::uint32_t>( v );
+    return {
+        static_cast<std::byte>( u & 0xFFu ),
+        static_cast<std::byte>( ( u >> 8 ) & 0xFFu ),
+        static_cast<std::byte>( ( u >> 16 ) & 0xFFu ),
+        static_cast<std::byte>( ( u >> 24 ) & 0xFFu ),
+    };
+}
+
+[[nodiscard]] std::int32_t decode_i32_le( std::span<const std::byte> b ) noexcept
+{
+    const auto u =
+        static_cast<std::uint32_t>( std::to_integer<std::uint8_t>( b[0] ) ) |
+        ( static_cast<std::uint32_t>( std::to_integer<std::uint8_t>( b[1] ) ) << 8 ) |
+        ( static_cast<std::uint32_t>( std::to_integer<std::uint8_t>( b[2] ) ) << 16 ) |
+        ( static_cast<std::uint32_t>( std::to_integer<std::uint8_t>( b[3] ) ) << 24 );
+    return static_cast<std::int32_t>( u );
 }
 } // namespace
 
@@ -65,6 +90,41 @@ SaveBufferSink::write_field_record( std::uint16_t token_idx,
     if ( auto r = buf_->write_i16( static_cast<std::int16_t>( token_idx ) ); !r )
         return r;
     return buf_->write_bytes( payload );
+}
+
+// ---------------------------------------------------------------------------
+// Named field-block header (Chunk 8, S8.2)
+// ---------------------------------------------------------------------------
+
+Result<void>
+write_block_header( IFieldSink &sink, TokenTable &tokens, std::string_view block_name,
+                    std::int32_t field_count ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    auto tok = tokens.insert( block_name );
+    if ( !tok )
+        return std::unexpected( tok.error() );
+
+    return sink.write_field_record( *tok, encode_i32_le( field_count ) );
+}
+
+Result<std::int32_t>
+read_block_header( std::span<const std::byte> data, std::size_t &offset,
+                   const TokenTable &tokens, std::string_view expected_block_name ) noexcept
+{
+    auto rec = next_field_record( data, offset );
+    if ( !rec )
+        return std::unexpected( rec.error() );
+
+    if ( rec->payload.size() != sizeof( std::int32_t ) )
+        return std::unexpected( SaveError::BadFieldRecord );
+
+    const std::string_view name = tokens.token_at( rec->token_idx );
+    if ( !::xash::utilities::ci_equal( name, expected_block_name ) )
+        return std::unexpected( SaveError::CorruptHeader );
+
+    return decode_i32_le( rec->payload );
 }
 
 } // namespace xash::save

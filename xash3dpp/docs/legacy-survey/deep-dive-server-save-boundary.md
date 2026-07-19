@@ -175,8 +175,10 @@ VERSION IS FROZEN AT 138", eiface.h:286):
 - `ENTITYTABLE` (:306-316): id, `edict_t *pent`, location, size, flags,
   string_t classname. Flag bits `FENTTABLE_PLAYER/REMOVED/MOVEABLE/GLOBAL`
   = top 4 bits (:320-323). Serialized to disk via `gEntityTable`
-  TYPEDESCRIPTION (sv_save.c:130-137) — `pent` is not written; classname
-  goes through the token table as FIELD_STRING.
+  TYPEDESCRIPTION (sv_save.c:130-137) — `pent` is not written; classname is
+  FIELD_STRING, and its VALUE payload is the null-terminated text itself;
+  the token table carries only field/block names (corrected 2026-07-19,
+  S8.2 parity audit).
 - `SAVERESTOREDATA` (:325-346): buffer cursor pair, size/bufferSize, token
   table (`pTokens`/tokenCount/tokenSize), `currentIndex`,
   `pTable`/tableCount, inline `levelList[16]`, landmark fields

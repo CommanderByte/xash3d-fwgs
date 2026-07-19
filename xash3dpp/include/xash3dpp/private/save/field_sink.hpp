@@ -25,10 +25,12 @@
 // — assert-free by design so it stays usable in a no-DLL parse.
 
 #include <xash3dpp/save/errors.hpp>
+#include <xash3dpp/private/save/token_table.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 namespace xash::save {
 
@@ -89,5 +91,50 @@ public:
 private:
     SaveBuffer *buf_; // @lifetime: caller — borrowed, must outlive this sink.
 };
+
+// ---------------------------------------------------------------------------
+// Named field-block header (Chunk 8, slice S8.2)
+// ---------------------------------------------------------------------------
+//
+// Every named field-block (`pfnSaveWriteFields`/`pfnSaveReadFields` call —
+// "GameHeader", "Save Header", "ETABLE", "ADJACENCY", ...) begins with ONE
+// record using the *exact same* short-size/short-token/payload shape as an
+// ordinary field record: the token names the BLOCK (not a field), and the
+// 4-byte payload is a little-endian int32 field count.  Reconstructed from
+// SV_GetSaveComment's independent hand-parse of the .sav root GameHeader
+// block, which reads this shape and then jumps straight to the first real
+// field record (sv_save.c:2390-2407 header pair + fieldcount-skip target;
+// deep-dive "Per-field record encoding").  A block header is therefore just
+// write_field_record()/next_field_record() specialised to a 4-byte int32
+// payload — no new wire shape, only a naming convention.
+//
+// `field_count` is the number of field records the caller is ABOUT TO WRITE
+// for this block, not necessarily a fixed descriptor size: HL-SDK
+// `CSave::WriteFields` DataEmpty semantics omit an all-zero/empty field from
+// the stream entirely, so a caller (e.g. EntityTable::serialize) must pass
+// the post-skip ACTUAL count it is about to emit, computed before calling
+// this function — write_block_header itself has no opinion on why the count
+// is what it is; it only frames the header record.
+//
+// @thread-safety: write_block_header mutates `tokens` and `sink` -> asserts
+// T_Main (matching IFieldSink/TokenTable::insert).  read_block_header is a
+// pure parse over a caller span and a const TokenTable -> assert-free, so it
+// stays usable standalone (SV_GetSaveComment-style), matching
+// next_field_record.
+
+[[nodiscard]] Result<void>
+write_block_header( IFieldSink &sink, TokenTable &tokens, std::string_view block_name,
+                    std::int32_t field_count ) noexcept;
+
+// Parses one block header at `data[*offset]`, advances `offset` past it, and
+// validates the block's NAME token resolves (case-insensitively) to
+// `expected_block_name`.  Errors:
+//   • TruncatedBlock / BadFieldRecord — same as next_field_record.
+//   • BadFieldRecord  — payload is not exactly 4 bytes (not an int32).
+//   • CorruptHeader   — the block name does not match `expected_block_name`
+//     (mirrors SV_GetSaveComment's own "<missing GameHeader>" name check).
+[[nodiscard]] Result<std::int32_t>
+read_block_header( std::span<const std::byte> data, std::size_t &offset,
+                   const TokenTable &tokens, std::string_view expected_block_name ) noexcept;
 
 } // namespace xash::save

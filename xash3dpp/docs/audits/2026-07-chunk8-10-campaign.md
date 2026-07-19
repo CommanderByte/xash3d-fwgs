@@ -77,6 +77,11 @@ P-3 exception class for no gain.
 | 13 | A | `joy_axis_binding` doc-string trigger-label inversion | R10.3 | NOTE | recorded as legacy doc bug (Quirk 8), not behaviour |
 | 14 | A | `Platform_Input`/`Platform_SetTimer` scoping ambiguity | R10.2 | NOTE | adjudicated: dedicated console text / platform time surface — both out of input |
 | 15 | B | OQ-6 sufficiency for restore | campaign | NOTE | confirmed: load-time string_t offsets transient, never persisted — §3a note |
+| 16 | C/S8.2 | FIELD_STRING value encoded as token index (deep-dive §4 loose line over-read) | parity gate | **DIVERGENCE (bidirectionally load-breaking)** | FIXED pre-commit: payload = null-terminated TEXT, tokens are NAMES only; deep-dive line corrected at source; cross-engine witness test added (hand-built legacy bytes deserialize) |
+| 17 | C/S8.2 | All-zero fields not skipped (DataEmpty semantics missing) | parity gate | DIVERGENCE | FIXED pre-commit: has_* guards on all 5 ETABLE fields; skipped fields intern no name token |
+| 18 | C/S8.2 | Block-header count hardcoded 5, not actualCount | parity gate | DIVERGENCE | FIXED pre-commit: computed post-skip count |
+| 19 | C/S8.2 | entry_for pent→row scan = unevidenced surface (brief mis-cited EntryInTable) | parity gate | ADVISORY | dropped (door rules: no engine-side consumer; pent→index is the game DLL's CSave::EntityIndex) |
+| 20 | C/S8.2 | S8.3 writer must populate row.pent before pfnSave | parity gate | NOTE | recorded in save-boundary (FENTTABLE_PLAYER tagging + validity screening depend on it) |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
 

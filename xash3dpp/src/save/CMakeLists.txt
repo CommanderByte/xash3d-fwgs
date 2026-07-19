@@ -10,6 +10,7 @@ add_library(xash3dpp_save STATIC
     token_table.cpp
     save_buffer.cpp
     field_sink.cpp
+    entity_table.cpp
 )
 
 target_include_directories(xash3dpp_save
