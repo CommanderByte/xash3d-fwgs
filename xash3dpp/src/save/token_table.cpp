@@ -144,4 +144,21 @@ char **TokenTable::abi_pointers() noexcept
     return abi_ptrs_.data();
 }
 
+void TokenTable::sync_from_abi() noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    for ( std::size_t i = 0; i < token_count_; ++i )
+    {
+        const char *p = abi_ptrs_[i];
+        if ( p == nullptr || p[0] == '\0' )
+            continue; // NULL / empty slot — unoccupied
+        // An occupied slot the DLL left pointing at our own storage (idempotent
+        // re-find) already matches; a genuinely DLL-interned pointer is copied
+        // in.  assign() is a no-op-cost self-assign in the former case.
+        if ( slots_[i].empty() || slots_[i] != p )
+            slots_[i].assign( p );
+    }
+}
+
 } // namespace xash::save

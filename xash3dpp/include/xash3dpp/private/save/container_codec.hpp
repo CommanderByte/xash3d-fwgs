@@ -140,13 +140,14 @@ struct EmbeddedFile
 };
 
 // One extracted record (read side).  `name` is the embedded name VERBATIM
-// (extension-blind — SAV-OQ-1 "Preserved quirk, load-bearing"); `data` is a
-// borrowed view into the source image.  @lifetime: the image span passed to
-// read_sav_container.
+// (extension-blind — SAV-OQ-1 "Preserved quirk, load-bearing").  `data` OWNS a
+// copy of the record's bytes — the record must outlive the transient on-disk
+// image the file-backed load_sav_file wrapper reads into a local buffer (S8.7:
+// borrowing the image here dangled once the wrapper returned).
 struct ExtractedRecord
 {
-    std::string name;
-    std::span<const std::byte> data{};
+    std::string                name;
+    std::vector<std::byte>     data;
 };
 
 // ---------------------------------------------------------------------------

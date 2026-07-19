@@ -78,6 +78,18 @@ public:
     // the token table for buffer reuse.
     void reset() noexcept;
 
+    // Chunk 8, slice S8.7 (live game-DLL bridge).  A real `pfnSave`/`pfnRestore`
+    // writes field-record bytes straight into the ABI window via
+    // SAVERESTOREDATA.pCurrentData and advances SAVERESTOREDATA.size itself
+    // (HL-SDK CSave::BufferData) — bypassing write_bytes(), so `cursor_`/
+    // `data_size_` are unaware of the growth.  After such a call, adopt the DLL's
+    // new total (`new_size` == SAVERESTOREDATA.size) as the valid-data extent so
+    // the surrounding sink-based writes/reads (header/ETABLE blocks) continue
+    // sequentially past the entity payload.  new_size must be <= capacity() and
+    // >= the current cursor (a DLL never rewinds); rejected with BufferExhausted
+    // otherwise (reject-gracefully).
+    [[nodiscard]] Result<void> commit_abi_write( std::size_t new_size ) noexcept;
+
     // Move the read/write cursor.  pos must be <= capacity.
     [[nodiscard]] Result<void> seek( std::size_t pos ) noexcept;
 

@@ -179,6 +179,16 @@ void SaveBuffer::reset() noexcept
     tokens_.clear();
 }
 
+Result<void> SaveBuffer::commit_abi_write( std::size_t new_size ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+    if ( new_size > buffer_size_ || new_size < cursor_ )
+        return std::unexpected( SaveError::BufferExhausted );
+    data_size_ = new_size;
+    cursor_    = new_size;
+    return {};
+}
+
 Result<void> SaveBuffer::seek( std::size_t pos ) noexcept
 {
     ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );

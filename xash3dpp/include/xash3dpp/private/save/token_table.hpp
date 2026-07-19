@@ -104,6 +104,20 @@ public:
     // storage and are valid until the next mutating call or table destruction.
     [[nodiscard]] char **abi_pointers() noexcept;
 
+    // Chunk 8, slice S8.7 (live game-DLL bridge).  During a real `pfnSave`, the
+    // game DLL interns field/block NAMES by hashing straight into the raw
+    // SAVERESTOREDATA.pTokens window (HL-SDK CSaveRestoreBuffer::TokenHash,
+    // sv_save.c token system) — it writes a `char*` into a free slot of the
+    // array last handed out by abi_pointers(), never calling insert().  This
+    // adopts every such DLL-written slot back into the owned slot storage so the
+    // subsequent StoreHashTable flatten() (level_state_writer) emits it.  A slot
+    // the DLL left pointing at our OWN slot string (an idempotent re-find) is a
+    // no-op; a genuinely new pointer is copied in.  Call once after each pfnSave
+    // (and after abi_pointers() was handed to the DLL).  Mutating -> asserts
+    // T_Main.  Reject-gracefully: a slot index past token_count() cannot occur
+    // (the array IS token_count() wide).
+    void sync_from_abi() noexcept;
+
 private:
     std::size_t              token_count_;
     // @lifetime: TokenTable — owned token strings; slot i empty() == NULL.

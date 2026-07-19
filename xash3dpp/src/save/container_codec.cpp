@@ -224,7 +224,11 @@ read_sav_container( std::span<const std::byte> image, IRestoreGlobalState *globa
         while ( len < name_bytes.size() && name_bytes[len] != std::byte{ 0 } )
             ++len;
         rec.name.assign( reinterpret_cast<const char *>( name_bytes.data() ), len );
-        rec.data = image.subspan( cursor, static_cast<std::size_t>( file_size ) );
+        // Own a copy (see ExtractedRecord doc): the caller-visible record must
+        // survive the transient on-disk image the load_sav_file wrapper frees.
+        const std::span<const std::byte> rec_bytes =
+            image.subspan( cursor, static_cast<std::size_t>( file_size ) );
+        rec.data.assign( rec_bytes.begin(), rec_bytes.end() );
         cursor += static_cast<std::size_t>( file_size );
 
         out.records.push_back( std::move( rec ) );
