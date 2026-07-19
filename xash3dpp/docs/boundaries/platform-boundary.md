@@ -4,8 +4,10 @@
 > `src/platform/{win32,posix,android}/**` and the public headers under
 > `include/xash3dpp/platform/**`. `status_table.py` reports platform
 > **Complete** (14 TUs, tests ✔); `compliance_scan.py platform` is **clean**
-> (0 blocker/warning/note; 9 reviewer-judgment areas = the documented
-> `compliance-allow` adjudications); `stub_scan.py platform` shows **2** TODO
+> (0 blocker/warning/note; **16** documented `compliance-allow` adjudications —
+> 12 thread-assert sites across the posix/win32 `os_io`/`os_socket` TUs, the
+> "6 × 2 = 12" of the Threading table, plus 4 mutable-global exception sites;
+> count corrected 2026-07-19); `stub_scan.py platform` shows **2** TODO
 > markers (both in `posix/sys.cpp`: `is_debugger_present` macOS/BSD, and a
 > `shell_execute` double-fork note). Drift found this pass: the OS **file I/O**
 > backend (`os_io.hpp` + per-OS `os_io.cpp`) is now owned here — it absorbed the
@@ -262,7 +264,10 @@ open**, not about de-globalising a legacy core.
 | **P-3** context-first, no new file-scope state | **Yes** | Every entry point is already a free function over a caller-owned handle or a pure OS query. The **only** file-scope mutable state is the documented exception set (magic-static clock epoch, WSA refcount atom, crash-installed flag, Android JNI glue). **Door-keep:** no new statics; a v2 thread-spawn primitive must take a `ThreadRole` argument, not read a global |
 | **P-4** typed introspection | Minor | Stateless ⇒ little to introspect. A future `platform_stats` (open socket / open library counts) is the only P-4 tier; low priority. No `extern` poke risk today |
 | **P-6** services are satellites | N/A (floor) | Platform is the mandatory floor, **not** a satellite (Q-11 score 0 — one impl per OS, compile-time selected). The one seam, `IPlatformSockets`, is a Q-7 test seam, not a satellite feature |
-| **P-7** over-aligned pool alloc | No | Platform performs no allocation (all returns are by-value `std::string`/`std::vector`/RAII handles) |
+| **P-5** narrowest-state signatures | **Already minimal** | Free-function OS wrappers take exactly the handle/value they operate on (`os_file`, socket fd, path view); no runtime aggregate exists at this layer to over-pass |
+| **P-7** pool-owned RAII lifecycle | **N/A — no allocation** | Platform performs no pool allocation at all (all returns are by-value `std::string`/`std::vector`/RAII handles), so the `create_<thing>`/`pool_new` idiom has no site here. *(An earlier revision of this row answered the retired "over-aligned alloc" question — that concern lives with the HB-7 door; the answer stands: no over-alignment need.)* |
+| **P-8** annotation discipline | **Yes — satisfied (denominatored)** | 2026-07-19 `annotation-coverage` scan: all marker classes at 100% for platform; the 12 `compliance-allow(thread-assert)` NetIO-ready sites + 4 mutable-global exceptions are each inline-annotated (documents-**and**-marks). |
+| **G-4** expanded in-game debugging | Consumer (thin) | Overlay/console frontends consume `console::write`/`get_time` as-is; platform holds no debug state of its own beyond the (low-priority) `platform_stats` idea already noted under P-4 |
 | **G-1** in-engine MCP service | Door-keep | Transport primitives already live here: `open_tcp_socket` + `IPlatformSockets` (TCP/WebSocket transport) and `console::write`/`read_line` (stdio transport). The socket layer is already `T_NetIO-ready`. **Door:** the listener thread rides on the same P-1 thread-spawn primitive above |
 | **G-2** game ABI v2 | Door-keep | `open_library`/`get_symbol`/`close_library` load the versioned plugin descriptor (Q-10) and the future v2 game DLL. **Door-keep:** keep dynlib reentrant and context-free (it is) so a v2 loader can run off-main |
 | **G-3** dedicated debug thread | Door-keep | Reads via the already-atomic stats and the hosted `assert_thread_role` enforcement; the thread itself needs the P-1 spawn primitive + a new `ThreadRole` enum value (additive). Nothing in platform blocks it |
