@@ -36,6 +36,7 @@ inline constexpr int         k_max_user_messages  = 197;  // MAX_USER_MESSAGES
 inline constexpr int         k_svc_bad            = 0;
 inline constexpr int         k_svc_event_reliable = 21;   // SV_PlaybackReliableEvent
 inline constexpr int         k_svc_temp_entity    = 23;
+inline constexpr int         k_svc_restore        = 33;   // [string savename][byte count][count strings] (protocol.h:55)
 inline constexpr int         k_svc_finale         = 31;   // empty-body null-string fixup
 inline constexpr int         k_svc_cutscene       = 34;   // empty-body null-string fixup
 inline constexpr int         k_svc_lastmsg        = 59;   // user msgs start here
@@ -416,6 +417,15 @@ void execute_client_message( ServerRuntime &rt, ServerClient &cl,
 // SV_UserinfoChanged (sv_client.c:1805) — name fixups (trim / console /
 // empty / dedupe) + rate/updaterate; then pfnClientUserInfoChanged.
 void userinfo_changed( ServerRuntime &rt, ServerClient &cl ) noexcept;
+
+// svc_restore emission (sv_client.c:1372-1382): during a loadgame client spawn,
+// stage the restore message — [string "save/<map>.HL2"][byte connectionCount]
+// [connectionCount × string mapName] — into the client's reliable buffer.  The
+// connection list is filled by the game DLL's pfnParmsChangeLevel.  A no-op when
+// the server is not restoring a save or the DLL provides no pfnParmsChangeLevel.
+// The client treats the message as informational (decals are server-restored) —
+// it is emitted for wire compatibility (cl_parse.c CL_ParseRestore).
+void emit_svc_restore( ServerRuntime &rt, ServerClient &cl ) noexcept;
 
 // SV_DropClient (sv_client.c:577): pfnClientDisconnect (if spawned) → zombie.
 void drop_client( ServerRuntime &rt, ServerClient &cl, bool crash ) noexcept;

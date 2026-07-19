@@ -38,6 +38,7 @@
 
 #include <cmath>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -1431,17 +1432,29 @@ void pfn_get_bone_position( const abi::edict_t *ed, int iBone, float *rgflOrigin
     }
 }
 
-unsigned long pfn_function_from_name( const char * )
+unsigned long pfn_function_from_name( const char *pName )
 {
-    // XASH3DPP-STUB(chunk6): the save/restore symbol↔ordinal table
-    // (COM_FunctionFromName_SR) lands with Chunk 8; 0 = not found.
-    return 0;
+    // FIELD_FUNCTION forward resolve (COM_FunctionFromName, sv_game.c:3569): the
+    // game DLL's save codec turns a saved function NAME back into a callable
+    // address.  Legacy's XASH_ALLOW_SAVERESTORE_OFFSETS `ofs:` scheme + POSIX
+    // name-mangling passes are NOT reproduced (XASH3DPP-STUB(chunk12): they are
+    // a portability layer for cross-build saves, out of scope here); the direct
+    // export lookup is the common MSVC path.  0 == not found (frozen ABI).
+    if ( pName == nullptr || g_bridge == nullptr || g_bridge->game == nullptr )
+        return 0;
+    return static_cast<unsigned long>(
+        reinterpret_cast<std::uintptr_t>( g_bridge->game->symbol( pName )));
 }
 
-const char *pfn_name_for_function( unsigned long )
+const char *pfn_name_for_function( unsigned long function )
 {
-    // XASH3DPP-STUB(chunk6): Chunk 8 (see pfn_function_from_name).
-    return nullptr;
+    // FIELD_FUNCTION reverse resolve (COM_NameForFunction, sv_game.c:3581): the
+    // game DLL's save codec turns a function pointer into the NAME the save file
+    // stores.  Delegates to the per-DLL ordinal cache (SAV-OQ-3 glue) over the
+    // platform reverse-walk primitive.  nullptr == no matching export.
+    if ( g_bridge == nullptr || g_bridge->game == nullptr )
+        return nullptr;
+    return g_bridge->game->name_for_function( function );
 }
 
 void pfn_client_printf( abi::edict_t *, abi::PRINT_TYPE, const char *szMsg )

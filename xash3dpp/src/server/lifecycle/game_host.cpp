@@ -147,8 +147,12 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     // OQ-2 studio provider seam lands with Chunk 7 content.
     // XASH3DPP-STUB(chunk6): SV_InitPhysicsAPI (physint.h negotiation) —
     // S8 physics; version-reject is only a warning in legacy.
-    // XASH3DPP-STUB(chunk6): SV_InitSaveRestore (SV_SaveGameComment grab)
-    // — Chunk 8 save seam.
+
+    // SV_InitSaveRestore (sv_save.c:2489-2492): resolve the OPTIONAL
+    // `SV_SaveGameComment` export via the platform forward lookup and stash it
+    // for build_save_comment.  A DLL without the export leaves it null.
+    rt.save_game_comment = reinterpret_cast<ServerRuntime::SaveGameCommentFn>( // SAFETY: object->function-pointer cast — SV_SaveGameComment has the frozen void(char*,int) signature (sv_save.c:88); a missing export yields nullptr
+        rt.game.symbol( "SV_SaveGameComment" ) );
 
     // Legacy sets pStringBase to a static "" first (sv_game.c:5336);
     // SV_AllocStringPool replaces it below.
@@ -306,11 +310,12 @@ void unload_progs( ServerRuntime &rt ) noexcept
     rt.game_pool = {};
 
     // memset( &svgame, 0, sizeof( svgame )) equivalent.
-    rt.globals          = {};
-    rt.bridge           = {};
-    rt.hull_bounds      = {};
-    rt.game_loaded      = false;
-    rt.game_initialized = false;
+    rt.globals           = {};
+    rt.bridge            = {};
+    rt.hull_bounds       = {};
+    rt.save_game_comment = nullptr;
+    rt.game_loaded       = false;
+    rt.game_initialized  = false;
 }
 
 void deactivate_server( ServerRuntime &rt ) noexcept

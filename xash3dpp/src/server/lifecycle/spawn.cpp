@@ -430,7 +430,14 @@ void activate_server( ServerRuntime &rt, bool run_physics ) noexcept
     // XASH3DPP-STUB(chunk6-S9): SV_CreateResourceList /
     // SV_TransferConsistencyInfo / per-client Netchan_Clear (send sub-slice).
 
-    rt.globals.changelevel = 0; // svgame.globals->changelevel = false
+    // svgame.globals->changelevel = false (sv_init.c:645, INSIDE
+    // SV_ActivateServer, AFTER the baseline/resource-list fill above — NOT
+    // SV_SpawnServer, despite the neighbouring memset(&oldmovevars) look-alike
+    // at :644/:441 below).  save_exec_change_level relies on this exact
+    // position: it does NOT clear the flag itself, so it stays true through
+    // the whole restore/transfer AND this activation's baseline fill, matching
+    // legacy.
+    rt.globals.changelevel = 0;
 
     // sv.hostflags = 0 + oldmovevars snapshot (sv_init.c:663-668).  The
     // host.movevars_changed / HPAK_FlushHostQueue / Mod_FreeUnused steps stay

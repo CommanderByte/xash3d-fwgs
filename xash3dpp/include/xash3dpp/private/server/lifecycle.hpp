@@ -204,6 +204,13 @@ struct ServerRuntime
     std::byte                     *signon_buf = nullptr; // @lifetime: pool-owned — snapshot_alloc_signon allocates it; the MessageBuf rebinds it; freed in snapshot_shutdown [k_max_init_msg]
     ::xash::networking::MessageBuf signon;
 
+    // SV_InitSaveRestore (sv_save.c:2489-2492): the optional game-DLL export
+    // `SV_SaveGameComment( char *out, int maxlen )` resolved at DLL load, used by
+    // the save-comment builder (build_save_comment's dll_comment precedence).
+    // nullptr when the DLL does not export it (the common case).
+    using SaveGameCommentFn = void ( * )( char *out, int maxlen );
+    SaveGameCommentFn save_game_comment = nullptr;
+
     bool game_loaded = false;
 
     // pfnGameInit has run — gates pfnGameShutdown at unload so the Q-5

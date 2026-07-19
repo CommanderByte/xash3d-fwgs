@@ -108,6 +108,16 @@ target_compile_definitions(test_spawn_server PRIVATE
 )
 add_dependencies(test_spawn_server fake_game_dll_full)
 
+# Chunk 8 S8.7 — save->load round trip through the fake game DLL's pfnSave/
+# pfnRestore + the server<->save bridges, plus command registration/flags.
+xash3dpp_add_test(test_save_restore SOURCE lifecycle/test_save_restore.cpp
+    LIBS xash3dpp_server xash3dpp_save xash3dpp_core xash3dpp_filesystem
+         xash3dpp_map_loader xash3dpp_utilities cmd_cvar_test_stubs)
+target_compile_definitions(test_save_restore PRIVATE
+    FAKE_DLL_FULL="$<TARGET_FILE:fake_game_dll_full>"
+)
+add_dependencies(test_save_restore fake_game_dll_full)
+
 # S15 milestone smoke — load the REAL retail valve/dlls/hl.dll and run one map
 # frame.  Asset-gated (XASH_HL_ROOT) + arch-gated (x86 only, hl.dll is 32-bit);
 # a SKIP is a pass, so this stays green on CI / x64 / machines without HL.  No

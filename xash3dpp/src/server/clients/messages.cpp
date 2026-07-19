@@ -22,9 +22,11 @@
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
 #include <xash3dpp/private/server/entity_view.hpp> // invoker entvars (origin/angles/…)
+#include <xash3dpp/private/server/lifecycle.hpp>  // ServerRuntime (emit_svc_restore)
 #include <xash3dpp/private/server/snapshot.hpp>  // k_max_event_bits/queue (shared w/ emit_events)
 #include <xash3dpp/utilities/string.hpp>
 
+#include <cstdio>
 #include <cstring>
 
 namespace xash::server {
@@ -733,6 +735,45 @@ void playback_event_full( EngineBridge &bridge, int flags,
         ei.flags        = flags;
         ei.args         = args;
     }
+}
+
+// SV_PutClientInServer's loadgame branch (sv_client.c:1362-1382): stage the
+// svc_restore message into the client's reliable buffer.
+void emit_svc_restore( ServerRuntime &rt, ServerClient &cl ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    // Only during a savegame restore, and only when the game DLL can describe
+    // the level connections (pfnParmsChangeLevel).
+    if ( !rt.level.loadgame || rt.game.funcs().pfnParmsChangeLevel == nullptr )
+        return;
+
+    // A temporary SAVERESTOREDATA hung on globals->pSaveData, populated by
+    // pfnParmsChangeLevel (connectionCount + levelList[]).
+    ::xash::abi::SAVERESTOREDATA levelData{};
+    rt.globals.pSaveData = &levelData;
+    rt.game.funcs().pfnParmsChangeLevel();
+    rt.globals.pSaveData = nullptr;
+
+    char name[80];
+    std::snprintf( name, sizeof( name ), "save/%s.HL2", rt.level.name );
+
+    std::byte       scratch[512] = {};
+    net::MessageBuf w( { scratch, sizeof( scratch ) } );
+    w.write_byte( static_cast<std::uint8_t>( k_svc_restore ) );
+    (void)w.write_string( name );
+
+    int cc = levelData.connectionCount;
+    if ( cc < 0 )
+        cc = 0;
+    if ( cc > ::xash::abi::k_max_level_connections )
+        cc = ::xash::abi::k_max_level_connections;
+    w.write_byte( static_cast<std::uint8_t>( cc ) );
+    for ( int i = 0; i < cc; ++i )
+        (void)w.write_string( levelData.levelList[i].mapName );
+
+    stage_append( cl.reliable, k_client_stage_bytes, cl.reliable_bits, w.data(),
+                  w.num_bits_written() );
 }
 
 } // namespace xash::server

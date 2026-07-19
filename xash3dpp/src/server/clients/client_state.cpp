@@ -475,8 +475,8 @@ void client_spawn( ServerRuntime &rt, ServerClient &cl ) noexcept
         return;
 
     // SV_PutClientInServer fresh branch: flags/netname/colormap, then the game
-    // hook.  (loadgame svc_restore + the verbatim signon append + svc_setview
-    // + svc_signonnum are the S8/send + Chunk 8 seams.)
+    // hook.  (The verbatim signon append + svc_setview + svc_signonnum are the
+    // S9 send seams.)
     if ( cl.edict != nullptr )
     {
         char name[32];
@@ -490,6 +490,22 @@ void client_spawn( ServerRuntime &rt, ServerClient &cl ) noexcept
 
     if ( rt.game.funcs().pfnClientPutInServer != nullptr && cl.edict != nullptr )
         rt.game.funcs().pfnClientPutInServer( cl.edict );
+
+    // loadgame restore: stage the svc_restore message (.HL2 name + connection
+    // list) into the client's reliable buffer, then lift the freeze/pause
+    // (sv_client.c:1352-1390 SV_PutClientInServer: the whole block — including
+    // the `sv.loadgame = sv.paused = false` clear — is gated on sv.loadgame,
+    // so a NORMAL (non-restore) spawn never touches sv.paused).
+    // emit_svc_restore itself no-ops when !rt.level.loadgame, mirroring the
+    // legacy `if (sv.loadgame)` guard; `was_loadgame` gates the clear the same
+    // way so this function stays a no-op for sv.paused outside a restore.
+    const bool was_loadgame = rt.level.loadgame;
+    emit_svc_restore( rt, cl );
+    if ( was_loadgame )
+    {
+        rt.level.loadgame = false;
+        rt.level.paused   = false;
+    }
 
     cl.state = ClientState::Spawning;
 }

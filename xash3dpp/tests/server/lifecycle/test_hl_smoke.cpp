@@ -140,6 +140,84 @@ static bool run_smoke( const std::filesystem::path &root )
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// Chunk 8 milestone witness: a REAL hl.dll save -> load round trip on c0a0,
+// driven entirely through the production console-command + MapLoader-FSM path.
+// A listen server (maxclients 1) so IsValidSave permits the save.  Same
+// arch/asset gating as run_smoke (only reached when the DLL + BSP exist).
+// ---------------------------------------------------------------------------
+
+static void run_save_restore_smoke( const std::filesystem::path &root )
+{
+    namespace fsys = std::filesystem;
+
+    const fsys::path dll = root / "valve" / "dlls" / "hl.dll";
+    const fsys::path bsp = root / "valve" / "maps" / "c0a0.bsp";
+    if ( !fsys::is_regular_file( dll ) || !fsys::is_regular_file( bsp ) )
+        return; // asset-gated (already reported by run_smoke)
+
+    // The save directory must exist before the filesystem write path.
+    std::error_code ec;
+    fsys::create_directories( root / "valve" / "save", ec );
+
+    xash::filesystem::Filesystem fs;
+    REQUIRE( fs.init( root.string(), "valve", "valve" ) );
+    fs.add_game_directory( ( root / "valve" ).string(),
+                           xash::filesystem::SearchPathFlags::GameDir );
+
+    cc::test::TrustedOracle oracle;
+    cc::test::NullPolicy    policy;
+    cc::CmdCvarContext      ctx = cc::test::make_test_context( oracle, policy );
+    (void)ctx.cvar_get_or_create( "sv_maxclients", "1", 0 );
+
+    xash::MapLoader           maps;
+    xash::MapLoaderInitParams mp;
+    mp.filesystem = &fs;
+    REQUIRE( maps.init( mp ) );
+
+    const std::string    dll_path = dll.string();
+    sv::Server           server;
+    sv::ServerInitParams sp;
+    sp.cvars      = &ctx;
+    sp.fs         = &fs;
+    sp.maps       = &maps;
+    sp.game_dll   = dll_path.c_str();
+    sp.game_dir   = "valve";
+    sp.dedicated  = false; // listen server so a single-player save is valid
+    sp.max_edicts = 900;
+    sp.host_error = err_hook;
+    REQUIRE( server.init( sp ) );
+
+    maps.set_level_executor( &server );
+    g_err_calls = 0;
+
+    maps.load_level( "c0a0", false );
+    maps.run_frame_step();
+    REQUIRE( server.active() );
+
+    // Save through the production "save" command (SV_SaveGame mechanics: the
+    // real hl.dll's pfnSave writes each entity's fields into the ABI window).
+    std::printf( "  [save-restore] saving c0a0 through hl.dll pfnSave...\n" );
+    ctx.cmd_execute_string( "save hlsmoke" );
+    CHECK( fs.file_exists( "save/hlsmoke.sav", true ) );
+    CHECK_EQ( g_err_calls, 0 );
+
+    // Restore through the "load" command -> COM_LoadGame -> exec_load_game (the
+    // real hl.dll's pfnRestore recreates each entity).
+    std::printf( "  [save-restore] restoring c0a0 through hl.dll pfnRestore...\n" );
+    ctx.cmd_execute_string( "load hlsmoke" );
+    maps.run_frame_step();
+    CHECK( server.active() );
+    CHECK_EQ( g_err_calls, 0 );
+    std::printf( "  [save-restore] round trip complete; server active: %d\n",
+                 static_cast<int>( server.active() ) );
+
+    server.shutdown();
+    maps.set_level_executor( nullptr );
+    maps.shutdown();
+    fs.shutdown();
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -165,12 +243,16 @@ int main()
         return 0;
     }
 
-    const bool ran = run_smoke( std::filesystem::path( root_env ));
+    const std::filesystem::path root( root_env );
+    const bool                  ran = run_smoke( root );
     if ( !ran )
     {
         std::printf( "hl_smoke: skipped (assets)\n" );
         return 0;
     }
+
+    // Chunk 8 milestone witness: the real hl.dll save/load round trip.
+    run_save_restore_smoke( root );
 
     std::printf( "hl_smoke: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

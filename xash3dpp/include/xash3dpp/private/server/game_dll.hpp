@@ -27,6 +27,9 @@
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/platform/platform.hpp>
 
+#include <string>
+#include <unordered_map>
+
 namespace xash::server {
 
 class GameDll
@@ -84,8 +87,25 @@ public:
     [[nodiscard]] ::xash::abi::LINK_ENTITY_FUNC
     entity_link( const char *classname ) const noexcept;
 
-    // Raw export lookup (pfnFunctionFromName support).
+    // Raw export lookup (pfnFunctionFromName support — the FIELD_FUNCTION
+    // forward half: COM_FunctionFromName, sv_game.c:3569).
     [[nodiscard]] void *symbol( const char *name ) const noexcept;
+
+    // FIELD_FUNCTION reverse half (pfnNameForFunction / COM_NameForFunction,
+    // sv_game.c:3581): resolve an exported function HANDLE back to its name so
+    // the save file stores the NAME, not the process-local address.  The handle
+    // is the frozen-ABI `unsigned long` pfnFunctionFromName returned — on Win64
+    // (LLP64) that is the LOW 32 bits of the real pointer, so the cache is keyed
+    // by the SAME `static_cast<unsigned long>` truncation the forward applies,
+    // keeping both directions self-consistent regardless of arch (a real module
+    // is < 4 GiB, so the low 32 bits are unique within it).  SAV-OQ-3: the
+    // reverse-walk primitive is platform-owned (platform::enumerate_exports /
+    // name_for_symbol); this is save's per-DLL glue — a lazily-built
+    // handle->name ordinal cache over THIS module's exports, valid for the DLL's
+    // lifetime (cleared on unload).  Returns nullptr for a handle that matches
+    // no named export.  @lifetime: the returned pointer aliases the cache and is
+    // valid until unload().
+    [[nodiscard]] const char *name_for_function( unsigned long handle ) noexcept;
 
 private:
     ::xash::platform::LibHandle    lib_;
@@ -94,6 +114,11 @@ private:
     bool                           extended_ = false;
     bool                           has_new_  = false;
     LoadError                      error_    = LoadError::None;
+
+    // FIELD_FUNCTION reverse-lookup ordinal cache (SAV-OQ-3 glue), built once
+    // per DLL load via platform::enumerate_exports.  @lifetime: GameDll.
+    std::unordered_map<unsigned long, std::string> reverse_cache_;
+    bool                                           reverse_cache_built_ = false;
 };
 
 // SV_InitClientMove hull enumeration: pfnGetHullBounds for hulls 0..3.

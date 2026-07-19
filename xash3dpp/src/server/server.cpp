@@ -18,6 +18,9 @@
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/physics.hpp>
+#include <xash3dpp/private/server/save_bridge.hpp>
+
+#include <xash3dpp/cmd_cvar/context.hpp>
 
 #include <cstddef>
 
@@ -42,8 +45,10 @@ void copy_name( char *dst, std::size_t cap, std::string_view src ) noexcept
 
 struct Server::Impl
 {
-    ServerRuntime rt;
-    ServerStats   stats_;
+    ServerRuntime      rt;
+    ServerStats        stats_;
+    SaveCommandContext save_cmds; // borrowed by the save/load command registry
+    bool               save_cmds_registered = false;
 };
 
 Server::Server() : impl_{ std::make_unique<Impl>() } {}
@@ -74,6 +79,17 @@ bool Server::init( const ServerInitParams &params )
     rt.maps  = params.maps;
     rt.net   = params.net;
 
+    // SV_InitHostCommands + SV_InitOperatorCommands (save half, sv_cmds.c):
+    // register save/load/savequick/loadquick/autosave/killsave/reload once the
+    // cmd registry is available.  The context is borrowed for the DLL lifetime.
+    if ( rt.cvars != nullptr )
+    {
+        impl_->save_cmds.rt   = &rt;
+        impl_->save_cmds.maps = rt.maps;
+        register_save_commands( *rt.cvars, impl_->save_cmds );
+        impl_->save_cmds_registered = true;
+    }
+
     // The game DLL loads lazily at the first SV_SpawnServer (legacy
     // SV_InitGame) — init only wires the dependencies.
     return true;
@@ -82,6 +98,14 @@ bool Server::init( const ServerInitParams &params )
 void Server::shutdown()
 {
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+
+    // SV_KillOperatorCommands (save half) + the restricted set: drop the
+    // save/load commands before the runtime they reference goes away.
+    if ( impl_->save_cmds_registered && impl_->rt.cvars != nullptr )
+    {
+        unregister_save_commands( *impl_->rt.cvars );
+        impl_->save_cmds_registered = false;
+    }
 
     // SV_Shutdown → SV_UnloadProgs runs the full unwind: deactivate the live
     // server (if any), then release the game binding.  Idempotent — a never-
@@ -144,23 +168,22 @@ void Server::frame( double host_frametime ) noexcept
     host_server_frame( impl_->rt, host_frametime );
 }
 
-bool Server::exec_load_game( std::string_view /*map*/ ) noexcept
+bool Server::exec_load_game( std::string_view save_name ) noexcept
 {
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
-    // XASH3DPP-STUB(chunk8): savegame restore (SV_LoadGame staging + the
-    // spawn/activate(false) settle-frame path) lands with the save/restore
-    // chunk behind this executor seam.
-    return false;
+    // COM_LoadGame: SV_LoadGame staging (.sav extract + SP-cvar force) + the
+    // SV_ExecLoadGame spawn/LoadGameState/activate(false) chain (save_bridge.cpp).
+    return save_exec_load_game( impl_->rt, save_name );
 }
 
-bool Server::exec_change_level( std::string_view /*map*/,
-                                std::string_view /*landmark*/,
-                                bool /*background*/ ) noexcept
+bool Server::exec_change_level( std::string_view map,
+                                std::string_view landmark,
+                                bool background ) noexcept
 {
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
-    // XASH3DPP-STUB(chunk8): landmark transition (adjacent-level save staging,
-    // CHANGE_LEVEL fixups) lands with the save/restore chunk.
-    return false;
+    // COM_ChangeLevel: the H1-verified SV_ChangeLevel landmark-transition
+    // sequence (save_bridge.cpp).
+    return save_exec_change_level( impl_->rt, map, landmark, background );
 }
 
 } // namespace xash::server

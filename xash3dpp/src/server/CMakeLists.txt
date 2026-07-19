@@ -35,6 +35,7 @@ add_library(xash3dpp_server STATIC
     lifecycle/world_hooks.cpp
     lifecycle/entity_parse.cpp
     lifecycle/spawn.cpp
+    lifecycle/save_bridge.cpp
     physics/movevars.cpp
     physics/physics.cpp
     physics/pmove.cpp
@@ -64,6 +65,8 @@ target_link_libraries(xash3dpp_server
     PUBLIC  xash3dpp_networking    # S7 — DeltaTables (Delta_Init per spawn)
     PUBLIC  xash3dpp_cmd_cvar      # S7 — state mirrors, FCVAR_EXTDLL dance
     PUBLIC  xash3dpp_filesystem    # S7 — delta.lst, resource lists (via delta)
+    PRIVATE xash3dpp_save          # Chunk 8 — .sav/.HL1-3 codecs driven through
+                                   #   the save seams by lifecycle/save_bridge.cpp
     PUBLIC  xash3dpp_content       # Chunk 7 — studio model cache + bone solver
                                    #   (pfnGetModelPtr / GetBonePosition /
                                    #    GetAttachment, studio hull provider)

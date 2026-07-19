@@ -91,6 +91,18 @@ struct State
     KvdRecord kvds[32];
     int       kvd_len;
 
+    // Chunk 8 save/restore probes (pfnSave/pfnRestore/pfnParmsChangeLevel).
+    int   save_calls;         // pfnSave invocations
+    int   restore_calls;      // pfnRestore invocations
+    int   reset_global_calls; // pfnResetGlobalState invocations
+    int   parms_change_calls; // pfnParmsChangeLevel invocations
+    float saved_health;       // health the last pfnSave serialized
+    float restored_health;    // health the last pfnRestore applied
+    int   restore_global;     // globalEntity flag the last pfnRestore received
+    int   parms_conn_count;   // connectionCount pfnParmsChangeLevel should advertise
+    char  restore_map_name[32]; // szCurrentMapName the last pfnRestore observed
+    int   restore_changelevel; // globals->changelevel the last pfnRestore observed
+
     // When set by the test, pfnOnFreeEntPrivateData also increments the
     // pointee — TEST-owned memory, so the S7 unload test can observe the
     // release sweep after the DLL itself is gone.

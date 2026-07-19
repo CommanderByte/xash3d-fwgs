@@ -368,6 +368,106 @@ static int fake_get_weapon_data( abi::edict_t *, abi::weapon_data_t *info )
     return 1;
 }
 
+// ---------------------------------------------------------------------------
+// Chunk 8 save/restore: a minimal CSave/CRestore over the SAVERESTOREDATA — one
+// FIELD_FLOAT record ("hp") per entity, so the S8.7 server<->save bridges are
+// exercised across the real DLL boundary (SAVERESTOREDATA projection, token
+// interning into pTokens, pCurrentData/size advance, edict recreation).
+// ---------------------------------------------------------------------------
+
+static char k_hp_token[] = "hp"; // stable pointer stashed into pTokens
+
+// HL-SDK CSaveRestoreBuffer::TokenHash de-facto ABI: rotate-right-4 XOR, linear
+// probe into pSaveData->pTokens (must match xash::save::TokenTable).
+static int fake_token_hash( abi::SAVERESTOREDATA *d, char *name )
+{
+    unsigned int hash = 0;
+    for ( const char *p = name; *p != '\0'; ++p )
+        hash = ( ( hash >> 4 ) | ( hash << 28 ) ) ^
+               static_cast<unsigned int>( static_cast<int>( *p ) );
+    if ( d->tokenCount <= 0 || d->pTokens == nullptr )
+        return 0;
+    const unsigned int start = hash % static_cast<unsigned int>( d->tokenCount );
+    for ( int i = 0; i < d->tokenCount; ++i )
+    {
+        const int idx =
+            static_cast<int>( ( start + static_cast<unsigned int>( i ) ) %
+                              static_cast<unsigned int>( d->tokenCount ) );
+        if ( d->pTokens[idx] == nullptr )
+        {
+            d->pTokens[idx] = name; // intern (the engine flattens this back)
+            return idx;
+        }
+        if ( std::strcmp( d->pTokens[idx], name ) == 0 )
+            return idx;
+    }
+    return 0;
+}
+
+// DispatchSave: write one [int16 size][int16 token][float value] field record.
+static void fake_save( abi::edict_t *e, abi::SAVERESTOREDATA *d )
+{
+    ++g_state.save_calls;
+    if ( e == nullptr || d == nullptr || d->pCurrentData == nullptr )
+        return;
+    const short idx    = static_cast<short>( fake_token_hash( d, k_hp_token ) );
+    const short sz     = static_cast<short>( sizeof( float ) );
+    const float health = e->v.health;
+    g_state.saved_health = health;
+
+    char *p = d->pCurrentData;
+    std::memcpy( p, &sz, 2 );     p += 2;
+    std::memcpy( p, &idx, 2 );    p += 2;
+    std::memcpy( p, &health, 4 ); p += 4;
+    d->pCurrentData = p;
+    d->size += 8;
+}
+
+// DispatchRestore: read the record back and apply it (globalEntity mirrors the
+// full/merge shouldPrecache flag).
+static int fake_restore( abi::edict_t *e, abi::SAVERESTOREDATA *d, int globalEntity )
+{
+    ++g_state.restore_calls;
+    g_state.restore_global = globalEntity;
+    if ( d != nullptr )
+        std::memcpy( g_state.restore_map_name, d->szCurrentMapName, sizeof( g_state.restore_map_name ) );
+    if ( g_state.globals != nullptr )
+        g_state.restore_changelevel = g_state.globals->changelevel;
+    if ( e == nullptr || d == nullptr || d->pCurrentData == nullptr )
+        return 0;
+    char *p = d->pCurrentData;
+    short sz = 0, idx = 0;
+    float health = 0.0f;
+    std::memcpy( &sz, p, 2 );     p += 2;
+    std::memcpy( &idx, p, 2 );    p += 2;
+    std::memcpy( &health, p, 4 ); p += 4;
+    d->pCurrentData = p;
+    e->v.health          = health;
+    g_state.restored_health = health;
+    return 1; // >= 0: a normal restore (a negative would FL_KILLME the edict)
+}
+
+static void fake_reset_global_state( void )
+{
+    ++g_state.reset_global_calls;
+}
+
+// pfnParmsChangeLevel: advertise `parms_conn_count` landmark connections back to
+// a neighbouring level (fills the SAVERESTOREDATA the engine hung on globals).
+static void fake_parms_change_level( void )
+{
+    ++g_state.parms_change_calls;
+    if ( g_state.globals == nullptr || g_state.globals->pSaveData == nullptr )
+        return;
+    auto *d          = reinterpret_cast<abi::SAVERESTOREDATA *>( g_state.globals->pSaveData );
+    d->connectionCount = g_state.parms_conn_count;
+    for ( int i = 0; i < d->connectionCount && i < abi::k_max_level_connections; ++i )
+    {
+        fake_copy( d->levelList[i].mapName, sizeof( d->levelList[i].mapName ), "neighbor" );
+        fake_copy( d->levelList[i].landmarkName, sizeof( d->levelList[i].landmarkName ), "lm" );
+    }
+}
+
 static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
 {
     std::memset( table, 0, sizeof( *table ));
@@ -400,6 +500,10 @@ static void fill_dll_functions( abi::DLL_FUNCTIONS *table )
     table->pfnAddToFullPack            = fake_add_to_full_pack;
     table->pfnUpdateClientData         = fake_update_client_data;
     table->pfnGetWeaponData            = fake_get_weapon_data;
+    table->pfnSave                     = fake_save;
+    table->pfnRestore                  = fake_restore;
+    table->pfnResetGlobalState         = fake_reset_global_state;
+    table->pfnParmsChangeLevel         = fake_parms_change_level;
 }
 
 static void fake_game_shutdown( void )

@@ -11,6 +11,8 @@
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 
+#include <cstdint>
+
 namespace xash::server {
 
 namespace pf = ::xash::platform;
@@ -140,6 +142,8 @@ void GameDll::unload()
     new_funcs_ = {};
     extended_ = has_new_ = false;
     error_               = LoadError::None;
+    reverse_cache_.clear();
+    reverse_cache_built_ = false;
 }
 
 ::xash::abi::LINK_ENTITY_FUNC
@@ -152,6 +156,59 @@ GameDll::entity_link( const char *classname ) const noexcept
 void *GameDll::symbol( const char *name ) const noexcept
 {
     return pf::get_symbol( lib_, name );
+}
+
+namespace {
+
+// The frozen-ABI function handle for an export address: the same truncation the
+// forward pfnFunctionFromName applies (static_cast<unsigned long>).
+[[nodiscard]] unsigned long function_handle( const void *addr ) noexcept
+{
+    return static_cast<unsigned long>( reinterpret_cast<std::uintptr_t>( addr ) );
+}
+
+// enumerate_exports visitor: populate the handle->name reverse cache.  First
+// name wins for a given handle (export-table order), mirroring the linear scan
+// in legacy COM_NameForFunction which returns the first matching ordinal.
+void collect_export( std::string_view name, const void *addr, void *userdata ) noexcept
+{
+    auto *cache = static_cast<std::unordered_map<unsigned long, std::string> *>( userdata );
+    cache->try_emplace( function_handle( addr ), name );
+}
+
+} // namespace
+
+const char *GameDll::name_for_function( unsigned long handle ) noexcept
+{
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
+    if ( handle == 0 || !lib_ )
+        return nullptr;
+
+    // Build the per-DLL ordinal cache once (SAV-OQ-3 glue over the platform
+    // reverse-walk primitive).  On POSIX enumerate_exports is unsupported and
+    // returns false without populating the cache; fall back to the per-address
+    // name_for_symbol (dladdr) primitive below so restore still resolves names
+    // (POSIX is LP64, so `handle` == the full pointer there — no truncation).
+    if ( !reverse_cache_built_ )
+    {
+        pf::enumerate_exports( lib_, collect_export, &reverse_cache_ );
+        reverse_cache_built_ = true;
+    }
+
+    if ( auto it = reverse_cache_.find( handle ); it != reverse_cache_.end() )
+        return it->second.c_str();
+
+    // Cache miss (or POSIX, where the cache is empty): reconstruct the address
+    // and consult the per-address primitive, then memoize.
+    const auto *addr = reinterpret_cast<const void *>( static_cast<std::uintptr_t>( handle ) );
+    if ( auto name = pf::name_for_symbol( lib_, addr ); name.has_value() )
+    {
+        auto [it, _] = reverse_cache_.try_emplace( handle, *name );
+        return it->second.c_str();
+    }
+
+    return nullptr;
 }
 
 ::xash::map_loader::HullBoundsTable
