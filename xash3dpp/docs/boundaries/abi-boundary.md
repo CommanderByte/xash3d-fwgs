@@ -213,6 +213,10 @@ mutating the frozen declarations.
 | **P-4** typed introspection | Consumer only | The shim routes diagnostics through `core::log*` (P-4 substrate), never raw stdio. No introspection surface owed |
 | **P-6** services are satellites | Indirect | A v2 ABI, MCP, or scripting bridge that wants context per slot links *toward* the accessor + the frozen declarations; `abi` never links toward them. The role-agnostic `current_engine_context()` read is the sanctioned reach-in |
 | **G-1 / G-3 / G-4 / G-5** | No new seam | `abi` provides no service surface; it is a passive declaration + bridge layer. Off-main goals marshal through host's frame drain (P-1), not through the shim |
+| **P-1** main-thread inbox | N/A (consumer path) | `abi` owns no inbox and never will — the frozen slots execute on the game-DLL call stack (Main); anything off-main reaches the engine via host's P-1 drain, never via a slot. Stated here explicitly (was previously only implied by the bundled G row). |
+| **P-5** narrowest-state signatures | N/A — signatures frozen | Every slot signature is ABI-frozen verbatim; P-5 cannot apply to them by definition. The one non-frozen function (`Host_Error` shim internals) takes exactly what it forwards. |
+| **P-7** pool-owned RAII lifecycle | N/A — no ownership | `abi` allocates nothing and owns no objects; the vendored structs stay PODs per the Q-22 retrofit guard (no members, vtables, or `operator delete` may ever be added to them). |
+| **P-8** annotation discipline | **Yes — by-role posture recorded (HB-9)** | Zero `assert_thread_role` sites is the DESIGN for this subsystem (C-ABI shim executing on the game-DLL stack — enforcement lives in the host/server callers); the doc's Annotation-discipline section carries the QN exemptions. This row records the HB-9 "enforcement-free-by-role" flag so the absence is never misread as an HB-3-style gap. |
 
 **Net verdict:** `abi` owes **no new seam**. The single binding door is **G-2**:
 keep the frozen GoldSrc flavor a clean, self-contained, load-time-isolable layer
@@ -246,7 +250,8 @@ Full analysis: **`docs/threading-analysis/abi-threading.md`**. Summary:
 `abi`'s tests live under **`tests/server/abi/`** (layout pins, engine-table,
 string pool, edict arena, fake game DLL), co-located with the server slot
 implementations that exercise the vendored structs. There is deliberately no
-`tests/abi/` directory, so `finish_check` item 6 reports "0 test files" for the
-`abi` scope — this is a **path artifact, not missing coverage**. The tests are
+`tests/abi/` directory; `finish_check` item 6 counts those server-side TUs and
+reports "8 test files" for the `abi` scope (an earlier revision predicted "0" —
+the tool attributes the layout-pin tests correctly). The tests are
 not moved (they belong beside the server-side consumers). Those test mains that
 drive main-thread paths already call `register_thread_role(ThreadRole::Main)`.

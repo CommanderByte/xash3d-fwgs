@@ -30,7 +30,7 @@ Primary legacy sources:
 - `engine/platform/win32/lib_win.c` (`~283`) — the custom PE loader's special
   case for the `GiveFnptrsToDll` export name
 - `engine/eiface.h` — `enginefuncs_t` (159), `DLL_FUNCTIONS` (50),
-  `NEW_DLL_FUNCTIONS` (5), `INTERFACE_VERSION` frozen at 138, "ONLY ADD NEW
+  `NEW_DLL_FUNCTIONS` (5), `INTERFACE_VERSION` frozen at 140, "ONLY ADD NEW
   FUNCTIONS TO THE END OF THIS STRUCT" (eiface.h:286)
 
 **Global assumptions (legacy):** the game DLL is a single per-process module
@@ -69,9 +69,9 @@ if( GiveNewDllFuncs ) {                            // 5286
     else if( version != NEW_DLL_FUNCTIONS_VERSION ) { /* S_WARN */ }
 }
 
-version = INTERFACE_VERSION;                       // 5297 (138)
+version = INTERFACE_VERSION;                       // 5297 (140)
 if( GetEntityAPI2 && GetEntityAPI2( &svgame.dllFuncs, &version )) { init = true; } // 5299
-else if( version != INTERFACE_VERSION ) { /* S_WARN should be 138 */ }             // 5306
+else if( version != INTERFACE_VERSION ) { /* S_WARN should be 140 */ }             // 5306
 if( !init && GetEntityAPI && GetEntityAPI( &svgame.dllFuncs, version )) { init = true; } // 5309
 ```
 
@@ -82,7 +82,7 @@ Three contract facts fall out, and all three are **frozen**:
    / `GetEntityAPI` are **pulls** (game → engine): the game fills the engine's
    `DLL_FUNCTIONS` table. Reversing this, or changing either signature, breaks
    every stock HL game DLL.
-2. **Version negotiation is by-value and asymmetric.** `INTERFACE_VERSION` (138)
+2. **Version negotiation is by-value and asymmetric.** `INTERFACE_VERSION` (140)
    is passed *by pointer* to `GetEntityAPI2` so the DLL can report its own; a
    mismatch is **warn-only**, not fatal — GoldSrc compatibility depends on the
    engine tolerating older DLLs. `GetEntityAPI` (the older single-int form) is
@@ -156,7 +156,7 @@ ______________________________________________________________________
 | `GiveFnptrsToDll(enginefuncs_t*, globalvars_t*)` push | vendored `enginefuncs_t`/`globalvars_t` decls (`eiface.hpp`) + server load path | Layouts frozen in `abi`; the *fill/negotiation* is a **server** concern (`src/server/abi/engine_table.cpp`, `deep-dive-server-game-dll-bridge.md`) |
 | `GetEntityAPI` / `GetEntityAPI2(DLL_FUNCTIONS*, int*)` pull | vendored `DLL_FUNCTIONS` decl (`eiface.hpp`) + server | 50-slot table, `static_assert`ed; version-negotiation logic lives in server |
 | `GetNewDLLFunctions(NEW_DLL_FUNCTIONS*, int*)` | vendored `NEW_DLL_FUNCTIONS` decl (`eiface.hpp`) | 5-slot table, `static_assert`ed; warn-only version mismatch preserved server-side |
-| `INTERFACE_VERSION` (138), slot counts 159/50/5 | `static_assert`s in `eiface.hpp` + `k_interface_version` | Frozen (eiface.h:286); pinned by `tests/server/abi/test_*_layout.cpp` on 32/64-bit |
+| `INTERFACE_VERSION` (140), slot counts 159/50/5 | `static_assert`s in `eiface.hpp` + `k_interface_version` | Frozen (eiface.h:22/286); pinned by `tests/server/abi/test_*_layout.cpp` on 32/64-bit |
 | `Host_Error(const char*, ...)` `GAME_EXPORT` symbol | `xash3dpp_abi` `src/abi/engine_funcs.cpp` | **Frozen C signature + linkage** (Q-14/OQ-10); the one shipped direct-export shim |
 | `static hosterror1/2[MAX_SYSPATH]` + `S_RED` print | `core::log_va(Fatal)` + `core::log_fatal` | No static scratch; typed severity logging (QI: never raw stdio) |
 | `longjmp( g_abortframe )` (in `Host_Error`) | `Host::signal_frame_abort` via `current_engine_context()` | OQ-1 flag-poll; no `setjmp`/`longjmp` (see `deep-dive-host.md` §4) |
