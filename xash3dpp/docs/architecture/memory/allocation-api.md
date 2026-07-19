@@ -48,9 +48,12 @@ void* mem_alloc(PoolHandle pool, std::size_t size) noexcept;
 
 ### Steps
 
-1. **Null pool / `k_null_pool`**: calls `malloc(size)` directly, returning
-   untracked memory. This is intentional — `k_null_pool` is a valid sentinel for
-   "unowned" allocations.
+1. **Null pool / `k_null_pool`**: skips the *accounting* only — the
+   allocation still carries the `AllocHeader` prefix
+   (`raw_size = sizeof(AllocHeader) + size` → `malloc(raw_size)`), because
+   `mem_free` unconditionally reads the header back to find the owning
+   bucket. `k_null_pool` is a valid sentinel for "unowned" (untracked)
+   allocations, not a header-less fast path.
 1. **Resolve bucket**: `acquire`-load `state`; if not `Active`, fall back to
    raw `malloc` (pool is being destroyed or was not created; counters stay at 0).
 1. **Overflow guard**: check `size + sizeof(AllocHeader)` overflows `size_t`
@@ -158,8 +161,10 @@ requested size (before the `AllocHeader` overhead) and the `PoolHandle`. It
 **must not** call `mem_alloc`, as doing so from the OOM path risks unbounded
 recursion.
 
-After the handler returns, `mem_alloc` returns `nullptr`. The handler is not
-called on overflow detection — it is only called when `malloc` itself fails.
+After the handler returns, `mem_alloc` returns `nullptr`. The handler fires
+both when `malloc` itself fails **and** on the `raw_size` overflow guard
+(`memory.cpp` invokes it before any `malloc` on overflow) — consistent with
+the Error handling section below.
 
 Setting `nullptr` clears the handler; calling `set_oom_handler(nullptr)` is safe
 from any thread.

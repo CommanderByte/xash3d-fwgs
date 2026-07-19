@@ -285,8 +285,9 @@ ______________________________________________________________________
 
 ## Extension axes (Q-21)
 
-> Added 2026-07-06 (as-built pass). Evaluated against
-> `docs/design/extension-goals.md` (G-1..G-5, P-1..P-7). Memory is unusual: it
+> Added 2026-07-06 (as-built pass); axis set completed 2026-07-19
+> (consolidation audit). Evaluated against
+> `docs/design/extension-goals.md` (G-1..G-5, P-1..P-8). Memory is unusual: it
 > is not itself an extension target but the **substrate** the primitives sit on
 > — P-6/P-7 heap-ownership and the Q-13 pool-accounting policy are *defined by
 > this subsystem*, and G-5's scripting allocator hook plugs directly into its
@@ -303,5 +304,8 @@ ______________________________________________________________________
 | **G-3** dedicated debug thread | **Yes — already open** | Off-main memory reads are already safe (atomic counters); the only caller contract is that `set_oom_handler` is init-only (threading doc §Required caller contracts). No retrofit needed. |
 | **G-2** game ABI v2 | **Door-keep** | The frozen 32-bit `poolhandle_t` and the future pool-less `pfnMemAlloc` plugin shims are the ABI-confinement point; a v2 ABI may hand a richer allocator context but must still be able to produce a raw `poolhandle_t` at the edge. Do not widen the handle. |
 | **P-1** main-thread inbox / **P-2** snapshots / **P-3** context-first / **P-5** narrowest-state | Mostly N/A | Memory is already context-light (free functions over an explicit `PoolHandle`). Its file-scope state (`g_pools`, `g_oom_handler`) is the **documented allocator-registry exception** to P-3: a single global registry is forced by the 32-bit `poolhandle_t` ABI (the handle indexes a process-global table). List it in the module-statics table with that justification; it must not grow. |
+| **G-1** in-engine MCP service | Consumer via P-4 | MCP memory reports read `get_stats`/`for_each_pool`/`PoolStats` — the already-typed surface the P-4 row guards (HB-6 names memory as one of the introspection channels). No memory-side service code. |
+| **G-4** expanded in-game debugging | Consumer via P-4 | Memory overlays consume the same typed pool census; the P-4 door rule (typed query, never an `extern` poke into `g_pools`) is the whole G-4 obligation. |
+| **P-8** annotation discipline | **Yes — satisfied (denominatored)** | 2026-07-19 `annotation-coverage` scan: all marker classes at 100% for memory; the `set_oom_handler` init-only caller contract carries its recorded `compliance-allow`. Keep coverage statements denominatored. |
 
 ______________________________________________________________________
