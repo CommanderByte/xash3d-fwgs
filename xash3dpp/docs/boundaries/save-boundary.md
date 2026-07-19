@@ -125,6 +125,7 @@ The four primitives + `SV_GetSaveComment` sit **behind**
 | Physint (`svgame.physFuncs`) | `SV_AllowSaveGame` veto, `pfnCreateEntitiesInRestoreList` override | sv_save.c:533-540, 1417-1419 |
 | `cmd_cvar/` | `sv_autosave`, `sv_newunit`, save-related console commands (`save`/`load`/`savequick`/`loadquick`/`autosave`/`reload`/`killsave`) | deep-dive §2 |
 | `server/` physics | `rt.globals.changelevel` freeze check during restore | physics.cpp:721,820 (V8.3) |
+| `renderer` (sibling-scope, owns the GL image cache; same capability-seam pattern as client_state.hpp's `IDecalListProvider`/`IDynamicSoundsProvider`/`IMusicStateProvider`) | `age_save_list`'s `.bmp` thumbnail eviction (`GL_FreeImage`, sv_save.c:607,630) — save does not perform it; deferred to the Chunk-12 caller per `age_save_list`'s doc comment (save_directory.hpp) | sv_save.c:605-608,628-631 |
 
 ## Owned state
 

@@ -28,6 +28,7 @@ enum class SaveError : std::uint32_t
     TruncatedBlock,   // a block/blob ended before the declared/expected byte count was read
     BadFieldRecord,   // a per-field record's declared size is inconsistent with the buffer
     BufferExhausted,  // a write would exceed the working buffer's bounded capacity
+    IoError,          // the filesystem I/O wrapper's read/write/rename/remove call failed (Chunk 8, slice S8.5)
 };
 
 // ---------------------------------------------------------------------------

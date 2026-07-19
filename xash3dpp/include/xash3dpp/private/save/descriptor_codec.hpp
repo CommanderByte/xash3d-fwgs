@@ -22,10 +22,22 @@
 // Codec facts (settled by prior parity gates — save-boundary.md, ledger #16-20):
 //   • Field VALUES live inline in the payload; the token table carries only
 //     field/block NAMES.  FIELD_CHARACTER writes the FULL fixed array width
-//     (strncpy tail included), NOT strlen — contrast FIELD_STRING (strlen+1),
-//     which the header structs never use.
+//     (strncpy tail included), NOT strlen — contrast the engine STRING family
+//     (FIELD_STRING/FIELD_MODELNAME/FIELD_SOUNDNAME, strlen+1).  CORRECTED
+//     2026-07-19 (S8.5 parity audit): the header structs PROPER (GameHeader/
+//     SaveHeader/ADJACENCY/LIGHTSTYLE) never use the STRING family, but
+//     gStaticEntry's `messagenum` field (FIELD_MODELNAME, format.hpp
+//     k_static_entry_desc — the "HACKHACK: model stored in messagenum" row)
+//     DOES: this codec is generic over any engine-owned block, and the
+//     resolved TEXT (not the raw in-struct handle) is the wire truth for
+//     this field family, via the FieldTextBinding companion below — the same
+//     pattern S8.2's ETABLE classname already established
+//     (entity_table.cpp write_classname_field/deserialize).
 //   • An all-zero field is SKIPPED (DataEmpty) and its name token is NOT
 //     interned; the block header carries the POST-SKIP actual field count.
+//     For the STRING family, DataEmpty is EMPTY TEXT (the companion string
+//     is empty), not an all-zero raw-byte test — the in-struct handle
+//     (e.g. `messagenum`) is never inspected.
 //   • DataEmpty tests `fieldSize * gSizes[fieldType]` in-memory bytes — the
 //     same byte count the field record's payload occupies (except FIELD_EDICT,
 //     whose 8-byte pointer is DataEmpty-tested over its low gSizes==4 bytes and
@@ -46,6 +58,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 
 namespace xash::save {
@@ -95,6 +108,37 @@ using EdictIndexFn = int ( * )( const ::xash::abi::edict_t *edict, void *ctx ) n
     }
 }
 
+// ---------------------------------------------------------------------------
+// FieldTextBinding — companion TEXT for the engine STRING family (Chunk 8,
+// slice S8.5, mirroring S8.2's ETABLE classname pattern).
+// ---------------------------------------------------------------------------
+//
+// FIELD_STRING/FIELD_MODELNAME/FIELD_SOUNDNAME fields hold a raw `string_t`
+// (or, for gStaticEntry's messagenum HACKHACK, a plain `int`) engine
+// string-pool handle in-struct — a process-local resource this codec does
+// not resolve (same rationale as ETABLE's classname, entity_table.hpp
+// "FIELD_STRING classname note").  The WIRE truth is the resolved TEXT, so
+// callers with a text-family field in their descriptor table supply it out
+// of band via this binding rather than through the struct's raw bytes.
+//
+// `field_name` matches TYPEDESCRIPTION::fieldName (case-insensitive, same
+// matching rule as the rest of this codec).  `text` is caller-owned and
+// must outlive the call:
+//   • write_descriptor_block reads `*text` as the value to emit.  DataEmpty
+//     == `text->empty()`: the field is skipped (name not interned), exactly
+//     like an all-zero raw field.
+//   • read_descriptor_block OVERWRITES `*text` with the decoded value; a
+//     field omitted from the stream leaves it untouched (the overlay model,
+//     matching every other field type).
+//
+// A text-family field present in the caller's `fields` table with NO
+// matching binding is a caller error -> BadFieldRecord (both directions).
+struct FieldTextBinding
+{
+    std::string_view field_name;
+    std::string      *text = nullptr; // @lifetime: caller — must outlive the call.
+};
+
 // Serialize `base` (a pointer to the C struct whose layout the descriptors
 // describe) as a named field block: write_block_header with the post-skip
 // actual field count, then one field record per NON-EMPTY field in descriptor
@@ -102,13 +146,17 @@ using EdictIndexFn = int ( * )( const ::xash::abi::edict_t *edict, void *ctx ) n
 // encoding (HL-SDK WriteTime; 0.0f == no rebase, which is what the engine uses
 // for the Save Header block, sv_save.c:1520).  `edict_index`/`edict_ctx` resolve
 // FIELD_EDICT elements (may be null when no FIELD_EDICT field is populated).
-// BadFieldRecord for an unsupported field type or (defensively) a non-null
-// FIELD_EDICT with no resolver.
+// `text_bindings` resolves any FIELD_STRING/FIELD_MODELNAME/FIELD_SOUNDNAME
+// field in `fields` (see FieldTextBinding above; empty span if `fields` has
+// none).  BadFieldRecord for an unsupported field type, a text-family field
+// with no matching binding, or (defensively) a non-null FIELD_EDICT with no
+// resolver.
 [[nodiscard]] Result<void>
 write_descriptor_block( IFieldSink &sink, TokenTable &tokens, std::string_view block_name,
                         const void *base, std::span<const ::xash::abi::TYPEDESCRIPTION> fields,
                         float time_basis = 0.0f, EdictIndexFn edict_index = nullptr,
-                        void *edict_ctx = nullptr ) noexcept;
+                        void *edict_ctx = nullptr,
+                        std::span<const FieldTextBinding> text_bindings = {} ) noexcept;
 
 // Inverse of write_descriptor_block: overlay one named block at `data[*offset]`
 // onto the pre-initialized struct at `base`, advancing `offset` past the block.
@@ -120,12 +168,19 @@ write_descriptor_block( IFieldSink &sink, TokenTable &tokens, std::string_view b
 // `time_basis` is ADDED back to every FIELD_TIME element (inverse of write).
 // FIELD_EDICT is decoded to its int index but the destination pointer is left
 // untouched (arena reconstruction is server-core, deferred — matches how the
-// ETABLE reader leaves `pent` null).  CorruptHeader on a block-name mismatch;
-// TruncatedBlock / BadFieldRecord on a malformed record or wrong payload width.
+// ETABLE reader leaves `pent` null).  `text_bindings` resolves any text-family
+// field in `fields` (see FieldTextBinding above): the decoded payload must be
+// NUL-terminated text (BadFieldRecord otherwise) and is captured into the
+// bound `std::string`; the in-struct handle is left untouched (offsets/pool
+// indices are process-local — the TEXT is the wire truth, same rationale as
+// ETABLE's classname).  CorruptHeader on a block-name mismatch; TruncatedBlock
+// / BadFieldRecord on a malformed record, wrong payload width, a text-family
+// field with no matching binding, or a text payload missing its trailing NUL.
 [[nodiscard]] Result<void>
 read_descriptor_block( std::span<const std::byte> data, std::size_t &offset,
                        const TokenTable &tokens, std::string_view block_name, void *base,
                        std::span<const ::xash::abi::TYPEDESCRIPTION> fields,
-                       float time_basis = 0.0f ) noexcept;
+                       float time_basis = 0.0f,
+                       std::span<const FieldTextBinding> text_bindings = {} ) noexcept;
 
 } // namespace xash::save

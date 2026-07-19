@@ -84,6 +84,9 @@ P-3 exception class for no gain.
 | 20 | C/S8.2 | S8.3 writer must populate row.pent before pfnSave | parity gate | NOTE | recorded in save-boundary (FENTTABLE_PLAYER tagging + validity screening depend on it) |
 | 21 | C/S8.3 | Zero-filled FIELD_CHARACTER tails vs legacy stack garbage (incl. empty-skyName field-count consequence) | parity gate (32/33 confirmed) | DEVIATION (benign, round-trip-safe) | recorded in save-boundary deviation table; no code change — legacy output is itself non-deterministic here |
 | 22 | C/S8.3 | Goldens pin small token tables, not the 4095-slot production image | parity gate | NOTE (coverage) | production byte-parity witness = S8.8 legacy-fixture tier; latent notes (POINTER/FUNCTION gSizes on x64, FIELD_EDICT low-4-byte DataEmpty) recorded in save-boundary Uncertainties |
+| 23 | C/S8.5 | SV_GetSaveComment day-of-month not zero-padded ("Jan5" vs strftime's "Jan05"); test codified the wrong value | parity gate (38/41 confirmed) | DIVERGENCE | FIXED pre-commit: pad2 + both padding shapes pinned (UTC dates independently recomputed at re-verify) |
+| 24 | C/S8.5 | FIELD_MODELNAME/SOUNDNAME raw 4-byte string_t copy — legacy WriteString family emits the resolved TEXT inline (STATICENTITY wire incompatibility) | parity gate | **DIVERGENCE (wire-breaking)** | FIXED pre-commit: text-family dispatch + FieldTextBinding companion table + StaticEntityEntry (entity_state_t is ABI-frozen); hand-built legacy witness added; false-premise codec comment corrected |
+| 25 | C/S8.5 | age_save_list omits the GL_FreeImage .bmp thumbnail eviction (client/renderer capability) | parity gate | OBSERVATION (scoped) | deferral made explicit: doc comment + save-boundary Dependencies row (Chunk-12 caller obligation) |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
 

@@ -17,14 +17,22 @@
 // byte-exact mirrors of frozen on-disk records (field order == wire order); the
 // descriptor tables are frozen ABI data.  Per-member @lifetime does not apply.
 
-#include <xash3dpp/abi/eiface.hpp> // TYPEDESCRIPTION, FIELDTYPE, LEVELLIST, ENTITYTABLE, k_max_level_connections
+#include <xash3dpp/abi/abi_types.hpp>  // color24
+#include <xash3dpp/abi/eiface.hpp>     // TYPEDESCRIPTION, FIELDTYPE, LEVELLIST, ENTITYTABLE, k_max_level_connections
+#include <xash3dpp/abi/entity_state.hpp> // entity_state_t (STATICENTITY block)
 #include <xash3dpp/limits.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace xash::save {
+
+// Save directory (sv_save.c com_strings.h:59 DEFAULT_SAVE_DIRECTORY).  Every
+// save-owned path (.sav / .HL1-3 / the *.HL? glob) is rooted here; save-
+// directory ops and the file-backed I/O wrappers build paths against it.
+inline constexpr std::string_view k_default_save_directory = "save/";
 
 // ---------------------------------------------------------------------------
 // Magic / version tags (sv_save.c:31-34)
@@ -204,5 +212,201 @@ inline constexpr std::array<::xash::abi::TYPEDESCRIPTION, 5> k_entity_table_desc
     define_field( ::xash::abi::FIELD_INTEGER, "flags",     static_cast<int>( offsetof( ::xash::abi::ENTITYTABLE, flags ) ) ),
     define_field( ::xash::abi::FIELD_STRING,  "classname", static_cast<int>( offsetof( ::xash::abi::ENTITYTABLE, classname ) ) ),
 } };
+
+// ---------------------------------------------------------------------------
+// .HL2 client-state structs (Chunk 8, slice S8.5).
+// sv_save.c:64-83 (SAVE_CLIENT), :139-227 (gSaveClient/gDecalEntry/gStaticEntry/
+// gSoundEntry descriptor tables).  save does not own the renderer's decallist_t
+// (common/render_api.h) or the sound engine's soundlist_t (engine/common/
+// common.h) — both are sibling-scope (render/sound), reached only through the
+// OQ-4 capability interfaces (client_state.hpp).  SaveDecalEntry/SaveSoundEntry
+// are save-owned WIRE-SHAPE mirrors of those structs (field-for-field, matching
+// what gDecalEntry/gSoundEntry actually serialize) so this component never
+// depends on renderer/sound headers.  entity_state_t IS already vendored
+// (abi/entity_state.hpp, frozen game-DLL ABI) and is reused directly for
+// STATICENTITY — gStaticEntry addresses its real member offsets.
+// ---------------------------------------------------------------------------
+
+// SAVE_CLIENT — root of the .HL2 body (sv_save.c:64-76).
+struct SaveClient
+{
+    std::int32_t decal_count      = 0;
+    std::int32_t entity_count     = 0;
+    std::int32_t sound_count      = 0;
+    std::int32_t temp_ents_count  = 0; // unused (legacy comment: "not used")
+    char         intro_track[64]  = {};
+    char         main_track[64]   = {};
+    std::int32_t track_position   = 0;
+    // Xash3D addition; serialized via FIELD_CHARACTER sizeof(short) (2 raw
+    // bytes), NOT FIELD_SHORT — legacy comment: "mods based on HLU SDK
+    // disallow usage of FIELD_SHORT" (format-level quirk, save-boundary.md).
+    short        viewentity       = 0;
+    float        wateralpha       = 0.0f;
+    float        wateramp         = 0.0f;
+};
+
+inline constexpr std::array<::xash::abi::TYPEDESCRIPTION, 10> k_save_client_desc = { {
+    define_field( ::xash::abi::FIELD_INTEGER,   "decalCount",     static_cast<int>( offsetof( SaveClient, decal_count ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "entityCount",    static_cast<int>( offsetof( SaveClient, entity_count ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "soundCount",     static_cast<int>( offsetof( SaveClient, sound_count ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "tempEntsCount",  static_cast<int>( offsetof( SaveClient, temp_ents_count ) ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "introTrack",     static_cast<int>( offsetof( SaveClient, intro_track ) ), 64 ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "mainTrack",      static_cast<int>( offsetof( SaveClient, main_track ) ), 64 ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "trackPosition",  static_cast<int>( offsetof( SaveClient, track_position ) ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "viewentity",     static_cast<int>( offsetof( SaveClient, viewentity ) ), sizeof( short ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "wateralpha",     static_cast<int>( offsetof( SaveClient, wateralpha ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "wateramp",       static_cast<int>( offsetof( SaveClient, wateramp ) ) ),
+} };
+
+// SaveDecalEntry — save-owned mirror of decallist_t (common/render_api.h) via
+// gDecalEntry (sv_save.c:154-164).  `studio_state` is carried as OPAQUE bytes
+// (30, sizeof(modelstate_t) — common/render_api.h "30 bytes here"): save does
+// not need to interpret a studio decal's model-state, only preserve it
+// byte-for-byte through the IDecalListProvider seam (client_state.hpp).
+struct SaveDecalEntry
+{
+    float                     position[3]              = {};
+    char                      name[64]                 = {};
+    short                     entity_index              = 0; // FIELD_CHARACTER sizeof(short) quirk
+    unsigned char             depth                     = 0;
+    unsigned char             flags                     = 0;
+    float                     scale                     = 0.0f;
+    float                     impact_plane_normal[3]    = {};
+    std::array<std::byte, 30> studio_state              = {}; // modelstate_t verbatim bytes
+};
+
+inline constexpr std::array<::xash::abi::TYPEDESCRIPTION, 8> k_decal_entry_desc = { {
+    define_field( ::xash::abi::FIELD_VECTOR,    "position",           static_cast<int>( offsetof( SaveDecalEntry, position ) ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "name",               static_cast<int>( offsetof( SaveDecalEntry, name ) ), 64 ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "entityIndex",        static_cast<int>( offsetof( SaveDecalEntry, entity_index ) ), sizeof( short ) ),
+    define_field( ::xash::abi::FIELD_CHARACTER, "depth",              static_cast<int>( offsetof( SaveDecalEntry, depth ) ) ),
+    define_field( ::xash::abi::FIELD_CHARACTER, "flags",              static_cast<int>( offsetof( SaveDecalEntry, flags ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "scale",              static_cast<int>( offsetof( SaveDecalEntry, scale ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "impactPlaneNormal",  static_cast<int>( offsetof( SaveDecalEntry, impact_plane_normal ) ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "studio_state",       static_cast<int>( offsetof( SaveDecalEntry, studio_state ) ), 30 ),
+} };
+
+// SaveSoundEntry — save-owned mirror of soundlist_t (engine/common/common.h)
+// via gSoundEntry (sv_save.c:216-227).
+struct SaveSoundEntry
+{
+    char          name[64]        = {}; // MAX_QPATH == 64 (map_qpath_max)
+    short         entnum          = 0;  // FIELD_CHARACTER sizeof(short) quirk
+    float         origin[3]       = {};
+    float         volume          = 0.0f;
+    float         attenuation     = 0.0f;
+    std::int32_t  looping         = 0;  // qboolean -> FIELD_BOOLEAN
+    unsigned char channel         = 0;
+    unsigned char pitch           = 0;
+    unsigned char word_index      = 0;
+    double        sample_pos      = 0.0;
+    double        forced_end      = 0.0;
+};
+
+inline constexpr std::array<::xash::abi::TYPEDESCRIPTION, 11> k_sound_entry_desc = { {
+    define_array( ::xash::abi::FIELD_CHARACTER, "name",        static_cast<int>( offsetof( SaveSoundEntry, name ) ), 64 ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "entnum",      static_cast<int>( offsetof( SaveSoundEntry, entnum ) ), sizeof( short ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "origin",      static_cast<int>( offsetof( SaveSoundEntry, origin ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "volume",      static_cast<int>( offsetof( SaveSoundEntry, volume ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "attenuation", static_cast<int>( offsetof( SaveSoundEntry, attenuation ) ) ),
+    define_field( ::xash::abi::FIELD_BOOLEAN,   "looping",     static_cast<int>( offsetof( SaveSoundEntry, looping ) ) ),
+    define_field( ::xash::abi::FIELD_CHARACTER, "channel",     static_cast<int>( offsetof( SaveSoundEntry, channel ) ) ),
+    define_field( ::xash::abi::FIELD_CHARACTER, "pitch",       static_cast<int>( offsetof( SaveSoundEntry, pitch ) ) ),
+    define_field( ::xash::abi::FIELD_CHARACTER, "wordIndex",   static_cast<int>( offsetof( SaveSoundEntry, word_index ) ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "samplePos",   static_cast<int>( offsetof( SaveSoundEntry, sample_pos ) ), sizeof( double ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "forcedEnd",   static_cast<int>( offsetof( SaveSoundEntry, forced_end ) ), sizeof( double ) ),
+} };
+
+// gStaticEntry — over the vendored abi::entity_state_t (frozen game-DLL ABI,
+// abi/entity_state.hpp).  35 fields, sv_save.c:166-200; `controller`/`blending`
+// are DEFINE_FIELD (not DEFINE_ARRAY) over `byte[4]` members — a 4-byte raw
+// copy of the whole array read as one FIELD_INTEGER, matching legacy exactly
+// (a real, preserved legacy quirk, not a bug introduced here).  `messagenum`
+// (FIELD_MODELNAME) is a companion-TEXT field, not a raw copy — CORRECTED
+// 2026-07-19 (S8.5 parity audit): the wire payload is the resolved model-name
+// TEXT (strlen+1), matching how the ENGINE STRING family is actually written
+// (eiface.h:366-367; the game-DLL codec routes MODELNAME/SOUNDNAME/STRING
+// through WriteString), not the raw in-struct `string_t`/int handle, which is
+// process-local and meaningless across processes.  See descriptor_codec.hpp
+// FieldTextBinding and client_state.hpp's StaticEntityEntry::model_name.
+inline constexpr std::array<::xash::abi::TYPEDESCRIPTION, 35> k_static_entry_desc = { {
+    define_field( ::xash::abi::FIELD_MODELNAME, "messagenum", static_cast<int>( offsetof( ::xash::abi::entity_state_t, messagenum ) ) ), // HACKHACK: model stored in messagenum; TEXT via FieldTextBinding, see above
+    define_field( ::xash::abi::FIELD_VECTOR,    "origin",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, origin ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "angles",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, angles ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "sequence",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, sequence ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "frame",      static_cast<int>( offsetof( ::xash::abi::entity_state_t, frame ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "colormap",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, colormap ) ) ),
+    define_field( ::xash::abi::FIELD_SHORT,     "skin",       static_cast<int>( offsetof( ::xash::abi::entity_state_t, skin ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "body",       static_cast<int>( offsetof( ::xash::abi::entity_state_t, body ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "scale",      static_cast<int>( offsetof( ::xash::abi::entity_state_t, scale ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "effects",    static_cast<int>( offsetof( ::xash::abi::entity_state_t, effects ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "framerate",  static_cast<int>( offsetof( ::xash::abi::entity_state_t, framerate ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "mins",       static_cast<int>( offsetof( ::xash::abi::entity_state_t, mins ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "maxs",       static_cast<int>( offsetof( ::xash::abi::entity_state_t, maxs ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "startpos",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, startpos ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "rendermode", static_cast<int>( offsetof( ::xash::abi::entity_state_t, rendermode ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "renderamt",  static_cast<int>( offsetof( ::xash::abi::entity_state_t, renderamt ) ) ),
+    define_array( ::xash::abi::FIELD_CHARACTER, "rendercolor",static_cast<int>( offsetof( ::xash::abi::entity_state_t, rendercolor ) ), sizeof( ::xash::abi::color24 ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "renderfx",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, renderfx ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "controller", static_cast<int>( offsetof( ::xash::abi::entity_state_t, controller ) ) ), // byte[4] read as one int (legacy quirk)
+    define_field( ::xash::abi::FIELD_INTEGER,   "blending",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, blending ) ) ),   // byte[4] read as one int (legacy quirk)
+    define_field( ::xash::abi::FIELD_SHORT,     "solid",      static_cast<int>( offsetof( ::xash::abi::entity_state_t, solid ) ) ),
+    define_field( ::xash::abi::FIELD_TIME,      "animtime",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, animtime ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "movetype",   static_cast<int>( offsetof( ::xash::abi::entity_state_t, movetype ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "vuser1",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, vuser1 ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "vuser2",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, vuser2 ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "vuser3",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, vuser3 ) ) ),
+    define_field( ::xash::abi::FIELD_VECTOR,    "vuser4",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, vuser4 ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "iuser1",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, iuser1 ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "iuser2",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, iuser2 ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "iuser3",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, iuser3 ) ) ),
+    define_field( ::xash::abi::FIELD_INTEGER,   "iuser4",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, iuser4 ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "fuser1",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, fuser1 ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "fuser2",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, fuser2 ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "fuser3",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, fuser3 ) ) ),
+    define_field( ::xash::abi::FIELD_FLOAT,     "fuser4",     static_cast<int>( offsetof( ::xash::abi::entity_state_t, fuser4 ) ) ),
+} };
+
+// ---------------------------------------------------------------------------
+// SAV-OQ-1 — reserved embedded-file extension door (Chunk 8, slice S8.5).
+// save-boundary.md "SAV-OQ-1 — Format extension door": `.HLX` reserves a
+// third-character-wildcard-safe extension (matches the existing `*.HL?` glob
+// used by ClearSaveDir / SaveGameSlot's DirectoryCopy scope) for a FUTURE
+// xash3dpp-only embedded side-block.  NO PRODUCER SHIPS HERE (door-keep only,
+// per the OQ's "Recommended shape") — this is the self-describing
+// magic+version+size header shape a future side-block would use so a reader
+// can skip an unrecognized block cleanly, plus the extension string.  The
+// container reader (container_codec.hpp) tolerates an embedded `.HLX` record
+// today for free: DirectoryExtract-equivalent extraction is already
+// extension-blind (every embedded record round-trips regardless of name) —
+// see the SAV-OQ-1 foreign-block round-trip test in tests/save.
+// ---------------------------------------------------------------------------
+
+inline constexpr std::string_view k_hlx_extension = ".HLX";
+
+// A future .HLX side-block's own self-describing header (NOT part of the
+// outer container-record framing — this is content INSIDE one embedded
+// record's `data[fileSize]`, mirroring how GAME_HEADER/SAVE_HEADER are
+// self-describing via the block-header record).  magic/version let an aware
+// future reader validate/skip; `size` is the payload byte count following
+// this 12-byte header, letting even an UNAWARE-of-the-specific-version reader
+// skip the whole block by `size` bytes.  No xash3dpp-specific side-block
+// content is designed here (door-keep only, per SAV-OQ-1).
+struct HlxSideBlockHeader
+{
+    std::int32_t magic   = 0;
+    std::int32_t version = 0;
+    std::int32_t size    = 0; // payload bytes following this header
+};
+static_assert( sizeof( HlxSideBlockHeader ) == 12 );
+
+// Reserved magic for a future .HLX side-block ('X'<<24|'L'<<16|'H'<<8|'X' —
+// the same hand-rolled-int derivation style as k_savefile_magic/k_savegame_
+// magic; chosen distinct from both so a reader can tell a .HLX side-block
+// apart from a misnamed .HL1/.HL2).  version 1 is the first (unused) shape.
+inline constexpr std::int32_t k_hlx_side_block_magic =
+    ( std::int32_t{ 'X' } << 24 ) | ( std::int32_t{ 'L' } << 16 ) |
+    ( std::int32_t{ 'H' } <<  8 ) |   std::int32_t{ 'X' };
+inline constexpr std::int32_t k_hlx_side_block_version = 1;
 
 } // namespace xash::save

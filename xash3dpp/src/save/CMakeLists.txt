@@ -14,6 +14,11 @@ add_library(xash3dpp_save STATIC
     descriptor_codec.cpp
     level_state_writer.cpp
     level_state_loader.cpp
+    container_codec.cpp
+    save_directory.cpp
+    save_comment.cpp
+    client_state.cpp
+    entity_patch.cpp
 )
 
 target_include_directories(xash3dpp_save
@@ -25,5 +30,9 @@ target_compile_features(xash3dpp_save PUBLIC cxx_std_23)
 target_link_libraries(xash3dpp_save
     PUBLIC  xash3dpp_memory
     PUBLIC  xash3dpp_utilities
+    # S8.5: the .sav/.HL1-3 file-backed wrappers round through the existing
+    # filesystem surface (save-boundary.md §Dependencies: filesystem is
+    # sibling-scope, save consumes it — not extended here).
+    PUBLIC  xash3dpp_filesystem
     PRIVATE xash3dpp_core
 )

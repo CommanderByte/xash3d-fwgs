@@ -8,6 +8,7 @@
 
 #include <bit>
 #include <cstring>
+#include <vector>
 
 namespace xash::save {
 
@@ -25,6 +26,34 @@ constexpr std::size_t k_transform_scratch = 64;
         if ( p[i] != std::byte{ 0 } )
             return false;
     return true;
+}
+
+// The engine STRING family — companion-text fields (descriptor_codec.hpp
+// FieldTextBinding doc; mirrors ETABLE classname, entity_table.cpp).
+[[nodiscard]] bool is_text_field( ::xash::abi::FIELDTYPE t ) noexcept
+{
+    switch ( t )
+    {
+    case ::xash::abi::FIELD_STRING:
+    case ::xash::abi::FIELD_MODELNAME:
+    case ::xash::abi::FIELD_SOUNDNAME:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// Resolves `field_name`'s companion `std::string*` from the caller's binding
+// table (case-insensitive, matching the rest of this codec's name lookups).
+// nullptr if no binding matches — a caller error for any text-family field
+// actually present in the descriptor table (BadFieldRecord at the call site).
+[[nodiscard]] std::string *find_text_binding( std::span<const FieldTextBinding> bindings,
+                                              std::string_view field_name ) noexcept
+{
+    for ( const auto &binding : bindings )
+        if ( ::xash::utilities::ci_equal( binding.field_name, field_name ) )
+            return binding.text;
+    return nullptr;
 }
 
 [[nodiscard]] float read_f32_le( const std::byte *p ) noexcept
@@ -71,17 +100,30 @@ void write_i32_le( std::byte *p, std::int32_t v ) noexcept
 Result<void>
 write_descriptor_block( IFieldSink &sink, TokenTable &tokens, std::string_view block_name,
                         const void *base, std::span<const ::xash::abi::TYPEDESCRIPTION> fields,
-                        float time_basis, EdictIndexFn edict_index, void *edict_ctx ) noexcept
+                        float time_basis, EdictIndexFn edict_index, void *edict_ctx,
+                        std::span<const FieldTextBinding> text_bindings ) noexcept
 {
     ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
 
     const auto *base_bytes = static_cast<const std::byte *>( base );
 
     // Pass 1 — DataEmpty skip count (HL-SDK CSave::WriteFields precalculates the
-    // empties, then writes actualCount = fieldCount - emptyCount).
+    // empties, then writes actualCount = fieldCount - emptyCount).  Text-family
+    // fields test companion-text emptiness instead of the raw in-struct bytes
+    // (FieldTextBinding doc — the in-struct handle is not the wire truth).
     std::int32_t actual_count = 0;
     for ( const auto &f : fields )
     {
+        if ( is_text_field( f.fieldType ) )
+        {
+            const std::string *text = find_text_binding( text_bindings, f.fieldName );
+            if ( !text )
+                return std::unexpected( SaveError::BadFieldRecord );
+            if ( !text->empty() )
+                ++actual_count;
+            continue;
+        }
+
         const std::size_t span = static_cast<std::size_t>( f.fieldSize ) *
                                  static_cast<std::size_t>( field_element_size( f.fieldType ) );
         if ( !data_empty( base_bytes + f.fieldOffset, span ) )
@@ -96,6 +138,32 @@ write_descriptor_block( IFieldSink &sink, TokenTable &tokens, std::string_view b
     // name is never interned), matching the legacy BufferField/TokenHash flow.
     for ( const auto &f : fields )
     {
+        // Text-family fields: the payload is the companion TEXT + trailing
+        // NUL (size = strlen + 1) — mirrors write_classname_field
+        // (entity_table.cpp).  DataEmpty = empty text -> skip, name not
+        // interned.  Handled entirely outside the raw-bytes switch below.
+        if ( is_text_field( f.fieldType ) )
+        {
+            const std::string *text = find_text_binding( text_bindings, f.fieldName );
+            if ( !text )
+                return std::unexpected( SaveError::BadFieldRecord );
+            if ( text->empty() )
+                continue;
+
+            auto tok = tokens.insert( f.fieldName );
+            if ( !tok )
+                return std::unexpected( tok.error() );
+
+            std::vector<std::byte> payload( text->size() + 1 );
+            for ( std::size_t i = 0; i < text->size(); ++i )
+                payload[i] = static_cast<std::byte>( static_cast<unsigned char>( ( *text )[i] ) );
+            payload[text->size()] = std::byte{ 0 }; // trailing NUL terminator
+
+            if ( auto r = sink.write_field_record( *tok, payload ); !r )
+                return r;
+            continue;
+        }
+
         const int         elem = field_element_size( f.fieldType );
         const std::size_t span = static_cast<std::size_t>( f.fieldSize ) *
                                  static_cast<std::size_t>( elem );
@@ -178,7 +246,10 @@ write_descriptor_block( IFieldSink &sink, TokenTable &tokens, std::string_view b
 
         default:
             // Unsupported field type in an engine-owned block — the engine
-            // structs never use FIELD_STRING/FIELD_POINTER/FIELD_FUNCTION here.
+            // structs never use FIELD_POINTER/FIELD_FUNCTION here, and the
+            // STRING family (FIELD_STRING/FIELD_MODELNAME/FIELD_SOUNDNAME) is
+            // handled above via the text-field branch, never reaching this
+            // switch.
             return std::unexpected( SaveError::BadFieldRecord );
         }
     }
@@ -194,7 +265,7 @@ Result<void>
 read_descriptor_block( std::span<const std::byte> data, std::size_t &offset,
                        const TokenTable &tokens, std::string_view block_name, void *base,
                        std::span<const ::xash::abi::TYPEDESCRIPTION> fields,
-                       float time_basis ) noexcept
+                       float time_basis, std::span<const FieldTextBinding> text_bindings ) noexcept
 {
     auto hdr = read_block_header( data, offset, tokens, block_name );
     if ( !hdr )
@@ -224,6 +295,26 @@ read_descriptor_block( std::span<const std::byte> data, std::size_t &offset,
         }
         if ( !field )
             continue; // unrecognized name -> skip (forward-compat)
+
+        // Text-family fields: the payload is TEXT + trailing NUL (mirrors
+        // ETABLE classname's D1 read, entity_table.cpp) — require the NUL,
+        // capture into the bound companion string, and leave the in-struct
+        // handle untouched (FieldTextBinding doc: the handle is process-
+        // local, the TEXT is the wire truth).
+        if ( is_text_field( field->fieldType ) )
+        {
+            std::string *text = find_text_binding( text_bindings, field->fieldName );
+            if ( !text )
+                return std::unexpected( SaveError::BadFieldRecord );
+            if ( rec->payload.empty() || rec->payload.back() != std::byte{ 0 } )
+                return std::unexpected( SaveError::BadFieldRecord );
+
+            // SAFETY: std::byte and char are both byte types; the range
+            // excludes the trailing NUL (bounds-checked above).
+            text->assign( reinterpret_cast<const char *>( rec->payload.data() ),
+                         rec->payload.size() - 1 );
+            continue;
+        }
 
         const int         elem = field_element_size( field->fieldType );
         const std::size_t span = static_cast<std::size_t>( field->fieldSize ) *
