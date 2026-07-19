@@ -687,6 +687,7 @@ subsystem has > 500 KB of STL container memory invisible to `memlist`. Document
 the trigger event in a new Q entry when it is met.
 
 **Audit enforcement** (`detail-audit` check `ALLOC_POLICY`):
+
 - Any `std::vector` or `std::deque` class member in a hot-path class body that
   lacks a `// @pre-reserved: <LIMIT_NAME>` comment → **WARNING**
 - Pre-reserve annotation present but no `.reserve()` in `init()` or constructor
@@ -711,6 +712,7 @@ expressed as a type parameter must carry a `// Pre:` comment immediately before
 (or on) the declaration.
 
 A precondition is **non-trivial** when both:
+
 - No type-system enforcement is possible (no `std::span`, `gsl::not_null`, etc. can model it), **AND**
 - Violating it causes silent corruption or undefined behaviour rather than an obvious assertion failure.
 
@@ -894,7 +896,7 @@ ______________________________________________________________________
 **Context**: The rewrite's long-term purpose includes experimental features
 beyond GoldSrc parity: an in-engine MCP service, a multithreading-suitable
 game ABI ("v2") with a reworked HL SDK, a dedicated debug thread, and
-expanded in-game debugging (G-1 … G-4 in `extension-goals.md`). None is
+expanded in-game debugging, and the scripting runtime (G-1 … G-5 in `extension-goals.md`). None is
 scheduled, and parity-first chunks legitimately keep legacy-shaped cores
 while the frozen ABI demands it (Q-20). But everyday rewrite decisions can
 silently close the doors those features need — a new file-scope global, a
@@ -908,8 +910,10 @@ hooks binding work to it.
 document for extension posture. Concretely:
 
 - **Boundary specs** include an **"Extension axes (Q-21)"** section
-  evaluating the subsystem against the goals (G-1 … G-4) and primitives
-  (P-1 … P-6); a reasoned "none apply" is a valid answer.
+  evaluating the subsystem against the goals and primitives **currently
+  listed** in `extension-goals.md` (G-1 … G-5, P-1 … P-8 as of 2026-07-19;
+  the set is additive — never evaluate against a cached list); a reasoned
+  "none apply" is a valid answer.
 - **Modernization audits** tag findings that open or protect a door
   (`[EXT:G-n]` / `[EXT:P-n]`) and promote them one priority tier.
 - **The door rules bind new code** (see §4.3): context-first entry points
@@ -926,6 +930,15 @@ document for extension posture. Concretely:
 - **Parity precedence**: inside a parity-gated subsystem, byte-exact GoldSrc
   behaviour wins over a door rule; the deviation is recorded in
   `extension-goals.md` as known door-debt.
+- **Float/byte-EXACT no-touch set (HB-2, recorded 2026-07-19)**: five
+  subsystems carry golden- or wire-gated kernels that NO modernization or
+  door-rule pass may perturb — map_loader (Q-18 trace/PVS/CRC kernel),
+  content (studio bone math), networking (wire bit-codec, delta field
+  widths, LZSS, OOB packet magic), server (rotated-brush ULP behaviour at
+  `clip.cpp:211`), utilities (double-precision studio math). Byte-exact
+  parity beats every other rule in these files — FMA, reassociation, and
+  `std::ranges` rewrites included; any deviation follows the
+  parity-precedence bullet above.
 
 Enforcement is by the workflow surface (the `analyse-subsystem` and
 `analyse-modernization` prompts carry the hooks) and reviewer attention at

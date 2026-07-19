@@ -95,9 +95,9 @@ Work through the table in this order:
 
 For each row, apply the minimal change the rule requires:
 
-- **ADD**: insert the required element (e.g. `platform::log(...)` before a
+- **ADD**: insert the required element (e.g. `core::log(...)` before a
   public-API failure return). Add any missing `#include` at the top of the file.
-- **REMOVE**: delete or replace the excess element (e.g. remove a `platform::log`
+- **REMOVE**: delete or replace the excess element (e.g. remove a `core::log`
   call that the rule no longer requires from a private helper).
 - **UPDATE_DOC**: update only the sentence or line that references the old behaviour.
 

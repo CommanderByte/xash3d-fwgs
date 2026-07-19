@@ -16,20 +16,20 @@ ______________________________________________________________________
 
 | Subsystem | src/ files | include/ | tests/ | Status |
 |------------|-----------|----------|--------|----------|
-| utilities | 9 | ✓ | ✓ | **Complete** |
+| utilities | 10 | ✓ | ✓ | **Complete** |
 | memory | 1 | ✓ | ✓ | **Complete** |
 | filesystem | 10 | ✓ | ✓ | **Complete** |
 | platform | 14 | ✓ | ✓ | **Complete** (incl. os_socket + IPlatformSockets) |
 | core | 4 | ✓ | ✓ | **Complete** |
 | cmd_cvar | 11 | ✓ | ✓ | **Complete** |
-| host | 2 | ✓ | ✓ | **Complete** (Chunk 3 ✅; EngineContext owns networking) |
+| host | 3 | ✓ | ✓ | **Complete** (Chunk 3 ✅; EngineContext owns networking; frame pump — Clock::tick + Server::frame — wired 2026-07-19) |
 | abi | 1 | ✓ | ✗ | **Partial** (`Host_Error` shim + accessor only) |
 | map_loader | 10 | ✓ | ✓ | **Complete** (BSP v29/30/BSP2/30ext → immutable WorldData; PVS + trace kernel, Q-18 golden-gated; FSM loads worlds; PHS module per Q-19) |
 | launcher | 1 | ✗ | ✗ | **Partial** (thin argv bootstrap, no tests) |
 | networking | 24 | ✓ | ✓ | **Complete** (Layers 0–4 incl. delta encoder + satellites, wired into EngineContext; DNS/bz2 deferred) |
-| server | 1 | ✓ | ✓ | **Complete** (Chunk 6 — dedicated-server milestone ACHIEVED 2026-07-05: real 32-bit `hl.dll` loads + `c0a0` spawns + one map frame runs clean; OQ-8 milestone-trimmed backlog tracked in the deferred inventory) |
+| server | 30 | ✓ | ✓ | **Complete** (Chunk 6 — dedicated-server milestone ACHIEVED 2026-07-05: real 32-bit `hl.dll` loads + `c0a0` spawns + one map frame runs clean; OQ-8 milestone-trimmed backlog tracked in the deferred inventory) |
 | client | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
-| content | 13 | ✓ | ✓ | **Partial** (model cache + 3 loaders + 7 image codecs + studio **bone solver** [OQ-5 ✅ bit-exact vs Q-18 goldens] + pose pfns; `SV_ClipMoveToEntity` studio hitbox trace-loop gated on the hl.dll smoke — see Chunk 7) |
+| content | 13 | ✓ | ✓ | **Complete** (model cache + 3 loaders + 7 image codecs + studio **bone solver** [OQ-5 ✅ bit-exact vs Q-18 goldens] + pose pfns + layout tripwire; the `SV_ClipMoveToEntity` studio hitbox trace-loop remains gated on the hl.dll smoke — see Chunk 7. HB-10 reconciliation 2026-07-19) |
 | demo | 0 | ✗ | ✗ | **Skeleton** |
 | input | 0 | ✗ | ✗ | **Skeleton** |
 | physics | 0 | ✗ | ✗ | **Skeleton** |
@@ -505,6 +505,21 @@ ______________________________________________________________________
 > impact. Each item cites the refreshed per-subsystem docs it came from and
 > tags the relevant G-/P-/Q-/OQ- IDs. Nothing here invents scope: every item
 > traces to a finding already recorded in the refreshed docs.
+
+> **Status 2026-07-19 (consolidation audit fix wave):** HB-1 ✅ resolved
+> (utilities `ci_compare` ebeb1763 + filesystem b1a7b4de + cmd_cvar
+> 5befba72); HB-2 ✅ (no-touch set recorded in
+> `decisions-architecture.md` §Q-21); HB-3 ✅ (host 93860120 + map_loader
+> feed7557; server was already the clean reference); HB-8 ✅ (ownership
+> recorded in the filesystem/content boundaries — no code change needed);
+> HB-9 ✅ (abi/launcher boundary P-8 rows record the by-role posture);
+> HB-10 ✅ (status table reconciled; the core cvar public-name choice
+> stays recorded in `core-boundary.md`); HB-11 ◑ inventory current — the
+> one candidate addition, the host frame pump, was WIRED instead of
+> listed (93860120); HB-12 ⏳ deferred (owner: a future harmonization
+> session); HB-4..HB-7 ⏳ deferred pending their design briefs (DOOR
+> class). Full adjudication ledger:
+> `docs/audits/2026-07-consolidation-audit.md`.
 
 ### Security (act first)
 

@@ -250,7 +250,7 @@ Flag any `#include <cassert>` or bare `assert(` call.
 #### LOGGING (QI) — No `printf`/`fprintf` for diagnostics; no raw `console::write` for C++ subsystem errors
 
 Rule:
-- `printf`, `fprintf`, `std::cout` — **always** flag; replace with `platform::log`.
+- `printf`, `fprintf`, `std::cout` — **always** flag; replace with `core::log`.
 - `platform::console::write` — **allowed and encouraged** for intentional
   game-console output (e.g., the `echo` command, `cvarlist`, `cmdlist`,
   progress/status messages directed at the player or developer).
@@ -410,10 +410,10 @@ the audit identified.
 **Round 1 fixes:**
 - **PIMPL_MOVE**: Move `= default` from the header to the `.cpp` for destructor and move
   ops of pimpl classes. Declare (no `= default`) in the header.
-- **ERROR_RETURN**: Add `platform::log( LogLevel::Error, "<subsystem>", "..." )` before
+- **ERROR_RETURN**: Add `core::log( LogLevel::Error, "<subsystem>", "..." )` before
   each silent public-API `return false` / `return nullptr` that represents a real error.
   Private helpers propagate silently — do not add logs there.
-  Add `#include <xash3dpp/platform/log.hpp>` if not already present.
+  Add `#include <xash3dpp/core/log.hpp>` if not already present.
 - **OWNERSHIP**: Add `// @lifetime: engine` comment to raw `T*` returns in public
   headers. Replace any `new T(` (non-pimpl) with `pool_new<T>( pool, ... )`.
   Replace any `delete ptr` with `mem_free( ptr )`.
@@ -439,12 +439,12 @@ the audit identified.
   Replace `assert(cond)` with `XASH_ASSERT(cond)` (one argument — no message)
   or `XASH_FATAL(cond, "message")` (two arguments, always-on) for invariants
   that must abort in release builds.
-- **LOGGING**: Replace `printf`/`fprintf`/`std::cout` with `platform::log`. For
+- **LOGGING**: Replace `printf`/`fprintf`/`std::cout` with `core::log`. For
   `platform::console::write`: keep it when it is intentional game-console
   output (echo, cmdlist, cvarlist, player-visible messages); replace it with
-  `platform::log( LogLevel::Error/Warning, "<subsystem>", "..." )` only when
+  `core::log( LogLevel::Error/Warning, "<subsystem>", "..." )` only when
   it is reporting a C++ subsystem error or internal diagnostic condition.
-  Add `#include <xash3dpp/platform/log.hpp>` if not already present.
+  Add `#include <xash3dpp/core/log.hpp>` if not already present.
 - **TEST_MACROS**: Replace the ad-hoc macro block with `#include "../../test_helpers.hpp"`
   (adjust relative path depth). Remove old `#define CHECK` / `#define REQUIRE` lines.
 - **ANNOTATIONS (QN)**: add the missing matrix marker (`@lifetime:`,

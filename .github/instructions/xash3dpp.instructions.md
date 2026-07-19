@@ -447,9 +447,10 @@ Defined in `platform/assert.hpp`.
 ### Logging — Mandatory
 
 Full decisions: `xash3dpp/docs/design/decisions-style.md` §LOGGING (QI).
-Defined in `platform/log.hpp`.
+Defined in `core/log.hpp` (namespace `xash::core`; the implementation TU is
+hosted in the platform target per D-1 — the API is `core::`).
 
-Use `platform::log(LogLevel, tag, msg)` or `platform::logf(LogLevel, tag, fmt, ...)`
+Use `core::log(LogLevel, tag, msg)` or `core::logf(LogLevel, tag, fmt, ...)`
 for all diagnostic output — not `platform::console::write` directly, not `printf`.
 
 | Level | Use for |
@@ -460,7 +461,7 @@ for all diagnostic output — not `platform::console::write` directly, not `prin
 | `LogLevel::Error` | Operation failed; caller also notified via return value |
 | `LogLevel::Fatal` | Assertion violations — called by `XASH_ASSERT`/`XASH_FATAL` |
 
-**ERROR_RETURN (Q-5) compliance**: call `platform::log(LogLevel::Error, tag, msg)`
+**ERROR_RETURN (Q-5) compliance**: call `core::log(LogLevel::Error, tag, msg)`
 *before the public API function returns failure*. Private helpers propagate silently.
 
 ### Copy/Move Semantics — Mandatory
