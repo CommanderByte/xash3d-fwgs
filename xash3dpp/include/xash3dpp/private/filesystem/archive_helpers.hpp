@@ -40,19 +40,16 @@ template<typename T>
 [[nodiscard]] const T* ci_find_by_name( const std::vector<T>& entries,
                            std::string_view      name ) noexcept
 {
-    using xash::utilities::strnicmp;
+    // Bounded compare (utilities ci_compare): 'name' may be a slice of a
+    // larger buffer with no NUL at data()+size() — never hand it to a
+    // C-string compare (HB-1 / M-7). Ordering matches CiNameLess.
     auto it = std::lower_bound( entries.begin(), entries.end(), name,
         []( const T& e, std::string_view n ) {
-            const std::size_t len =
-                ( e.name.size() > n.size() ? e.name.size() : n.size() ) + 1;
-            return strnicmp( e.name.c_str(), n.data(), len ) < 0;
+            return xash::utilities::ci_compare( e.name, n ) < 0;
         } );
 
     if ( it == entries.end() ) return nullptr;
-
-    const std::size_t len =
-        ( it->name.size() > name.size() ? it->name.size() : name.size() ) + 1;
-    if ( strnicmp( it->name.c_str(), name.data(), len ) != 0 ) return nullptr;
+    if ( xash::utilities::ci_compare( it->name, name ) != 0 ) return nullptr;
 
     return &*it;
 }

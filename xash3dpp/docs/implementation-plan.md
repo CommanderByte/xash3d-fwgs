@@ -518,7 +518,7 @@ ______________________________________________________________________
   `ci_compare` in `utilities`, adopt at the 3 call sites; delete the
   per-subsystem M-4/M-7/M-5 findings on adoption. *Docs*:
   `modernization-opportunities/{utilities,cmd_cvar}-modernization.md` +
-  `modernization-opportunities/xash3dpp-src-filesystem-modernization.md`.
+  `modernization-opportunities/filesystem-modernization.md`.
   *Tags*: no ABI impact; a shared `utilities` helper so coordinate the three
   consumers. **No design brief needed** (bounded change, no ABI surface).
 

@@ -287,8 +287,8 @@ ______________________________________________________________________
 | `dir_t` case-insensitivity trie | `dir.c` | `CIDirectory` (Native vs Emulated mode; lazy per-subdir sorted cache under `cache_mutex_`) | `ci_directory.{hpp,cpp}` |
 | `SEARCHPATH_PK3DIR` | `dir.c` | `Pk3DirBackend` (delegates to inner dir) | `pk3dir_backend.{hpp,cpp}` |
 | `android_assets_t` (NDK) | `android.c` | `AndroidBackend` | `android_backend.cpp` |
-| `g_archives[]` mount order | `filesystem.c:91` | `ArchiveRegistry` | `archive_registry.hpp` |
-| `FS_FindFile_PAK/ZIP` (`Q_strnicmp` binary search) | `pak.c`/`zip.c` | `ci_find_by_name<T>` / `CiNameLess<T>` | `archive_helpers.hpp` — **carries modernization M-7** (`string_view` over-read) |
+| `g_archives[]` mount order | `filesystem.c:91` | `ArchiveType` + `constexpr k_archive_types` table (+ `BackendFactory` fn-ptr) | `archive_registry.hpp` |
+| `FS_FindFile_PAK/ZIP` (`Q_strnicmp` binary search) | `pak.c`/`zip.c` | `ci_find_by_name<T>` / `CiNameLess<T>` | `archive_helpers.hpp` — M-7 (`string_view` over-read) **resolved 2026-07-19** via bounded `utilities::ci_compare` |
 | `FS_LoadFile` (pool) / `FS_LoadFileMalloc` (malloc) | `filesystem.c` | single `std::vector<std::byte> load_file()` (RAII, caller-owned) | Design decision 4: both variants collapse |
 | `fs_globals_t::GameInfo` / `gameinfo_t` | `filesystem.h` | `xash::GameInfo` value; `get_game_info()` returns by value | `gameinfo.hpp` |
 | injected `_Mem_*` / `miniz` (static link) | `fs_interface_t` | `xash3dpp_memory` (PUBLIC) + `xash3dpp_miniz` (PRIVATE, shared with `content`) | miniz = shared `../public/miniz.c` static target, **not** owned by utilities |

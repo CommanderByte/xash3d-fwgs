@@ -24,8 +24,9 @@ ______________________________________________________________________
 
 > **Superseded 2026-07-06:** the table below reflects the *original* scan.
 > Current status: High 0 remaining (H-1 done; H-2 relocated to platform),
-> Medium 1 remaining (M-7 new; M-1..M-6 done), Low ~5 unchanged (all
-> no-action / optional). See per-item status lines.
+> Medium 0 remaining (M-1..M-6 done; M-7 resolved 2026-07-19 via HB-1
+> `ci_compare`), Low ~5 unchanged (all no-action / optional). See per-item
+> status lines.
 
 | Tier | Count | Key theme |
 |--------|-------|-----------|
@@ -310,6 +311,13 @@ current form if big-endian support is ever planned.
 ______________________________________________________________________
 
 ### M-7 — `ci_find_by_name` over-reads past `string_view` bounds via `strnicmp` (new 2026-07-06)
+
+> **RESOLVED 2026-07-19 (HB-1, consolidation audit).** Both `strnicmp` call
+> sites in `ci_find_by_name` (the `lower_bound` comparator and the final
+> equality check) now use the bounded `utilities::ci_compare` — same
+> ordering as `CiNameLess`, no read past `name.data() + name.size()`. See
+> utilities M-4 (resolved the same pass) for the shared primitive.
+> Retained below for the record.
 
 **File(s)**: `include/xash3dpp/private/filesystem/archive_helpers.hpp` L43–55\
 **Category**: 2-C / safety hazard (buffer over-read, OWASP)

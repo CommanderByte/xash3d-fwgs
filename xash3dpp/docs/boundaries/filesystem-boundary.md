@@ -458,9 +458,10 @@ ______________________________________________________________________
 
 ## Extension axes (Q-21)
 
-> Added 2026-07-06 (as-built pass). Evaluated against
+> Added 2026-07-06 (as-built pass); axis set completed 2026-07-19
+> (consolidation audit). Evaluated against
 > [docs/design/extension-goals.md](../design/extension-goals.md) (G-1..G-5,
-> P-1..P-7). The filesystem is explicitly named in §G-3 as *"already safe for
+> P-1..P-8). The filesystem is explicitly named in §G-3 as *"already safe for
 > off-main readers"* — so the north-star question here is not *whether* the
 > off-main I/O door exists, but *keeping it open* as the subsystem grows.
 
@@ -472,8 +473,12 @@ ______________________________________________________________________
 | **P-4** typed introspection | **Yes — partial surface exists; keep growing it typed** | `FilesystemStats { game_loaded, search_path_count }` is the seed of the typed surface G-1/G-3/G-4 will consume. A future *"what is mounted"* query (search-path list, per-backend kind, source path, flags, open-handle census) should be a typed value-returning API — **not** an `extern` poke into `Impl::search_paths`. The `ISearchBackend::info()` string is debug-only; a structured `SearchPathView` is the P-4 upgrade path |
 | **P-5** narrowest-state signatures | **Yes — already done** | Backend methods take `(std::string_view path, mode)`, not a runtime aggregate; the facade owns the deque and hands each backend only what it needs |
 | **P-6** services are satellites | **N/A for the core; door noted** | The filesystem itself integrates as a static module (Design decision 1 — no C-ABI plugin). The archive backends are **not** satellites (Q-11 verdict below: 0/5 criteria). A future *modern-compression* or *network-mount* backend could be a satellite target, but none is planned |
-| **P-7** over-aligned allocation | No | Filesystem buffers (`std::vector<std::byte>`, `std::array` read buffers) need no over-alignment; it consumes `xash3dpp_memory` pools (≥8-byte payload alignment is sufficient) |
+| **P-7** pool-owned RAII lifecycle | **Yes — already conforms** | `File` and every `ISearchBackend` follow the pool-owned idiom: `create_<thing>` factories (`create_pak`/`create_os_file`/…), `pool_new` allocation, dual `operator delete` overloads (`file.hpp:39-40`, `i_search_backend.hpp:25-26`), no class-scoped `operator new`. Door rule: new pool-owned types keep this exact shape. *(An earlier revision of this row answered the retired "over-aligned allocation" question — that concern now lives with the HB-7 shared aligned-allocation door in `implementation-plan.md`; the buffer answer there remains true: ≥8-byte pool alignment suffices here.)* |
+| **P-8** annotation discipline | **Yes — satisfied (denominatored)** | 2026-07-19 `annotation-coverage` scan: lifetime / thread_safety / safety / pre_reserved / thread_assert all at 100% for filesystem, with denominators. Keep future coverage statements denominatored, not raw counts. |
+| **G-1** in-engine MCP service | Consumer door via P-4 | MCP inspects mounts/files through the typed introspection surface (see P-4): `stats()`, `get_game_info()`, the future `SearchPathView`. No filesystem-side service code — G-1 composes existing typed queries. |
 | **G-2** game ABI v2 | N/A | No game-DLL-facing surface. `VFileSystem009` is an engine-side compat shim, not a frozen game ABI (see External ABI contracts) |
+| **G-3** dedicated debug thread | **Yes — named consumer (see P-1)** | `extension-goals.md` §G-3 names the filesystem *"already safe for off-main readers"*; the `shared_lock` read paths are that mechanism. Door rules identical to P-1: no per-`File` shared state, mount/unmount stays exclusive-write. |
+| **G-4** expanded in-game debugging | Consumer via P-4 | Mounted-path / open-handle overlays read the same typed surface; nothing filesystem-side beyond keeping introspection typed and value-returning. |
 | **G-5** scripting runtime | **Door-keep (consumer, not provider)** | `extension-goals.md` §G-5 lists `Filesystem::load_file` / `search` as part of *"script surface v0"*. Keep those two methods P-4-conformant (value-returning, `string_view` in) so the script binding can call them directly with no new shim |
 
 **miniz / ZIP note.** ZIP/PK3 inflate and deflated-WAD reads go through the
