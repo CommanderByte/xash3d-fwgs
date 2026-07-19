@@ -75,33 +75,38 @@ cross-thread invariant violations early.
 
 ## Architecture at a glance
 
-`xash3dpp_core` is a leaf library from any subsystem's perspective but
-internally depends on `xash3dpp_platform` for its default log sink:
+**D-1 split** (see core-boundary §As-built reconciliation): the `core::`
+*namespace* spans two build targets. `xash3dpp_core` compiles only
+`error.cpp` + `clock.cpp`; the hosted diagnostics tier — `log.cpp` and
+`thread_role.cpp` — compiles into **`xash3dpp_platform`**, keeping the link
+graph one-way (core → platform, no cycle):
 
 ```text
 ┌──────────────────────────────────────────────────────────┐
 │  xash3dpp_cmd_cvar / xash3dpp_filesystem / …             │
-│  (subsystems) — link core PRIVATE                        │
+│  (subsystems) — include <xash3dpp/core/*.hpp>            │
 └───────────────────────┬──────────────────────────────────┘
                         │ #include <xash3dpp/core/log.hpp>
                         │         <xash3dpp/core/assert.hpp>
                         │         <xash3dpp/core/thread_role.hpp>
           ┌─────────────▼────────────────────────────────┐
-          │  xash3dpp_core                               │
-          │  • log.cpp — format + emit to console        │
-          │  • thread_role.cpp — thread_local registry   │
+          │  xash3dpp_core (error.cpp, clock.cpp)        │
           │  • assert.hpp (header-only macros)           │
-          │  • private/core/assert_main.hpp (inline)     │
           └─────────────┬────────────────────────────────┘
-                        │ PRIVATE: platform::console::write
+                        │ PRIVATE one-way link: core → platform
           ┌─────────────▼────────────────────────────────┐
-          │  xash3dpp_platform                           │
+          │  xash3dpp_platform (hosted diagnostics tier) │
+          │  • log.cpp — core::log impl                  │
+          │  • thread_role.cpp — core:: role registry    │
           │  • console::write — OS output                │
           └──────────────────────────────────────────────┘
 ```
 
-The mutual dependency (`platform` also PRIVATE-links `core` for
-`assert_main.hpp`) resolves at final link time across the two static archives.
+The former mutual PRIVATE-link cycle is **gone** (D-1): `xash3dpp_platform`
+does not link `xash3dpp_core` — it *hosts* the `core::` diagnostics TUs
+directly, and `private/core/assert_main.hpp` is consumed inline.
+*(Diagram corrected 2026-07-19, consolidation audit — the previous revision
+predated the D-1 split.)*
 
 ## Index of concepts
 

@@ -205,6 +205,11 @@ through. Verdicts:
 | **P-1** main-thread inbox | Consumer-side | Core has no inbox, but `assert_thread_role(Main)` is what the inbox drain point asserts, and `log_set_callback` gives an off-main producer a safe fire-and-forget diagnostic path. |
 | **P-6** services are satellites | **Yes (base lib)** | Core is a *base* library that satellites (MCP, debug, script) consume; the engine never links toward a service. Nothing to change. |
 | **P-8** annotation discipline | **Yes — met** | Core headers carry `@thread-safety:` on every public surface and the `compliance-allow` rationale is inline on `g_log_callback`. `assert_thread_role` is a documents-**and**-asserts primitive (the anti-pattern P-8 forbids is absent). |
+| **P-2** published-snapshot reads | **Yes — already shaped** | `Clock::stats()` returns the by-value `ClockStats` snapshot; the log callback delivers values, not references into live state. Core holds no other sim state; keep any new introspection value-returning. |
+| **P-5** narrowest-state signatures | **Already minimal** | The free functions (`log`, `assert_thread_role`, `error_code_name`) take exactly the values they touch; `Clock` methods operate on their own instance. No god-aggregate exists at this layer. |
+| **G-2** game ABI v2 | Consumer/enabler | Core owns no game-facing surface; a v2 ABI binds `core::log`/`ErrorCode` through context-carrying descriptors at the abi shim. No core change forced — the enforcement-primitive row above is core's actual G-2 contribution. |
+| **G-4** expanded in-game debugging | Provider via P-4 | The overlay/console frontends consume the same three channels the P-4 row names (log sinks, `ClockStats`, error vocabulary). Door rule identical to P-4: extend typed, never poke `Impl`. |
+| **G-5** scripting runtime | Door-keep | `log_set_callback` is named by extension-goals §G-5 as the REPL/log-capture hook, and `error_code_name` is script-bindable vocabulary. Cold-path, `noexcept`, exception-free — already suited to the isolated-island constraint. |
 
 **Net door-keep verdict:** core requires **no new seam** to keep the extension
 doors open — its existing atomics, the `ThreadRole` enum (additive), the log
