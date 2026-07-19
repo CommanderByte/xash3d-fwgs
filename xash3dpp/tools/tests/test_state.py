@@ -17,7 +17,8 @@ from pathlib import Path
 # Make the sibling `xtools` package importable (tools/ is tests/'s parent).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from xtools.state import _ladder_from_text, _parse_chunks, _scoped_ladder  # noqa: E402
+from xtools.state import (_filter_checkpoints, _ladder_from_text,  # noqa: E402
+                          _parse_chunks, _scoped_ladder)
 
 # A minimal plan shaped like the real one at the 6B stage: Chunk 6 DONE (and
 # still carrying its historical ladder), Chunk 6B IN PROGRESS with its own
@@ -105,6 +106,35 @@ class LadderScoping(unittest.TestCase):
             "S1 a ✅ → S2 b")
         self.assertEqual([s["id"] for s in ladder["steps"]], ["S1", "S2"])
         self.assertEqual(ladder["highest_done"], "S1")
+
+
+class FilterCheckpoints(unittest.TestCase):
+    """`_filter_checkpoints` (T7): pure search over the advisory log."""
+
+    ENTRIES = [
+        {"chunk": "6-server", "step": "commit", "note": "S8 sweep done",
+         "actor": "claude", "session": "s1", "branch": "b"},
+        {"chunk": "7-content", "step": "handoff", "note": "bone solver",
+         "actor": "codex", "session": "s2", "branch": "b"},
+        {"chunk": "6-server", "step": "pre-pr", "note": "SHIP verdict",
+         "actor": "claude", "session": "s3", "branch": "b"},
+    ]
+
+    def test_grep_is_case_insensitive_regex(self):
+        out = _filter_checkpoints(self.ENTRIES, grep="ship|SOLVER")
+        self.assertEqual([e["step"] for e in out], ["handoff", "pre-pr"])
+
+    def test_chunk_exact_match(self):
+        out = _filter_checkpoints(self.ENTRIES, chunk="6-server")
+        self.assertEqual(len(out), 2)
+        self.assertTrue(all(e["chunk"] == "6-server" for e in out))
+        # exact, not prefix: "6" matches nothing
+        self.assertEqual(_filter_checkpoints(self.ENTRIES, chunk="6"), [])
+
+    def test_limit_keeps_newest_tail(self):
+        out = _filter_checkpoints(self.ENTRIES, limit=2)
+        self.assertEqual([e["step"] for e in out], ["handoff", "pre-pr"])
+        self.assertEqual(len(_filter_checkpoints(self.ENTRIES, limit=0)), 3)
 
 
 if __name__ == "__main__":

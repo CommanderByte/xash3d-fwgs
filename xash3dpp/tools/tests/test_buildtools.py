@@ -20,7 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from xtools.buildtools import (  # noqa: E402
-    _assert_tail, _decode_exit, _failed_output_blocks, _resolve)
+    _assert_tail, _decode_exit, _failed_output_blocks, _refresh_decision,
+    _resolve)
 
 
 class Resolve(unittest.TestCase):
@@ -136,6 +137,25 @@ class FailedOutputBlocks(unittest.TestCase):
         # the summary line terminates the block
         self.assertNotIn(
             "100% tests passed, 1 tests failed out of 2", blocks["test_b"])
+
+
+class RefreshDecision(unittest.TestCase):
+    """`_refresh_decision` (T5): on -> always, off -> never, auto -> stale."""
+
+    def test_matrix(self):
+        for mode, stale, want in (
+            ("on", False, True), ("on", True, True),
+            ("off", False, False), ("off", True, False),
+            ("auto", False, False), ("auto", True, True),
+        ):
+            self.assertEqual(_refresh_decision(mode, stale), want,
+                             "%s/stale=%s" % (mode, stale))
+
+    def test_unknown_and_empty_fall_back_to_auto(self):
+        self.assertTrue(_refresh_decision("", True))
+        self.assertFalse(_refresh_decision(None, False))
+        self.assertTrue(_refresh_decision("bogus", True))
+        self.assertTrue(_refresh_decision(" AUTO ", True))
 
 
 if __name__ == "__main__":

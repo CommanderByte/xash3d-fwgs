@@ -10,7 +10,7 @@ import json
 import re
 from pathlib import Path
 
-from . import XPP
+from . import REPO, XPP
 from .proc import run
 from .vsenv import cmake_path, ctest_path, vsdevcmd_path
 
@@ -51,8 +51,40 @@ def _resolve(preset: str, arch: str) -> tuple[str, str, str]:
     return _BUILD_MATRIX[("debug", "x64")]
 
 
+def compile_db_status() -> dict:
+    """Staleness of build/clangd/compile_commands.json vs the newest
+    non-build CMakeLists.txt.  Shared by whereami --doctor and
+    build(refresh_db="auto") so both use ONE predicate.  A missing DB
+    reports stale=True (auto-refresh should create it)."""
+    db = XPP / "build" / "clangd" / "compile_commands.json"
+    newest, newest_name = 0.0, ""
+    for cml in XPP.rglob("CMakeLists.txt"):
+        if "build" in cml.parts:
+            continue
+        mt = cml.stat().st_mtime
+        if mt > newest:
+            newest, newest_name = mt, cml.relative_to(REPO).as_posix()
+    exists = db.is_file()
+    stale = (not exists) or db.stat().st_mtime < newest
+    return {"exists": exists, "stale": stale,
+            "db": db.relative_to(REPO).as_posix(),
+            "newest_cmakelists": newest_name}
+
+
+def _refresh_decision(mode: str, stale: bool) -> bool:
+    """Pure: should build() refresh the compile DB?  on -> always,
+    off -> never, auto (default/unknown) -> only when stale."""
+    m = (mode or "auto").strip().lower()
+    if m == "on":
+        return True
+    if m == "off":
+        return False
+    return stale
+
+
 def build(preset: str = "debug", configure: bool = False,
-          target: str | None = None, arch: str = "x64") -> dict:
+          target: str | None = None, arch: str = "x64",
+          refresh_db: str = "auto") -> dict:
     cmake = cmake_path()
     cfg_preset, build_preset, bdir = _resolve(preset, arch)
     width = "x86" if bdir.endswith("-x86") else "x64"
@@ -69,7 +101,19 @@ def build(preset: str = "debug", configure: bool = False,
         cmd += ["--target", target]
     rc, lines, duration = run(cmd, cwd=XPP)
     log += lines
-    return _build_result(build_preset, configured, rc, log, duration, width)
+    result = _build_result(build_preset, configured, rc, log, duration, width)
+    # T5: keep the clangd compile DB fresh without paying the VsDevCmd +
+    # Ninja-configure cost on every build — auto fires only when stale
+    # (doctor's predicate) and only after a SUCCESSFUL build.
+    status = compile_db_status()
+    ran = rc == 0 and _refresh_decision(refresh_db, status["stale"])
+    result["refresh_db"] = {
+        "mode": (refresh_db or "auto").strip().lower(),
+        "stale": status["stale"],
+        "ran": ran,
+        "result": refresh_compile_db() if ran else None,
+    }
+    return result
 
 
 def _build_result(preset, configured, rc, log, duration, arch="x64") -> dict:

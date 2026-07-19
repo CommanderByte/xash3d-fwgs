@@ -16,22 +16,34 @@ def main() -> int:
     ap.add_argument("--configure", action="store_true",
                     help="run the configure preset first")
     ap.add_argument("--target", default=None)
+    ap.add_argument("--refresh-db", default="auto",
+                    choices=["auto", "on", "off"],
+                    help="refresh build/clangd/compile_commands.json after a "
+                         "successful build: auto = only when stale (default)")
+    ap.add_argument("--out", default=None,
+                    help="write the envelope JSON to this file instead of "
+                         "stdout (one-line summary still printed)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     def run():
         data = build(preset=args.preset, configure=args.configure,
-                     target=args.target, arch=args.arch)
+                     target=args.target, arch=args.arch,
+                     refresh_db=args.refresh_db)
         return data["exit_code"] == 0, data
 
     def human(data):
         print("preset=%s arch=%s exit=%d errors=%d warnings=%d (%.1fs)" % (
             data["preset"], data["arch"], data["exit_code"],
             data["error_count"], data["warning_count"], data["duration_s"]))
+        rdb = data.get("refresh_db") or {}
+        if rdb:
+            print("refresh-db: mode=%s stale=%s ran=%s" % (
+                rdb.get("mode"), rdb.get("stale"), rdb.get("ran")))
         for e in data["errors"][:10]:
             print("  %s(%s): %s %s" % (e["file"], e["line"], e["code"], e["text"]))
 
-    return cli_main("build", run, args.json, human)
+    return cli_main("build", run, args.json, human, out=args.out)
 
 
 if __name__ == "__main__":

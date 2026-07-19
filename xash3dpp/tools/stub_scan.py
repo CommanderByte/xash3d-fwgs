@@ -12,6 +12,9 @@ def main() -> int:
     ap.add_argument("subsystem")
     ap.add_argument("--delta", action="store_true",
                     help="add per-tag net marker change vs HEAD~1")
+    ap.add_argument("--out", default=None,
+                    help="write the envelope JSON to this file instead of "
+                         "stdout (one-line summary still printed)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -31,7 +34,7 @@ def main() -> int:
                 "%s%+d" % (t, d) for t, d in data["delta_by_tag"].items()))
         print_table(data["stubs"], ["file", "line", "symbol", "marker"])
 
-    return cli_main("stub_scan", run, args.json, human)
+    return cli_main("stub_scan", run, args.json, human, out=args.out)
 
 
 if __name__ == "__main__":

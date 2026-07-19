@@ -63,14 +63,18 @@ def _maybe_reload() -> None:
 
 @mcp.tool()
 def build(preset: str = "debug", configure: bool = False,
-          target: str = "", arch: str = "x64") -> dict:
+          target: str = "", arch: str = "x64",
+          refresh_db: str = "auto") -> dict:
     """Build xash3dpp via the VS2022-bundled cmake. Returns parsed errors,
     counts, and a log tail. arch: x64 (default) | x86 — x86 drives the 32-bit
     chain (configure preset debug-msvc-x86, build/Debug-x86) for loading the
-    retail 32-bit GoldSrc dlls/hl.dll (S15 milestone)."""
+    retail 32-bit GoldSrc dlls/hl.dll (S15 milestone). refresh_db:
+    auto (default, refresh compile_commands.json after a successful build
+    only when it is stale) | on | off."""
     _maybe_reload()
     return buildtools.build(preset=preset, configure=configure,
-                            target=target or None, arch=arch)
+                            target=target or None, arch=arch,
+                            refresh_db=refresh_db)
 
 
 @mcp.tool()
@@ -97,7 +101,8 @@ def refresh_compile_db() -> dict:
 @mcp.tool()
 def compliance_scan(subsystem: str = "", checks_set: str = "all",
                     min_severity: str = "note", slice: bool = False,
-                    files: str = "", baseline: bool = False) -> dict:
+                    files: str = "", baseline: bool = False,
+                    out_path: str = "") -> dict:
     """Mechanical convention scan (reviewer [M] checks). checks_set: all |
     prepr | detail | comma-list of check ids. candidate-* findings need
     judgment. ABI-forced constructs carry inline compliance-allow markers,
@@ -122,9 +127,20 @@ def compliance_scan(subsystem: str = "", checks_set: str = "all",
         file_list = [f for f in files.split(",") if f.strip()]
     elif not subsystem:
         return {"error": "give a subsystem, files, or slice=True"}
-    return checks.compliance_scan(subsystem or None, checks=checks_set,
+    data = checks.compliance_scan(subsystem or None, checks=checks_set,
                                   min_severity=min_severity, files=file_list,
                                   baseline_base=baseline_base)
+    if out_path:
+        # Fan-out mode: persist the full payload for subagent readers and
+        # return only a summary (keeps the tool result small).
+        report.write_json_file(out_path, {"tool": "compliance_scan",
+                                          "data": data})
+        summary: dict = {"written": out_path}
+        for k in ("counts", "subsystems", "files_scanned"):
+            if k in data:
+                summary[k] = data[k]
+        return summary
+    return data
 
 
 @mcp.tool()

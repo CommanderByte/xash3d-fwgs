@@ -10,9 +10,10 @@ subsystem boundaries; gates should scan what actually changed.
 """
 import argparse
 import sys
+from pathlib import Path
 
-from xtools.checks import compliance_scan
-from xtools.report import cli_main, print_table
+from xtools.checks import _sub_of_path, compliance_scan
+from xtools.report import cli_main, print_table, write_json_file
 
 
 def main() -> int:
@@ -32,6 +33,13 @@ def main() -> int:
                     help="all | prepr | detail | comma-list of check ids")
     ap.add_argument("--min-severity", default="note",
                     choices=["note", "warning", "blocker"])
+    ap.add_argument("--out", default=None,
+                    help="write the envelope JSON to this file instead of "
+                         "stdout (one-line summary still printed)")
+    ap.add_argument("--split-by-subsystem", default=None, metavar="DIR",
+                    help="additionally write DIR/<subsystem>.json per "
+                         "subsystem (violations grouped by finding path; "
+                         "annotation-coverage splits the coverage map)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -56,6 +64,24 @@ def main() -> int:
         data = compliance_scan(args.subsystem or None, checks=args.checks,
                                min_severity=args.min_severity, files=files,
                                baseline_base=baseline_base)
+        if args.split_by_subsystem:
+            split_dir = Path(args.split_by_subsystem)
+            written = {}
+            if "coverage" in data:
+                for sub, cov in data["coverage"].items():
+                    p = split_dir / ("%s.json" % sub)
+                    write_json_file(p, {"subsystem": sub, "coverage": cov})
+                    written[sub] = str(p)
+            else:
+                groups: dict[str, list] = {}
+                for v in data["violations"]:
+                    groups.setdefault(
+                        _sub_of_path(Path(v["file"])) or "_other", []).append(v)
+                for sub, viols in sorted(groups.items()):
+                    p = split_dir / ("%s.json" % sub)
+                    write_json_file(p, {"subsystem": sub, "violations": viols})
+                    written[sub] = str(p)
+            data["split_written"] = written
         if args.checks == "annotation-coverage":
             # Coverage payload has no counts/violations envelope; clean =
             # every axis at 100% (6B S2/S3 CLI crash fix — the MCP path
@@ -94,7 +120,7 @@ def main() -> int:
         print("judgment checks NOT run (reviewer [J] set): %d areas"
               % len(data["judgment_checks_not_run"]))
 
-    return cli_main("compliance_scan", run, args.json, human)
+    return cli_main("compliance_scan", run, args.json, human, out=args.out)
 
 
 if __name__ == "__main__":

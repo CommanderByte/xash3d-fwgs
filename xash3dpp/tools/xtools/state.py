@@ -19,6 +19,7 @@ import re
 from pathlib import Path
 
 from . import DOCS, REPO, SRC, XPP, venv_python
+from . import buildtools as _buildtools
 from .proc import run
 
 CHECKPOINT_FILE = REPO / ".agent-checkpoints.jsonl"
@@ -86,6 +87,37 @@ def read_checkpoints() -> tuple[list[dict], int]:
         except ValueError:
             malformed += 1
     return entries, malformed
+
+
+def _filter_checkpoints(entries: list[dict], grep: str | None = None,
+                        chunk: str | None = None,
+                        limit: int = 20) -> list[dict]:
+    """Pure checkpoint filter (T7): case-insensitive regex over the joined
+    text fields, exact `chunk` match, then the LAST `limit` matches (newest
+    tail — resumption reads backwards).  limit<=0 means unbounded."""
+    rx = re.compile(grep, re.IGNORECASE) if grep else None
+    out: list[dict] = []
+    for e in entries:
+        if chunk and e.get("chunk") != chunk:
+            continue
+        if rx:
+            blob = " ".join(str(e.get(k, "")) for k in
+                            ("chunk", "step", "note", "actor",
+                             "session", "branch"))
+            if not rx.search(blob):
+                continue
+        out.append(e)
+    return out[-limit:] if limit and limit > 0 else out
+
+
+def search_checkpoints(grep: str | None = None, chunk: str | None = None,
+                       limit: int = 20) -> dict:
+    """Search the advisory checkpoint log (CLI `checkpoint --grep/...`)."""
+    entries, malformed = read_checkpoints()
+    matched = _filter_checkpoints(entries, grep, chunk, limit)
+    return {"file": CHECKPOINT_FILE.name, "count_total": len(entries),
+            "malformed": malformed, "matched": len(matched),
+            "entries": matched}
 
 
 def append_checkpoint(chunk: str, step: str, note: str,
@@ -470,24 +502,17 @@ def doctor() -> dict:
         "%s %s" % (cache.relative_to(REPO).as_posix(),
                    "present" if cache.is_file() else
                    "missing — run tools/build.py --configure"))
-    db = XPP / "build" / "clangd" / "compile_commands.json"
-    if db.is_file():
-        newest = 0.0
-        newest_name = ""
-        for cml in XPP.rglob("CMakeLists.txt"):
-            if "build" in cml.parts:
-                continue
-            mt = cml.stat().st_mtime
-            if mt > newest:
-                newest, newest_name = mt, cml.relative_to(REPO).as_posix()
-        stale = db.stat().st_mtime < newest
+    dbs = _buildtools.compile_db_status()
+    if dbs["exists"]:
         add("compile-db", True,
-            "%s%s" % (db.relative_to(REPO).as_posix(),
-                      " (older than %s)" % newest_name if stale else ""),
-            stale=stale)
-        if stale:
+            "%s%s" % (dbs["db"],
+                      " (older than %s)" % dbs["newest_cmakelists"]
+                      if dbs["stale"] else ""),
+            stale=dbs["stale"])
+        if dbs["stale"]:
             warnings.append("compile-db is older than %s — run "
-                            "tools/refresh_compile_db.py" % newest_name)
+                            "tools/refresh_compile_db.py (or build with "
+                            "--refresh-db auto)" % dbs["newest_cmakelists"])
     else:
         add("compile-db", False,
             "missing — run tools/refresh_compile_db.py", stale=False)

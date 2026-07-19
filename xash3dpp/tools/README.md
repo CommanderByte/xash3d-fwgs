@@ -28,11 +28,29 @@ Every CLI prints (with `--json`, always machine-readable):
 
 Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 
+**Exit 1 is a successful run that FOUND things** (grep semantics) — a scan
+reporting stub markers, drift, or violations exits 1 with `ok: false` and an
+empty `errors` list. Only exit 2 means the tool itself failed (`errors`
+carries the exception). Scripted callers must not treat 1 as a crash:
+
+| Exit | `ok` | `errors` | Meaning |
+|------|------|----------|---------|
+| 0 | true | `[]` | ran, nothing to report |
+| 1 | false | `[]` | ran, findings present (see `data`) |
+| 2 | false | non-empty | execution error (bad scope, crash) |
+
+**Output routing** (agent fan-outs): `--out FILE` on `build.py`,
+`compliance_scan.py`, and `stub_scan.py` writes the envelope JSON to a file
+(one-line summary on stdout, exit code unchanged);
+`compliance_scan.py --split-by-subsystem DIR` additionally writes
+`DIR/<subsystem>.json` per subsystem. MCP: `compliance_scan` takes
+`out_path` and returns a small summary when writing to a file.
+
 ## Scripts
 
 | Script | Purpose | Consumed by |
 |--------|---------|-------------|
-| `build.py` | Configure/build via the VS2022-bundled cmake; parsed `error C…` list. `--arch x64` (default) or `--arch x86` selects the width — x86 drives the 32-bit chain (configure `debug-msvc-x86` → `build/Debug-x86`) for the retail 32-bit GoldSrc dlls/hl.dll (S15). `--preset` names the configuration (`debug`/`release`) orthogonally | sweep-module, implement-audit, retriever, bisect, write-unit-tests, pre-pr |
+| `build.py` | Configure/build via the VS2022-bundled cmake; parsed `error C…` list. `--arch x64` (default) or `--arch x86` selects the width — x86 drives the 32-bit chain (configure `debug-msvc-x86` → `build/Debug-x86`) for the retail 32-bit GoldSrc dlls/hl.dll (S15). `--preset` names the configuration (`debug`/`release`) orthogonally. `--refresh-db auto\|on\|off` (default auto) refreshes `build/clangd/compile_commands.json` after a successful build only when it is stale (doctor's predicate) — cpp-lsp stays accurate without paying the VsDevCmd+configure cost every build | sweep-module, implement-audit, retriever, bisect, write-unit-tests, pre-pr |
 | `test.py` | `ctest --output-on-failure` (optional `-R` filter); `--arch x64`(default)`/x86` picks the suite (x86 = test preset `debug-x86`; build that arch first); pass/fail breakdown; failed tests carry their output block (LastTest.log fallback for crashed children), an `assert_tail` (the assertion/abort message window — the XASH_ASSERT/REQUIRE/CHECK line, so exit-3 aborts are diagnosable without a re-run), and a decoded exit code (STATUS_BREAKPOINT/ACCESS_VIOLATION/…) | same set + `finish_check.py` |
 | `refresh_compile_db.py` | `VsDevCmd -arch=x64 && cmake --preset clangd` → regenerates `build/clangd/compile_commands.json` for the cpp-lsp/clangd MCP server | manual, after adding files/targets |
 | `compliance_scan.py` | The reviewer charter's [M] checks + pre-pr/sweep/detail grep sweeps as JSON violations (`--checks all\|prepr\|detail\|id,…`). Scope: a subsystem, `--files a,b,…`, or `--slice` (the slice_diff change set — slices cross subsystem boundaries; gates scan what changed). ABI-forced constructs a rule can't know about carry an inline `// compliance-allow(<check-id>): <rationale>` on the flagged line; every allow is echoed in the result's `allows` list for pre-pr audit. Q-22/QN checks (2026-07-06): `class-operator-new`, `make-unique-outside-pimpl`, `operator-delete-pairing` (structured), `post-annotation-retired`, `unsafe-cast-safety-comment` + `lifetime-annotation` (detail-set candidates). `--checks annotation-coverage` returns the QN coverage report instead — per-subsystem denominators (`required`/`annotated`/`exempt` per marker, honoring `@annotation-exempt:`), the Chunk 6B backfill measure. Suppression markers (`@pre-reserved:`, `@lifetime:`, `SAFETY:`) match the RAW line — they live in comments | pre-pr Phase 2, sweep-module Step 2, detail-audit, reviewer pre-pass; per-slice gates; 6B coverage |
@@ -46,7 +64,7 @@ Exit codes: `0` clean · `1` findings/failures present · `2` execution error.
 | `workflow_sync.py` | Drift checker: frontmatter schema, model dialects vs MODEL-GUIDE canonical table, adapter parity, twin-entry-file SYNC-CORE blocks, ABI single-source, MCP registrations, doc counters. `--stage 1` = tooling-session subset | run after ANY workflow-surface edit |
 | `agent_workflow.py` | Framework-aware workflow helper: lists canonical `.github/prompts/`, shows prompt metadata/body, prints the correct invocation for Claude, Copilot, opencode, or Codex, and generates the mandatory commit `Co-Authored-By` trailer | humans / agents switching frameworks |
 | `whereami.py` | Ground-truth session brief (git, plan/chunk status incl. stub debt in Complete subsystems, gates, blocking OQs, checkpoints with staleness/concurrency flags, suggested next action); `--doctor` adds environment checks. Chunk headings may carry a letter suffix (`### Chunk 6B — …`, label `6B`, sorted 6 < 6B < 7); the **Session ladder** parse is scoped to the active (in-progress, else first todo) chunk so multiple ladder lines don't mis-attribute | session start, dormancy recovery |
-| `checkpoint.py` | Append an advisory checkpoint (intent record) to `.agent-checkpoints.jsonl` | every commit / handoff / interruption |
+| `checkpoint.py` | Append an advisory checkpoint (intent record) to `.agent-checkpoints.jsonl`; search mode `--grep <regex>` / `--filter-chunk <name>` / `--limit N` reads the log instead (newest matches — resumption archaeology) | every commit / handoff / interruption; history lookups |
 | `cpp_lsp_launcher.py` | Portable launcher for the `cpp-lsp` MCP server: resolves clangd + mcp-language-server via vswhere/PATH/env instead of hardcoded machine paths | `.mcp.json` / `.vscode/mcp.json` |
 | `mcp_server.py` | `xash-tools` FastMCP server (stdio) exposing build/test/refresh_compile_db/compliance_scan/status/finish_check/stub_scan/crosswalk/limits_scan/slice_diff/markdown_lint/workflow_sync/whereami/checkpoint. Hot-reloads the xtools modules when their sources change on disk (tool registrations still need a session restart) | Claude Code, VS Code, opencode, Codex MCP configs |
 
