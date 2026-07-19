@@ -46,8 +46,8 @@ using ut::Vec3;
 
 namespace {
 
-// engine/server/sv_phys.c:44
-inline constexpr int   k_max_clip_planes = 5;
+// engine/server/sv_phys.c:44 (MAX_CLIP_PLANES; canonical home limits.hpp)
+inline constexpr int   k_max_clip_planes = static_cast<int>( ::xash::limits::server_clip_planes );
 inline constexpr float k_on_epsilon      = 0.1f; // public/xash3d_mathlib.h:72
 
 // Quake2 current directions (sv_phys.c:46-54).
