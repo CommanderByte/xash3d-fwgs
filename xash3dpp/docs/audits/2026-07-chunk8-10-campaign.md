@@ -82,6 +82,8 @@ P-3 exception class for no gain.
 | 18 | C/S8.2 | Block-header count hardcoded 5, not actualCount | parity gate | DIVERGENCE | FIXED pre-commit: computed post-skip count |
 | 19 | C/S8.2 | entry_for pent→row scan = unevidenced surface (brief mis-cited EntryInTable) | parity gate | ADVISORY | dropped (door rules: no engine-side consumer; pent→index is the game DLL's CSave::EntityIndex) |
 | 20 | C/S8.2 | S8.3 writer must populate row.pent before pfnSave | parity gate | NOTE | recorded in save-boundary (FENTTABLE_PLAYER tagging + validity screening depend on it) |
+| 21 | C/S8.3 | Zero-filled FIELD_CHARACTER tails vs legacy stack garbage (incl. empty-skyName field-count consequence) | parity gate (32/33 confirmed) | DEVIATION (benign, round-trip-safe) | recorded in save-boundary deviation table; no code change — legacy output is itself non-deterministic here |
+| 22 | C/S8.3 | Goldens pin small token tables, not the 4095-slot production image | parity gate | NOTE (coverage) | production byte-parity witness = S8.8 legacy-fixture tier; latent notes (POINTER/FUNCTION gSizes on x64, FIELD_EDICT low-4-byte DataEmpty) recorded in save-boundary Uncertainties |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
 

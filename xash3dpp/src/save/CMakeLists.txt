@@ -11,6 +11,8 @@ add_library(xash3dpp_save STATIC
     save_buffer.cpp
     field_sink.cpp
     entity_table.cpp
+    descriptor_codec.cpp
+    level_state_writer.cpp
 )
 
 target_include_directories(xash3dpp_save
