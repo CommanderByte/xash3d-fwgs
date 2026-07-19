@@ -7,6 +7,16 @@
 > into `enginefuncs_t` as function pointers via a fill-site shim; the
 > implementation is otherwise unconstrained (boundary spec §External ABI).
 
+> Refreshed 2026-07-06 (as-built pass). Re-scanned `src/utilities/**` and the
+> public headers. **Status:** none of the previously-listed opportunities have
+> been implemented since the last revision — H-1, M-1..M-3 and L-1..L-5 are all
+> still open exactly as written, and the two implementation gaps (`swap_struct`,
+> `gameinfo_parser`) remain (the latter confirmed by `stub_scan.py utilities`:
+> 4 `// TODO` markers, all in `gameinfo_parser.cpp`). The C++ standard reference
+> is still accurate (C++23). One **new** opportunity is added this pass (N-1,
+> a latent `string_view` over-read in the `ci_less` comparator). Per-item
+> as-built confirmations are inlined below.
+
 ## Summary
 
 The utilities subsystem (`string`, `path`, `math`, `matrix`, `quaternion`,
@@ -167,6 +177,48 @@ ______________________________________________________________________
 - **Rationale**: Two overloads per operation, one of them a sizeless/manual
   buffer form, doubles the surface and invites accidental use of the unsafe one.
   Deletion-driven simplification once callers are confirmed.
+
+### M-4: `ci_less` comparator over-reads past `string_view` bounds (new 2026-07-06)
+
+- **File(s)**: `xash3dpp/include/xash3dpp/utilities/string.hpp` lines ~50–56.
+
+- **Current pattern**: the case-insensitive ordering comparator forwards to the
+  C-string `strnicmp` with a length one past the *longer* view:
+
+  ```cpp
+  [[nodiscard]] inline bool ci_less( std::string_view a, std::string_view b ) noexcept
+  {
+      const std::size_t n = ( a.size() > b.size() ? a.size() : b.size() ) + 1;
+      return strnicmp( a.data(), b.data(), n ) < 0;   // reads up to n bytes from each
+  }
+  ```
+
+  `strnicmp` reads up to `n` bytes from `a.data()`/`b.data()`, but a
+  `std::string_view` is **not guaranteed null-terminated** — a view into the
+  middle of a larger buffer (e.g. a token slice, or `trim_sv` output) has no
+  `'\0'` at `data()+size()`. When the two views differ in length, the shorter
+  one is read `> size()` bytes, which is a latent out-of-bounds read (OWASP
+  buffer-over-read) on any non-terminated view. Today's callers happen to pass
+  null-terminated backing strings, which is why it has not surfaced.
+
+- **Suggested replacement**: implement the comparison in terms of the views'
+  own sizes rather than a C-string length, e.g. a bounded lexicographic
+  compare over `std::min(a.size(), b.size())` lowercased bytes with a
+  length-tiebreak, or `std::ranges::lexicographical_compare` with a
+  case-insensitive predicate. `ci_equal` (immediately below) already does the
+  bounded thing correctly (`a.size() != b.size()` early-out, then
+  `strnicmp(..., a.size())`) and is the shape to mirror.
+
+- **Boundary-safe**: Yes — engine-internal comparator; behaviour for
+  null-terminated inputs is unchanged, the fix only removes the over-read on
+  non-terminated views.
+
+- **Rationale**: Turns a `string_view`-shaped API that secretly requires
+  null-termination into one that is actually safe for arbitrary views — the
+  whole point of taking `string_view`. **Recommendation only; no source edit is
+  made in this pass** (analysis/doc task). Flag for the cross-cutting synthesis
+  as a repeated "C-string function fed a non-terminated `string_view`" pattern
+  to sweep across subsystems.
 
 ______________________________________________________________________
 

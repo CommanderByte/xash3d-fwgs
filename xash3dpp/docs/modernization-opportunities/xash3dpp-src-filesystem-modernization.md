@@ -1,14 +1,31 @@
 # C++ Modernization Opportunities — `xash3dpp/src/filesystem`
 
-**Standard**: C++20\
+**Standard**: C++23 (`xash3dpp/CMakeLists.txt` `CMAKE_CXX_STANDARD 23`;
+`xash3dpp_filesystem` declares `target_compile_features … PUBLIC cxx_std_23`)\
 **Exceptions**: disabled (`/EHs-c-` / `-fno-exceptions`)\
 **RTTI**: disabled\
 **ABI boundary**: None — filesystem is fully internal; only `GetFSAPI` is exported.\
 See `xash3dpp/docs/boundaries/filesystem-boundary.md`.
 
+> Refreshed 2026-07-06 (as-built pass) — re-scanned the current
+> `xash3dpp_filesystem` sources. **Most of the original backlog is now
+> implemented**: H-1, M-1, M-2, M-3, M-4, M-5 and M-6 all landed (see the
+> per-item status lines). H-2 / L-4 referenced `src/filesystem/platform/{win32,
+> posix}.cpp`, which **no longer live in this subsystem** — OS file I/O was
+> extracted into `xash3dpp_platform`, so those items are **relocated** to the
+> platform modernization backlog, not filesystem's. One **new** finding was
+> added: **M-7** (the `strnicmp`/`string_view` over-read in `archive_helpers.hpp`
+> — the same class as utilities M-4). Prior dated analysis is preserved below;
+> resolved items are annotated in place rather than deleted.
+
 ______________________________________________________________________
 
 ## Summary
+
+> **Superseded 2026-07-06:** the table below reflects the *original* scan.
+> Current status: High 0 remaining (H-1 done; H-2 relocated to platform),
+> Medium 1 remaining (M-7 new; M-1..M-6 done), Low ~5 unchanged (all
+> no-action / optional). See per-item status lines.
 
 | Tier | Count | Key theme |
 |--------|-------|-----------|
@@ -21,6 +38,12 @@ ______________________________________________________________________
 ## High Priority
 
 ### H-1 — 64 KB stack allocation in `OsFile::Seek` backward path
+
+> **✅ Implemented (verified 2026-07-06).** The 64 KB `sink[65536]` is gone.
+> `OsFile::Seek` now drains the discard loop into the existing 2 KB member
+> `buf_` in `k_buf_size` chunks via `inflate_read({ buf_.data(), chunk })`
+> (`file.cpp` ~L235). No stack array; resolved differently from — but better
+> than — the original proposal (which reused the 64 KB `zlib_->in_buf`).
 
 **File**: `src/filesystem/file.cpp` ~L233\
 **Category**: 2-C (raw array), safety hazard
@@ -48,6 +71,13 @@ keeps the scratch buffer with its logical owner.
 ______________________________________________________________________
 
 ### H-2 — Fixed-size `wchar_t` and `char` stack buffers in `platform/win32.cpp`
+
+> **↪ Relocated 2026-07-06.** `src/filesystem/platform/` no longer exists — all
+> OS file I/O (`open_file`, `file_size`, `file_time`, `list_directory`,
+> `make_directory`, `rename_file`, `delete_file`, the `to_wide` helper) was
+> extracted into the `xash3dpp_platform` subsystem. This finding is **no longer
+> in filesystem scope**; it belongs to the platform modernization backlog. Kept
+> here (not deleted) for traceability of the original scan.
 
 **File**: `src/filesystem/platform/win32.cpp` — six sites\
 **Category**: 2-A (char/wchar_t buffer), latent truncation bug
@@ -95,6 +125,11 @@ ______________________________________________________________________
 
 ### M-1 — `::strnlen` POSIX extension in `pak_backend.cpp`
 
+> **✅ Implemented (verified 2026-07-06).** `pak_backend.cpp` now computes the
+> name length with the exact proposed replacement:
+> `std::find(std::begin(de.name), std::end(de.name), '\0') - de.name`. No
+> `::strnlen` remains anywhere in the subsystem.
+
 **File**: `src/filesystem/backends/pak_backend.cpp` L80\
 **Category**: 2-C (non-standard C function), portability
 
@@ -119,9 +154,15 @@ ______________________________________________________________________
 
 ### M-2 — `File::Seek` takes a raw `int` whence parameter
 
+> **✅ Implemented (verified 2026-07-06).** `file.hpp` now defines
+> `enum class SeekOrigin : int { Begin, Current, End }` and every `Seek`
+> override (`OsFile::Seek`, `MemFile::Seek`) takes `SeekOrigin`. The internal
+> `platform::seek` still takes an OS `int whence` (`SEEK_SET` at the call
+> boundary), converted at the edge — exactly as proposed.
+
 **File**: `include/xash3dpp/filesystem/file.hpp`,
-`src/filesystem/file.cpp`,
-`src/filesystem/platform/{win32,posix}.cpp`\
+`src/filesystem/file.cpp`
+(platform I/O now in `xash3dpp_platform`)\
 **Category**: 2-E (raw integer "enum"), API type safety
 
 ```cpp
@@ -150,6 +191,11 @@ ______________________________________________________________________
 
 ### M-3 — `inflate_read(void* out, size_t n)` raw void pointer
 
+> **✅ Implemented (verified 2026-07-06).** The private method is now
+> `FsOffset OsFile::inflate_read(std::span<std::byte> out)`; the single
+> `reinterpret_cast<mz_uint8*>` moved to the miniz `next_out` assignment with a
+> SAFETY comment. Call sites pass `{ptr, n}` span-init.
+
 **File**: `src/filesystem/file.cpp` (private method)\
 **Category**: 2-F (function pointer / C-style signature), type clarity
 
@@ -173,6 +219,11 @@ ______________________________________________________________________
 
 ### M-4 — `reinterpret_cast<const char*>(buf.data())` byte-to-string conversion in `filesystem.cpp`
 
+> **✅ Implemented (verified 2026-07-06).** `filesystem.cpp` now defines a
+> file-local `static std::string bytes_as_string(std::span<const std::byte>)`
+> (L47) with a SAFETY comment documenting the `[basic.lval]` byte→char
+> reinterpret; the duplicated casts route through it.
+
 **File**: `src/filesystem/filesystem.cpp` L122, L134\
 **Category**: 2-G (cast), repeated unsafe-looking pattern
 
@@ -195,6 +246,10 @@ inline std::string bytes_as_string( std::span<const std::byte> s ) noexcept {
 ______________________________________________________________________
 
 ### M-5 — Remaining manual 3-segment path joins in `FindLibrary`
+
+> **✅ Implemented (verified 2026-07-06).** `find_library` now uses a
+> three-argument `path_join(rootdir, g.gamefolder, g.dll_path)` overload; no
+> manual `'/'` concatenation remains in the subsystem.
 
 **File**: `src/filesystem/filesystem.cpp` L~392–400\
 **Category**: 2-I (miscellaneous), consistency with established `path_join` utility
@@ -225,6 +280,10 @@ ______________________________________________________________________
 
 ### M-6 — WAD / PAK magic constants use verbose bit-shift form
 
+> **✅ Implemented (verified 2026-07-06).** Both `k_WAD2`/`k_WAD3` and `k_IDPACK`
+> now use `std::bit_cast<std::uint32_t>(std::array<char,4>{...})`. Little-endian
+> is xash's only supported endianness, matching the note below.
+
 **Files**: `src/filesystem/backends/wad_backend.cpp` L31–38,
 `src/filesystem/backends/pak_backend.cpp` L28–30\
 **Category**: 2-G (cast), readability
@@ -247,6 +306,50 @@ static constexpr std::uint32_t k_WAD2 =
 
 **Note**: Only valid on little-endian platforms. Add a static_assert or keep the
 current form if big-endian support is ever planned.
+
+______________________________________________________________________
+
+### M-7 — `ci_find_by_name` over-reads past `string_view` bounds via `strnicmp` (new 2026-07-06)
+
+**File(s)**: `include/xash3dpp/private/filesystem/archive_helpers.hpp` L43–55\
+**Category**: 2-C / safety hazard (buffer over-read, OWASP)
+
+This is the **filesystem instance of the utilities M-4 pattern** (see
+`utilities-modernization.md` M-4 — `ci_less`). The sorted-archive lookup helper
+forwards a `std::string_view` argument to the C-string `strnicmp` with a length
+computed from the *longer* of the two operands plus one:
+
+```cpp
+auto it = std::lower_bound( entries.begin(), entries.end(), name,
+    []( const T& e, std::string_view n ) {
+        const std::size_t len =
+            ( e.name.size() > n.size() ? e.name.size() : n.size() ) + 1;
+        return strnicmp( e.name.c_str(), n.data(), len ) < 0;   // n.data() may not be NUL-terminated
+    } );
+...
+if ( strnicmp( it->name.c_str(), name.data(), len ) != 0 ) return nullptr;
+```
+
+`xash::utilities::strnicmp` stops at the first `'\0'` of *either* operand
+(`src/utilities/string.cpp` L88: `if (ca == 0) return 0;`). `e.name.c_str()` is a
+`std::string`, so it is NUL-terminated and bounds the loop safely — **but
+`n.data()` / `name.data()` is a `std::string_view`, which is not guaranteed
+NUL-terminated.** When `e.name.size() > name.size()`, the loop can read the
+`name` bytes from index `name.size()` through `e.name.size()`, i.e. up to
+`e.name.size()+1` bytes total, which is a latent **out-of-bounds read** on any
+non-terminated view (a token slice, a `substr`, a `trim_sv` result). Callers (PAK `find_file`, ZIP `find_file`)
+currently pass views backed by NUL-terminated strings, which is why it has not
+surfaced — the same "happens to work today" situation as utilities M-4.
+
+**Suggested fix**: mirror the shape of `ci_equal` (bounded by the view's own
+size). Since entries are pre-sorted with `ci_less`, the comparator and the final
+verification should both compare over `std::min(e.name.size(), name.size())`
+lowercased bytes with a length tiebreak — never a C-string length that exceeds
+either view. If utilities M-4 lands a fixed `ci_less` / a bounded
+`ci_compare(string_view, string_view)`, route this helper through it and drop the
+raw `strnicmp` calls entirely. **Cross-cutting**: fixing utilities M-4 and this
+M-7 together (one bounded CI comparator) removes the whole pattern class — flag
+for the Phase 14 synthesis.
 
 ______________________________________________________________________
 
@@ -312,6 +415,14 @@ ______________________________________________________________________
 
 ### L-4 — `SEEK_SET` / `SEEK_CUR` / `SEEK_END` macros at internal call sites
 
+> **↪ Partially superseded 2026-07-06.** M-2 (`SeekOrigin` enum) is done at the
+> `File` API. The remaining raw `SEEK_SET` uses are now only at the
+> `platform::seek(fd, off, SEEK_SET)` OS-call boundary inside `file.cpp` /
+> backends (`file.cpp` still `#include <cstdio>` for that). Since OS file I/O
+> moved to `xash3dpp_platform`, the `platform::seek` signature is owned there;
+> whether it should also take a typed origin is a **platform** decision now.
+> Filesystem-side, only the `<cstdio>` include for `SEEK_SET` remains — cosmetic.
+
 **File**: `src/filesystem/file.cpp`, `src/filesystem/backends/*.cpp`\
 **Category**: 2-E, cross-references M-2
 
@@ -353,6 +464,12 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 ## Application Order
+
+> **Superseded 2026-07-06:** every item in the ordered list below (H-1, H-2,
+> M-1..M-6, L-2) has since **landed or been relocated** (H-2 → platform). The
+> only remaining actionable filesystem item is **M-7** (the `archive_helpers.hpp`
+> over-read), best done together with utilities M-4 as a single bounded CI
+> comparator. The Low-priority items are all no-action / optional.
 
 When implementing, apply in this order to minimise merge conflicts:
 

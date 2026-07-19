@@ -1,5 +1,12 @@
 # Content Modernization Opportunities
 
+> Refreshed 2026-07-06 (as-built pass). The original forward-looking audit is
+> preserved below (its `H-*`/`M-*`/`L-*`/`O-*` items are unchanged as the
+> *rationale* record); an `As-built status refresh` section was inserted after
+> the Summary reconciling each item against the shipped 13-TU code, adding the
+> Q-18 bone-math bit-exactness prohibition, and recording the `strnicmp`
+> over-read verdict.
+
 > C++ standard in use: C++**23** (from `xash3dpp/CMakeLists.txt`)
 > Boundary spec: `docs/boundaries/content-boundary.md`
 > ABI-frozen symbols in this subsystem: `model_t`, `studiohdr_t` (+ all
@@ -37,6 +44,102 @@ idiom swaps sits a **design-paradigm (OOP)** layer — the `ModelCache` /
 `IImageCodec` / `StudioView` shapes below — which is the project-sanctioned form
 here (Q-22 / P-7 / Q-11) rather than gratuitous class-ification, subject to the
 engine's `/GR-` (no RTTI) and `/EHs-c-` (no exceptions) constraints.
+
+______________________________________________________________________
+
+## As-built status refresh (2026-07-06)
+
+**Superseded 2026-07-06:** the Summary above opens "Content has *no `xash3dpp/`
+code yet*". That is no longer true — content is **Complete (13 TUs)** per
+`status_table.py`. The forward-looking audit was **substantially realised**: the
+structural wins it prioritised are all shipped. Statuses below; the H/M/L/O item
+bodies are kept as the rationale record.
+
+### High tier — all Implemented
+
+| Item | Status | As-built evidence |
+|------|--------|-------------------|
+| **H-1** delete global scratch singletons | ✅ **Implemented** | **Zero file-scope mutable state** across all 13 TUs (content-threading.md). `mod_known`→`ModelCache::Impl::slots_`; `mod_studiohdr`→`StudioView` value; `image`→codecs return owned `Image`; `g_poseverts`→local scratch |
+| **H-2** `qboolean *loaded` → `std::expected` | ✅ **Implemented** | Every loader/decoder returns `Result<T>` (`Result<StudioModel>`, `Result<Image>`, `ModelCache::load_from_bytes → Result<void>`); the `crash`/`*loaded` channels are gone |
+| **H-3** hand-rolled byte-swap → `std::byteswap` | ✅ **Implemented** | Parsers read through `utilities::read_le<T>` (the `std::byteswap`-backed helper); no bespoke `le_struct_*` swap tables in the rewrite |
+| **H-4** raw `byte*` + size math → `std::span` | ✅ **Implemented** | All codecs + parsers take `std::span<const std::byte>`; every source read is bounds-checked (e.g. `codec_tga.cpp`, `codec_mip.cpp` mip-run guard). `std::mdspan` pixel views are a Chunk-13 renderer refinement |
+| **H-5** manual `Mem_*` → pool RAII | ✅ **Implemented** | `ModelCache`/`ImageDecoder` own a `memory::PoolHandle` (create/destroy in init/shutdown); variable-length buffers are `std::vector<std::byte>` |
+
+### Medium tier
+
+| Item | Status | Note |
+|------|--------|------|
+| **M-1** flag `#define`s → `enum class` | ✅ **Implemented** | `enum class NeedLoad`, `enum class CrcFlags` (+ bitwise ops), `enum class ModelType` |
+| **M-2** plain `enum`/`typedef struct` → scoped | ✅ **Implemented** (content); imagelib enums land with the format types | |
+| **M-3** fn-ptr dispatch table → typed registry | ✅ **Implemented** as the O-2 hierarchy — `IImageCodec* const registry[]` walked by `handles(ext)` (chose the hierarchy over the flat table) | |
+| **M-4** static tables → `constexpr std::array` | ✅ **Implemented** | `palette.cpp` `k_palette_q1`/`k_palette_hl` are `constexpr std::array<…,768>` |
+| **M-5** lazy-init guards → magic static | ✅ **Implemented** (moot) | palettes are `constexpr` — no runtime build, no guard bool |
+| **M-6** `const char*` → `std::string_view` | ✅ **Implemented** | loader/lookup entry points take `std::string_view` |
+
+### Low tier — Implemented where the code exists
+
+`L-1` (`nullptr`), `L-2` (`std::min/max/clamp` — `clampf` in `bone_solver.cpp`
+is the *deliberate* exception, a bit-exact `bound()` transcription, see below),
+`L-3`/`L-5`/`L-6` all follow rewrite house style. `L-4` (`std::bit_cast` pixel
+puns) lands with the renderer image-lump path (Chunk 13).
+
+### OOP / design — all shipped
+
+| Item | Status | As-built |
+|------|--------|----------|
+| **O-1** `ModelCache` class | ✅ | pimpl class; `needload` FSM + slot-0-world + purge as invariants; `model_infos()` = P-4 surface |
+| **O-2** `IImageCodec` registry | ✅ | stateless codecs + owned `Image` result; 7 codecs registered |
+| **O-3** format dispatch: hierarchy or `variant` | ✅ | `std::variant<monostate, StudioModel, SpriteModel, AliasModel>` payload + magic `switch` in `load_from_bytes` (chose `variant`, per the recommendation) |
+| **O-4** `StudioView` typed accessor | ✅ | `StudioView` + 6 sub-views over the frozen `studiohdr_t`; the G-2 confinement |
+| **O-5** injected DLL seams | ◑ Partial | `IModelPostProcess` (OQ-4) + `IBoneSolver` (OQ-5) shipped; `content::ICompatPolicy` (Q-12) is a remaining door |
+
+### Remaining / deferred (renderer Chunk 13)
+
+The `img_utils.c` MDL/SPR/LMP/FNT/PAL **image-lump** codecs, `Image_Process`
+(resample / flip / quantise / NeuQuant), the internal `Image`↔`rgbdata_t`
+adapter (OQ-1), and the `content → imagelib` + `content → map_loader` CMake
+links are the renderer's chunk, not content debt. One live stub:
+`imagelib.cpp:42` (tag `o-2`) is a **stale scratch-comment** — the stateless
+codecs need no shared decode scratch, so the TODO describes a design the code
+already obviated; recommend deleting the comment.
+
+### NEW — Q-18 bone-math bit-exactness PROHIBITION (do-not-modernize)
+
+The studio bone kernel (`bone_solver.cpp` `calc_bones` / `calc_bone_adj` /
+`calc_rotations`, and the `utilities` quaternion/matrix primitives it drives) is
+**bit-exact against the Q-18 verbatim-legacy goldens**
+(`tests/goldens/studio_math_goldens.inc`). This is a **hard no-touch class**,
+the same class as `map_loader`'s trace/PVS/CRC math and `networking`'s wire
+codecs:
+
+- **Do NOT** apply `std::min/max/clamp` to the float ops — `clampf` and the
+  hand-written RLE `bound()`/lerp gate are deliberate transcriptions; a library
+  `std::clamp` can differ on NaN/`-0.0` edge cases.
+- **Do NOT** reassociate, FMA-fuse, or `-ffast-math` the `AngleQuaternion` /
+  `QuaternionSlerp` / matrix-concat float arithmetic. The exact-float
+  `VectorCompare` gate (lerp vs copy) depends on identical rounding.
+- **Do NOT** replace the merged position+rotation RLE decompressor with a
+  "cleaner" `std::ranges` walk — the span-walk order is observable through the
+  goldens.
+- The hardening guards added (zero/out-of-range RLE span, controller-byte
+  bounds) never fire on well-formed data, so parity holds — **do not remove them
+  either** (they are the untrusted-file safety net).
+
+Any future worker-pool port (P-1) must preserve this: reentrant is fine,
+float-reordered is not.
+
+### `strnicmp` string_view→C-string over-read — ABSENT
+
+The cross-subsystem over-read pattern (a non-NUL-terminated `string_view` fed to
+a C-string `strnicmp`/`strncmp`, present in utilities `M-4` / filesystem `M-7` /
+cmd_cvar `M-5`) is **absent in content**, despite texture/bone/bodygroup name
+matching being the flagged candidate. Name comparison uses `std::string_view ==
+std::string_view` over an owned `std::string` (`ModelCache::find` /
+`find_or_alloc` / `validate_crc`); the codec prefix tests
+(`codec_mip.cpp` `istarts_with`, `imagelib.cpp` `extension_of`) are
+length-bounded loops. No new item — recorded as a negative data point for the
+Phase-14 sweep (content joins platform/core/host/abi/launcher/map_loader/
+networking on the absent side).
 
 ______________________________________________________________________
 

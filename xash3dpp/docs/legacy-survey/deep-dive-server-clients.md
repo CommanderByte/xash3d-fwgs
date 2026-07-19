@@ -6,6 +6,16 @@ xash3dpp server rewrite. Sources fully read: `engine/server/sv_client.c`
 `sv_log.c` (256), plus `server.h`, relevant parts of `sv_main.c`,
 `sv_pmove.c`, `engine/common/masterlist.c`, `engine/common/protocol.h`.*
 
+> **Refreshed 2026-07-06 (as-built cross-ref).** Shipped in
+> `src/server/clients/`: `client_state.cpp` (handshake/slot machine),
+> `net_io.cpp` + `messages.cpp` (packet read + user-message Begin/End),
+> `snapshot.cpp` (the delta/PVS/PHS pipeline — 14 `assert_thread_role` sites),
+> `info_string.cpp` (the NUL-terminated `Info_ValueForKey` codec),
+> `query.cpp` (A2S/legacy), `filter.cpp` (bans), `log.cpp`. OQ-8 milestone
+> trims (voice fan-out, HLTV datagram, testpacket) carry
+> `// XASH3DPP-STUB(chunk6)` markers. See
+> `docs/boundaries/server-boundary.md` §As-built.
+
 ## 1. Responsibility
 
 - **sv_client.c** — everything about a client's lifetime: connectionless
@@ -73,7 +83,7 @@ required; rejects unless `sv_allow_testpacket`, testpacket built, and
 testpacket_filepos - 1`) into `svs.testpacket_crcpos` (unaligned memcpy)
 and sends the raw pregenerated packet.
 
-### connect (`SV_ConnectClient`, 295), exact order:
+### connect (`SV_ConnectClient`, 295) — exact order
 
 1. `Cmd_Argc() < 5` ⇒ reject "insufficient connection info". Format:
    `connect <ver> <challenge> <protinfo> <userinfo>`.
@@ -112,8 +122,8 @@ and sends the raw pregenerated packet.
     callback `SV_GetFragmentSize`; `hashedcdkey` = first 32 chars of
     protinfo `uuid`; reply OOB `client_connect <protinfo>` where reply
     protinfo = `ext=<granted>` + `cheats=0/1`; `upstate = us_inactive`;
-    `next_messageinterval = 0.05`; `delta_sequence = -1`; userinfo copied
-    + `SV_UserinfoChanged`; `next_messagetime = realtime + sv.frametime +
+    `next_messageinterval = 0.05`; `delta_sequence = -1`; userinfo copied +
+    `SV_UserinfoChanged`; `next_messagetime = realtime + sv.frametime +
     interval`; `next_checkpingtime = -1.0`.
 12. `SV_MaybeNotifyPlayerCountChange` (269): if connected count becomes 1
     or maxclients ⇒ `NET_MasterClear()` (forces immediate heartbeat); logs
@@ -160,7 +170,7 @@ Builds a `MAX_INIT_MSG` buffer, in order:
 MP: second `sendres` no-ops via `FCL_SEND_RESOURCES`. Sends
 `SV_SendResources` (sv_custom.c:557) as fragments — see §5.
 
-### "spawn <spawncount>" (`SV_Spawn_f`, 2149) — cs_connected only
+### "spawn `<spawncount>`" (`SV_Spawn_f`, 2149) — cs_connected only
 
 Stale spawncount ⇒ re-run `SV_New_f` (level changed during connect). Else
 `SV_PutClientInServer`, `state = cs_spawning`; if paused, broadcast
@@ -188,7 +198,7 @@ Stale spawncount ⇒ re-run `SV_New_f` (level changed during connect). Else
   1`. Overflow ⇒ Host_Error (SP) or drop (MP). Sent as fragments. Static
   buffer `MAX_INIT_MSG + 0x200`.
 
-### "begin" (`SV_Begin_f`, 2180) — cs_spawning only ⇒ `cs_spawned`, `connecttime = realtime`.
+### "begin" (`SV_Begin_f`, 2180) — cs_spawning only ⇒ `cs_spawned`, `connecttime = realtime`
 
 ### Drop / zombie / timeout
 
@@ -278,8 +288,8 @@ each delta'd from the previous decoded cmd starting from a null cmd
 ### Anti-speedhack clock window
 
 - `SV_CheckCmdTimes` (sv_main.c:249, 1 Hz, MP only): `diff = connecttime +
-  cmdtime - realtime`; `diff > net_clockwindow` ⇒ `ignorecmdtime = realtime
-  + window` and resync cmdtime; `diff < -window` ⇒ resync only.
+  cmdtime - realtime`; `diff > net_clockwindow` ⇒ `ignorecmdtime = realtime +
+  window` and resync cmdtime; `diff < -window` ⇒ resync only.
 - `SV_RunCmd` (sv_pmove.c:904): while `ignorecmdtime > realtime`: warn once
   per batch ("time is faster than server time (speed hack?)"), increment
   `ignorecmdtime_warns`, kick when warns > `sv_speedhack_kick` (default
@@ -532,8 +542,8 @@ all-zero — p is zero-initialized).
   removes filters *included by* the argument; `SV_RemoveIPFilter` has a
   latent use-after-free in the removeAll path (`back = &f->next` after
   free, 339-342) — do not replicate, but note behaviour. `listip
-  [filter]`. `writeip` → `listipcfgfile` cvar file, `addip 0
-  <base>/<prefix>\n` lines, permanent only. `SV_InitFilter`/
+  [filter]`. `writeip` → `listipcfgfile` cvar file,
+  `addip 0 <base>/<prefix>\n` lines, permanent only. `SV_InitFilter`/
   `SV_ShutdownFilter` register/free everything. Engine tests
   `Test_RunIPFilter` validate `NET_StringToFilterAdr` partial-IPv4 forms
   ("192.168" ⇒ /16 etc.) and inclusion logic (578-707).
@@ -784,8 +794,8 @@ all-zero — p is zero-initialized).
 43. `SV_ConnectionlessPacket` pre-init rcon uses `net_from`/`net_message`
     globals, not its parameters (3201-3202).
 44. `fullupdate` penalty (default 1 s) + resends ambients/decals/static
-    ents/view (3141-3165); enttools require spawned + `sv_enttools_enable`
-    + !background and are audit-logged (3126-3138).
+    ents/view (3141-3165); enttools require spawned + `sv_enttools_enable` +
+    !background and are audit-logged (3126-3138).
 45. Timeout constants: sv_timeout 65 s (spawned), sv_connect_timeout 60 s
     (connecting), zombie 1 frame; net_clockwindow cmd-time window with
     `sv_speedhack_kick` = 10 warns (sv_main.c:44-47, 249-294;

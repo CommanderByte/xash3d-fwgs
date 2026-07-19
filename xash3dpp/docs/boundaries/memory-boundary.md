@@ -1,5 +1,15 @@
 # Memory Boundary Spec
 
+> Refreshed 2026-07-06 (as-built pass). The original spec below is written from
+> the **legacy `zone.c`** perspective (sentinels, small/big headers,
+> `MEM_SMALL_ALLOC_OPT`, `poolchain` linked lists). The xash3dpp rewrite chose a
+> **different design** — a *stats-facade allocator* — so much of the legacy
+> detail is superseded by design rather than pending. The new
+> `## As-built reconciliation (2026-07-06)`, `## Extension axes (Q-21)`
+> sections and the refreshed Q-11 threading pointer are authoritative for the
+> current code; prior legacy-flavoured prose is retained for parity reference
+> and marked where superseded.
+
 ## Responsibility
 
 The memory module provides a **pool-based, debug-instrumented allocator** layered
@@ -10,6 +20,80 @@ pool. The module adds sentinel bytes around every allocation, and — for "big"
 allocations — records the source filename and line number at allocation time. It
 does **not** manage virtual address space, NUMA topology, or raw OS allocations;
 it is purely a heap bookkeeping layer.
+
+______________________________________________________________________
+
+## As-built reconciliation (2026-07-06)
+
+The current implementation lives in a single translation unit
+(`src/memory/memory.cpp`, `status_table.py` → **Complete**;
+`compliance_scan.py` and `stub_scan.py` both **clean**) with three public
+headers plus one private internals header. The rewrite did **not** port the
+legacy debug-instrumented allocator; it implemented a leaner *stats-facade*
+design and delegates corruption detection to ASan/MSan.
+
+### Component map (as-built)
+
+| File | Role |
+|------|------|
+| `include/xash3dpp/memory/memory.hpp` | Public API: `PoolHandle`, `AllocStrategy`, `PoolConfig`, lifecycle (`create_pool`/`destroy_pool`), `mem_alloc`/`mem_calloc`/`mem_realloc`/`mem_free`, `get_stats`/`pool_count`/`for_each_pool`/`set_oom_handler`, typed helpers (`pool_new`/`pool_delete`, `ScopedPool`, `PoolDeleter`, `pool_ptr`) |
+| `include/xash3dpp/memory/stats.hpp` | `PoolStats` POD snapshot (name + live_bytes + total_allocs + total_frees) |
+| `include/xash3dpp/private/memory/pool_registry.hpp` | Internals: 8-byte `AllocHeader` (`static_assert size==8, align==4`), `SlotState` enum, `PoolBucket`, `kMaxPools` |
+| `src/memory/memory.cpp` | The only `.cpp`; system-allocator wrappers, the flat `g_pools[]` registry, the atomic `g_oom_handler` |
+
+### Owned state (as-built — supersedes the legacy `poolchain`/`poolcount` table below)
+
+| Symbol | Type | Notes |
+|--------|------|-------|
+| `g_pools[kMaxPools]` | `static PoolBucket[128]` | Fixed flat array — **no heap growth** (legacy grew `poolchain` with `realloc`). Zero-initialised statically; `kMaxPools = limits::memory_pool_max` |
+| `g_oom_handler` | `static std::atomic<OomHandler>` | Null by default; set via `set_oom_handler` (release store) |
+| per-bucket `live_bytes` / `total_allocs` / `total_frees` | `std::atomic<std::size_t>` | Relaxed counters — the `memlist`/stats surface |
+| per-bucket `state` | `std::atomic<SlotState>` | `Free`→`Busy`→`Active`→`Free`; CAS slot claim |
+| per-bucket `do_alloc`/`do_free`/`do_realloc`/`ctx` | function pointers | Strategy backend; only `System` (malloc/free/realloc) wired today |
+
+### Allocator API drift (as-built vs the legacy `_Mem_*` Interface table)
+
+- **Header design changed.** Every allocation carries an 8-byte `AllocHeader`
+  (`pool_index:u32`, `payload_size:u32`). There are **no sentinels**, **no
+  filename/line capture**, **no big/small header split**, and **no
+  `MEM_SMALL_ALLOC_OPT`** — the legacy quirks section on those is *superseded by
+  design* (ASan/MSan replace the sentinel/`_Mem_Check` machinery). `payload_size`
+  being `uint32_t` caps a single allocation at `UINT32_MAX`; requests above that
+  (and header-size overflow) return `nullptr` and fire the OOM handler.
+- **No `_Mem_EmptyPool` / `_Mem_Check` / `Mem_IsAllocatedExt` / `Mem_PrintStats`
+  console command** exist yet. Bulk-empty is not implementable for the `System`
+  strategy without a per-pool allocation chain; it becomes natural only when
+  `AllocStrategy::Arena` lands (bump-then-bulk-free). Introspection is served by
+  `get_stats` / `pool_count` / `for_each_pool` instead of a `memlist` command.
+- **`mem_realloc` migrates pools** like the legacy path, but via alloc+copy+free
+  across pools (or native `realloc` on the same `System` pool) — there is no
+  in-place chain relink because there is no chain.
+- **`destroy_pool` asserts `live_bytes == 0`** (debug) rather than force-freeing;
+  callers own lifetime. Slot is recycled — stale-handle aliasing risk unchanged
+  from legacy (no generation counter yet; see Open questions #4).
+- **Typed C++ surface added** with no legacy analog: `pool_new<T>` (with a
+  binding `alignof(T) <= 8` `static_assert` — the pools guarantee only ≥8-byte
+  payload alignment), `pool_delete`, `ScopedPool` (RAII pool), `PoolDeleter` /
+  `pool_ptr` (the P-7 smart-pointer idiom).
+
+### External-ABI touchpoints (as-built)
+
+None of the four legacy plugin shims (`_Mem_*` in `ref_api_t`; pool-less
+`pfnMemAlloc`/`pfnMemFree` in `render_api.h` / `menu_int.h` / `physint.h`) are
+implemented yet — they are future fill-site work (Chunk 12/13 + game/physics
+DLL bring-up). The **frozen constraint that already binds** is the handle width:
+`PoolHandle::index` is `std::uint32_t`, matching the SDK `poolhandle_t`
+(`common/xash3d_types.h`) embedded in `model_t`. Widening it is an ABI break.
+
+### Threading
+
+Fully documented in `docs/threading-analysis/memory-threading.md` (folder doc,
+refreshed 2026-07-06). Summary: alloc/free/realloc and all counters are
+atomic-backed and safe from any thread; `create_pool` is CAS-safe against
+concurrent creators; `destroy_pool` while allocations are in flight through the
+same handle remains a caller contract. `set_oom_handler` carries a
+`compliance-allow(thread-assert)` annotation — memory sits **below platform**,
+so it has no `ThreadRole` dependency and cannot call `assert_thread_role`.
 
 ______________________________________________________________________
 
@@ -194,5 +278,30 @@ Not a satellite candidate: one concrete allocator implementation serving every
 consumer (Q-11 score 0). The `AllocStrategy` enum tags future backends
 (Arena/Slab) as data, not as interface seams — per the Q-22 seam rule no `I*`
 interface exists until a second real backend lands. Threading is documented in
-the architecture pages (atomic counters; see `@thread-safety:` in
-`memory.hpp`).
+`docs/threading-analysis/memory-threading.md` (folder doc) and via the
+`@thread-safety:` annotations in `memory.hpp`.
+
+______________________________________________________________________
+
+## Extension axes (Q-21)
+
+> Added 2026-07-06 (as-built pass). Evaluated against
+> `docs/design/extension-goals.md` (G-1..G-5, P-1..P-7). Memory is unusual: it
+> is not itself an extension target but the **substrate** the primitives sit on
+> — P-6/P-7 heap-ownership and the Q-13 pool-accounting policy are *defined by
+> this subsystem*, and G-5's scripting allocator hook plugs directly into its
+> strategy seam. The door-keep verdicts therefore lean "provider" rather than
+> "consumer."
+
+| Goal / primitive | Applies? | Verdict / door-keep |
+|------------------|----------|---------------------|
+| **P-7** pool-owned classes + RAII | **Yes — provider/headline** | Memory *is* the canonical idiom's home: `pool_new<T>`, `PoolDeleter`, `pool_ptr`, `ScopedPool` (extension-goals P-7 cites `memory.hpp` `PoolDeleter` by name). Binding constraint to preserve: `pool_new<T>` requires `alignof(T) ≤ 8` — do not silently widen `AllocHeader`; add an explicit aligned-alloc API instead (modernization H-1). Class-scoped `operator new` stays forbidden (cannot carry the injected handle). |
+| **Q-13** ALLOC_POLICY / `memlist` observability | **Yes — provider** | `get_stats` / `for_each_pool` / `pool_count` + the atomic `live_bytes`/`total_allocs`/`total_frees` counters are the accounting the pre-reserve discipline and the future `PoolAllocator<T>` migration trigger measure against. Keep the counter surface stable; it is the memory tier of the three-tier stats model (P-4). |
+| **P-6** services are satellites (heap ownership) | **Door-keep** | Satellites (`xash3dpp_mcp`, `xash3dpp_script`, debug services) consume memory as a public seam and account per pool; memory never links toward them. `AllocStrategy::Arena` is the placeholder for the per-thread bump/arena primitive those services (and per-frame scratch) will want — data-tagged today (Q-22: no `I*` until a second backend). |
+| **P-4** typed introspection | **Yes — provider** | `PoolStats` + `for_each_pool` are the typed memory-introspection surface G-1 (MCP memory reports), G-3 (debug-thread memory dumps) and G-4 (overlays) read. Door-keep: new needs add a typed query here, never an `extern` poke into `g_pools`. A snapshot-range API is a modernization candidate (M-2). |
+| **G-5** scripting allocator hook | **Yes — direct door** | Extension-goals §G-5 requires the runtime expose "a complete allocator hook bridgeable to the memory pools (accounting per pool at minimum; ≥8-byte alignment, no aligned-alloc API)." The per-pool `do_alloc`/`do_free`/`do_realloc`/`ctx` function-pointer seam **is** that bridge point (a script VM's `lua_Alloc`/`js_malloc` maps onto a `PoolConfig` strategy with its own `ctx`). Keep the strategy triple injectable. |
+| **G-3** dedicated debug thread | **Yes — already open** | Off-main memory reads are already safe (atomic counters); the only caller contract is that `set_oom_handler` is init-only (threading doc §Required caller contracts). No retrofit needed. |
+| **G-2** game ABI v2 | **Door-keep** | The frozen 32-bit `poolhandle_t` and the future pool-less `pfnMemAlloc` plugin shims are the ABI-confinement point; a v2 ABI may hand a richer allocator context but must still be able to produce a raw `poolhandle_t` at the edge. Do not widen the handle. |
+| **P-1** main-thread inbox / **P-2** snapshots / **P-3** context-first / **P-5** narrowest-state | Mostly N/A | Memory is already context-light (free functions over an explicit `PoolHandle`). Its file-scope state (`g_pools`, `g_oom_handler`) is the **documented allocator-registry exception** to P-3: a single global registry is forced by the 32-bit `poolhandle_t` ABI (the handle indexes a process-global table). List it in the module-statics table with that justification; it must not grow. |
+
+______________________________________________________________________

@@ -5,6 +5,15 @@ this brief maps the save system's BOUNDARY with the server core — what
 Chunk 6 must expose and what ordering it must honour — not the file-format
 internals (kept to a short summary). Full format recon happens at Chunk 8.*
 
+> **Refreshed 2026-07-06 (as-built cross-ref).** As-built, the save seams are
+> **stubbed behind the `ILevelChangeExecutor` interface**:
+> `Server::exec_load_game` / `exec_change_level` carry
+> `// XASH3DPP-STUB(chunk8)` markers, and the four save primitives
+> (`SaveGameState`/`LoadGameState`/`LoadAdjacentEnts`/`ClearSaveDir`) are
+> absent until Chunk 8. Chunk 6 keeps the `SV_ChangeLevel` orchestration point
+> and the `pSaveData` pass-through as designed. See
+> `docs/boundaries/server-boundary.md` §Satellite components (save row).
+
 ## 1. Responsibility
 
 `engine/server/sv_save.c` (2493 lines) implements the GoldSrc-compatible

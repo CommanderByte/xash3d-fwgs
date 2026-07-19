@@ -1,5 +1,18 @@
 # Networking Boundary Spec
 
+> Refreshed 2026-07-06 (as-built pass). The subsystem is **Complete**
+> (Chunk 2 — 24 TUs across Layers 0–4, wired into `EngineContext`;
+> `implementation-plan.md`). This pass reconciled the spec with the shipped
+> `src/networking/**` + `include/**/networking/**`, refreshed the inline
+> `## Threading` section, and added a dedicated `## Extension axes (Q-21)`
+> section headlining the **T_NetIO thread (G-2)** door. Deep-dive companions:
+> `legacy-survey/deep-dive-networking.md` (transport/netchan/buffer core) +
+> `legacy-survey/deep-dive-delta-encoder.md` (the codec). Threading folder
+> doc: `threading-analysis/networking-threading.md` (kept consistent with the
+> inline section below). No source was changed. Mechanical facts cited here
+> come from `compliance_scan.py networking` (clean) and `stub_scan.py
+> networking` (5 deferred markers).
+
 > Legacy sources surveyed:
 > `engine/common/net_ws.c` (~1900 lines), `engine/common/net_chan.c` (~1800 lines),
 > `engine/common/net_buffer.c` / `.h`, `engine/common/net_encode.c` / `.h`,
@@ -40,7 +53,7 @@ A packed 20-byte address type used in every inter-DLL call that passes a
 network address. Its binary layout is fixed by the GoldSrc protocol and must
 not change.
 
-```
+```c
 #pragma pack(push, 1)
 struct netadr_s {        // total 20 bytes
     uint16_t type;       // overlaps with ip6_0[0..1] for IPv6 disambiguation
@@ -340,6 +353,7 @@ built-in delta types. The `bInitialized` flag per table is mutated at
 
 ### Netchan
 
+<!-- pyml disable-next-line ol-prefix -->
 9. **Reliable retransmit on drop**: If the remote acknowledges a sequence
    higher than the last reliable transmit without the matching reliable bit,
    the entire `reliable_buf` is resent. This is the GoldSrc/Quake reliable
@@ -358,6 +372,7 @@ built-in delta types. The `bInitialized` flag per table is mutated at
 
 ### Delta Encoding
 
+<!-- pyml disable-next-line ol-prefix -->
 13. **Delta tables are re-initialised on map change**: `Delta_Init` is called
     from both `sv_game.c::SV_InitGameProgs` and `sv_init.c::SV_SpawnServer`.
     The client re-initialises via `Delta_InitClient` after receiving the server's
@@ -514,11 +529,74 @@ Callers implementing these interfaces (e.g. the server layer for `IMasterListCon
 should include from the public path directly. The private-tree headers are now
 redirect stubs.
 
+## As-built reconciliation (2026-07-06)
+
+> Additive pass. Where the spec above still reads as *design intent*, this
+> section records what actually shipped. Nothing above is deleted; drift is
+> flagged here.
+
+- **Layer 0–4 module set — matches, 24 TUs.** Layer 0 (`address.cpp`,
+  `message_buf.cpp`); Layer 1 transport (`transport/{lag_queue,
+  loopback_transport, packet_pool, split_reassembler}.cpp`); Layer 2 codec
+  (`codec/{compress_lzss,compress_bz2,compress_null,compressed_packet}.cpp`)
+  plus wire (`wire/{compat_goldsrc,compat_xash,oob_packet,
+  protocol_driver_goldsrc}.cpp`); Layer 3 netchan (`netchan.cpp`); Layer 4
+  context (`context.cpp`) + satellites (`master_list.cpp`, `delta/**`). All
+  compile into the single `xash3dpp_networking` target (OQ-1) and are wired
+  into `EngineContext` (`implementation-plan.md` Chunk 2 = **Complete**).
+- **Transport seam — as specified.** All real socket I/O routes through the
+  injected `xash::platform::IPlatformSockets` (`NetworkInitParams::sockets`);
+  the context owns `std::array<OsSocket,2> os_sockets` opened by
+  `config(true)` / closed by `config(false)`/`shutdown()`. `get_packet` /
+  `send_packet` are the only two I/O entry points, tagged
+  `@thread-safety: T_NetIO-ready`. Loopback (`LoopbackTransport`) is consulted
+  before real sockets, preserving the legacy `sock ^ 1` cross-wiring.
+- **`net_from` eliminated (OQ-8) — confirmed.** `from` is a `NetAddress&`
+  out-parameter on `get_packet`; there is no packet-source global anywhere.
+  This is the structural pre-condition for the G-2 NetIO split.
+- **`NetAddress::to_string` writes a caller-owned `std::span<char>`** — the
+  legacy `NET_AdrToString` static return buffer is **gone**, so the classic
+  "static-buf race" hazard does not exist here (contrast `abi`'s frozen
+  static-return-buffer contract).
+- **`IProtocolDriver` — shipped, two drivers.** `GoldSrcProtocolDriver`
+  (protocol 48, no qport) and `XashProtocolDriver` (protocol 49, sends qport)
+  register in `default_protocol_driver_registry()`; selection is
+  per-`NetchanConfig::driver`, resolved via `NetworkContext::protocol_driver`.
+  Q-14 (DRIVER_INHERITANCE) and the Q-7 addendum are in
+  `decisions-architecture.md`.
+- **Master-list satellite — shipped (OQ-6).** `master_list.cpp` +
+  `create_master_list_client` factory; `heartbeat()` emits
+  `FF FF FF FF 'q' '\n'` and `send_shutdown()` `FF FF FF FF 'b' '\n'` through
+  `NetworkContext::send_packet(Server)`; LAN-only / empty-span skips the send.
+  `IMasterListConfig` / `IMasterListClient` live in the public include tree.
+- **Delta encoder — shipped, byte-exact (see the dedicated deep-dive).** All
+  eight built-in tables, both wire dialects behind `IDeltaWireFormat`,
+  `Delta_AddEncoder`→`register_encoder`, `IBaselineResolver` seam. Detailed in
+  `legacy-survey/deep-dive-delta-encoder.md`; not re-derived here.
+- **Deferred (matches `stub_scan.py networking` — 5 markers):** the real
+  **bzip2** backend (`compress_bz2.cpp` is a TODO until `3rdparty/bzip2` is
+  wired into CMake; `compress_null.cpp` links today per OQ-7), a few
+  **netchan pool-allocation** paths (`reliable_buf` / per-stream fragment
+  queues currently use a `vector` stub — Chunk 7), the flow-telemetry array
+  zeroing (Chunk 8), and the loopback-pad edge (Chunk 7-frag). **Async DNS**
+  (`string_to_adr_nb`) remains the OQ-4 one-thread-at-a-time model, not yet
+  ported (no `dns.cpp` shipped). **HTTP downloader** (`xash3dpp_http`) is the
+  OQ-5 decided-not-built separate target.
+
 ## Threading
+
+> Refreshed 2026-07-06 (as-built pass). Re-verified against the shipped code:
+> `compliance_scan.py networking` is **clean**, and the tree carries **55
+> `compliance-allow(thread-assert)`** annotations and **zero
+> `assert_thread_role`** call sites — exactly the posture described below.
+> This inline section is the TL;DR; the folder doc
+> `threading-analysis/networking-threading.md` holds the full hazard table and
+> caller-contract checklist and was refreshed in the same pass. The two are
+> kept consistent by construction (same 55/0 fact base).
 
 See [docs/threading-analysis/networking-threading.md](../threading-analysis/networking-threading.md) for the full hazard inventory and caller-contract checklist.
 
-**TL;DR:** the entire transport stack (NetworkContext, Netchan, PacketPool, LagQueue, SplitReassembler, MasterListClient) is confined to the `T_NetIO` thread role. Only `NetworkContext::stats()` Tier-1 atomic counters are safe to read from other threads. There are no internal mutexes; single-thread access is the caller's contract.
+**TL;DR:** the entire transport stack (NetworkContext, Netchan, PacketPool, LagQueue, SplitReassembler, MasterListClient) is confined to the `T_NetIO` thread role. Only `NetworkContext::stats()` Tier-1 atomic counters are safe to read from other threads. There are no internal mutexes; single-thread access is the caller's contract. Enforcement today is **documentation + annotation only** — the `@thread-safety` header comments on each public type plus the 55 `compliance-allow(thread-assert)` reasons; no runtime role assert fires until the NetIO split (see **Extension axes** below).
 
 ### QN/Q-22 annotation adjudication (6B S6 retrofit)
 
@@ -552,6 +630,82 @@ the LZSS sliding-window size (`window_size = 4096`) and its hash-bucket count
 (`buckets[256]`), and the GoldSrc delta-descriptor name field (`fieldName[32]`,
 part of the `sizeof(goldsrc_delta_t) == 56` ABI assert). They stay inline as
 wire/ABI-frozen values.
+
+## Extension axes (Q-21)
+
+> Added 2026-07-06 (as-built pass). Evaluated against
+> `docs/design/extension-goals.md`. Networking was scaffolded **before** Q-21
+> was formalised but already carries the two structural pre-conditions the
+> goals need: `net_from` was eliminated (OQ-8) and `NetworkContext` is a
+> context object (OQ-1). This section makes the door verdicts explicit and
+> pins the one door that is not merely theoretical here — **T_NetIO (G-2)**.
+
+The **headline** for networking is the **NetIO thread door (G-2 / P-1)**. The
+subsystem is designed `T_NetIO`-*ready*: every I/O path is single-thread by
+contract, the `net_from` global was deleted so `from` is an out-parameter
+threaded through every layer (OQ-8), and the 55 mutators are pre-tagged with
+`compliance-allow(thread-assert)` carrying the exact reason that flips when the
+thread splits. Today the `T_NetIO` role runs *on* `ThreadRole::Main` (no split
+scheduled), which is why the code asserts **nothing** rather than
+`ThreadRole::Main` — a `Main` assert would contradict the documented
+`T_NetIO`-ready design, and a `NetIO` assert would fatal today's main-thread
+execution and the role-less networking tests.
+
+| Goal / primitive | Applies? | Required seam or door |
+|------------------|----------|-----------------------|
+| **G-2** NetIO thread split | **Yes — headline** | The whole transport stack moves to a dedicated I/O thread. When it lands, the **55** `compliance-allow(thread-assert)` sites in the *transport stack* subset flip to `assert_thread_role(ThreadRole::NetIO)` in one commit (and threading-analysis Rec. #1 is struck). See the flip table below for exactly which entries move and which stay `compliance-allow`. |
+| **P-1** main-thread service inbox (MPSC) | **Yes — door-keep** | threading-model §5.1 already specs an MPSC queue for NetIO. The NetIO thread hands received datagrams / decoded messages to the sim via the inbox rather than mutating engine state directly; nothing in networking mutates non-networking state today, so the door is *open by construction* — job is preservation. |
+| **P-2** published-snapshot reads | **Yes — door-keep** | `NetworkingStats` (Tier-1 relaxed atomics) is already the any-thread read surface; a debug/MCP overlay (G-1/G-3) scrapes it without a lock. Packet/frame data is **not** published as an immutable snapshot — off-main readers get counters only, never live `Impl` refs. When a richer net-inspection surface is wanted, add a snapshot field, never an `extern` poke (P-4 rule). |
+| **P-3** context-first, no new file-scope state | **Yes — held** | Zero mutable file-scope state in the transport stack: the legacy `net_from` / `net_message` / `net_mempool` / `net.split` globals are all gone, replaced by `NetworkContext::Impl` members and per-`Netchan` state. The only function-local statics are the **const** `default_protocol_driver_registry()` Meyers singleton (Safe-RO) and the deferred GoldSrc-driver singleton (Chunk-4 TODO). Both are documented exceptions, not mutable global state. |
+| **P-4** typed introspection | **Yes — door-keep** | `stats()` is the typed read surface; `IProtocolDriver` / `IMasterListConfig` are the typed config seams. A future net-inspection query (per-channel flow, in-flight fragments) extends `stats()` or adds a snapshot accessor — it does not reach into `Impl`. |
+| **P-5** narrowest-state signatures | **Yes — held** | Free functions in the codec/wire layers take `std::span` / `MessageBuf&` / the specific driver, never a runtime aggregate. `Netchan` methods operate on their own `Impl`. |
+| **P-6** services are satellites | **Yes — held** | `xash3dpp_http` is a decided-not-built separate target (OQ-5, Q-11); the master-list satellite stays in-target per the Q-11 score (OQ-6) but behind the `IMasterListClient` seam. |
+| **G-1** in-engine MCP service | Door-keep | Reads served from the atomic stats (P-2) + typed config seams (P-4); actions (e.g. force a heartbeat) route through the existing `IMasterListClient` / `NetworkContext` public API. No new backdoor. |
+| **Q-14** protocol-driver inheritance | **Yes** | `IProtocolDriver` is the per-`netchan_t` wire-format selection seam; a new protocol is one sibling TU + one registry case (see the "Pluggable game protocol per client" section). This is also the **wire-exactness firewall**: the frozen GoldSrc/Xash byte formats live behind drivers so a v2 protocol never edits the legacy codecs. |
+
+### The T_NetIO flip table (which entries move when G-2 lands)
+
+When the NetIO thread is split from Main, the `compliance-allow(thread-assert)`
+reasons partition into **three** classes; only the first flips to a runtime
+assert:
+
+- **Flips to `assert_thread_role(ThreadRole::NetIO)`** — the *transport-stack*
+  mutators: every non-const method of `NetworkContext` (`config`, `get_packet`,
+  `send_packet`, socket open/close), `Netchan` (`setup`, `write_reliable`,
+  `transmit`/`transmit_bits`, `process`, `clear`, fragment builders),
+  `LoopbackTransport`, `PacketPool`, `LagQueue`, `SplitReassembler`, and
+  `MasterListClient::{heartbeat, send_shutdown}`. These own mutable per-context
+  I/O state and are the reason the thread exists.
+- **Stays `compliance-allow` (pure transform, no thread affinity)** — the
+  stateless codec/wire functions: LZSS/bz2 compress-decompress, the delta
+  field codec, table-wire, the GoldSrc/Xash compat shims, and OOB framing.
+  These take only caller-owned buffers; they run on whichever thread calls
+  them (NetIO for live traffic, or a future worker for parallel compress —
+  threading-analysis Rec. #5).
+- **Stays `compliance-allow` (Safe-RO by construction)** — the const
+  `IProtocolDriver` / `IDeltaWireFormat` singletons and the
+  `default_protocol_driver_registry()` Meyers static. Immutable after
+  construction; readable from any thread.
+
+`DeltaTables` is the **one nuance**: its methods are single-thread by contract
+but the owning thread is the *sim* (server per game instance, client per
+session), **not** NetIO — delta encode/decode happens where the game protocol
+is framed, which is on the sim/Main thread, not the socket thread. So its
+`compliance-allow` reason flips to `assert_thread_role(ThreadRole::Main)` (or
+whatever the sim role is named), **not** `NetIO`, when roles are enforced. This
+distinction must be preserved when the flip commit lands.
+
+### P-2 packet/snapshot relationship
+
+Networking's relationship to P-2 is deliberately **thin**: it publishes
+*counters*, not *state*. There is no double-buffered packet ring analogous to
+`RenderFrame` — the received-datagram path hands ownership forward
+(NetIO → inbox → sim) rather than publishing a snapshot for concurrent readers.
+The server's per-client frame ring (the second P-2 precedent in
+extension-goals §P-2) lives in **`server`**, not here; networking only supplies
+the wire codec it rides on. If a live packet-inspection overlay is ever wanted
+(G-1/G-3), it must consume a purpose-built snapshot field on `NetworkingStats`,
+never a reference into `NetworkContext::Impl`.
 
 ## Source folder layout
 

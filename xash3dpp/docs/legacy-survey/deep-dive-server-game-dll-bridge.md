@@ -8,6 +8,22 @@ File: `engine/server/sv_game.c` (5367 lines). Supporting: `engine/eiface.h`,
 `engine/edict.h`, `engine/progdefs.h`, `engine/server/server.h`,
 `engine/physint.h`.
 
+> **Refreshed 2026-07-06 (as-built cross-ref).** This is the highest-ABI-risk
+> recon and it shipped as-built in `src/server/abi/`: `engine_table.cpp` is the
+> ONE TU projecting engine types onto the frozen 159-slot `enginefuncs_t`
+> (reached through the single `g_bridge` singleton — the deliberate Q-20
+> userdata-less-C-slot carve-out); `game_dll.cpp` is the GiveFnptrsToDll /
+> GetEntityAPI2 negotiation; `edict_arena.cpp` is the Q-20 single authoritative
+> edict store; `string_pool.cpp` is the `string_t` arena. Engine-internal code
+> reads entvars through the **`EntityView`** facade
+> (`include/.../server/entity_view.hpp`); raw `->v.` access is confined to
+> `abi/` + the pmove bridge + the (stubbed) Chunk 8 save serializer, exactly
+> per Q-20. The frozen tables are the G-2 door-keep target — a v2 flavor sits
+> **alongside** them behind this seam, never edits them. See
+> `docs/boundaries/server-boundary.md` §Extension axes and
+> `docs/modernization-opportunities/server-modernization.md` (frozen-ABI
+> prohibition). This recon remains the authoritative quirk catalogue.
+
 ## 1. Responsibility
 
 `sv_game.c` is the **engine↔game-DLL boundary** on the server side:
@@ -75,8 +91,8 @@ Non-obvious:
   string_t, writes `svc_spawnstatic` into the signon, then flags the source
   edict `FL_KILLME` (freed at frame end).
 - **`pfnDropToFloor`** (1868): traces down 256 units; returns -1 if
-  allsolid, 0 if fraction==1, else moves entity, links, sets `FL_ONGROUND`
-  + `groundentity`, returns 1. Honours `FL_MONSTERCLIP`.
+  allsolid, 0 if fraction==1, else moves entity, links, sets `FL_ONGROUND` +
+  `groundentity`, returns 1. Honours `FL_MONSTERCLIP`.
 - **`pfnWalkMove`** (1903): requires `FL_FLY|FL_SWIM|FL_ONGROUND`; unknown
   mode → `Host_Error`.
 - **`pfnRemoveEntity`** (1795): refuses to free world or client edicts

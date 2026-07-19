@@ -1,5 +1,14 @@
 # cmd_cvar Modernization Opportunities
 
+> Refreshed 2026-07-06 (as-built pass). Re-scanned the shipped code: **every**
+> remaining item from the prior table (M-2, L-1..L-6) has since been
+> implemented, so the subsystem's mechanical modernization is now essentially
+> complete. One **new** item (M-5) is added: completing M-2's `string_view`
+> migration introduced a latent NUL-termination over-read shared with
+> utilities M-4 / filesystem M-7. Prior dated analysis is retained; the status
+> table and per-item notes are updated in place with "**Superseded
+> 2026-07-06:**" markers where a status changed.
+
 > C++ standard in use: **C++20** (from `xash3dpp/CMakeLists.txt`)\
 > Boundary spec: [`docs/boundaries/cmd_cvar-boundary.md`](../boundaries/cmd_cvar-boundary.md)\
 > ABI-frozen symbols in this subsystem: `CvarAbi` layout, `CvarFlags` values,
@@ -20,20 +29,34 @@ safer. Everything else is low-priority polish.
 
 ## Implementation status
 
+> **Superseded 2026-07-06:** all items previously marked "Remaining" (M-2,
+> L-1..L-6) are now **Implemented** — verified against the current tree. The
+> only open work is the **new** M-5 (string_view over-read), a by-product of
+> M-2's migration.
+
 | Item | Status |
 |------|--------|
-| H-1 reinterpret_cast helpers | **Implemented** |
-| H-2 pool-owned fields → `char *` | **Implemented** (Command/AliasDef only; Cvar::def_string/desc kept `const char *` — set from string literals at init) |
-| M-1 cmd_execute_string stack buf | **Implemented** |
-| M-2 Public API `string_view` | Remaining |
+| H-1 reinterpret_cast helpers | **Implemented** — `cvar_list_next` / `cvar_list_set_next` in `context_impl.hpp`; all sites use them |
+| H-2 pool-owned fields → `char *` | **Implemented** (Command/AliasDef only; `Cvar::def_string`/`desc` kept `const char *` — set from string literals at init) |
+| M-1 cmd_execute_string stack buf | **Implemented** — `char buf[cmd_line_max]` + `memcpy` in `cmd_dispatch.cpp` |
+| M-2 Public API `string_view` | **Implemented** (was Remaining) — `context.hpp` name/value params now `std::string_view`. **Introduced M-5.** |
 | M-3 bucket_histogram `std::span` | **Implemented** |
 | M-4 `utilities::snprintf` | **Implemented** |
-| L-1 `std::array` for observers | Remaining |
-| L-2 `std::array` for tok_argv/buf | Remaining |
-| L-3 `std::array` for local hist | Remaining |
-| L-4 `std::array` for MapStats | Remaining |
-| L-5 Compat tables `string_view` | Remaining |
-| L-6 `std::strlen` in pool_dup | Remaining |
+| **M-5 `string_view`→C-string over-read** | **NEW / Remaining** — `.data()` fed to `CmdHashMap::hash`/`find` + `stricmp` (NUL-required). Latent; see below |
+| L-1 `std::array` for observers | **Implemented** (was Remaining) — `std::array<ObserverEntry, cmd_observer_max>` |
+| L-2 `std::array` for tok_argv/buf | **Implemented** (was Remaining) — `std::array<const char*, k_max_argc>`, `std::array<char, cmd_line_max>` |
+| L-3 `std::array` for local hist | **Implemented** (was Remaining) — `std::array<std::size_t, cvar_hash_buckets>` in `dump_hash_stats` |
+| L-4 `std::array` for MapStats | **Implemented** (was Remaining) — `std::array<MapStats, 3>` |
+| L-5 Compat tables `string_view` | **Implemented** (was Remaining) — `constexpr std::array<std::string_view, N>` in `compat_goldsrc.cpp` |
+| L-6 `std::strlen` in pool_dup | **Implemented** (was Remaining) — `pool_dup` uses `std::strlen` |
+
+> **Note (not a modernization item):** several *features* the boundary spec
+> describes are still stubs/TODOs (`cmd_scripting` `$`-substitution + `if`/`else`,
+> `cl_filterstuffcmd` prefix filter, `exec` / `stuffcmds`, `Cvar_WriteVariables`,
+> the `base_cmd` autocomplete tree, the `XASH_DEBUG_CVARS` change-log append).
+> These are un-built behaviour, tracked in the boundary spec's *As-built
+> reconciliation* section and the implementation plan — not C-ism cleanups, so
+> they are out of scope for this document.
 
 ______________________________________________________________________
 
@@ -208,7 +231,14 @@ ______________________________________________________________________
 
 ### M-2: Public registry API takes `const char *` where `std::string_view` is natural
 
-**Status: Remaining.**
+**Status: Implemented (2026-07-06).** All name/value view parameters on
+`context.hpp` (`cvar_find`, `cvar_get_or_create`, `cvar_set`, `cmd_add`,
+`cmd_remove`, `cmd_describe`, `cmd_exists`, `cmd_execute_string`, `cbuf_*`, …)
+now take `std::string_view`. **Superseded 2026-07-06:** the prior "Remaining"
+status is closed. **Caveat:** the internal call chains resolve the view with
+`name.data()` and feed it to the NUL-required `CmdHashMap`/`stricmp` layer —
+this is the new **M-5** over-read hazard; the M-2 signature migration is
+otherwise complete.
 
 - **File(s)**: `include/xash3dpp/cmd_cvar/context.hpp` lines ~80–180
 
@@ -318,16 +348,59 @@ Orphaned `#include <cstdio>` removed from both files.
 
 ______________________________________________________________________
 
+### M-5: `std::string_view` → C-string over-read at every name-lookup site (NEW)
+
+**Status: New / Remaining (found 2026-07-06).** This is the direct by-product
+of M-2: the public API accepts `std::string_view`, but the lookup layer
+(`CmdHashMap::hash`, `find`, `remove`) and `utilities::stricmp` all iterate
+`while (*s)` and therefore assume a NUL terminator. Every lookup path resolves
+the view with `name.data()` and passes it straight down, so a caller that
+supplies a non-terminated `string_view` (e.g. a substring of a larger buffer)
+causes an out-of-bounds read in `hash()` / `stricmp()`.
+
+- **File(s) / sites**:
+
+  - `src/cmd_cvar/cvar_ops.cpp` line ~29 (`cvar_find`: `const char *cname = name.data();`)
+  - `src/cmd_cvar/cvar_ops.cpp` line ~101 (`cvar_get_or_create`)
+  - `src/cmd_cvar/cmd_ops.cpp` line ~18 (`cmd_add`)
+  - `src/cmd_cvar/cmd_ops.cpp` line ~61 (`cmd_remove`: `cmd_map.remove(name.data())`)
+  - `src/cmd_cvar/cmd_ops.cpp` line ~112 (`cmd_describe`)
+  - `src/cmd_cvar/cmd_ops.cpp` line ~119 (`cmd_exists`)
+  - propagates into `compat_goldsrc.cpp` (`redirect_cvar_name` / `is_*` compare
+    `std::string_view == const char*`, which `strlen`s the C-string)
+
+- **Currently latent**: all in-tree callers pass NUL-terminated `const char*`
+  literals from the ABI shim, so no live over-read occurs today. The hazard is
+  the *contract*: the `string_view` signature invites an unterminated argument
+  that the lookup layer cannot handle.
+
+- **Suggested replacement**: add a bounded case-insensitive comparison and a
+  length-aware hash so the map can be keyed by `std::string_view` directly —
+  e.g. `CmdHashMap::find(std::string_view)` computing the djb2 hash over
+  `sv.size()` bytes and comparing with a `ci_compare(sv, key)` that stops at
+  `sv.size()`. This removes the `name.data()` step at all six sites and closes
+  the class of bug at one location.
+
+- **Boundary-safe**: Yes — `CmdHashMap` and the lookup helpers are private
+  (`include/xash3dpp/private/cmd_cvar/`); no frozen header is touched.
+
+- **Cross-subsystem**: same root cause as **utilities M-4** (`ci_less`
+  string_view→`strnicmp`) and **filesystem M-7** (`archive_helpers.hpp`). A
+  single bounded `ci_compare(std::string_view, std::string_view)` in
+  `utilities` would fix all three. Flagged for the Phase-14 synthesis sweep.
+
+______________________________________________________________________
+
 ## Low-priority / cosmetic opportunities
 
 | # | File(s) | Current | Suggested | Status |
 |---|---------|---------|-----------|--------|
-| L-1 | `context_impl.hpp` line ~51 | `ObserverEntry observers[limits::cmd_observer_max]` | `std::array<ObserverEntry, limits::cmd_observer_max>` | Remaining |
-| L-2 | `context_impl.hpp` lines ~73–74 | `const char *tok_argv[k_max_argc]`, `char tok_argsBuffer[cmd_line_max]` | `std::array<const char*, k_max_argc>`, `std::array<char, cmd_line_max>` | Remaining |
-| L-3 | `context_misc.cpp` ~L110 | `std::size_t hist[limits::cvar_hash_buckets] = {}` | `std::array<std::size_t, limits::cvar_hash_buckets> hist {}` | Remaining |
-| L-4 | `context_misc.cpp` ~L112 | `MapStats maps[]` (local array) | `std::array<MapStats, 3> maps` | Remaining |
-| L-5 | `compat_goldsrc.cpp` lines ~37–57 | `constexpr const char *kFilterableExemptions[]`, `kOverridableCommands[]` | `constexpr std::array<std::string_view, N>` | Remaining |
-| L-6 | `context_impl.hpp` ~L122 | `utilities::strlen(src)` in `pool_dup` — null guard already above | `std::strlen(src)` (src guaranteed non-null at that point) | Remaining |
+| L-1 | `context_impl.hpp` line ~51 | `ObserverEntry observers[limits::cmd_observer_max]` | `std::array<ObserverEntry, limits::cmd_observer_max>` | **Implemented** (2026-07-06) |
+| L-2 | `context_impl.hpp` lines ~73–74 | `const char *tok_argv[k_max_argc]`, `char tok_argsBuffer[cmd_line_max]` | `std::array<const char*, k_max_argc>`, `std::array<char, cmd_line_max>` | **Implemented** (2026-07-06) |
+| L-3 | `context_misc.cpp` ~L110 | `std::size_t hist[limits::cvar_hash_buckets] = {}` | `std::array<std::size_t, limits::cvar_hash_buckets> hist {}` | **Implemented** (2026-07-06) |
+| L-4 | `context_misc.cpp` ~L112 | `MapStats maps[]` (local array) | `std::array<MapStats, 3> maps` | **Implemented** (2026-07-06) |
+| L-5 | `compat_goldsrc.cpp` lines ~37–57 | `constexpr const char *kFilterableExemptions[]`, `kOverridableCommands[]` | `constexpr std::array<std::string_view, N>` | **Implemented** (2026-07-06) |
+| L-6 | `context_impl.hpp` ~L122 | `utilities::strlen(src)` in `pool_dup` — null guard already above | `std::strlen(src)` (src guaranteed non-null at that point) | **Implemented** (2026-07-06) |
 
 ______________________________________________________________________
 

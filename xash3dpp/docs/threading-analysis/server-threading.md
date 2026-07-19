@@ -2,6 +2,16 @@
 
 > Boundary spec: `docs/boundaries/server-boundary.md`
 
+> **Refreshed 2026-07-06 (as-built pass).** Re-scanned against the shipped
+> `xash3dpp/src/server/` tree (30 TUs, Chunk 6 Complete). The enforcement
+> count grew: **92 `assert_thread_role(ThreadRole::Main)` calls across 26
+> source files** (was 86/26 at S11 — the S9 client/messaging and world
+> completion added sites; the 26-file spread is unchanged). `compliance_scan.py
+> server` is **clean**. The structure, ownership model, and every
+> Safe-by-contract / Race-static-buf / caller-contract finding below hold
+> as-built and are confirmed against current code — the update is the count and
+> the per-file distribution table. Nothing is deleted.
+
 *2026-07-05 (S11). Decision refs: OQ-9 (server is main-thread-only),
 `server-boundary.md`; `core::assert_thread_role`/`ThreadRole::Main` is the
 enforcement primitive. Companion docs: `map_loader-threading.md` (Q-6),
@@ -33,10 +43,37 @@ signal-handler safety is N/A**.
 There is no "init phase then read-only" transition: the server is mutable for
 its whole active lifetime, but only ever from one thread.
 
+**Superseded 2026-07-06 (count only):** the "**86 assertions across 26 source
+files**" figure above is now **92 across 26 files** as-built. The per-file
+distribution (verified 2026-07-06):
+
+| Slice | Files with asserts (count) |
+|-------|----------------------------|
+| `abi/` | `engine_table.cpp` (5), `string_pool.cpp` (5), `edict_arena.cpp` (4), `game_dll.cpp` (2) |
+| `lifecycle/` | `game_host.cpp` (4), `precache.cpp` (4), `entity_parse.cpp` (3), `spawn.cpp` (3), `world_hooks.cpp` (1) |
+| `clients/` | `snapshot.cpp` (14), `client_state.cpp` (8), `filter.cpp` (6), `messages.cpp` (6), `net_io.cpp` (2), `log.cpp` (1), `query.cpp` (1) |
+| `physics/` | `physics.cpp` (4), `pm_trace.cpp` (2), `pmove.cpp` (2), `init_client_move.cpp` (1), `movevars.cpp` (1), `run_cmd.cpp` (1) |
+| `world/` | `light.cpp` (3), `links.cpp` (2), `clip.cpp` (1) |
+| facade | `server.cpp` (6) |
+
+The ABI-slot / `playermove_t`-callback transitive-coverage argument is
+unchanged: `snapshot.cpp`'s 14 sites bracket every public snapshot-pipeline
+entry, and the `abi/` slots remain the deliberately unasserted C surface that
+inherits the caller's Main context.
+
 ## Safe items
 
 All shared mutable state is **Safe-by-contract** — correct precisely because the
 OQ-9 single-thread rule holds; none would be safe under concurrent entry:
+
+> *Confirmed 2026-07-06:* every symbol below still exists as described —
+> `g_bridge` (`engine_table.cpp:54`, now carrying the explicit
+> `compliance-allow(mutable-global, di-global-ref)` Q-20 carve-out annotation),
+> the `s_value[256]` ABI return buffer (`init_client_move.cpp:235`), and the two
+> RNG statics `s_rng_state` (`engine_table.cpp:1543`) / `s_pm_rng`
+> (`init_client_move.cpp:280`, both `// XASH3DPP-STUB(chunk6)` idtech-RNG-parity
+> follow-ups). The Race-static-buf-made-safe-by-single-thread analysis is
+> unchanged as-built.
 
 - **`ServerRuntime rt`** (the `sv`/`svs`/`svgame` aggregate) — heap-owned by the
   `Server` object (one per process), reached only through Main-thread entry

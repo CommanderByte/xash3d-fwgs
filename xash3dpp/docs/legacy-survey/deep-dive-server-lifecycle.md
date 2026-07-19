@@ -4,6 +4,19 @@
 xash3dpp server rewrite. All paths relative to the repository root; line
 numbers verified against the current tree.*
 
+> **Refreshed 2026-07-06 (as-built cross-ref).** This recon shipped as
+> Chunk 6 (Complete): the lifecycle bookends map to `src/server/lifecycle/`
+> (`game_host.cpp` = `SV_Init`/`SV_Shutdown` + the `Host_ServerFrame` loop,
+> `spawn.cpp` + `entity_parse.cpp` + `precache.cpp` = `SV_SpawnServer` →
+> entity-string parse → `SV_ActivateServer`), driven by the map_loader FSM
+> through `Server::exec_load_level` (the `ILevelChangeExecutor` seam,
+> `server.hpp`). The zero-physics-frames early-return quirk and the spawn
+> ordering (`sv.time = 1.0` epoch, `initialized` set early, baselines after
+> settling) are reproduced as-built. As-built reconciliation + door-keep
+> verdicts: `docs/boundaries/server-boundary.md` §As-built / §Extension axes.
+> This narrative recon is **not** superseded — it remains the file:line quirk
+> catalogue behind the shipped code.
+
 ## 1. Responsibility
 
 - **engine/server/sv_main.c** — Server per-frame driver and lifecycle

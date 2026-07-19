@@ -1,6 +1,15 @@
 # Filesystem Boundary Spec
 
-> Legacy survey background: [docs/legacy-survey/filesystem.md](../legacy-survey/filesystem.md)
+> Legacy survey background: [docs/legacy-survey/filesystem.md](../legacy-survey/filesystem.md)\
+> Narrow legacy deep-dive: [docs/legacy-survey/deep-dive-filesystem.md](../legacy-survey/deep-dive-filesystem.md)
+
+> Refreshed 2026-07-06 (as-built pass) — reconciled the spec against the current
+> `xash3dpp_filesystem` target: the pimpl `Filesystem` facade + `ISearchBackend`
+> polymorphic backends (PAK / WAD / ZIP / DIR / PK3DIR / Android), the
+> `std::shared_mutex` reader-writer model, the `CIDirectory` per-backend CI
+> cache, and the `xash3dpp_miniz` shared static target. Added the
+> `## Extension axes (Q-21)` section and refreshed `## Threading (as-built)` to
+> match the nine `compliance-allow(thread-assert)` sites actually in code.
 
 ## Responsibility
 
@@ -358,31 +367,55 @@ state it reflects (`paths_mutex` for `search_path_count`, `game_mutex` for
 
 ## Threading (as-built)
 
+> Refreshed 2026-07-06 (as-built pass).
+
 Unlike the pure-function utility subsystems, the filesystem owns real mutable
-state and is **thread-safe by lock**, not by thread-confinement:
+state and is **thread-safe by lock**, not by thread-confinement. There are
+**zero `assert_thread_role` calls** in the subsystem; every thread-role match is
+a documented `compliance-allow(thread-assert)` (nine sites: seven on the
+`Filesystem` facade in `filesystem.cpp`, two on backends). The concurrency
+primitives are:
 
-- `init()` / `shutdown()` are **main-thread-only** — they write `pool_` /
-  `rootdir` / `basedir` / `rodir` without a lock, relying on the "before worker
-  threads start / after they join" lifecycle contract (README key invariants).
-- Query and load methods (`open`, `load_file`, `file_exists`, `file_size`,
-  `search`, `write_file`, `remove`, …) take a **shared** reader lock on
-  `paths_mutex` and are safe from any thread concurrently.
-- Path-mutating methods (`activate_game`, `rescan`, `add_game_directory`,
-  `add_game_hierarchy`, `clear_paths`, `mount_archive`) take an **exclusive**
-  writer lock (`paths_mutex` and/or `game_mutex`). `allow_direct_paths` is a
-  lock-free `std::atomic<bool>`.
-- `File` handles and `ISearchBackend` instances are caller-/facade-owned and
-  carry no internal synchronization; backends are immutable after construction.
+- **Two `mutable std::shared_mutex` on `Filesystem::Impl`** (`filesystem.cpp`):
+  `paths_mutex` guards the `std::deque<SearchPath>` list; `game_mutex` guards
+  the `GameInfo active_game` / `gamedir` / `game_loaded` selection state.
+- **One `mutable std::mutex cache_mutex_` per `CIDirectory`**
+  (`ci_directory.hpp`) protecting the lazy per-subdirectory name cache
+  (`std::unordered_map<std::string, std::vector<std::string>>`). This is
+  per-backend-instance, not global — no magic static.
+- **One `std::atomic<bool> allow_direct_paths`** on the pimpl — lock-free
+  toggle for absolute/`../` path permission.
+- **No Meyers / magic statics**: the only `static` in the subsystem are
+  compile-time `static constexpr` format/magic constants inside the backends
+  (`k_IDPACK`, `k_WAD2`, `k_WAD3`, `k_SIG_*`, `k_MAX_LUMPS`, …).
 
-**QN thread-assert adjudication (6B S4)**: all nine mutator-name matches are
+### Thread-role classification (analyse-threading)
+
+| Site | Guard | Class | Rationale |
+|------|-------|-------|-----------|
+| `init` / `shutdown` | none (writes `pool_`/`rootdir`/`basedir`/`rodir` unguarded) | **Main-by-contract** | Called before workers start / after they join (README key invariants). A real `assert_thread_role(Main)` would `XASH_FATAL` the fs test harness (which registers no `ThreadRole`) — deferred |
+| `activate_game` / `rescan` / `add_game_directory` / `add_game_hierarchy` / `clear_paths` / `mount_archive` | `unique_lock` (`paths_mutex` and/or `game_mutex`) | **Any-thread, exclusive** | Path-mutating; writer lock serialises them against readers |
+| `open` / `load_file` / `file_exists` / `file_size` / `file_time` / `disk_path` / `search` / `write_file` / `rename` / `remove` / `find_library` | `shared_lock` (`paths_mutex`; `find_library` also snapshots under `game_mutex`) | **Any-thread, concurrent** | Read-only path traversal; concurrent readers safe |
+| `load_direct_file` | none | **Any-thread, stateless** | `const`, VFS-bypassing disk read touching no shared state |
+| `CIDirectory::resolve` / `glob` / `invalidate` / `get_or_populate` | `lock_guard` (`cache_mutex_`) | **Any-thread, per-instance** | Serialises lazy cache population inside one backend |
+| `ISearchBackend` subclasses (PAK/WAD/ZIP/DIR/PK3DIR/Android) | immutable after construction | **Safe-RO** | Entry tables are built once at mount and never mutated; only `CIDirectory`-backed `DirBackend`/`Pk3DirBackend` carry the per-instance mutex above |
+
+**Adjudication (unchanged 6B S4).** All nine mutator-name matches are
 `compliance-allow(thread-assert)` rather than `assert_thread_role(Main)`.
 `init`/`shutdown` are main-thread-by-contract but a runtime assert would
 `XASH_FATAL` the filesystem test harness (which registers no `ThreadRole`, and
-which is outside this hardening carve to edit); the remaining seven are
-lock-guarded any-thread paths where a Main assert would contradict the
-documented concurrent-read/exclusive-write model. See the reviewer-attention
-note — enforcing the init/shutdown asserts is a follow-up that must also
-register `ThreadRole::Main` in the four `tests/filesystem/*.cpp` harnesses.
+is outside the S4 hardening carve); the remaining seven facade paths and the
+two backend paths are lock-guarded any-thread paths where a `Main` assert would
+contradict the documented concurrent-read / exclusive-write model. Enforcing the
+`init`/`shutdown` asserts is a follow-up that must also register
+`ThreadRole::Main` in the four `tests/filesystem/*.cpp` harnesses.
+
+**Extension-goals alignment.** `extension-goals.md` §G-3 states *"the filesystem
+is already safe for off-main readers"* — the `shared_lock` read paths above are
+that guarantee, and are why the off-main I/O-thread door (see Extension axes
+P-1) is realistic. The one caveat is `init`/`shutdown`: they remain
+main-thread-by-contract and must stay outside any worker's reach until the
+`ThreadRole::Main` assert is enforced.
 
 ## Constant classification (QO)
 
@@ -394,7 +427,7 @@ format/algorithm that defines them:
 | Literal | Site | Classification |
 |---------|------|----------------|
 | `56` | `pak_backend.cpp` `char name[56]` | PAK on-disk directory-entry name field (frozen file format) |
-| `16` | `wad_backend.cpp` `char name[16]`, `normalise_name(const char(&)[16])` | WAD3 lump-name field, NUL-padded/15 significant chars (frozen file format) |
+| `16` | `wad_backend.cpp` `char name[16]`, `normalise_name` (16-byte name array by ref) | WAD3 lump-name field, NUL-padded/15 significant chars (frozen file format) |
 | `16` | `filesystem.{hpp,cpp}` `std::array<std::byte,16>` `md5_file` | MD5 digest size, 128 bits (frozen algorithm output) |
 
 The tunable structural capacities (`pak_max_files`, `wad_max_lumps`,
@@ -420,3 +453,38 @@ across `tests/filesystem/test_file.cpp` (1) and `test_filesystem.cpp` (23) —
 beyond the S4 carve (host reach is limited to the two sanctioned lines; broad
 test edits are not sanctioned). **Deferred with owner `6B-S8-host`**, to be done
 alongside the host-params consolidation that already owns those call sites.
+
+______________________________________________________________________
+
+## Extension axes (Q-21)
+
+> Added 2026-07-06 (as-built pass). Evaluated against
+> [docs/design/extension-goals.md](../design/extension-goals.md) (G-1..G-5,
+> P-1..P-7). The filesystem is explicitly named in §G-3 as *"already safe for
+> off-main readers"* — so the north-star question here is not *whether* the
+> off-main I/O door exists, but *keeping it open* as the subsystem grows.
+
+| Goal / primitive | Applies? | Verdict / seam to keep |
+|------------------|----------|------------------------|
+| **P-3** context-first, no new file-scope state | **Yes — headline (already done)** | All mutable state lives on `Filesystem::Impl` (pimpl); the legacy `fs_searchpaths` / `fs_writepath` / `FI` globals were **eliminated**. Backends receive their pool + root as constructor context. Keep it: no new `static` mutable state, ever — the only `static` allowed is `constexpr` format magic |
+| **P-1** off-main worker / I/O thread | **Yes — door-keep (headline door)** | The `shared_lock(paths_mutex)` read paths (`open`/`load_file`/`file_exists`/`search`/…) are already concurrent-safe, so a future asset-streaming or prefetch job can call them from a worker with no lock retrofit. **Door-keep rules:** (a) never add per-`File` shared mutable state — `File` handles stay caller-owned and single-consumer; (b) keep `init`/`shutdown` main-thread-by-contract and out of any worker's reach until the `ThreadRole::Main` assert lands; (c) mount/unmount stays exclusive-write, so a worker must not mutate paths. Async I/O is **desired-but-deferred** (Design decision 3) — this is the door, built when a consumer schedules it (no gold-plating) |
+| **P-2** published-snapshot reads | **Partial — already shaped** | `get_game_info()` / `stats()` return **by-value snapshots** taken under the lock, so an off-main reader never holds a live-mutable `GameInfo` ref across a thread boundary. `FilesystemStats` is a value snapshot. Keep returning values, not internal refs, for any new introspection |
+| **P-4** typed introspection | **Yes — partial surface exists; keep growing it typed** | `FilesystemStats { game_loaded, search_path_count }` is the seed of the typed surface G-1/G-3/G-4 will consume. A future *"what is mounted"* query (search-path list, per-backend kind, source path, flags, open-handle census) should be a typed value-returning API — **not** an `extern` poke into `Impl::search_paths`. The `ISearchBackend::info()` string is debug-only; a structured `SearchPathView` is the P-4 upgrade path |
+| **P-5** narrowest-state signatures | **Yes — already done** | Backend methods take `(std::string_view path, mode)`, not a runtime aggregate; the facade owns the deque and hands each backend only what it needs |
+| **P-6** services are satellites | **N/A for the core; door noted** | The filesystem itself integrates as a static module (Design decision 1 — no C-ABI plugin). The archive backends are **not** satellites (Q-11 verdict below: 0/5 criteria). A future *modern-compression* or *network-mount* backend could be a satellite target, but none is planned |
+| **P-7** over-aligned allocation | No | Filesystem buffers (`std::vector<std::byte>`, `std::array` read buffers) need no over-alignment; it consumes `xash3dpp_memory` pools (≥8-byte payload alignment is sufficient) |
+| **G-2** game ABI v2 | N/A | No game-DLL-facing surface. `VFileSystem009` is an engine-side compat shim, not a frozen game ABI (see External ABI contracts) |
+| **G-5** scripting runtime | **Door-keep (consumer, not provider)** | `extension-goals.md` §G-5 lists `Filesystem::load_file` / `search` as part of *"script surface v0"*. Keep those two methods P-4-conformant (value-returning, `string_view` in) so the script binding can call them directly with no new shim |
+
+**miniz / ZIP note.** ZIP/PK3 inflate and deflated-WAD reads go through the
+**shared `xash3dpp_miniz` static target** (built from `../public/miniz.c`),
+linked **PRIVATE** by both `filesystem` and `content`. It is **not** owned by
+`utilities`. Any future compression-backend door (zstd/lz4, per the legacy
+survey's modernization list) is a *new backend*, not a change to this shared
+target.
+
+**Q-12 compat.** GoldSrc/Quake filesystem quirks (WAD auto-mount, `liblist.gam`
+conversion, Quake gamedir auto-detection, the `valve` `singleplayer_only`
+override) are behavioural constants living next to the code that needs them (see
+Quirks). No `ICompatPolicy` seam is warranted yet — unlike `content`, these are
+format-detection heuristics, not swappable policy.

@@ -1,5 +1,12 @@
 # cmd_cvar Boundary Spec
 
+> Refreshed 2026-07-06 (as-built pass). The design decisions (D1–D13) below are
+> unchanged; a new *As-built reconciliation* section records where the shipped
+> code (11 TUs) matches or lags the spec, the inline *Threading* section is
+> confirmed against the four live `assert_thread_role` sites, and a new
+> *Extension axes (Q-21)* section records the G-1 / G-5 door-keep verdicts.
+> Prior content is retained verbatim.
+
 ## Responsibility
 
 This module owns the command buffer, command registry, console-variable (cvar)
@@ -325,7 +332,73 @@ void CmdCvarContext::dump_hash_stats() const;
 // Used to tune limits::cvar_hash_buckets if mods with unusual cvar counts are observed.
 ```
 
+## As-built reconciliation (2026-07-06)
+
+Reconciles the D1–D13 decisions and the *Interface* / *Owned state* tables above
+against the shipped code (`src/cmd_cvar/**`, 11 TUs; `stub_scan`: 6 TODO/stub
+markers, 5 live / 1 stub of 6 test files). **Decisions unchanged** — this section
+only records the delta between spec and current implementation. Everything here
+is descriptive of the code as it stands, not a new requirement.
+
+### Matches the spec (built as designed)
+
+| Decision | As-built evidence |
+|---|---|
+| **D1** context + global shim | `CmdCvarContext` pimpl (`Impl` in `context_impl.hpp`); no file-scope registry globals. `tls_ctx` (thread-local) is the only shared pointer, set/cleared around each `CommandFn` dispatch. |
+| **D2** trust oracle | `ITrustOracle` injected via `CmdCvarInitParams`; `cbuf_execute` runs the stuffcmd queue privileged only when `trust_oracle->stuffcmd_is_trusted()`. cmd_cvar imports no server/client header. |
+| **D3** `ICvarObserver` | Registered via `add_cvar_observer(obs, flag_mask)`; dispatched at the write tail in `cvar_set_direct` / `cvar_full_set` (mask-filtered). `FCVAR_CHANGED` still set for legacy pollers. |
+| **D4** ABI-literal layout + two paths | `Cvar { CvarAbi abi; … }`, `static_assert(offsetof(Cvar, abi) == 0)`; `cvar_register_engine(Cvar&)` vs `cvar_register_dll(CvarAbi*)`; DLL cvars get a pool `Cvar` wrapper tagged `FCVAR_DLL_WRAPPER` (no OOB write into DLL-sized storage). |
+| **D5** `std::deque<std::string>` buffer | `cmd_text` / `filteredcmd_text` are `std::deque<std::string>`; `cbuf_split_push` splits on `;`/`\n` (quote-aware) so `wait` gates between individual commands. |
+| **D6** limits in `limits.hpp` | `cmd_line_max`, `cmd_tokens_max`, `alias_name_max`, `cvar_hash_buckets`, `cbuf_size`, `cmd_observer_max`, `cvar_change_log_capacity` all referenced as `::xash::limits::*`. |
+| **D8** lock-free reads | `generation` (`atomic<uint32_t>`, release on write); `CvarAbi::value` read directly; `CmdCvarStats` atomics. |
+| **D11** interfaces pure-virtual | `ICvarObserver` / `ITrustOracle` pure-virtual, `noexcept`, protected ctor/dtor; observer table is a fixed `std::array<ObserverEntry, cmd_observer_max>` (L-1 done). |
+| **D12** compat isolation | `compat_goldsrc.cpp` (real) / `compat_null.cpp` (stub) behind `ICompatPolicy`; all quirk tables are `constexpr std::array<std::string_view, N>` (L-5 done); core files carry zero `#ifdef HACKS_RELATED_HLMODS`. |
+| **D13** gated instrumentation | `XASH_STATS` per-cvar `write_count`/`last_write_source`; `XASH_DEBUG_CVARS` `break_on_write_name` + `hashstats` command; `cvars_written` always-on. |
+
+### Lags the spec (deferred / not yet built)
+
+These are **implementation gaps**, not spec changes; each is a named feature the
+boundary describes but the code has not landed. They belong to later chunks /
+the host bring-up, not to modernization.
+
+| Quirk / decision | As-built status | Note |
+|---|---|---|
+| **D9** `cmd_scripting` `$cvar` substitution + `if`/`else` | **Not built.** `Impl` reserves `cmd_condition` / `condlevel` and the `cmd_scripting` cvar is registered, but `dispatch_cmd` performs no `$name` expansion and no conditional parsing. | The privilege *baseline* (cvar `FCVAR_PRIVILEGED`) is in place; the scripting behaviour is a TODO for host integration. |
+| `cl_filterstuffcmd` prefix filter + `FCVAR_FILTERABLE` | **Not wired into dispatch.** `execute_tokenized` only gates on `FCMD_PRIVILEGED`; it does not consult `cl_filterstuffcmd`, the `r_`/`cl_`/`gl_`/… prefix list, or `compat_policy->is_filterable_exempt` (which exists but has no caller). | The two-queue *trust* split (D2) works; the finer per-command filter is unbuilt. |
+| `Cbuf_ExecStuffCmds` / `exec` | **Stubs** (`context_init.cpp:182`, `:187`). | `stuffcmds` awaits host launch-arg injection; `exec` awaits the filesystem VFile path. |
+| `Cvar_WriteVariables` | **Stub** (`cvar_ops.cpp:399`). | Awaits the filesystem VFile write API. |
+| `base_cmd` autocomplete tree | **Not ported.** `base_cmd.cpp` is a placeholder TU (static-asserts only). Lookup uses three separate per-type `CmdHashMap` chains (unsorted djb2), not the legacy unified sorted-bucket table. | Autocomplete / `Cmd_AutoComplete` is a console-UI-chunk concern; the registry answers exact lookups only today. |
+| `XASH_DEBUG_CVARS` change-log append | **TODO** (`cvar_ops.cpp:217`). | Ring type + `break_on_write` message exist; the record append (needs an old-value snapshot) is not written. |
+
+### Behavioural drift worth a fix note (recommendation only)
+
+- **Observer `old_value` passes the default, not the previous value.**
+  `cvar_set_direct` / `cvar_full_set` call
+  `on_cvar_changed(cv, cv->def_string ? cv->def_string : "")` — the observer
+  receives `def_string`, not the string the cvar held immediately before the
+  write. `ICvarObserver::on_cvar_changed`'s contract says `old_value` is "the
+  previous string". Recommend snapshotting `cv->abi.string` before the pool
+  free and passing that. (Source-change recommendation; not made here.)
+- **`std::string_view` → C-string over-read hazard (M-4/M-7 family).** The
+  public API takes `std::string_view name` (M-2 done) but every lookup path
+  bottoms out in `CmdHashMap::hash`/`find`/`remove` and `utilities::stricmp`,
+  which walk `while (*s)` and therefore require NUL termination. The call sites
+  pass `name.data()` directly (`cvar_find` `cvar_ops.cpp:29`,
+  `cvar_get_or_create` `:101`; `cmd_add` `cmd_ops.cpp:18`, `cmd_remove` `:61`,
+  `cmd_describe` `:112`, `cmd_exists` `:119`) and the GoldSrc compat table also
+  compares `std::string_view == const char*`. All current callers pass
+  NUL-terminated literals (from the ABI shim), so this is a **latent** over-read
+  the `string_view` contract invites, not a live bug. See cmd_cvar-modernization
+  M-5 for the recommended bounded fix. Same root cause as utilities M-4 and
+  filesystem M-7 — a Phase-14 sweep candidate.
+
 ## Threading
+
+> Refreshed 2026-07-06: the class table below is confirmed against the four live
+> `::xash::core::assert_thread_role(ThreadRole::Main)` sites in the code —
+> `init` (`context_init.cpp:32`), `shutdown` (`:238`), `set_server_dll_loaded`
+> (`context_misc.cpp:42`), `set_client_dll_loaded` (`:48`). No other mutator is
+> individually asserted (see the note under the table). The posture is unchanged.
 
 cmd_cvar is **main-thread engine state** (decision D8). It is not internally
 synchronised; concurrent callers must serialise externally.
@@ -346,6 +419,34 @@ guard. The remaining mutators (`cvar_set*`, `cmd_add`, `cbuf_*`, `cmd_execute_st
 are not individually asserted: they run inside the same main-thread dispatch and
 are exercised by the unit tests on the test thread, so a blanket per-entry assert
 would false-trip the harness. See per-header `@thread-safety` contracts.
+
+## Extension axes (Q-21)
+
+Evaluated against `docs/design/extension-goals.md`. cmd_cvar is not merely a
+consumer of the extension primitives — it is the **headline G-1 provider**: the
+command buffer is the *mutation path* an in-engine MCP service drives, and the
+two interfaces it already ships (`ITrustOracle`, `ICvarObserver`) are named in
+`extension-goals.md §G-1` and `§G-5` as "what already exists". The door-keep job
+here is mostly *preservation* — do not regress the seams that are already the
+right shape.
+
+| Goal / primitive | Applies? | Required seam or door — verdict |
+|------------------|----------|--------------------------------|
+| **G-1** in-engine MCP service | **Yes — headline provider** | Three seams cmd_cvar already ships are the G-1 substrate: (a) the **command buffer** (`cbuf_add_text` / `cbuf_stuff_text` / `cmd_execute_string`) is the on-Main mutation path an MCP tool marshals actions into; (b) **`ITrustOracle`** is the untrusted-source gate for those mutations (extension-goals names it explicitly — an MCP command source is *untrusted by construction*); (c) **`ICvarObserver`** + the `generation` atomic are the live-state read hooks. **Verdict: door-keep, no new seam owed.** The MCP service is a Q-11 satellite (`xash3dpp_mcp`); cmd_cvar owes it nothing beyond keeping these three surfaces stable and P-4-conformant. |
+| **G-5** scripting runtime | **Yes — affordance provider** | extension-goals §G-5 lists cmd_cvar's *reserved* affordances as script-surface v0: `CvarWriteSource::Script`, `CvarType`, the `CvarDesc` / `CommandDesc` snapshots, and the (future) `ParamSpec` slot, plus `ITrustOracle` + `ICvarObserver`. **Verdict: door-keep.** `cvar_describe` / `cmd_describe` already return copyable snapshots; `CvarWriteSource::Script` and `CvarType` are in the ABI-adjacent enums. No work owed until a runtime consumer exists (Q-11 satellite `xash3dpp_script`, decided-not-built). |
+| **P-1** main-thread inbox + worker pool | Consumer (future) | Off-main G-1/G-3 mutations reach the command buffer through the shared service inbox (owned at Chunk 7, alongside the worker pool). cmd_cvar's mutators stay Main-only (asserted); the inbox marshals to Main — cmd_cvar does **not** grow its own queue. **Verdict: no new seam; document the Main-only contract (done in Threading).** |
+| **P-2** published-snapshot reads | **Yes** | Off-main readers (G-1/G-3) must not walk the live registry. Today `cvar_variable_*` and `cvar_get_list` are Main-only reads; the **`generation`** atomic already gives lock-free change detection, and `CvarDesc` is a value snapshot. The `shared_mutex` retrofit (threading-model §8.3) lands "when a non-main caller appears" — G-1 is that caller. **Verdict: door-keep — the snapshot type (`CvarDesc`) and the change-epoch (`generation`) already exist; add the lock only when a reader lands.** |
+| **P-3** context-first, no new file-scope state | **Yes — satisfied** | All state is in `CmdCvarContext::Impl`; the sole global is the ABI-shim `g_cmd_cvar` pointer (host layer), which is the documented P-3 exception for the frozen C ABI (same shape as memory's global registry). **Verdict: hold the line — no second mutable global.** |
+| **P-4** typed introspection | **Yes** | `CvarDesc` / `CommandDesc` are the typed query surface (name, value, default, flags, `type_hint`, range, `ParamSpec` slot). This is the "one layer, many frontends" surface G-4 requires; console `cvarlist`/`cmdlist`, an overlay, and an MCP tool all consume it. **Verdict: door-keep — do not let any frontend reach past `*_describe` into `Impl`.** |
+| **P-6** services are satellites | **Yes** | MCP (`xash3dpp_mcp`) and script (`xash3dpp_script`) are separate targets, not folded into cmd_cvar. **Verdict: keep cmd_cvar transport- and runtime-agnostic.** |
+| **Q-11** satellite | N/A (inapplicable) | See the *Q-11 Satellite Verdict* section — the GoldSrc compat layer is an in-tree `ICompatPolicy`, not a satellite. |
+| **Q-12** compat scope | **Yes — satisfied** | `ICompatPolicy` + `XASH_GOLDSRC_COMPAT` link selection (D12). |
+
+**Negative rules (do not regress):** no second mutable file-scope global beyond
+the ABI-shim pointer; no frontend backdoor past `cvar_describe` / `cmd_describe`
+into `Impl`; keep `ITrustOracle` / `ICvarObserver` `noexcept` + heap-free at
+dispatch; keep the command buffer the *only* mutation path (so the trust gate
+cannot be bypassed).
 
 ## Constant classification (Q-O)
 

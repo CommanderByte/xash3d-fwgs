@@ -490,3 +490,151 @@ they don't get lost; pick up opportunistically or when the trigger fires):
   `platform/os_socket.hpp` re-exports networking types (layer inversion; see
   `design/layer-model.md` §2). Trigger: the first satellite needing sockets
   without networking (likely the G-5 spike or the G-1 MCP transport).
+
+______________________________________________________________________
+
+## Harmonization backlog (2026-07-06, unscheduled)
+
+> **These are candidate follow-ups, NOT scheduled chunks.** They come from the
+> cross-cutting synthesis of the 13-subsystem doc refresh (see
+> `legacy-survey/overview.md` §"As-built synthesis (2026-07-06)"). The chunk
+> numbering above stays authoritative; nothing here is promoted until it earns
+> a chunk. Every item flagged **needs design brief** must get its own brief
+> *before* any code lands (precedent: `design/extension-goals.md` §1 and
+> `design/pm-determinism-decision.md`) because it has ABI or cross-subsystem
+> impact. Each item cites the refreshed per-subsystem docs it came from and
+> tags the relevant G-/P-/Q-/OQ- IDs. Nothing here invents scope: every item
+> traces to a finding already recorded in the refreshed docs.
+
+### Security (act first)
+
+- **HB-1 — Bounded `ci_compare(string_view, string_view)`** *(SEC)* —
+  `string_view.data()` is handed to C-string `strnicmp`/`strncmp`, a latent
+  OWASP buffer-over-read (in-tree callers currently pass NUL-terminated
+  literals, so it is latent, not live). Present in **utilities** (M-4
+  `ci_less`), **filesystem** (M-7 `ci_find_by_name`), **cmd_cvar** (M-5, 6
+  sites); **verified absent** in the other 9 subsystems checked (memory is
+  N/A — it has no string-compare sites). Fix: add one bounded
+  `ci_compare` in `utilities`, adopt at the 3 call sites; delete the
+  per-subsystem M-4/M-7/M-5 findings on adoption. *Docs*:
+  `modernization-opportunities/{utilities,cmd_cvar}-modernization.md` +
+  `modernization-opportunities/xash3dpp-src-filesystem-modernization.md`.
+  *Tags*: no ABI impact; a shared `utilities` helper so coordinate the three
+  consumers. **No design brief needed** (bounded change, no ABI surface).
+
+### Do-not-modernize invariants (name, don't touch)
+
+- **HB-2 — Name the tree-wide float/byte-EXACT no-touch set** *(INVARIANT)* —
+  five subsystems independently flagged the same prohibition: map_loader
+  (Q-18 trace/PVS/CRC kernel), content (studio bone math), networking (wire
+  bit-codec + delta widths + LZSS + OOB magic), server (rotated-brush ULP
+  `clip.cpp:211`), utilities (double-precision studio math). Record the union
+  once (a `decisions-architecture.md` note or an `extension-goals.md`-style
+  invariant list) so no future modernization pass (FMA/reassoc/`std::ranges`
+  rewrite) silently perturbs a golden-gated kernel. *Docs*:
+  `modernization-opportunities/{map_loader,networking,content,server}-modernization.md`,
+  `legacy-survey/deep-dive-{trace-pvs,delta-encoder,content}.md`. *Tags*:
+  Q-18; wire-compat (Networking DECIDED §above); no code, a documentation
+  invariant. **No design brief needed** (records existing decisions).
+
+### P-8 thread-role conformance
+
+- **HB-3 — P-8 `assert_thread_role` under-guard sweep** *(P-8)* — transition
+  and frame-entry points are under-guarded relative to their header
+  contracts: **host** `RunFrame`/`RequestShutdown`/`signal_frame_abort`
+  (header claims Main-only), **map_loader** `new_game`/`change_level`/
+  `clear_world`. Server is the clean reference (92 uniform asserts, no gap).
+  These are exactly the spots where "marshal back to Main" is anchored, so
+  the gap matters for G-1/G-3. Fold into the **Chunk 6B** hardening retrofit
+  rather than scheduling separately. *Docs*:
+  `threading-analysis/{host,map_loader}-threading.md`. *Tags*: P-8; Chunk 6B.
+  Exclude the enforcement-free-by-role subsystems (HB-9) from the sweep.
+  **No design brief needed** (adds asserts to match existing contracts).
+
+### Extension-door infrastructure (design brief first)
+
+- **HB-4 — Thread-spawn + `ThreadRole`-register primitive** *(DOOR, P-1)* —
+  no OS thread-spawn primitive exists yet: core owns the `ThreadRole` enum +
+  `assert_thread_role`, platform hosts `thread_role.cpp` (natural owner, no
+  spawn), host owns the P-1 inbox-drain slot (`RunFrame`, marked by
+  `cbuf_execute`), launcher establishes Main as a pure provider. Every
+  north-star off-main thread (G-1 MCP listener, G-2 NetIO, G-3 debug thread,
+  P-1 worker pool) needs it. Design the spawn + main-thread inbox (MPSC) as
+  **one unit at Chunk 7** (the plan already hooks the worker-pool inbox
+  there). *Docs*: `boundaries/{platform,core,host}-boundary.md`,
+  `threading-analysis/host-threading.md`. *Tags*: P-1, G-1/G-2/G-3/G-5;
+  Chunk 7 hook. **Needs design brief** (cross-subsystem: core/platform/host).
+
+- **HB-5 — One shared P-2 published-snapshot idiom** *(DOOR, P-2)* —
+  map_loader's immutable `WorldData` is the zero-machinery reference Safe-RO
+  surface; content's model cache needs a snapshot swap; server needs
+  snapshot publication for G-1/G-3; networking already publishes counters
+  (not state). Define one snapshot/double-buffer idiom the others adopt.
+  *Docs*: `boundaries/{map_loader,content,server,networking}-boundary.md`.
+  *Tags*: P-2, G-1/G-3; Chunk 13 `RenderFrame` is the reference
+  implementation per `extension-goals.md` §4. **Needs design brief**
+  (cross-subsystem, defines a shared contract).
+
+- **HB-6 — Name the "one introspection layer" (P-4) channels** *(DOOR, P-4)* —
+  core is the substrate (logs, `Clock::stats`, `error_code_name`); memory
+  (`get_stats`/`for_each_pool`), content (`model_infos`/`StudioView`),
+  map_loader (world queries), and server (`EntityView`) are its channels.
+  Enumerate them as a single typed introspection layer (feeds G-1/G-3/G-4)
+  so no frontend grows a private backdoor (the P-4 door rule). *Docs*:
+  `boundaries/core-boundary.md` + each subsystem boundary. *Tags*: P-4,
+  G-1/G-3/G-4. **Needs design brief** (cross-subsystem surface definition).
+
+- **HB-7 — Shared aligned-allocation door** *(DOOR, P-7/G-5)* — memory H-1
+  (lift the `alignof(T) ≤ 8` ceiling on `pool_new`) simultaneously serves
+  P-7 over-aligned classes, the G-5 script-allocator bridge, and the future
+  `IAllocatorBackend` seam (the strategy fn-ptr triple is that seam). Cover
+  all three in one brief rather than solving H-1 in isolation. *Docs*:
+  `modernization-opportunities/memory-modernization.md`,
+  `boundaries/memory-boundary.md`. *Tags*: P-7, G-5, Q-2; Arena-time.
+  **Needs design brief** (touches the allocation seam feeding G-5 + ABI-shaped
+  `IAllocatorBackend`).
+
+### Housekeeping (bounded, no brief)
+
+- **HB-8 — Record `xash3dpp_miniz` shared-target ownership** *(HOUSE)* —
+  `xash3dpp_miniz` (built from `../public/miniz.c`) is linked PRIVATE by
+  **filesystem** and **content**, and is **not** owned by utilities. Already
+  reflected in those two boundary/deep-dive docs; noted here so it is not
+  mis-attributed. *Docs*: `boundaries/{filesystem,content}-boundary.md`.
+  *Tags*: none (build-graph fact).
+
+- **HB-9 — Flag enforcement-free-by-role subsystems** *(HOUSE)* — **abi**
+  (C-ABI shim) and **launcher** (pure Main provider) carry 0
+  `assert_thread_role` **by design** — the deliberate counterpoint to
+  consumer subsystems. Any P-8 sweep (HB-3) must exclude them, not
+  back-fill them. *Docs*: `threading-analysis/abi-threading.md`,
+  `boundaries/{abi,launcher}-boundary.md`. *Tags*: P-8 (exclusion list).
+
+- **HB-10 — Reconcile status/plan drift** *(HOUSE)* — the Status Table above
+  lags `status_table.py`: **content** is structurally Complete (table still
+  reads Partial). **Core cvar-name drift** is a GoldSrc config-compat gap:
+  `host_maxfps` vs legacy `fps_max`, `host_sleeptime` vs `sleeptime`, and
+  `sys_timescale` set FCVAR_CHEAT vs legacy FCVAR_FILTERABLE. *Docs*:
+  `boundaries/{content,core}-boundary.md`. *Tags*: OQ-2 (content finish);
+  GoldSrc config compat. **No design brief** (status reconcile + cvar
+  metadata; the cvar rename is a parity decision to confirm, not new scope).
+
+- **HB-11 — Track unfinished code inside "Complete" subsystems** *(HOUSE)* —
+  chunk-inherited deferrals inside structurally-Complete subsystems, each
+  already carrying an inline `stub_scan` marker: utilities `gameinfo_parser`
+  stubs + `swap_struct` undefined; server `ITrustOracle`/`ICompatPolicy`
+  (Chunk 7) + save paths (Chunk 8); networking DNS + bz2; cmd_cvar
+  `$`-substitution / `if`-`else` / stuffcmd prefix-filter / `base_cmd` sorted
+  autocomplete; launcher Optimus/PowerXpress `dllexport` port gap. Live source
+  of truth remains `stub_scan.py`. *Docs*: each subsystem boundary. *Tags*:
+  Chunk 7/8 (server), console-UI chunk (cmd_cvar autocomplete). **No brief**
+  (inventory of already-tracked deferrals).
+
+- **HB-12 — One shared deterministic RNG** *(HOUSE)* — multiple RNG stubs
+  await unification: server `s_rng_state`/`s_pm_rng`, plus the
+  `COM_RandomLong`/`Float` xorshift stubs in `engine_table.cpp` +
+  `init_client_move.cpp` (see the Chunk 6 deferred inventory above). Unify
+  into one idtech-parity RNG stream. *Docs*: `boundaries/server-boundary.md`,
+  the deferred-stub inventory above. *Tags*: determinism (parity — the shared
+  stream must reproduce idtech bytes). **No design brief** (parity port, but
+  the byte-exact requirement ties it to HB-2's invariant set).

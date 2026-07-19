@@ -3,6 +3,16 @@
 *Chunk 6 recon, 2026-07-04. Narrow-and-exact behavioural reference for the
 xash3dpp server rewrite. Line numbers verified against the current tree.*
 
+> **Refreshed 2026-07-06 (as-built cross-ref).** Shipped in
+> `src/server/world/`: `links.cpp` (areanode spatial index), `clip.cpp`
+> (swept-AABB trace composition over world + entities + portals — carries the
+> `TODO(Q-18)` rotated-brush ULP note), `hulls.cpp`, `contents.cpp` (incl. the
+> `skin < CONTENTS_EMPTY` water-volume quirk), `light.cpp`; the snapshot half
+> lives in `clients/snapshot.cpp`. Trace/contents/hull are edict-free value
+> types over the map_loader kernel + the read-only `PhsTable` (Q-19). The trace
+> math joins the tree-wide float-exact no-touch set. See
+> `docs/boundaries/server-boundary.md` §Extension axes (P-4 typed surface).
+
 ## 1. Responsibility
 
 - **`engine/server/sv_world.c` (1665 lines)** — server-side world
@@ -28,7 +38,7 @@ constants `engine/common/world.h:32-34`):
 - `SV_CreateAreaNode` (sv_world.c:422-458): recursive uniform subdivision
   from `sv.worldmodel->mins/maxs`. At `depth == AREA_DEPTH` (4) → leaf
   node, `axis=-1`. Split axis = longer of X/Y
-  (`size[0] > size[1] ? 0 : 1` — never Z), `dist = 0.5*(maxs+mins)[axis]`.
+  (`size[0] > size[1] ? 0 : 1` — never Z), `dist = 0.5*(maxs[axis]+mins[axis])`.
   Each node has **three** lists (Xash extension over Quake's two):
   `trigger_edicts`, `solid_edicts`, `portal_edicts` (sv_world.c:431-433).
 - Storage: `areanode_t sv_areanodes[AREA_NODES]` global (sv_world.c:412,
@@ -473,8 +483,8 @@ sv_game.c:5341). Per-client: `cl->frames[SV_UPDATE_BACKUP]` (alloc
 sv_client.c:422), `cl->events`, `cl->datagram`.
 
 Fat vis buffers are **NOT** in sv_world/sv_frame: `fatphs` sv_game.c:31,
-`fatpvs` sv_game.c:4257 (function-static), decompress scratch `g_visdata`
-+ PHS tables in mod_bmodel.c/`world` struct.
+`fatpvs` sv_game.c:4257 (function-static), decompress scratch `g_visdata` +
+PHS tables in mod_bmodel.c/`world` struct.
 
 ## 8. Dependencies
 
@@ -576,8 +586,8 @@ Fat vis buffers are **NOT** in sv_world/sv_frame: `fatphs` sv_game.c:31,
     literal; portal radius = `model->radius * 0.5` (sv_world.c:999-1024).
     Portal traces clear `startsolid/allsolid` unconditionally once inside
     the CSG region (sv_world.c:1055).
-18. `SV_MoveToss`: 200 iterations of dt=0.05, gravity `tossent->v.gravity
-    * sv_gravity * 0.05`, restores entity state after
+18. `SV_MoveToss`: 200 iterations of dt=0.05, gravity
+    `tossent->v.gravity * sv_gravity * 0.05`, restores entity state after
     (sv_world.c:1466-1501).
 19. DIST_EPSILON (0.03125) lives in pm_trace.c:263-267, not sv_world.c.
 20. `trace_t` ↔ `pmtrace_t` cast (sv_world.c:911,921) requires layout

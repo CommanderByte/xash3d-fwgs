@@ -1,8 +1,21 @@
 # Content Pipeline Boundary Spec
 
+> Refreshed 2026-07-06 (as-built pass). The original 2026-07-06 recon text is
+> preserved below; an `As-built reconciliation` section, a refreshed
+> `Extension axes (Q-21)`, and a `Threading` pointer were appended, and the
+> **Status** line was corrected against the shipped code. Prior recon language
+> that read "no implementation yet" is superseded where noted.
+
 > **Chunk**: 7 (content pipeline — model & image loaders)\
 > **Subsystem**: `content`\
-> **Status**: recon — no implementation yet\
+> **Status**: **Superseded 2026-07-06:** ~~recon — no implementation yet~~ →
+> **Complete (13 TUs)** per `status_table.py` — model cache + 3 model loaders
+> (studio/sprite/alias) + 7 image codecs + the studio bone solver (OQ-5,
+> bit-exact vs the Q-18 goldens) + the pose/attachment/hull query pfns. The
+> `SV_ClipMoveToEntity` studio-hitbox trace-loop is the one finishing step,
+> gated on the hl.dll smoke (Chunk 7). **`implementation-plan.md` still labels
+> the row "Partial"/"IN PROGRESS" — status drift, flagged in the reconciliation
+> section below.**\
 > **Depends on**: `filesystem`, `utilities`, `memory`, `map_loader` *(all done)*\
 > **Legacy reference**: `engine/common/model.c`, `mod_studio.c`, `mod_sprite.c`,
 > `mod_alias.c` (brush path → `mod_bmodel.c`, already `map_loader`);
@@ -249,6 +262,110 @@ criteria met out of 5; ≥ 2 → separate target).
 
 ______________________________________________________________________
 
+______________________________________________________________________
+
+## As-built reconciliation (2026-07-06)
+
+The recon spec above (structures, interface, quirks, satellites) reconciled
+against the shipped 13-TU implementation. **The spec is accurate as intent** —
+this section records where the as-built code lands and the one status drift.
+
+**Status drift (flag).** `status_table.py` reports content **Complete**;
+`implementation-plan.md` (row line 32; §"Chunk 7" line 193) still reads
+**Partial / ◑ IN PROGRESS**. The plan is authoritative on chunk numbering but
+lags here on the *build* state: everything in this boundary is coded and
+tested except the `SV_ClipMoveToEntity` studio-hitbox trace-loop (server-side,
+gated on the hl.dll smoke — see below). Recommend the plan row be reconciled to
+"Complete (loaders + codecs + bone solver); server hitbox-trace finish gated on
+Chunk 7 smoke".
+
+**Two targets, 13 TUs** (matches the Q-11 satellite verdict):
+
+- `xash3dpp_content` (4): `model/model_cache.cpp`, `model/studio.cpp`,
+  `model/bone_solver.cpp`, `model/formats.cpp`.
+- `xash3dpp_imagelib` (9): `imagelib/imagelib.cpp`, `imagelib/palette.cpp`, and
+  the 7 codecs `codec_wad/tga/bmp/dds/ktx2/mip/png.cpp`. `miniz` links **PRIVATE**
+  (PNG only; the Q-11 separation lever).
+
+**Model cache (O-1) — as-built.** `ModelCache` is a pimpl class over a
+`std::vector<Slot>` (not a fixed `mod_known[MAX_MODELS]` array); slot 0 is the
+world (`register_world`), 1..N regular models, freed slots reused before
+growth, `content_max_models` the hard cap (returns the null handle instead of
+`Host_Error`). The 4-state `needload` FSM is `enum class NeedLoad`; the
+`OQ-8` purge/free split is `purge_for_level_change()` (flags non-world,
+non-inline slots `FreeUnused`) + `free_unused()`, with `find_or_alloc`
+rescuing re-referenced models to `Present`. Handles are the **OQ-2 opaque
+`ModelHandle {index, generation}`** — `free_model` bumps the generation so a
+stale handle fails `resolve()` (use-after-free safe). CRC cheat-detection
+(OQ-6) lives on the slot (`CrcFlags` + `crc()`); `load_from_bytes` runs the
+reload-CRC guard (`LoadError::CrcMismatch`). `studio_extradata` is the single
+G-2 raw-`void*` edge; `model_infos()` is the P-4 introspection snapshot.
+
+**Loaders (O-3) — as-built.** `load_from_bytes` dispatches on the file magic:
+`IDST`→`parse_studio`, `IDSP`→`parse_sprite`, `IDPO`→`parse_alias`; the BSP
+magics (29/30/`BSP2`) return `LoadError::UnsupportedFeature` — brush models
+come in via `register_world` / `map_loader`, **not** the byte path (OQ-3, the
+seam content delegates to). Alias is parse-minimal (validate + own bytes;
+OQ-7). The OQ-4 post-process hook (`IModelPostProcess`) is injected, optional
+(null headless), and a `false` return frees the model.
+
+**Studio bone solver (OQ-5) — as-built, bit-exact.** The pure trig/matrix
+kernel was promoted to `utilities` (golden-verified against the Q-18 goldens);
+`content/bone_solver.cpp` holds the struct-aware layer — `calc_bone_adj`,
+the merged-RLE `calc_bones` (transcribed line-for-line from the legacy
+decoder), `calc_rotations`, and the `setup_bones` driver. `IBoneSolver` /
+`BuiltinBoneSolver` is the swappable game-DLL seam (`Server_GetBlendingInterface`
+analog); it is injected at the *server* studio consumers, not at model-load
+time. `StudioView` + its sub-views (`BoneView`, `AnimView`, `SeqDescView`,
+`AttachmentView`, `HitboxView`) are the typed, bounds-safe G-2/P-4 read
+surface over the frozen `studiohdr_t` byte image (out-of-range reads return 0,
+untrusted-file-safe).
+
+**Pose/hull query pfns — as-built.** `bone_world_position`
+(`Mod_GetBonePosition`), `attachment_world_position`
+(`Mod_StudioGetAttachment`), and the geometric core of the hitbox hull
+(`studio_hitbox_hulls` → six oriented Minkowski-expanded planes per hitbox +
+hitgroup) are shipped. The **remaining** step is the *server* side:
+`SV_ClipMoveToEntity`'s per-hitbox trace loop + `EntityView` pose accessors +
+`SV_HullForStudioModel` gating (trace-size scaling, `sv_clienttrace`,
+player-blend, CS shield-skip) + the 16-entry LRU cache — **gated on the hl.dll
+smoke** because their parity needs verbatim-legacy trace goldens (closes
+server-boundary OQ-2; markers `clip.cpp:180`, `pmove.cpp:159`).
+
+**imagelib (O-2) — as-built.** `ImageDecoder` is a pimpl instance; `decode()`
+lowercases the extension and walks the read-only `IImageCodec* const registry[]`
+(wad, tga, bmp, dds, ktx2, mip, png). Codecs are **stateless** (no global
+`image`), parse through bounds-checked `std::span` reads (H-3/H-4), and return
+an owned `Image` value (OQ-1). The `img_utils.c` MDL/SPR/LMP/FNT/PAL
+image-lump codecs, `Image_Process` (resample/flip/quantise/NeuQuant), and the
+`content → imagelib` CMake link are **deferred to the renderer (Chunk 13)** —
+the one live stub (`imagelib.cpp:42`, tag `o-2`) is a stale scratch-comment,
+not missing behaviour (the stateless codecs need no shared scratch).
+
+**Delegation seams content dispatches to (does not re-specify).**
+`filesystem` for file mounting/loads (injected `Filesystem&`); `map_loader`
+for brush models (the `register_world` / BSP-magic reject seam); `memory` for
+the content pool; `utilities` for CRC32 / byte-swap / the promoted bone math.
+See those boundary specs for their contracts.
+
+______________________________________________________________________
+
+## Threading
+
+Full analysis: `docs/threading-analysis/content-threading.md`. Summary —
+content is **main-thread-only for mutation, reentrant for pure work**. The
+`ModelCache` mutators (init/shutdown/find_or_alloc/register_world/free_model/
+purge/free_unused/load_from_bytes/need_crc — 9 sites) and the `ImageDecoder`
+lifecycle+decode (3 sites) assert `ThreadRole::Main`; the parsers, the 7
+codecs, and the bone/hull kernels hold **no shared state** and are safe to run
+off-Main (the P-1 door). The crux hazard is the shared mutable `ModelCache`
+registry: the const read accessors (`resolve`/`find`/`validate_crc`/
+`studio_extradata`) hand back live refs without a lock — safe under the
+current Main-only contract, but the P-2 published-snapshot swap is the door an
+off-main render/trace consumer needs.
+
+______________________________________________________________________
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. Content is where the
@@ -256,16 +373,28 @@ Evaluated against `docs/design/extension-goals.md`. Content is where the
 context-first door is not theoretical here — it is the prerequisite for the
 first parallel workload, and the legacy code is singleton-hostile.
 
+> **As-built confirmation 2026-07-06.** The verdicts below are no longer
+> forward-looking — the shipped code *keeps every door open*. The headline P-3
+> claim is **realised**: there is **zero file-scope mutable state** in any
+> content or imagelib TU. `mod_known` → the `ModelCache` pimpl instance;
+> `mod_studiohdr` → the per-call `StudioView` value; the global `image` scratch
+> → the (stateless) codecs return an owned `Image`; `g_poseverts` → local
+> `setup_bones` scratch; `palette_q1/hl` → `constexpr std::array`; the codec
+> table → a `static const IImageCodec* const registry[]` (read-only). The two
+> live doors are the **P-1 reentrant-loader door** and the **P-4 typed
+> registry door**; both are open by construction (see the refreshed rows). Full
+> analysis in `docs/threading-analysis/content-threading.md`.
+
 | Goal / primitive | Applies? | Required seam or door |
 |------------------|----------|-----------------------|
-| **P-3** context-first, no new file-scope state | **Yes — headline** | Loaders take injected cache + pools + filesystem + imagelib as context; **eliminate** `mod_known` / `image` / `mod_studiohdr` / `loadmodel` / `g_poseverts` singletons. Binding, and the precondition for the worker pool |
-| **P-1** main-thread inbox + worker pool | **Yes — chunk hook** | Chunk 7 lands the worker pool + `JobToken`; content load is the first candidate parallel job. Loaders must be reentrant so a job owns its load; design the inbox alongside `JobToken` as one queue family. Deliverable stays single-threaded — the pool is a *door*, built when a consumer schedules it (no gold-plating) |
-| **P-2** published-snapshot reads | Partial | Off-main readers (render/trace, G-3) consume a stable model/texture registry, never live-mutable cache refs across a thread boundary |
-| **P-4** typed introspection | **Yes** | A typed model/texture registry query surface (analog of `EntityView`): what is loaded, per-pool memory, CRC — for G-1/G-3/G-4. No `extern` poke into `mod_known` |
-| **P-5** narrowest-state signatures | **Yes** | Loader free functions take the model + pools being built (a `LoadContext`), not a whole runtime aggregate |
-| **P-6** services are satellites | **Yes** | `xash3dpp_imagelib` as a separate target (Q-11) |
-| **G-2** game ABI v2 | Door-keep | The raw `void*` `studiohdr` / `model_t` handed to game DLLs is the Q-20-analog confinement point; keep raw access behind the handle / extradata seam so a v2 ABI can hand a typed model view instead |
-| **Q-12** compat scope | **Yes** | A `content::ICompatPolicy` for GoldSrc WAD / palette / decal / luma quirks (Quake-vs-HL palette classification, gradient decals), link-selected by `XASH_GOLDSRC_COMPAT` |
+| **P-3** context-first, no new file-scope state | **Yes — headline, ✅ met** | Loaders/decoders take injected cache + pools + filesystem as context; `mod_known` / `image` / `mod_studiohdr` / `g_poseverts` singletons are all **gone**. Verified: 0 file-scope mutable statics tree-wide (content-threading.md) |
+| **P-1** main-thread inbox + worker pool | **Yes — chunk hook, door OPEN** | The pure work is **already reentrant**: `parse_studio` / `parse_sprite` / `parse_alias`, the 7 stateless codecs, and `calc_bones` / `setup_bones` / `studio_hitbox_hulls` hold no shared state, so a worker can own a parse/decode off-Main today. Only the **publish** step (`ModelCache::load_from_bytes`, which mutates the slot vector) asserts `ThreadRole::Main`. That parse-off-Main / publish-on-Main split **is** the `JobToken` shape — no code change owed, the pool is built when a consumer schedules it |
+| **P-2** published-snapshot reads | Partial — **door identified** | `ModelCache::model_infos()` already returns an **owned** snapshot (safe to hold past a mutation). The raw `resolve()` / `find()` accessors hand back a live `Model*` into the mutable slot vector — fine under the current Main-only contract, but an off-main reader (G-3 render/trace) must consume a published snapshot, never a live `resolve()` ref. The double-buffer/generation-swap is the P-2 bring-up work (content-threading.md hazard row) |
+| **P-4** typed introspection | **Yes — ✅ door OPEN** | `ModelCache::model_infos()` (`{name,type,needload,crc}` per slot) and `StudioView` (typed, bounds-safe read over the frozen `studiohdr_t`) are the shipped `EntityView` analog — no `extern mod_known`, no raw offset poke. This is the G-1/G-3/G-4 query surface |
+| **P-5** narrowest-state signatures | **Yes — ✅ met** | Loaders are free functions over `std::span<const std::byte>` returning `Result<T>`; the bone kernel takes a `BoneSetupInput` + `StudioView`, not a runtime aggregate |
+| **P-6** services are satellites | **Yes — ✅ met** | `xash3dpp_imagelib` is a **separate** CMake target (9 TUs) from `xash3dpp_content` (4 TUs), per the Q-11 verdict; `miniz` is linked PRIVATE to imagelib only |
+| **G-2** game ABI v2 | **Door-keep, ✅ confined** | The raw `void*` studiohdr handed to game DLLs is produced only at the ABI edge (`ModelCache::studio_extradata` returns `s->bytes().data()`); everywhere else the engine reads through `StudioView`. A v2 ABI can hand a typed `StudioView` instead of the pointer without touching the loaders — the confinement point is one accessor |
+| **Q-12** compat scope | **Yes — door** | A `content::ICompatPolicy` for the GoldSrc WAD / palette / decal / luma quirks (Quake-vs-HL palette classification, gradient decals), link-selected by `XASH_GOLDSRC_COMPAT`. The palette machinery (`palette.cpp`) already isolates the two built-in tables; the compat seam wraps the quirk *selection*, not the tables |
 
 ______________________________________________________________________
 

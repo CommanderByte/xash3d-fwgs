@@ -1,5 +1,13 @@
 # map_loader — Boundary Spec (Chunk 5)
 
+> Refreshed 2026-07-06 (as-built pass). Re-scanned `src/map_loader/**`
+> (10 TUs: `map_loader/world/pvs/phs/trace.cpp` + `bsp/{bsp_loader,bsp_lumps,`
+> `bsp_hulls,bsp_flags,map_crc}.cpp`) and the six public headers. The spec
+> below is confirmed against the shipped code; deltas since the 2026-07-04
+> authoring are collected in the new **§9 As-built reconciliation**, and the
+> previously-absent **Extension axes (Q-21)** section is added at the end.
+> No source changed.
+
 *Status: implemented 2026-07-04 (commits C1..C9, branch `codex/modular-restart-docs`).
 Legacy reference: `engine/common/mod_bmodel.c`, `engine/common/pm_trace.c`,
 `common/bspfile.h`, `public/crclib.c`.
@@ -222,3 +230,81 @@ defines it:
 
 No behavioural knob here is a cvar; there is nothing to migrate into
 `limits.hpp` or the cvar registry beyond `map_qpath_max`.
+
+## 9. As-built reconciliation (2026-07-06)
+
+The 2026-07-04 spec is accurate; the following clarify where the shipped code
+has moved past the "Chunk 6 future" framing used in §2 and §5.
+
+- **PHS is SHIPPED here, not deferred.** The §2 *Chunk 6 contract* paragraph
+  and §5 still read PHS as future/"Chunk 6 S3" work. As built, the
+  BSP-derived query-data half now lives in `map_loader` per Q-19: `phs.hpp` /
+  `phs.cpp` ship `PhsTable`, `compress_pvs`, `build_phs` (single-threaded
+  `Mod_CalcPHS` port), `fat_phs` (the phs path of `Mod_FatPVS`) and
+  `headnode_visible` (`Mod_HeadnodeVisible`). **Superseded 2026-07-06:** the
+  "PHS … (→ server, Chunk 6)" deferral in §5's *Deferred* list applies only to
+  the **decision** logic that stays server-side — `pfnCheckVisibility`, entity
+  leaf caching, and the *when-to-build* trigger (the server calls `build_phs`
+  during MP spawn; the table is immutable after, Q-6). Both fat-vis paths
+  share `private/map_loader/fat_vis.hpp` as the §5 note already states.
+
+- **The FSM enforces Main by assertion, not by convention.** §6 says the
+  frame-ownership contract is "enforced by convention until the server chunk
+  lands `assert_thread_role`." As built, `map_loader.cpp` already carries
+  **7 `assert_thread_role(Main)` sites** — `init`, `shutdown`, `load_level`,
+  `load_game`, `run_frame_step`, `set_level_executor`, `load_world`. (Gaps:
+  `new_game`, `change_level`, `clear_world` are not yet guarded — see the
+  threading doc.) Queries stay lock-free RO; the world-swap non-overlap with
+  readers is still a frame-ownership (compute/commit) contract, not a lock.
+
+- **The server bring-up seam exists.** `map_loader.hpp` now exposes
+  `ILevelChangeExecutor` (`exec_load_level` / `exec_load_game` /
+  `exec_change_level`) and `set_level_executor`: the server registers one so
+  the FSM delegates spawn → entities → activate; **absent → the inline
+  `load_world` fallback** keeps `map_loader` running standalone (its own tests,
+  the client background map). This is the Chunk 6 contract of §2 already
+  shaped in code.
+
+- **The edict-free trace contract is confirmed shipped.** `trace.hpp` is
+  DELIBERATELY EDICT-FREE (no physent list, no entity indices, no `usehull`
+  global): the server composes per-entity traces from
+  `hull_for_bsp`/`BoxHull` + `trace_hull` + `finalize_trace` and owns
+  nearest-fraction merging, hit-entity recording and rotated-entity transforms.
+  Matches §2's *Chunk 6 contract* exactly.
+
+- **`string_view`→C-string over-read: ABSENT.** The tree-wide over-read
+  pattern (a non-terminated `string_view` handed to `strnicmp`/`strncmp`,
+  present in utilities/filesystem/cmd_cvar) does **not** occur here. The two
+  candidate spots both feed **NUL-terminated `std::string::c_str()`** to the
+  C-string comparators: texture-name matching (`bsp_flags.cpp` —
+  `strncmp(name,"sky",3)` etc. and `strnicmp(name,"laser",5)`, `name` from
+  `texture_names_[…].c_str()`) and entity-key parsing (`bsp_hulls.cpp` /
+  `bsp_lumps.cpp` — `stricmp(keyname.c_str(), …)`). Negative data point for the
+  cross-cutting sweep.
+
+## Extension axes (Q-21)
+
+Evaluated against `docs/design/extension-goals.md`. map_loader is the
+rewrite's cleanest published-snapshot surface: `WorldData` is
+**immutable-after-load** (Safe-RO, Q-6) and every spatial query is a pure
+function of `const WorldData&` + caller buffers. That makes the P-2 and P-4
+doors **open by construction** — the work is *preservation*, not new seams.
+
+| Goal / primitive | Applies? | Required seam or door |
+|------------------|----------|-----------------------|
+| **P-2** published-snapshot reads | **Yes — headline** | `WorldData` is immutable after `load_world_data` returns, so it **is** the published snapshot — no double-buffer needed because it is never mutated in place. A G-3 debug thread or G-1 MCP world-query reads `const WorldData&` (+ `const PhsTable&`) concurrently with the sim, zero synchronization. The only publish event is the atomic world swap at `MapLoader::load_world`/`clear_world`, which is Main-only and must not overlap readers — the frame-ownership (compute/commit) contract the host/server already owns. **Door-keep:** keep every query a pure function of `(const WorldData&, caller buffers)`; never add a mutable cache to `WorldData`. |
+| **P-4** typed introspection | **Yes — headline** | The PVS/PHS/trace free functions plus `WorldData`'s const span accessors **are** the typed world-query surface (leaf / cluster / contents / CRC / vis / trace). A G-1 MCP "where is point X / what can leaf Y see / trace this ray" and a G-4 overlay read them directly — no `extern` into a `model_t`. **Door-keep:** extend by ADDING typed queries here (the `EntityView` precedent), never reach around. |
+| **off-main read** (G-3) | **Yes** | Trace/PVS/PHS are the substrate a debug thread reads while the sim runs; all are concurrent-read-safe. The one rule: a borrowed `world()` pointer must not be held across a load/clear (documented §6). |
+| **P-3** context-first, no new file-scope state | **Yes** | Queries take `const WorldData&`; the FSM takes injected `Filesystem*` (Q-4). Zero mutable file-scope state — the legacy `g_visdata` / `pm_boxhull` / `world.version` globals were all removed (function-locals + `BoxHull` value type + normalized-at-load width). |
+| **P-5** narrowest-state signatures | **Yes** | The trace kernel takes a `TraceHull` *view*, not a whole model; queries take the world + caller buffers. |
+| **P-1** main-thread inbox + worker pool | N/A here | map_loader owns no inbox; load/activation is a Main-thread transition driven by host/server. `Mod_CalcPHS`'s dropped OpenMP is an allowed *internal* load-time parallelism door (server-boundary OQ-9), not a P-1 seam. |
+| **P-6** services are satellites | Single target (Q-11) | bsp/pvs/trace/phs are one `xash3dpp_map_loader` target (sub-feature bundling scores < 2 separate-criteria). |
+| **G-2** game ABI v2 | Door-keep | The edict-free trace API is the confinement point: a v2 ABI can hand a typed hull/trace view to game DLLs without touching the kernel. Clipnodes stay 32-bit in memory; a v2 shim may produce a narrowed copy. |
+| **Q-18** determinism | Constraint (not a door) | Trace/PVS/CRC math is float-/bit-exact to legacy; any off-main reader gets the **same bits**. No modernization may change results (see modernization doc). |
+
+**Net verdict — no new seam owed.** map_loader is already the ideal P-2/P-4
+off-main-read surface; the charter is to keep `WorldData` immutable, keep
+queries pure, and keep the world-swap Main-only. The single latent risk is the
+node-tree traversal cycle-guard (§5 residual, legacy-equivalent) that a hostile
+*off-main* reader could also trip — tracked as the Chunk 6 visited-budget
+follow-up.

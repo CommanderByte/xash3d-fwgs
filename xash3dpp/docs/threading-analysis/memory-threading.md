@@ -2,6 +2,52 @@
 
 > Boundary spec: `docs/boundaries/memory-boundary.md`
 
+> Refreshed 2026-07-06 (as-built pass). Re-scanned `src/memory/memory.cpp` and
+> `include/xash3dpp/private/memory/pool_registry.hpp`. The prior analysis is
+> **still accurate**: every hazard it listed is confirmed **Fixed** in the
+> current source. This pass adds the analyse-threading classification table, the
+> thread-role posture (memory sits below platform → no `assert_thread_role`
+> sites by design; one `compliance-allow(thread-assert)` marker), and confirms
+> there are no magic-statics — all module state is zero-initialised
+> file-scope statics.
+
+______________________________________________________________________
+
+## Thread-role posture
+
+Memory is the **lowest** layer in the dependency stack — it sits *below*
+`platform`, where the `ThreadRole` machinery (`assert_thread_role`,
+`register_thread`) is defined. It therefore **cannot** call
+`assert_thread_role` without creating a dependency cycle, and by design does
+not. Instead it achieves thread-safety structurally (atomics + acquire/release
+ordering + a CAS slot claim). One site is explicitly marked:
+
+- `set_oom_handler` carries
+  `// compliance-allow(thread-assert): atomic release-store — callable from any
+  thread; memory sits below platform (no ThreadRole dependency)`.
+
+There are **zero** `assert_thread_role` / `assert_main_thread` call sites in the
+subsystem. This is the correct posture for a below-platform allocator, but it
+means accidental off-thread lifecycle calls (`create_pool`/`destroy_pool`) are
+not caught in debug — see the standing recommendation to add a lightweight
+main-thread check that does *not* pull in the platform ThreadRole layer.
+
+______________________________________________________________________
+
+## Classification table (analyse-threading)
+
+| Symbol | File | Class | Notes |
+|--------|------|-------|-------|
+| `g_pools[128]` (array object) | `memory.cpp` | **Immutable-after-init / safe** | Zero-init file-scope static; capacity `limits::memory_pool_max`. Element mutation guarded per-field (below) |
+| `PoolBucket::state` | `pool_registry.hpp` | **Atomic (synchronising)** | `std::atomic<SlotState>`; CAS `Free→Busy` (acquire), release-store `Active`/`Free`. The publication fence for all other bucket fields |
+| `PoolBucket::live_bytes` / `total_allocs` / `total_frees` | `pool_registry.hpp` | **Atomic (relaxed)** | Independent counters; no cross-field invariant → relaxed is correct; will not tear |
+| `PoolBucket::name[64]` | `pool_registry.hpp` | **Guarded-by-publication** | Written during `Busy` (exclusive), published by the release-store of `Active` |
+| `PoolBucket::do_alloc`/`do_free`/`do_realloc`/`ctx` | `pool_registry.hpp` | **Guarded-by-publication** | Same acquire/release protocol as `name[]`; readers acquire-load `Active` before deref |
+| `g_oom_handler` | `memory.cpp` | **Atomic (acquire/release)** | `std::atomic<OomHandler>`; acquire in alloc paths, release in `set_oom_handler` |
+| `AllocHeader` (in caller block) | `pool_registry.hpp` | **Caller-owned** | Safe iff the caller does not race the same pointer (standard allocator contract) |
+| lifecycle pairing (`destroy_pool` vs in-flight alloc) | `memory.cpp` | **Caller contract (unenforced)** | Single-owner lifecycle assumed; only the debug `assert(live_bytes==0)` guards it |
+| full alloc path (`std::malloc` + OOM handler) | `memory.cpp` | **Signal-unsafe** | Not async-signal-safe; must not run in a signal handler |
+
 ______________________________________________________________________
 
 ## Ownership model

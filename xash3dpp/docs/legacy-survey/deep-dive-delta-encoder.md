@@ -1,5 +1,14 @@
 # Deep Dive: Legacy Delta Encoder (`net_encode.c`)
 
+> Refreshed 2026-07-06 (as-built pass): cross-ref added. This dive is
+> **encoder-only**. The transport / netchan / buffer core — UDP sockets, the
+> netchan reliability + fragmentation scheme, the `sizebuf_t` bit codec, OOB /
+> split-packet framing, LZSS, and the master query — is covered by its own
+> companion, [deep-dive-networking.md](deep-dive-networking.md); the two do not
+> duplicate each other. The `iAlternateSign` / sign-magnitude quirk (§3 below)
+> is the one place they touch: the bit-codec mechanism lives in the networking
+> dive §3, its delta consequence lives here.
+
 *RETROACTIVE brief, reconstructed 2026-07-04 after the fact.* The xash3dpp
 delta encoder (Chunk 2-4 networking) was implemented **before** this repo
 adopted the convention that recon agents commit a `deep-dive-*.md` ahead of
@@ -112,7 +121,7 @@ Delta encoding is invoked in two contexts, both wire-frozen:
 higher-level protocol writer, e.g. `SV_EmitPacketEntities`) writes the
 enclosing command byte; the delta function only serialises the payload
 after it. xash3dpp's seam shift documents this exactly
-(networking-boundary.md, "Command bytes are caller-supplied") — 
+(networking-boundary.md, "Command bytes are caller-supplied") —
 `DeltaTables::write_description`/`write_delta_movevars` take the raw command
 value as a parameter because xash3dpp has no `svc_*` enum yet (it arrives
 with the game-protocol layer, i.e. Chunk 6+).
@@ -121,7 +130,7 @@ with the game-protocol layer, i.e. Chunk 6+).
 
 Xash (`Delta_WriteField`/`Delta_ReadField`, net_encode.c:1311-1324,
 1474-1484), used by every struct codec above via the field loop:
-```
+```text
 for each field in table:
     write_one_bit( changed ? 1 : 0 )
     if changed: write payload (Delta_WriteField_)
@@ -131,7 +140,7 @@ GoldSrc (`Delta_WriteGSFields`/`Delta_ParseGSFields`, :1486-1549), used only
 via `Delta_Write/ReadGSFields` (the GS batch codec — table description
 records AND, per xash3dpp's `IDeltaWireFormat` selection axis, an alternate
 struct-codec framing selected by `IProtocolDriver::delta_tables()`):
-```
+```text
 bits[8] = {0}                              # one bit per field, 8 fields/byte
 for each field i in table:
     if changed(field[i]):
@@ -216,7 +225,7 @@ legal value range differs by protocol.
 Per-section grammar (`Delta_InitFields`/`Delta_ParseTable`/`Delta_ParseField`,
 net_encode.c:869-908, :817-867, :677-815):
 
-```
+```text
 <struct_name> <encodeDll: none|gamedll|clientdll> [<encodeFunc>]
 {
     DEFINE_DELTA( <field>, <FLAG[|FLAG...]>, <bits>, <multiplier> )
@@ -471,7 +480,7 @@ purely a wire-encode of whatever offset the caller computed.
 against **client-only global state** (this function is compiled out under
 `XASH_DEDICATED`, :2013/:2106 — a dedicated server never runs this path):
 
-```
+```text
 if baseline_offset != 0:
     if delta_type == DELTA_STATIC:
         backup = max(0, clgame.numStatics - abs(baseline_offset))
@@ -513,6 +522,7 @@ it only computes and passes the `baseline` int into
 ## 7. Entity header walk (number, removeType) and `count_fields` helpers
 
 **Write** (`MSG_WriteDeltaEntity`, :1909-1998):
+
 1. `to == nullptr` → remove message: write `from->number` (13 bits) +
    `removeType` (2 bits: `force ? 2 : 1`) and return immediately — **no**
    entity-state field loop runs for a remove.

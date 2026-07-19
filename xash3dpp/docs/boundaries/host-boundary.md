@@ -1,5 +1,15 @@
 # Host Boundary Spec
 
+> Refreshed 2026-07-06 (as-built pass). The design body below is the Chunk-3
+> plan of record; it is preserved verbatim. Reconciliation with the shipped
+> code (three TUs + tests) is additive: see **As-built reconciliation
+> (2026-07-06)**, **Extension axes (Q-21)**, and **Threading** near the end. Where
+> the plan and the shipped code diverge, the reconciliation section is
+> authoritative for *what exists*; the plan remains authoritative for *intent*.
+> Companion docs added this pass: `threading-analysis/host-threading.md`,
+> `modernization-opportunities/host-modernization.md`,
+> `legacy-survey/deep-dive-host.md`.
+
 > **Chunk numbering note (2026-07-04):** this spec predates the map_loader
 > renumbering; its chunk references have been updated to the authoritative
 > `implementation-plan.md` scheme (5 = map_loader, 6 = server, 7 = content,
@@ -497,6 +507,127 @@ follow-up design session. Outcomes:
 > `filesystem/**` sources and their tests atomically. The host call sites are
 > already minimal (four ordered string views) and convert trivially once the
 > `filesystem/**` side lands the params struct.
+
+---
+
+## As-built reconciliation (2026-07-06)
+
+The three shipped TUs — `src/host/host.cpp`, `src/host/engine_context.cpp`,
+`src/host/engine_context_accessor.cpp` — plus `tests/host/*` are reconciled
+against the plan above. The skeleton matched the plan; the material drifts are:
+
+### Confirmed as-built (matches plan)
+
+- **`Host` pimpl** with `Impl` owning the `"host"` pool (first created, last
+  destroyed), the frame-abort trio, and injected non-owning deps.
+- **`HostInitParams` DI** (Q-4): nullable `cmd_cvar`/`clock`/`map_loader`/
+  `filesystem` pointers; `nullptr` = standalone/test mode (skips that
+  subsystem's participation). `Host::Main` builds an all-null params (standalone
+  path) and owns its own `Filesystem` (`Impl::own_fs`) + pool.
+- **`signal_frame_abort`** with the OQ-1 hybrid (no `setjmp`/`longjmp`): sets
+  `frame_abort_pending` + `frame_abort_code` + bounded `frame_abort_detail`
+  (`std::array`, no heap); recovery polled at the top of the next `RunFrame`.
+- **Recursive-abort guard (Q-4)** as-built: a second `signal_frame_abort` in the
+  pending window calls `platform::crash::print_trace()` then `XASH_FATAL`
+  (process abort) — the typed analog of the legacy `Sys_Error("…Recursive")`.
+- **`RunFrame` order**: frame-abort recovery (top) → `cmd_cvar->cbuf_execute()`
+  → `map_loader->run_frame_step()`. The **cbuf-before-map-step** ordering is
+  deliberate and documented in-code (a `map` issued this frame takes effect this
+  frame). Input/server/client/HTTP/dedicated-stdin remain `TODO Chunk 6/12`.
+- **`EngineContext::init` phase ordering (Q-5)** preserved via declaration order
+  plus an explicit init sequence with **rollback-on-failure** (each failure
+  unwinds the already-initialised subsystems in reverse).
+
+### Drift the reconciliation section is authoritative for
+
+1. **`EngineContext` member set is richer than the Chunk-3 snapshot.** The
+   as-built order is `filesystem → cmd_cvar → clock → networking → map_loader →
+   host → server` (+ `bugcomp`). The snapshot block above still shows
+   `networking` and `server` commented out; **as-built both are real members**.
+   `networking` is owned by `EngineContext`, **not** by `Host` (the boundary
+   Dependencies table's "host needs networking" row is now indirect — host never
+   touches networking; `EngineContext` does).
+2. **Winsock lifetime is bracketed by `EngineContext`, not `NetworkContext`.**
+   `EngineContext::init` calls `platform::socket_init()` before
+   `networking.init(...)` and `platform::socket_shutdown()` on the unwind /
+   teardown path (ref-counted).
+3. **The single global accessor lives in `xash3dpp_host`, not `xash3dpp_abi`.**
+   OQ-10 placed the `Host_Error` shim *and* the accessor state in
+   `src/abi/engine_funcs.cpp`. As-built (D-1 dependency hardening, 2026-07-06)
+   the accessor **state** (`std::atomic<EngineContext*> g_engine_ctx`) moved to
+   `src/host/engine_context_accessor.cpp`; the `xash3dpp_abi` shim only
+   *consumes* it. This removed the historical host↔abi link cycle. The header
+   keeps its `xash3dpp/abi/engine_context_accessor.hpp` path and `xash::abi`
+   namespace. The `set/current_engine_context` bookend (set-last-in-init,
+   clear-first-in-shutdown) is intact.
+4. **Server is wired as the map-load level executor.** After `server.init`,
+   `EngineContext::init` calls `map_loader.set_level_executor(&server)` (dropped
+   first on shutdown). This is the `SV_ExecLoadLevel` seam — the shipped
+   `map`/`changelevel`/`load` path brings up a real server.
+5. **`realtime()`** forwards to `clock->realtime()` when a Clock is injected,
+   else falls back to `platform::get_time()` (the standalone/test path has no
+   Clock — intentional).
+6. **Cvars/commands not yet registered.** The **Cvars owned by host** tables and
+   the **Console commands registered by host** table are *aspirational*: as-built
+   `Host::init` registers **no** lifecycle cvars or commands (`TODO Chunk 3`).
+   The timing cvars did land — in `core::Clock::init` (OQ-3), not host.
+7. **Thread-assert coverage is partial.** `init`/`shutdown` (both `Host` and
+   `EngineContext`) + `set_current_engine_context` assert `ThreadRole::Main`;
+   `RunFrame`/`RequestShutdown`/`signal_frame_abort` do **not** (the header
+   contract says they should). See **Threading** and `host-threading.md`.
+
+---
+
+## Extension axes (Q-21)
+
+Evaluated against `docs/design/extension-goals.md`. **Host is the frame-loop
+owner — the marshal-back-to-Main destination that every off-main goal depends
+on.** It is where `ThreadRole::Main` is *established* and where the P-1 inbox is
+drained; the headline doors are therefore about *cadence and the drain point*,
+not new seams.
+
+| Goal / primitive | Applies? | Required seam or door |
+|------------------|----------|-----------------------|
+| **P-1** main-thread service inbox | **Yes — headline (the drain point)** | `RunFrame` is *the* consumer end of the P-1 inbox. When the Chunk-7 queue family lands, drain the inbox at a defined frame point (the existing `cbuf_execute` call — the legacy text-path sibling — marks the natural slot, before `map_loader.run_frame_step`). G-1 (MCP mutations) and G-3 (debug-thread actions) marshal here. Door: do not add a private cross-thread mutation channel; off-main mutation stays forbidden until the inbox exists (today's OQ-9 posture) |
+| **Frame cadence** (enabling for G-1/G-3) | **Yes — headline** | The frame boundary host owns is the stable publish/drain point the debug thread (G-3) and MCP service (G-1) synchronise to. Host must keep a single well-defined frame edge; snapshot publication (P-2) and inbox drain (P-1) both hang off it |
+| **P-3** context-first, no new file-scope state | **Yes — door-keep** | Host's ONE sanctioned global is `g_engine_ctx` (Q-2/OQ-10, `compliance-allow(di-global-ref)`). Door: no second global. Host is already context-carrying (`EngineContext` + injected deps); keep it so — a v2 ABI (G-2) can only be retrofitted onto context-carrying internals |
+| **P-2** published-snapshot reads | **Yes — provider** | `HostStats` (today one `status` field) is the seed of the host-side snapshot surface; `core::Clock` already publishes timing via atomics. Off-main readers (G-3) consume the snapshot at the frame edge, never live `Impl` state |
+| **P-4** typed introspection | **Yes** | `Host::stats()` / `status()` / `realtime()` are the typed host query surface; extend `HostStats` rather than `extern`-poking `Impl`. No frontend backdoor into lifecycle state |
+| **P-6** services are satellites | **Yes** | MCP / debug-thread / scripting are separate targets that *consume* the frame drain + accessor; the engine never links toward them. `current_engine_context()`'s role-agnostic read path is the sanctioned reach-in |
+| **G-2** game ABI v2 | Door-keep | `Host_Error` is a frozen `GAME_EXPORT` C shim (Q-14/OQ-10); keep the raw C signature confined to `xash3dpp_abi`, routing to the typed `signal_frame_abort` — a v2 ABI hands a context, shrinking the exception class |
+| **G-5** scripting runtime | Door-keep (indirect) | Host owns no script surface; it owns the frame edge a cold-path REPL/tooling loop would tick against and the `cbuf`/inbox drain a script's `cmd_*` calls flow through. No work owed beyond keeping the drain point single and typed |
+
+**Net verdict:** host owes **no new seam** — its job is *preservation*: keep one
+frame edge, one sanctioned global, and the `cbuf_execute` slot ready to become
+the P-1 drain. The one binding follow-up is closing the `assert_thread_role`
+gap (below / P-8), because the whole "marshal back to Main" model rests on Main
+being enforced at the frame pump.
+
+---
+
+## Threading
+
+Full analysis: **`docs/threading-analysis/host-threading.md`**. Summary:
+
+- **Single-threaded, main-thread-only — the layer that *establishes* Main.**
+  Host is the strictest asserter by role (it sits above platform where
+  `ThreadRole` lives) and the destination every off-main door marshals into.
+- **Enforcement is asymmetric (headline finding):** `Host::init`/`shutdown`,
+  `EngineContext::init`/`shutdown`, and `set_current_engine_context` assert
+  `ThreadRole::Main`; **`RunFrame`/`RequestShutdown`/`signal_frame_abort` do
+  not**, though the header contract claims they do. This is a P-8 conformance
+  gap (not a race today), and it is exactly the assert that would catch a future
+  off-main frame pump — recommended for Chunk 6B.
+- **Statics:** exactly one — `g_engine_ctx` (`std::atomic<EngineContext*>`), the
+  sanctioned Q-2/OQ-10 global, Main-write / lock-free-role-agnostic-read. No
+  other file-scope mutable state; `frame_abort_detail` is a fixed `std::array`
+  member, not a static.
+- **`longjmp`/abort machinery:** none — the legacy `setjmp`/`longjmp` is replaced
+  by the flag-poll design (OQ-1). The recursive-abort escalation delegates to
+  `platform::crash::print_trace()` (async-signal-safe) before `XASH_FATAL`.
+- **Signal-handler reachability (Step 5): N/A** — host registers no signal
+  handler; the `Host_Error` path is reached from game-DLL synchronous calls on
+  Main, not an OS signal.
 
 ---
 

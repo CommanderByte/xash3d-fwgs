@@ -6,6 +6,23 @@ enough for a float-for-float C++23 reimplementation, plus fixture options.
 Line numbers are against the working tree on that date; behaviour reference,
 not a design constraint.*
 
+> **Refreshed 2026-07-06 (as-built cross-reference).** Implemented as Chunk 5
+> `map_loader`, float-/bit-exact to legacy (Q-18). As-built mapping: the kernel
+> (§1) → `src/map_loader/trace.cpp` behind `include/xash3dpp/map_loader/
+> trace.hpp` (`recursive_hull_check` / `hull_point_contents` / `trace_hull` /
+> `finalize_trace` / `hull_for_bsp` / `BoxHull`), **deliberately edict-free** —
+> no physent list, no `usehull` global (the hard Chunk 6 prerequisite); the
+> contents/point queries (§2) fold into the same kernel; the PVS surface (§3) →
+> `src/map_loader/pvs.cpp` behind `pvs.hpp` (`point_leaf`,
+> `leaf_compressed_pvs`, `pvs_for_point`, `box_leafnums`, `box_visible`,
+> `fat_pvs`, `decompress_pvs`, `check_vis_bit`). Parity is verified
+> (trace-kernel audit PARITY-CONFIRMED; 18,156 traces / 0 mismatches vs the
+> verbatim legacy kernel). The **PHS build path** (`Mod_CalcPHS` +
+> `Mod_CompressPVS`), which §3 mentions only via the `Mod_FatPVS` phs parameter
+> and `Mod_HeadnodeVisible`, is written up in the new **§7** below and shipped
+> in `phs.hpp` / `phs.cpp` per Q-19. This dive stays the *behaviour* reference;
+> the boundary spec §2/§5 is the shipped contract.
+
 ## 0. Headline findings (read first)
 
 1. **There is exactly ONE canonical hull-trace kernel:
@@ -69,8 +86,8 @@ int PM_HullPointContents( hull_t *hull, int num, const vec3_t p ):
   (PLANE_NONAXIAL) uses `DotProduct`. **A faithful port MUST replicate this
   branch** — for axial planes the two are algebraically equal but can differ
   in the last ULP; keep it identical.
-- `PlaneDiff` uses single-precision `DotProduct` (`xash3d_mathlib.h:96`:
-  `(x)[0]*(y)[0]+(x)[1]*(y)[1]+(x)[2]*(y)[2]`), NOT `DotProductPrecise`.
+<!-- pyml disable-next-line no-reversed-links -->
+- `PlaneDiff` uses single-precision `DotProduct` (`xash3d_mathlib.h:96`: `(x)[0]*(y)[0]+(x)[1]*(y)[1]+(x)[2]*(y)[2]`), NOT `DotProductPrecise`.
 
 ### 1.2 `PM_RecursiveHullCheck` — pm_trace.c:200-323 (THE kernel)
 
@@ -502,3 +519,70 @@ non-axial cases cross-check against a compiled-legacy harness.
    the same files but dependent on studio data / server portals.
 7. Exact `FATPVS_RADIUS`/`FATPHS_RADIUS` values: `8.0f` each
    (mod_local.h:31-32).
+
+---
+
+## 7. PHS build path (Q-19) — added 2026-07-06
+
+The §3 table covers the PVS *queries* and the two server-side consumers
+(`Mod_FatPVS`'s phs parameter, `Mod_HeadnodeVisible`). It does not detail how
+the **PHS itself is built** — that is the `Mod_CalcPHS` path, which Q-19
+(`PHS_PLACEMENT`) resolves *into* `map_loader` (BSP-derived immutable query
+data), not the server. This section fills that gap for the recon record; the
+shipped code is `phs.hpp` / `phs.cpp`.
+
+**Definition.** The PHS ("potentially hearable set") answers *"can anything
+audible to leaf i be heard from leaf j"* — used for sound/event culling. It is
+the transitive one-hop closure of the PVS: **row i = PVS row i OR the PVS row
+of every cluster set in row i**.
+
+**Legacy build — `Mod_CalcPHS` (mod_bmodel.c:3730).** Runs once per map load,
+**only for multiplayer servers** (`SV_Active && maxclients > 1`,
+mod_bmodel.c:4353-4354); SP and listen-server-with-one-player skip it. Shape:
+
+```text
+Mod_CalcPHS():
+  rowbytes = (visclusters + 7) >> 3           # bits→bytes, one bit per cluster
+  rowwords = align4(rowbytes) / 4             # rows are 32-bit aligned
+  for i in 0 .. visclusters-1:
+      decompress PVS row i  → scan[]           # Mod_DecompressPVS
+      copy scan → hearing[]                     # start PHS row = PVS row
+      for each cluster j with bit set in scan:  # word-at-a-time scan of set bits
+          decompress PVS row j → in[]
+          hearing[] |= in[]                      # OR in everything j can see
+      # hearing[] is now PHS row i
+      count set bits (developer stat only)
+      compress hearing[] → world.compressed_phs (Mod_CompressPVS), record phsofs[i]
+```
+
+- **`Mod_CompressPVS` (mod_bmodel.c:1088)** is the same zero-RLE codec as the
+  PVS: nonzero bytes copy through; a zero byte is followed by the length of the
+  zero run (max 255 per pair). The compressed rows are concatenated into
+  `world.compressed_phs`; `world.phsofs[i]` is the byte offset of row i.
+- **OpenMP.** Legacy parallelises the outer `for i` loop with `#pragma omp
+  parallel for` when built with OpenMP (each row is independent — a pure
+  scatter-free fold). Output is identical with or without it.
+- **Cost.** O(visclusters² / 8) bytes of PVS decompression — the reason it is
+  MP-only and load-time-only.
+
+**As-built (`phs.cpp`).** `build_phs(const WorldData&)` is a faithful
+**single-threaded** fold (the OpenMP parallelism is dropped — byte-identical
+output; re-parallelising internally at load is an allowed follow-up per the
+server-boundary OQ-9 posture). It returns an immutable `PhsTable`
+(`blob_` = `compressed_phs`, `offsets_` = `phsofs`) — empty when the map has no
+visdata (legacy early-return). Rows are built `align4(visbytes)` wide with zero
+padding, matching the legacy 32-bit row alignment. `compress_pvs` is the shared
+codec. The *trigger* stays server-side: the server calls `build_phs` during MP
+spawn; the table is immutable afterward (Q-6). Hardening vs legacy:
+`PhsTable::compressed_row(i)` bounds-checks the row index (legacy indexes
+`phsofs` unchecked → an out-of-range row decompresses as all-visible per the
+module convention); the `vis_stats` developer counters are not ported.
+
+**Consumers (recap, both shipped in `phs.hpp`).** `fat_phs` is the phs path of
+`Mod_FatPVS` — ORs the PHS row of every leaf within `radius` of a point, with
+the extra legacy "requested PHS but we have none → full visibility" rule
+(mod_bmodel.c:1230-1234); it shares the leaf-gather walk with `fat_pvs`
+(`private/map_loader/fat_vis.hpp`). `headnode_visible` is `Mod_HeadnodeVisible`
+as an explicit front-first recursion preserving traversal order. The
+`pfnCheckVisibility` *decision* logic and entity leaf caching remain
+server-chunk work (§3 split unchanged).

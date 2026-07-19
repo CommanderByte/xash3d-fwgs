@@ -1,5 +1,16 @@
 # Server Boundary Spec (Chunk 6)
 
+> **Refreshed 2026-07-06 (as-built pass).** Chunk 6 is **Complete** — the
+> dedicated-server milestone shipped: a real 32-bit `hl.dll` loads, `c0a0`
+> spawns, and one map frame runs clean. `status_table.py` reports **30 TUs,
+> tests ✅, Complete**; `compliance_scan.py server` is **clean** (74 files,
+> 0 blocker/warning/note; 9 judgment areas reviewer-set). The subsystem is
+> `cxx_std_23`. The pre-implementation spec below is retained verbatim as the
+> design record; the new **§As-built reconciliation** and **§Extension axes
+> (Q-21)** sections reconcile it against the shipped `xash3dpp/src/server/`
+> tree (5 slices / 30 TUs) and record the headline door-keep verdicts. Nothing
+> in the original spec is deleted; superseded items are marked inline.
+
 *Status: pre-implementation spec, 2026-07-04. Legacy reference:
 `engine/server/*.c|h` (~24.5k lines) plus the frozen ABI headers
 `engine/eiface.h`, `engine/edict.h`, `engine/progdefs.h`,
@@ -255,6 +266,7 @@ six deep dives; the boundary-level ones that shape the design:
 
 **Game DLL bridge:**
 
+<!-- pyml disable-next-line ol-prefix -->
 5. Edict lifecycle rules are load-bearing for mods: reuse quarantine
    (`freetime < 2.0 || sv.time − freetime > 0.5`), `serialnumber++` on
    free (EHANDLE invalidation), `SV_FreeEdict` scrubs only a curated
@@ -278,6 +290,7 @@ six deep dives; the boundary-level ones that shape the design:
 
 **World / snapshots:**
 
+<!-- pyml disable-next-line ol-prefix -->
 9. `pfnSetAbsBox` (game) owns absbox expansion; `pfnAddToFullPack` (game)
    owns both per-entity visibility and the whole `entity_state_t` fill.
    The engine's snapshot job is: candidate loop + PVS/PHS mask selection
@@ -308,6 +321,7 @@ six deep dives; the boundary-level ones that shape the design:
 
 **Clients / security:**
 
+<!-- pyml disable-next-line ol-prefix -->
 13. Challenges are stateless (MD5 over ip‖salt‖5-second-window, previous
     window accepted); connect requires protocol 49 exactly; reject sends
     three OOB packets; reconnect matches base-addr + (qport or port);
@@ -329,6 +343,7 @@ six deep dives; the boundary-level ones that shape the design:
 
 **Physics:**
 
+<!-- pyml disable-next-line ol-prefix -->
 16. Quake-lineage constants and bugs are behavioural contract:
     whole-vector maxvelocity clamp, ClipVelocity snap-to-zero at ±1.0,
     4-bump FlyMove, `SV_AddGravity`'s basevelocity fold, pusher ltime
@@ -370,6 +385,124 @@ Q-11 test applied (≥2 "separate" criteria → separate target):
   only (OQ-6 baseline); the Linux mmap near-module probing is not ported.
   The `physFuncs.pfnAllocString/pfnMakeString/pfnGetString` overrides are
   a deferred S8 seam (physics interface) — tracked, absent until then.
+
+______________________________________________________________________
+
+## As-built reconciliation (2026-07-06)
+
+The shipped subsystem is **`xash3dpp_server`, one CMake target, 30 TUs** across
+five source slices (plus the public `Server` facade). The legacy triple
+(`sv`/`svs`/`svgame`) folded into a single heap-owned `ServerRuntime`
+aggregate reached only through Main-thread entry points — the Q-2 no-globals
+rule held, with one documented carve-out (`g_bridge`, below).
+
+| Slice (`src/server/…`) | TUs | Shipped responsibility |
+|------------------------|-----|------------------------|
+| `abi/` | 4 | `engine_table.cpp` (the 159-slot `enginefuncs_t` shims + `g_bridge`), `edict_arena.cpp` (Q-20 store), `game_dll.cpp` (GiveFnptrsToDll / GetEntityAPI2 negotiation), `string_pool.cpp` (`string_t` arena) |
+| `lifecycle/` | 6 | `game_host.cpp` (spawn/activate/deactivate orchestration + `Host_ServerFrame`), `spawn.cpp`, `entity_parse.cpp`, `precache.cpp`, `model_resolver.cpp`, `world_hooks.cpp` |
+| `clients/` | 8 | `client_state.cpp`, `net_io.cpp`, `messages.cpp`, `snapshot.cpp` (the delta/PVS/PHS snapshot pipeline), `info_string.cpp`, `query.cpp` (A2S/legacy), `filter.cpp` (bans), `log.cpp` |
+| `physics/` | 6 | `physics.cpp` (MOVETYPE dispatch/pushers), `pmove.cpp` + `init_client_move.cpp` + `pm_trace.cpp` + `run_cmd.cpp` (the pmove bridge + ~30 `playermove_t` callbacks), `movevars.cpp` |
+| `world/` | 5 | `clip.cpp` (trace composition), `links.cpp` (areanodes), `hulls.cpp`, `contents.cpp`, `light.cpp` |
+
+**Reconciled against the spec:**
+
+- **Edict store (Q-20 / OQ-5, decided):** as-built. `EdictArena`
+  (`abi/edict_arena.cpp`) is the single authoritative store — free-list,
+  `serialnumber` bump on free, `freetime` grace, curated stale-field reuse,
+  16-byte private-data rounding. Engine-internal code reads/writes entvars
+  through the **`EntityView`** zero-cost facade
+  (`include/.../server/entity_view.hpp`); raw `edict_t*`/`entvars_t`
+  access is confined to `abi/`, the pmove bridge, and the (stubbed) Chunk 8
+  save serializer, exactly per Q-20. `EntityView` is the shipped `EntityView`
+  the north star names — value-semantic accessors that compile to direct
+  array loads/stores.
+- **Game-DLL bridge (`g_bridge`):** the 159 `enginefuncs_t` slots are plain C
+  function pointers that cannot capture state, so — like legacy `svgame` —
+  they reach engine state through **one file-scope singleton**
+  `EngineBridge *g_bridge` (`abi/engine_table.cpp:54`), carrying the
+  `compliance-allow(mutable-global, di-global-ref)` carve-out annotation. It
+  is written once at bridge install (`load_progs`), nulled at `unload_progs`,
+  Main-thread-only in between. This is the deliberate Q-20 ABI-slot exception,
+  not a regression of Q-2.
+- **`ILevelChangeExecutor` seam:** the `Server` class **is** an
+  `::xash::ILevelChangeExecutor` (`server.hpp`), registered on the MapLoader
+  FSM via `MapLoader::set_level_executor` (wired in host
+  `engine_context.cpp`). `exec_load_level` runs the full `SV_SpawnServer` →
+  `spawn_entities` → `SV_ActivateServer` chain; `exec_load_game` /
+  `exec_change_level` are Chunk 8 stubs behind the seam. This resolves the
+  original "MapLoader-owned GameState FSM invokes the three `exec_*` entry
+  points" contract as-built.
+- **Injected deps (Q-4):** `ServerInitParams` takes non-owning
+  `CmdCvarContext*` / `Filesystem*` / `MapLoader*` / `NetworkContext*` plus the
+  `host_error` hook — a default-constructed (all-null) params yields an inert
+  server the scaffold lifecycle test relies on. **Still TODO** (marked in
+  `server.hpp`): the `ITrustOracle` seam (cmd_cvar D2), host feature flags +
+  `ICompatPolicy` (Q-12), and the frame-rate gate (host OQ-11) — Chunk 7
+  backlog, not milestone-blocking.
+- **PHS (Q-19 / OQ-1, decided):** shipped in `map_loader` as an immutable
+  load-time query module (`PhsTable`); the server consumes it read-only via
+  `EngineBridge::phs` (`const PhsTable*`). No PHS build code lives in the
+  server. See `map_loader-boundary.md §9`.
+- **Stats:** `ServerStats` ships the Tier-1 always-on `frames_run`
+  (`std::atomic<uint64_t>`); Tier-2/3 are compile-gated TODOs. `stats()` is the
+  documented any-thread read surface (debug-stats seam).
+- **OQ-8 milestone trims:** honoured. Voice fan-out, HLTV datagram, bandwidth
+  testpacket, NAT punch, and the full A2S responder set carry
+  `// XASH3DPP-STUB(chunk6)` markers; `query.cpp` ships the info-reply skeleton.
+  The two RNG statics (`s_rng_state` / `s_pm_rng`) are explicit
+  `XASH3DPP-STUB(chunk6)` idtech-RNG-parity follow-ups (see Threading).
+- **`strnicmp` / `string_view` over-read:** **ABSENT** (see the note under
+  Extension axes). All server string comparisons are over NUL-terminated
+  C-strings — the `Info_ValueForKey` static-buffer key parser
+  (`clients/info_string.cpp`) and the `abi/` slot bodies are C-string
+  `strcmp`/`strncpy`, not `string_view.data()` over-reads.
+
+**Deferred to Chunk 7+ (tracked, not milestone-blocking):** the studio-hitbox
+trace loop + LRU (OQ-2 geometric core done, trace parity gated on hl.dll
+goldens), HPAK custom-resource archive (OQ-3), the listen-server capability
+seam (OQ-4, shaped null-only), the Chunk 8 save serializer behind the four
+stubbed primitives, and the aspirational cvar/command registration.
+
+______________________________________________________________________
+
+## Extension axes (Q-21)
+
+Evaluated against `docs/design/extension-goals.md`. **Server is the centre of
+the extension roadmap** — G-1 (MCP) reads server state and marshals mutations
+here; G-2 (Game ABI v2) replaces exactly the context-less GoldSrc slots, the
+global `pmove_t`, and `gpGlobals` that live in this subsystem; G-3 (debug
+thread) reads server snapshots off-Main; and Q-20 (EDICT_STORE) is the
+confinement seam all three depend on. These are the most consequential
+door-keep verdicts in the whole rewrite.
+
+> **As-built confirmation 2026-07-06.** The verdicts below are not
+> forward-looking: the shipped code *keeps every door open by construction*.
+> The single load-bearing constraint is the **frozen game-DLL ABI** —
+> `eiface.h` / `edict.h` / `progdefs.h` / `pm_defs.h` slot signatures, the
+> array-of-edicts representation, and the `gpGlobals` / `pmove_t` shapes are a
+> byte-frozen behavioural contract shared with unmodified HL mod binaries and
+> must never change. G-2 does not *edit* them — it adds a v2 flavor
+> **alongside** them behind the Q-20 seam (one game DLL per process). Full
+> threading analysis in `docs/threading-analysis/server-threading.md`.
+
+| Goal / primitive | Applies? | Required seam or door — door-keep verdict |
+|------------------|----------|-------------------------------------------|
+| **Q-20** edict store confinement | **Yes — headline, ✅ met** | `EdictArena` is the single ABI-exact store; `EntityView` is the zero-cost typed access seam; raw `edict_t*`/`entvars_t` access is confined to `abi/` + pmove bridge + save serializer. This is the seam G-1 reads through and G-2 rebinds behind. **Keep the confinement — it is the whole game.** No new work owed; the compliance rule that pins raw access to those three areas is the guard. |
+| **G-1** in-engine MCP service | **Yes — headline, doors OPEN** | Reads: `EntityView` (typed entity surface) + `ServerStats` Tier-1 atomics + the cvar layer are the query substrate — G-1 serves them from **published snapshots (P-2)**, never live sim state. Mutations: marshalled to Main via the P-1 inbox, then executed through the **existing command buffer gated by `ITrustOracle`** (cmd_cvar ships the oracle; the server's `ITrustOracle` answer is a `server.hpp` TODO to wire, cmd_cvar D2). Verdict: **no new seam owed** — the three doors (EntityView reads, command-buffer mutation, ITrustOracle gate) already exist; the owed work is P-2 snapshot publication + wiring the oracle. |
+| **G-2** Game ABI v2 | **Yes — headline door-keep, ✅ confined** | The v2 target set is precisely this subsystem's frozen surface: the **context-less `enginefuncs_t` slots** (state via `g_bridge`/`gpGlobals`), the **single global `playermove_t`** (`EngineBridge::pmove`), and the **non-reentrant think/callback model**. The door is kept open by three shipped facts: (1) the edict store sits behind `EntityView` (Q-20) so a v2 arena/handle flavor swaps behind the seam; (2) `EngineBridge` already localises the slot state to one struct — v2 slots carry a context handle to it instead of reaching the global; (3) the pmove working set is a single `playermove_t*` on the bridge, the exact object v2 makes per-player. **Never edit the frozen slots — add a v2 sibling flavor.** No v2 design owed now (needs its own brief, extension-goals §5). |
+| **G-3** dedicated debug thread | **Yes — door OPEN, needs P-2** | Off-Main reads of published server snapshots (entity dumps, perf counters). `ServerStats` counters are already `std::atomic` (any-thread read). Live entity/world reads must go through a **published P-2 snapshot**, never a live `EngineBridge`/`ServerRuntime` ref (Main-mutable for its whole lifetime — threading Safe-by-contract rows). The snapshot double-buffer is the bring-up work; a new `ThreadRole` value + the cvar `shared_mutex` retrofit are the shared cost G-3 triggers. |
+| **P-1** main-thread inbox | **Yes — door, host-owned drain** | The server has no inbox of its own; it drains at `Host_ServerFrame` (`lifecycle/game_host.cpp`) — the host owns the `RunFrame` pump (host-boundary P-1). G-1/G-3 mutations land in the host inbox and execute on Main inside the frame. Server owes nothing beyond staying Main-only-mutating. |
+| **P-2** published-snapshot reads | Partial — **door identified** | The snapshot pipeline (`clients/snapshot.cpp`) already builds per-client `entity_state_t` frames, but those are the **wire** snapshots (delta-compressed, consumed by netchan). A G-1/G-3 introspection snapshot (typed entity/cvar/world dump) is a *new* published surface — the P-2 bring-up work, not yet built. `EntityView` is the value type it publishes. |
+| **P-3** context-first, no new file-scope state | **✅ met, one documented exception** | `ServerRuntime` is heap-owned, not static; the module statics the spec flagged (`g_userid`, ban lists, rcon buffer) live inside the runtime. The **one** file-scope mutable global is `g_bridge` — the deliberate ABI-slot carve-out (the 159 C slots have no userdata parameter), annotated `compliance-allow`. The two RNG statics are tracked `XASH3DPP-STUB` follow-ups. |
+| **P-4** typed introspection | **✅ door OPEN** | `EntityView` is the shipped typed read surface (the north star names it directly) — no `extern edict_t*` array poke in engine-internal code, no raw `->v.` offset access outside the confined areas. This is the one G-1/G-3/G-4 query layer. |
+| **Q-12** compat scope | **Door, deferred** | `ICompatPolicy` for `peoei` / `gsmrf` / `get_game_dir_full` + the `HACKS_RELATED_HLMODS` set (OQ-7 proposal) is a `server.hpp` TODO; `peoei_broken` currently rides in as a plain `ServerInitParams` bool. The policy seam is owed at Chunk 7, not milestone-blocking. |
+
+**Net verdict:** the server owes **no new extension seam** at the milestone —
+every G-1/G-2/G-3 door is either open by construction (`EntityView`, Q-20 store,
+atomic stats, host-owned P-1 drain) or a *named, not-yet-built* published-snapshot
+surface (P-2). The job is **preservation**: keep raw edict access confined, keep
+the frozen slots un-edited, keep `g_bridge` the only file-scope global, and wire
+the already-designed `ITrustOracle` when G-1 has a consumer.
 
 ## Open questions
 

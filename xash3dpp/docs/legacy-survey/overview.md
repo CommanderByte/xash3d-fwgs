@@ -87,3 +87,42 @@ These are observations from the survey — not architectural commitments. They a
 
 - Per-area summaries: see each `*.md` in this folder
 - For deeper analysis of a specific subsystem, run `/analyse-subsystem <name>` to produce a boundary spec
+
+## As-built synthesis (2026-07-06)
+
+The section above surveys the **legacy** engine. This section synthesises the
+**as-built rewrite** after the 13-subsystem documentation refresh
+(utilities → memory → filesystem → platform → core → cmd_cvar → host → abi →
+launcher → map_loader → networking → content → server). It collates the
+cross-cutting flags each per-subsystem pass recorded into one map. Each row
+points at the refreshed per-subsystem docs where the finding lives; candidate
+follow-up work is enumerated (unscheduled) in the **Harmonization backlog** at
+the end of `docs/implementation-plan.md`.
+
+The themes fall into five classes: **SEC** (security), **INVARIANT**
+(do-not-modernize), **P-8** (thread-role conformance), **DOOR** (extension
+infrastructure per `design/extension-goals.md`), and **HOUSE** (housekeeping /
+drift).
+
+| # | Theme | Class | Surfaced in (subsystems) | Primary docs | Synthesis |
+| --- | --- | --- | --- | --- | --- |
+| T-1 | `string_view.data()` → C-string `strnicmp`/`strncmp` NUL-over-read | **SEC** | utilities (M-4), filesystem (M-7), cmd_cvar (M-5, 6 sites) — **verified absent** in the other 9 subsystems checked; memory is N/A (no string-compare sites) | `modernization-opportunities/{utilities,cmd_cvar}-modernization.md` + `xash3dpp-src-filesystem-modernization.md` | Latent OWASP buffer-over-read (in-tree callers pass NUL-terminated literals). One bounded `ci_compare(string_view, string_view)` in `utilities`, adopted by all three call sites, closes the class. |
+| T-2 | Tree-wide float/byte-**EXACT** "do-not-modernize" set | **INVARIANT** | map_loader (Q-18 trace/PVS/CRC), content (studio bone math), networking (wire bit-codec/delta widths/LZSS/OOB), server (rotated-brush ULP `clip.cpp:211`), utilities (double-precision studio math) | `modernization-opportunities/{map_loader,networking,content,server}-modernization.md`, deep-dive-{trace-pvs,delta-encoder,content}.md | Five subsystems independently flagged the same prohibition (no FMA/reassoc/ranges rewrite). Name the union in one authoritative place so no future "modernization" touches it. |
+| T-3 | P-8 `assert_thread_role` under-guard gaps | **P-8** | host (`RunFrame`/`RequestShutdown`/`signal_frame_abort` unguarded vs header claim), map_loader (`new_game`/`change_level`/`clear_world` transitions) | `threading-analysis/{host,map_loader}-threading.md` | Transition/frame-entry points under-guarded — the exact spots where "marshal back to Main" is anchored. Server is the clean reference (92 uniform asserts). A P-8 conformance sweep closes it (Chunk 6B territory). |
+| T-4 | Missing thread-spawn + `ThreadRole`-register primitive | **DOOR** (P-1) | core (owns `ThreadRole` + `assert_thread_role`), platform (hosts `thread_role.cpp`, no spawn), host (owns P-1 inbox-drain slot in `RunFrame`), launcher (pure Main provider) | `boundaries/{platform,core,host}-boundary.md`, `threading-analysis/host-threading.md` | Every north-star off-main thread (G-1 MCP listener, G-2 NetIO, G-3 debug thread, P-1 worker pool) needs this one primitive. Design the spawn + inbox as a single Chunk-7 P-1 unit; platform is the natural owner. |
+| T-5 | P-2 published-snapshot pattern | **DOOR** (P-2) | map_loader (immutable `WorldData` = reference Safe-RO surface), content (model cache needs snapshot swap), server (needs G-1/G-3 snapshot publish), networking (publishes counters not state) | `boundaries/{map_loader,content,server,networking}-boundary.md` | map_loader's immutable snapshot is the zero-machinery reference. One shared P-2 snapshot/double-buffer idiom serves the rest. |
+| T-6 | "One introspection layer" (P-4) | **DOOR** (P-4) | core (substrate: logs, `Clock::stats`, `error_code_name`), memory (`get_stats`/`for_each_pool`), content (`model_infos`/`StudioView`), map_loader (world queries), server (`EntityView`) | `boundaries/core-boundary.md` + each subsystem boundary | These are the channels of a single typed introspection layer feeding G-1/G-3/G-4. Name them as one layer so no frontend grows a private backdoor (P-4 door rule). |
+| T-7 | Shared aligned-allocation door | **DOOR** (P-7/G-5) | memory (H-1: lift `alignof(T) ≤ 8`) | `modernization-opportunities/memory-modernization.md`, `boundaries/memory-boundary.md` | H-1 simultaneously serves P-7 over-aligned `pool_new`, the G-5 script-allocator bridge, and the future `IAllocatorBackend` seam (strategy fn-ptr triple). One design brief should cover all three. |
+| T-8 | `xash3dpp_miniz` shared static target | **HOUSE** | filesystem + content (link it PRIVATE), utilities (does **not** own it) | `boundaries/{filesystem,content}-boundary.md`, deep-dive-{filesystem,content}.md | Built from `../public/miniz.c`; a cross-subsystem ownership fact recorded so it is not mis-attributed to utilities. |
+| T-9 | Enforcement-free-by-role subsystems | **HOUSE** | abi (C-ABI shim, 0 asserts by design), launcher (pure Main provider, 0 asserts) | `threading-analysis/abi-threading.md`, `boundaries/{abi,launcher}-boundary.md` | The deliberate 0-`assert_thread_role` counterpoint to consumer subsystems — a P-8 sweep (T-3) must not misflag them. |
+| T-10 | Status / plan drift | **HOUSE** | content (status_table Complete vs plan Partial), server (Chunk 6 Complete), core (cvar-name drift) | `boundaries/{content,core}-boundary.md`, `implementation-plan.md` | Plan status rows lag `status_table.py`. Core cvar drift (`host_maxfps` vs legacy `fps_max`, `host_sleeptime` vs `sleeptime`; `sys_timescale` FCVAR_CHEAT vs legacy FCVAR_FILTERABLE) is a GoldSrc config-compat gap. |
+| T-11 | Unfinished code inside "Complete" subsystems | **HOUSE** | utilities (`gameinfo_parser` stubs, `swap_struct` undefined), server (`ITrustOracle`/`ICompatPolicy` Chunk 7, save paths Chunk 8), networking (DNS + bz2 deferred), cmd_cvar (`$`-subst / `if`-`else` / stuffcmd-filter / `base_cmd` sorted autocomplete), launcher (Optimus/PowerXpress `dllexport` port gap) | each subsystem boundary + `stub_scan.py` | Chunk-inherited deferrals inside structurally-Complete subsystems; each already carries an inline marker. Enumerated so no "Complete" label is read as "nothing left". |
+| T-12 | RNG-unification stub | **HOUSE** | server (`s_rng_state`/`s_pm_rng`), plan (`COM_RandomLong`/`Float` xorshift stubs in `engine_table.cpp` + `init_client_move.cpp`) | `boundaries/server-boundary.md`, `implementation-plan.md` deferred inventory | Multiple deterministic-RNG stubs await one shared idtech RNG stream. |
+
+**Reading pointers** — the refreshed per-subsystem material lives in four
+folders: `boundaries/` (interface + owned-state + Q-21 extension axes),
+`threading-analysis/` (assert-role sites + statics), `modernization-
+opportunities/` (as-built Implemented/Remaining status), and this
+`legacy-survey/` folder (`deep-dive-*.md` recon). The extension-door language
+(G-/P- IDs) is defined in `design/extension-goals.md`; the decision register
+(Q-IDs) in `design/decisions-architecture.md`.

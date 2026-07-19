@@ -4,6 +4,16 @@
 xash3dpp server rewrite. All paths under `engine/server/` unless noted;
 line numbers verified against the current tree.*
 
+> **Refreshed 2026-07-06 (as-built cross-ref).** Shipped in
+> `src/server/physics/`: `physics.cpp` (MOVETYPE dispatch + pushers),
+> `pmove.cpp` + `init_client_move.cpp` + `pm_trace.cpp` + `run_cmd.cpp` (the
+> pmove bridge over the single frozen `playermove_t` + its ~30 callbacks), and
+> `movevars.cpp`. The Quake-lineage constants/bugs (ClipVelocity ±1.0 snap,
+> `215.0f` chase-dir typo, friction reset-to-1.0, `pushed[256]` cap) are
+> behavioural contract — preserved as-built; see the frozen-ABI prohibition in
+> `docs/modernization-opportunities/server-modernization.md`. Studio-hitbox
+> trace (OQ-2) stays a Chunk 7 `TODO`.
+
 ## 1. Responsibility
 
 - **sv_phys.c** (2165 lines) — per-frame server physics driver:
@@ -348,8 +358,8 @@ copies rendermode/skin/frame/sequence/controller[4]/blending[2]/movetype/
 takedamage/team/playerclass→classnumber, `blooddecal = 0` ("unused in
 GoldSrc"), all user fields.
 
-**SV_AddLaddersToPmove** (:282–322): SOLID_NOT + `skin == CONTENTS_LADDER`
-+ brush model only → `moveents` (cap MAX_MOVEENTS=64, hard `return` at
+**SV_AddLaddersToPmove** (:282–322): SOLID_NOT + `skin == CONTENTS_LADDER` +
+brush model only → `moveents` (cap MAX_MOVEENTS=64, hard `return` at
 cap).
 
 **SV_FinishPMove** (:599–664): copies back origin/view_ofs/velocity/

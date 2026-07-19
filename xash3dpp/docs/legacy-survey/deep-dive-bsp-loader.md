@@ -9,6 +9,19 @@ the stale "Chunk 5 = server" comments this brief's sibling flagged in
 host-boundary.md / engine_context.hpp were renumbered to the
 implementation-plan scheme later the same day.)*
 
+> **Refreshed 2026-07-06 (as-built cross-reference).** This recon has since
+> been implemented as Chunk 5 `map_loader`. The as-built mapping: the on-disk
+> structs here → `include/xash3dpp/private/map_loader/bsp/disk_format.hpp`
+> (`d*_t`, `static_assert`-pinned, LE-guarded); the load path (§4–§9) →
+> `src/map_loader/bsp/{bsp_loader,bsp_lumps,bsp_hulls,bsp_flags,map_crc}.cpp`
+> reading records through `read_record<T>(span,index)` (no array casts); the
+> normalized in-memory model → the immutable `WorldData` in
+> `include/xash3dpp/map_loader/world.hpp` (all-32-bit clipnodes, spans/views,
+> `std::expected` errors). The 18-item quirk list is reproduced with a
+> synthetic regression fixture each; parity is verified (loader parity audit
+> DIVERGENCES-FOUND → all fixed). See the boundary spec §4/§5 for the shipped
+> pipeline and the deviation ledger; this dive stays the *behaviour* reference.
+
 Primary sources:
 
 - `common/bspfile.h` — on-disk format

@@ -1,5 +1,21 @@
 # Platform Boundary Spec
 
+> Refreshed 2026-07-06 (as-built pass). Re-scanned all 14 TUs under
+> `src/platform/{win32,posix,android}/**` and the public headers under
+> `include/xash3dpp/platform/**`. `status_table.py` reports platform
+> **Complete** (14 TUs, tests ✔); `compliance_scan.py platform` is **clean**
+> (0 blocker/warning/note; 9 reviewer-judgment areas = the documented
+> `compliance-allow` adjudications); `stub_scan.py platform` shows **2** TODO
+> markers (both in `posix/sys.cpp`: `is_debugger_present` macOS/BSD, and a
+> `shell_execute` double-fork note). Drift found this pass: the OS **file I/O**
+> backend (`os_io.hpp` + per-OS `os_io.cpp`) is now owned here — it absorbed the
+> filesystem **H-2 / L-4** items during the `src/filesystem/platform/{win32,
+> posix}.cpp` extraction (see `modernization-opportunities/platform-modernization.md`).
+> The socket surface (`os_socket` + `IPlatformSockets`) and the hosted
+> diagnostics tier (`core/log.cpp`, `core/thread_role.cpp` built into this
+> target) are reflected below. New sections added this pass:
+> **Extension axes (Q-21)**; the **Threading** section gained a class table.
+
 ## Responsibility
 
 Provides thin OS-abstraction wrappers for the handful of system capabilities
@@ -226,13 +242,74 @@ called before any socket functions and `socket_shutdown()` called at teardown;
 
 ______________________________________________________________________
 
+## Extension axes (Q-21)
+
+> Added 2026-07-06 (as-built pass). Evaluated against
+> `docs/design/extension-goals.md`.
+
+Platform is the **OS-primitive floor** the extension goals stand on: it owns
+the timing, sleep, dynamic-library, socket, console and (hosted here)
+thread-role primitives that every off-main thread in the north-star design
+(G-1 MCP listener, G-2 threaded game ABI, G-3 debug thread, plus the
+threading-model's NetIO/Worker roles) will use. It exposes almost no mutable
+state of its own, so its Q-21 posture is about **keeping the OS-primitive doors
+open**, not about de-globalising a legacy core.
+
+| Goal / primitive | Applies? | Required seam or door (verdict) |
+|------------------|----------|--------------------------------|
+| **P-1** main-thread inbox + worker pool | Enabler (door) | Platform owns no inbox, but every off-main thread needs an OS **thread-spawn + `ThreadRole`-registration** primitive. `core/thread_role.cpp` is already hosted in this target; there is **no** `platform::spawn_thread` yet (threads forbidden until P-1 lands — OQ-9 posture). **Door-keep:** add a thin thread-spawn wrapper that registers a `ThreadRole` on entry when the first off-main consumer (Chunk 7 worker pool) is scheduled — do not build it early |
+| **P-2** published-snapshot reads | No | Platform holds no sim state; nothing to snapshot |
+| **P-3** context-first, no new file-scope state | **Yes** | Every entry point is already a free function over a caller-owned handle or a pure OS query. The **only** file-scope mutable state is the documented exception set (magic-static clock epoch, WSA refcount atom, crash-installed flag, Android JNI glue). **Door-keep:** no new statics; a v2 thread-spawn primitive must take a `ThreadRole` argument, not read a global |
+| **P-4** typed introspection | Minor | Stateless ⇒ little to introspect. A future `platform_stats` (open socket / open library counts) is the only P-4 tier; low priority. No `extern` poke risk today |
+| **P-6** services are satellites | N/A (floor) | Platform is the mandatory floor, **not** a satellite (Q-11 score 0 — one impl per OS, compile-time selected). The one seam, `IPlatformSockets`, is a Q-7 test seam, not a satellite feature |
+| **P-7** over-aligned pool alloc | No | Platform performs no allocation (all returns are by-value `std::string`/`std::vector`/RAII handles) |
+| **G-1** in-engine MCP service | Door-keep | Transport primitives already live here: `open_tcp_socket` + `IPlatformSockets` (TCP/WebSocket transport) and `console::write`/`read_line` (stdio transport). The socket layer is already `T_NetIO-ready`. **Door:** the listener thread rides on the same P-1 thread-spawn primitive above |
+| **G-2** game ABI v2 | Door-keep | `open_library`/`get_symbol`/`close_library` load the versioned plugin descriptor (Q-10) and the future v2 game DLL. **Door-keep:** keep dynlib reentrant and context-free (it is) so a v2 loader can run off-main |
+| **G-3** dedicated debug thread | Door-keep | Reads via the already-atomic stats and the hosted `assert_thread_role` enforcement; the thread itself needs the P-1 spawn primitive + a new `ThreadRole` enum value (additive). Nothing in platform blocks it |
+| **G-5** scripting runtime | Door-keep | `open_library` loads the isolated-island script satellite (extension-goals §G-5 names "platform dynlib" as an existing affordance). No exception/RTTI leak risk — platform is `/EHs-c- /GR-` like every engine target |
+| **NetIO / DNS** (threading-model §7) | **Yes — headline** | `resolve_blocking` is contractually **Worker/NetIO-only** (synchronous `getaddrinfo`, may block 100s of ms); the socket setters + send/recv are `T_NetIO-ready`. This is the clearest already-open off-main door in the subsystem |
+
+**Headline door:** the missing **OS thread-spawn + `ThreadRole`-registration
+primitive**. Every off-main thread the north star names (G-1/G-3/NetIO/Worker)
+needs it, and platform is its natural owner because it already hosts
+`thread_role.cpp`. Today the door is kept open passively (all socket/time/
+console primitives are thread-agnostic, `resolve_blocking` is Worker-only); the
+active step is to add the wrapper — not before Chunk 7 schedules the first
+consumer (no gold-plating, per extension-goals §3).
+
+______________________________________________________________________
+
 ## Threading
+
+> Refreshed 2026-07-06 (as-built pass). Enumerated every `assert_main_thread` /
+> `compliance-allow(thread-assert)` / mutable-global adjudication site across
+> the 14 TUs; the class table below is the analyse-threading view.
 
 Platform is thread-agnostic by construction: every entry point is a stateless
 syscall wrapper over a caller-owned handle (`OsFd`, `OsSocket`, `LibHandle`)
 or a pure OS query — safe from any thread; concurrent operations on the SAME
 handle are the owner's responsibility. Per QN, every public header carries a
 `@thread-safety:` contract line.
+
+### Thread-role class table (as-built)
+
+| Class | Sites (per OS unless noted) | Posture |
+|-------|-----------------------------|---------|
+| **Main-thread-asserting** | `console::read_line` (win32 + posix), `crash::install_handler` (win32 + posix) | Opens with `::xash::core::detail::assert_main_thread(...)` — static line buffer / process-wide signal disposition |
+| **Main-thread-capturing** | `get_time()` (win32 + posix) | First call runs `capture_main_thread()` inside the magic-static clock init — establishes the Main identity the asserts check |
+| **Adjudicated non-asserting mutators** | `flush(OsFd&)`, `set_non_blocking`, `set_broadcast`, `set_reuse_addr`, `set_recv_buffer`, `set_send_buffer` (win32 + posix — 6 × 2 = 12 sites) | `compliance-allow(thread-assert)` — stateless OS-handle wrappers; a Main assert would be false precision on a `T_NetIO`-ready surface |
+| **Worker/NetIO-only** | `resolve_blocking` (win32 + posix) | Synchronous `getaddrinfo`; **must not** run on `ThreadRole::Main` |
+| **`T_NetIO`-ready any-thread** | all other `os_socket` free functions (`open_udp_socket`, `sendto`, `recvfrom`, `send_stream`, `recv_stream`, `connect_stream`, …) | Header-annotated `@thread-safety: T_NetIO-ready`; callable from Main today, NetIO tomorrow, no code change |
+| **Any-thread stateless** | `sleep`, `open_library`/`get_symbol`/`close_library`, `open_file`/`read`/`write`/`seek`/`tell`, `file_size`/`file_time`/`list_directory`, `message_box`, `shell_execute`, `console::write` | Pure syscall wrappers; no shared mutable state |
+| **Mutable-global adjudications** | WSA refcount `std::atomic<int>` (win32 `os_socket.cpp`); crash-installed `static bool`/atomic (win32 + posix + android `crash.cpp`); Android JNI glue `g_jni` / `g_handles[2]` / `g_jni_flag` / `g_init_flags[2]` (android `os_io.cpp`) | Atomics for the refcount/flag; JNI glue is `compliance-allow(mutable-global, di-global-ref)` — bound once at `JNI_OnLoad` via `call_once` before any engine context exists, read-only thereafter |
+
+The **diagnostics tier is hosted in this target** (`core/log.cpp`,
+`core/thread_role.cpp`) so the base layer is self-contained — platform's
+console/crash/socket asserts call `assert_thread_role` / `assert_main_thread`
+without a core → platform link cycle (CMakeLists D-1 note; see
+`docs/design/layer-model.md`). Extension-goals G-3 leans on exactly this: the
+debug thread's off-main reads are gated by the same `assert_thread_role`
+enforcement platform already exercises.
 
 - **Main-thread-only surfaces assert at debug time**: `console::read_line()`
   (static line buffers) and `crash::install_handler()` (process-wide signal
