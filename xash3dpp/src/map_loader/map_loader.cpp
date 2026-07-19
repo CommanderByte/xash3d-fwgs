@@ -54,6 +54,9 @@ struct MapLoader::Impl
     // Server-registered level-change executor (nullptr → inline load_world).
     ILevelChangeExecutor *executor = nullptr;
 
+    // Always-on counters (CHECK-STATS); value-snapshot via stats().
+    MapLoaderStats stats;
+
     void copy_name( std::array<char, ::xash::limits::map_qpath_max> &dst,
                     std::string_view src ) noexcept
     {
@@ -112,10 +115,12 @@ void MapLoader::shutdown() noexcept
 
 void MapLoader::new_game( std::string_view map ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     s.copy_name( s.level_name, map );
     s.new_game = true;
     s.next     = MapLoadState::LoadLevel;
+    ++s.stats.transitions_queued;
     core::log( core::LogLevel::Info, "map_loader", "new_game queued" );
 }
 
@@ -126,6 +131,7 @@ void MapLoader::load_level( std::string_view map, bool background ) noexcept
     s.copy_name( s.level_name, map );
     s.background = background;
     s.next       = MapLoadState::LoadLevel;
+    ++s.stats.transitions_queued;
 }
 
 void MapLoader::load_game( std::string_view map ) noexcept
@@ -135,16 +141,19 @@ void MapLoader::load_game( std::string_view map ) noexcept
     s.copy_name( s.level_name, map );
     s.load_game = true;
     s.next      = MapLoadState::LoadGame;
+    ++s.stats.transitions_queued;
 }
 
 void MapLoader::change_level( std::string_view map, std::string_view landmark,
                               bool background ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     s.copy_name( s.level_name,    map );
     s.copy_name( s.landmark_name, landmark );
     s.background = background;
     s.next       = MapLoadState::ChangeLevel;
+    ++s.stats.transitions_queued;
 }
 
 void MapLoader::run_frame_step() noexcept
@@ -242,6 +251,7 @@ void MapLoader::set_level_executor( ILevelChangeExecutor *exec ) noexcept
 
 void MapLoader::attach_observer( IMapLoaderObserver *obs ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     if (!obs) return;
     Impl &s = *impl_;
     for (auto *&slot : s.observers)
@@ -250,6 +260,7 @@ void MapLoader::attach_observer( IMapLoaderObserver *obs ) noexcept
 
 void MapLoader::detach_observer( IMapLoaderObserver *obs ) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     Impl &s = *impl_;
     for (auto *&slot : s.observers)
         if (slot == obs) { slot = nullptr; return; }
@@ -257,6 +268,7 @@ void MapLoader::detach_observer( IMapLoaderObserver *obs ) noexcept
 
 MapLoadState     MapLoader::state()       const noexcept { return impl_->state; }
 std::string_view MapLoader::current_map() const noexcept { return impl_->level_name.data(); }
+MapLoaderStats   MapLoader::stats()       const noexcept { return impl_->stats; }
 
 bool MapLoader::load_world( std::string_view mapname,
                             const map_loader::WorldLoadOptions &opts ) noexcept
@@ -268,10 +280,12 @@ bool MapLoader::load_world( std::string_view mapname,
     if (!s.initialised || !s.filesystem) {
         core::log( core::LogLevel::Error, "map_loader",
                    "load_world: no filesystem available" );
+        ++s.stats.load_failures;
         return false;
     }
     if (mapname.empty()) {
         core::log( core::LogLevel::Error, "map_loader", "load_world: empty map name" );
+        ++s.stats.load_failures;
         return false;
     }
 
@@ -284,15 +298,21 @@ bool MapLoader::load_world( std::string_view mapname,
         path += ".bsp";
 
     auto loaded = map_loader::load_world_data( *s.filesystem, path, opts );
-    if (!loaded) // load_world_data already logged the specific failure
+    if (!loaded) { // load_world_data already logged the specific failure
+        ++s.stats.load_failures;
         return false;
+    }
 
     s.world.emplace( std::move( *loaded ));
+    ++s.stats.worlds_loaded;
     return true;
 }
 
 void MapLoader::clear_world() noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+    if (impl_->world)
+        ++impl_->stats.worlds_cleared;
     impl_->world.reset();
 }
 

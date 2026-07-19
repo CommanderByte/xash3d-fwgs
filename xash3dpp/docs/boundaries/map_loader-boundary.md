@@ -40,7 +40,8 @@ Public headers under `include/xash3dpp/map_loader/`:
 Private shared headers under `include/xash3dpp/private/map_loader/`:
 `bsp/disk_format.hpp` (on-disk records, size-pinned), `bsp/bsp_loader.hpp`
 (validation ladder + pipeline stages), `bsp/map_crc.hpp`, `trace_math.hpp`
-(`plane_diff`, `box_on_plane_side`).
+(`plane_diff`, `box_on_plane_side`), `fat_vis.hpp` (fat-PVS/PHS query
+backing — shipped with the Q-19 PHS module; inventory row added 2026-07-19).
 
 ### Chunk 6 contract
 
@@ -299,7 +300,12 @@ doors **open by construction** — the work is *preservation*, not new seams.
 | **P-5** narrowest-state signatures | **Yes** | The trace kernel takes a `TraceHull` *view*, not a whole model; queries take the world + caller buffers. |
 | **P-1** main-thread inbox + worker pool | N/A here | map_loader owns no inbox; load/activation is a Main-thread transition driven by host/server. `Mod_CalcPHS`'s dropped OpenMP is an allowed *internal* load-time parallelism door (server-boundary OQ-9), not a P-1 seam. |
 | **P-6** services are satellites | Single target (Q-11) | bsp/pvs/trace/phs are one `xash3dpp_map_loader` target (sub-feature bundling scores < 2 separate-criteria). |
+| **G-1** in-engine MCP service | Consumer via P-4 | An MCP "where is point X / what can leaf Y see / trace this ray" tool composes the same typed world queries the P-4 row names; nothing map_loader-side beyond keeping them pure and typed. |
 | **G-2** game ABI v2 | Door-keep | The edict-free trace API is the confinement point: a v2 ABI can hand a typed hull/trace view to game DLLs without touching the kernel. Clipnodes stay 32-bit in memory; a v2 shim may produce a narrowed copy. |
+| **G-4** expanded in-game debugging | Consumer via P-4 | Vis/trace overlays read the same query surface (leaf/cluster/contents/vis/trace); the P-4 door rule is the entire G-4 obligation. |
+| **G-5** scripting runtime | Nothing owed now | §G-5's script surface v0 names no map_loader affordance; a tooling VM would call the same pure queries. Q-18 constraint applies unchanged to any binding (results are bit-frozen). |
+| **P-7** pool-owned RAII lifecycle | **N/A — value types** | `MapLoader` is a pimpl (`make_unique<Impl>`, the sanctioned carve-out); `WorldData`/`BoxHull` are plain RAII value/member-owned types. No pool-owned `create_<thing>` object exists; the idiom gains a site only if a pool-backed world arena ever appears. |
+| **P-8** annotation discipline | **Yes — satisfied (denominatored)** | 2026-07-19 audit: every mutating entry now asserts Main (12 sites — the former `new_game`/`change_level`/`clear_world`/observer gaps closed, HB-3) and `annotation-coverage` marker classes are clean with denominators; the one recorded `compliance-allow` (worker-notify at `map_loader.cpp`) stands. |
 | **Q-18** determinism | Constraint (not a door) | Trace/PVS/CRC math is float-/bit-exact to legacy; any off-main reader gets the **same bits**. No modernization may change results (see modernization doc). |
 
 **Net verdict — no new seam owed.** map_loader is already the ideal P-2/P-4

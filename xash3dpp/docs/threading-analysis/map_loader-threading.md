@@ -47,8 +47,14 @@ threading-model.md `WorldData` immutable-after-activation rule.*
   the legacy shared `g_visdata` static (a real cross-thread hazard in the C
   engine) has no equivalent here. Zero file-scope mutable state in the whole
   subsystem (no statics, no atomics — confirmed by scan).
-- **Enforcement gaps (as-built).** `new_game`, `change_level` and
-  `clear_world` mutate FSM/world state but do not yet `assert_thread_role`.
+- **Enforcement gaps (as-built).** ~~`new_game`, `change_level` and
+  `clear_world` mutate FSM/world state but do not yet `assert_thread_role`.~~
+  **CLOSED 2026-07-19 (consolidation audit, HB-3):** `new_game`,
+  `change_level`, `clear_world`, `attach_observer` and `detach_observer` now
+  assert `ThreadRole::Main` at entry — every mutating entry point is guarded
+  (12 sites; the hazard-table "gap" notes below are superseded). The same
+  pass added the `MapLoaderStats` value-snapshot counters (the former
+  stats exemption's recorded revisit trigger had fired).
   Low risk today (all callers are Main), but they should join the other 7 for
   P-8 conformance when the server chunk wires the transition callers — mirror
   of the host `RunFrame`/`RequestShutdown` finding.

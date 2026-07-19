@@ -6,11 +6,13 @@
 //
 // Decision ref: docs/boundaries/host-boundary.md  Resolved-decision OQ-2
 //
-// @thread-safety: MapLoader load/activation entry points (init/shutdown/
-// load_level/load_game/load_world/run_frame_step/set_level_executor) are
-// main-thread only (assert_thread_role Main); the const accessors state()/
-// current_map()/world() are read on the main thread and a borrowed world()
-// pointer must NOT be held across a load/clear (Q-6, threading-analysis).
+// @thread-safety: every MapLoader mutating entry point (init/shutdown/
+// new_game/load_level/load_game/change_level/run_frame_step/
+// attach_observer/detach_observer/set_level_executor/load_world/
+// clear_world) is main-thread only (assert_thread_role Main — HB-3 gap
+// closed 2026-07-19); the const accessors state()/current_map()/world()/
+// stats() are read on the main thread and a borrowed world() pointer must
+// NOT be held across a load/clear (Q-6, threading-analysis).
 //
 // MapLoader is a sibling subsystem of Host inside EngineContext.  It is
 // driven by:
@@ -89,13 +91,27 @@ struct MapLoaderInitParams
 };
 
 // ---------------------------------------------------------------------------
+// MapLoaderStats — always-on transition/load counters (CHECK-STATS).
+// Added 2026-07-19 (consolidation audit): the former call-frequency
+// exemption's recorded revisit trigger — "when the server chunk lands" —
+// had fired. Value snapshot via MapLoader::stats(); Main-read like every
+// other accessor on this class.
+// ---------------------------------------------------------------------------
+
+struct MapLoaderStats
+{
+    std::uint32_t transitions_queued = 0; // new_game/load_level/load_game/change_level requests
+    std::uint32_t worlds_loaded      = 0; // successful load_world publications
+    std::uint32_t worlds_cleared     = 0; // clear_world calls that dropped a live world
+    std::uint32_t load_failures      = 0; // load_world attempts that failed
+};
+
+// ---------------------------------------------------------------------------
 // MapLoader
 // ---------------------------------------------------------------------------
 
 class MapLoader
 {
-    // Stats: no hot path — stats exempt (map loads are cold; revisit when
-    // the server chunk adds per-frame query volume worth counting).
 public:
     MapLoader() noexcept;
     ~MapLoader();
@@ -133,6 +149,7 @@ public:
 
     [[nodiscard]] MapLoadState     state() const noexcept;
     [[nodiscard]] std::string_view current_map() const noexcept;
+    [[nodiscard]] MapLoaderStats   stats() const noexcept;
 
     // ---- World ownership ----------------------------------------------
     // Loads "maps/<name>.bsp" (a name containing '/' is used as-is; the
