@@ -224,7 +224,7 @@ def workflow_sync(stage: int = 2) -> dict:
                                      "%s does not reference finish_check.py" % name))
         if embedded_rx.search(body):
             findings.append(_finding(1, "checklist-single-source",
-                                     "%s re-embeds the 9-section checklist body" % name))
+                                     "%s re-embeds the 10-section checklist body" % name))
 
     # ---- stage 1: tools README completeness --------------------------------
     readme = TOOLS_DIR / "README.md"

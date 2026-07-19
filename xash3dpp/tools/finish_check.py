@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""The 9-section finish-subsystem done checklist as data.
+"""The 10-section finish-subsystem done checklist as data.
 
 Single source of truth for both the finish-subsystem prompt and pre-pr
 Phase 1. Items report pass | fail | needs-judgment (the consuming agent

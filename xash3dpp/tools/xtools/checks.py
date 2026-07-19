@@ -83,6 +83,49 @@ def _allow_context(lines: list[tuple[int, str, str]], idx: int) -> str:
     return "\n".join(parts)
 
 
+# T9b: transient DI param structs (`struct FooInitParams` / bare
+# `struct InitParams`) — the same name shape dep_scan keys on.
+_INITPARAMS_RX = re.compile(r"\bstruct\s+\w*InitParams\b")
+
+
+def _initparams_flags(lines: list[tuple[int, str, str]]) -> list[bool]:
+    """Per-line True while inside a `struct \\w*InitParams` body (open line
+    and closing `};` line included).  Depth-naive: DI param structs are flat
+    by convention (P-3); a nested type inside one would end the span early.
+    Pure — unit-tested."""
+    flags: list[bool] = []
+    inside = False
+    for _, code, _ in lines:
+        if not inside and _INITPARAMS_RX.search(code):
+            flags.append(True)
+            inside = "};" not in code  # one-line struct opens AND closes here
+            continue
+        flags.append(inside)
+        if inside and "};" in code:
+            inside = False
+    return flags
+
+
+def _stmt_start_idx(lines: list[tuple[int, str, str]], idx: int,
+                    max_back: int = 5) -> int:
+    """Index of the physical line that STARTS the statement containing
+    lines[idx]: walk back while the previous line neither terminates a
+    statement/block (code ending ';', '{' or '}') nor is blank/comment-only
+    (code blanked to ""), bounded by max_back.  Used so a `// SAFETY:`
+    comment above a multi-line cast statement is credited when the cast
+    token sits on a continuation line (annotation-coverage T9a).  Pure —
+    unit-tested."""
+    j = idx
+    while j > 0 and idx - j < max_back:
+        prev_code = lines[j - 1][1].strip()
+        if not prev_code:                      # blank or comment-only line
+            break
+        if prev_code.endswith((";", "{", "}")):
+            break
+        j -= 1
+    return j
+
+
 def _violation(check, severity, path, line, excerpt, hint, rule_ref,
                candidate=False, allow_ctx=None):
     return {
@@ -565,25 +608,43 @@ def annotation_coverage(subsystem: str | None) -> dict:
             lines = list(code_lines(path))
             file_exempt = any(_ANNOT_EXEMPT_RX.search(r) for _, _, r in lines)
 
-            def _mark(slot: dict, tag: str, idx: int) -> None:
+            def _mark(slot: dict, tag: str, idx: int,
+                      idx2: int | None = None) -> None:
                 slot["required"] += 1
                 ctx = _allow_context(lines, idx)
+                if idx2 is not None and idx2 != idx:
+                    # union with the statement-start context (multi-line
+                    # statements: the annotation sits above the statement,
+                    # the flagged token on a continuation line — T9a).
+                    ctx = ctx + "\n" + _allow_context(lines, idx2)
                 if tag in ctx:
                     slot["annotated"] += 1
                 elif file_exempt or _ANNOT_EXEMPT_RX.search(ctx):
                     slot["exempt"] += 1
 
+            ip_flags = _initparams_flags(lines) if scope == "include" else None
             for idx, (lineno, code, raw) in enumerate(lines):
                 if "// Pre:" in raw:
                     pre_uses += 1
                 if scope == "include":
                     if life_rx.search(code):
-                        _mark(cnt["lifetime"], "@lifetime:", idx)
+                        if ip_flags[idx]:
+                            # Transient DI param struct (P-3): its raw
+                            # pointers/refs are copied into the real
+                            # state-bearing Impl at init, so they leave the
+                            # REQUIRED denominator (T9b).  An @lifetime: tag
+                            # present anyway stays creditable.
+                            if "@lifetime:" in _allow_context(lines, idx):
+                                cnt["lifetime"]["required"] += 1
+                                cnt["lifetime"]["annotated"] += 1
+                        else:
+                            _mark(cnt["lifetime"], "@lifetime:", idx)
                     if vec_rx.search(code):
                         _mark(cnt["pre_reserved"], "@pre-reserved:", idx)
                 if scope == "src":
                     if cast_rx.search(code):
-                        _mark(cnt["safety"], "SAFETY:", idx)
+                        _mark(cnt["safety"], "SAFETY:", idx,
+                              _stmt_start_idx(lines, idx))
                     if _MUTATOR_DEF_RX.match(code):
                         slot = cnt["thread_assert"]
                         slot["required"] += 1

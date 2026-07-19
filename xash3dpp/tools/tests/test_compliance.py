@@ -24,7 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from xtools.checks import (_DECL_RX, _G_DEF_RX,  # noqa: E402
                            _UNIQUE_PTR_T_RX, _allow_context,
-                           _decl_args_are_bare_ids, _filter_allows, _violation)
+                           _decl_args_are_bare_ids, _filter_allows,
+                           _initparams_flags, _stmt_start_idx, _violation)
 from xtools.rules import RULES  # noqa: E402
 
 
@@ -135,6 +136,94 @@ class AllowHatch(unittest.TestCase):
         kept, allowed = _filter_allows([v])
         self.assertEqual(kept, [])
         self.assertEqual(len(allowed), 1)
+
+
+class StmtStartIdx(unittest.TestCase):
+    """`_stmt_start_idx` (T9a): a `// SAFETY:` comment above a MULTI-LINE
+    statement must be reachable from a cast token on a continuation line —
+    the statement-start's `_allow_context` carries the comment block."""
+
+    @staticmethod
+    def _lines(*raws: str):
+        out = []
+        for i, raw in enumerate(raws, start=1):
+            code = "" if raw.lstrip().startswith("//") else raw
+            out.append((i, code, raw))
+        return out
+
+    def test_at_statement_start_returns_idx(self):
+        lines = self._lines(
+            "    int y = 0;",
+            "    foo( reinterpret_cast<char *>( p ) );")
+        self.assertEqual(_stmt_start_idx(lines, 1), 1)
+
+    def test_multiline_walks_to_statement_start(self):
+        # codec_png shape: comment block, then a return statement whose cast
+        # sits on the second physical line.
+        lines = self._lines(
+            "    // SAFETY: byte* -> uchar* object-representation read.",
+            "    return static_cast<std::uint32_t>( mz_crc32(",
+            "        MZ_CRC32_INIT, reinterpret_cast<const unsigned char *>( s.data() ), len ) );")
+        start = _stmt_start_idx(lines, 2)
+        self.assertEqual(start, 1)
+        self.assertIn("SAFETY:", _allow_context(lines, start))
+
+    def test_bounded_by_max_back(self):
+        raws = ["    call("] + ["        arg%d," % i for i in range(8)] + \
+               ["        reinterpret_cast<char *>( p ) );"]
+        lines = self._lines(*raws)
+        # 9 continuation lines back exceeds max_back=5: the walk stops early
+        # and never reaches index 0.
+        self.assertEqual(_stmt_start_idx(lines, len(lines) - 1), len(lines) - 1 - 5)
+
+    def test_brace_and_semicolon_stop_the_walk(self):
+        lines = self._lines(
+            "    {",
+            "    foo( reinterpret_cast<char *>( p )",
+            "         );")
+        self.assertEqual(_stmt_start_idx(lines, 2), 1)
+
+
+class InitParamsFlags(unittest.TestCase):
+    """`_initparams_flags` (T9b): raw-pointer members of transient DI param
+    structs leave the @lifetime REQUIRED denominator."""
+
+    @staticmethod
+    def _lines(*raws: str):
+        out = []
+        for i, raw in enumerate(raws, start=1):
+            code = "" if raw.lstrip().startswith("//") else raw
+            out.append((i, code, raw))
+        return out
+
+    def test_named_and_bare_initparams_spans(self):
+        lines = self._lines(
+            "struct HostInitParams",
+            "{",
+            "    Filesystem *filesystem = nullptr;",
+            "};",
+            "class Host {",
+            "    Filesystem *fs_;",
+            "};")
+        flags = _initparams_flags(lines)
+        self.assertEqual(flags, [True, True, True, True, False, False, False])
+        # bare `struct InitParams` (content's shape) matches too
+        self.assertTrue(_initparams_flags(self._lines("struct InitParams {"))[0])
+
+    def test_suffix_name_not_matched(self):
+        # `InitParamsHelper` has no word boundary after InitParams.
+        flags = _initparams_flags(self._lines(
+            "struct InitParamsHelper {",
+            "    Foo *f;",
+            "};"))
+        self.assertEqual(flags, [False, False, False])
+
+    def test_span_closes_at_brace_semicolon(self):
+        lines = self._lines(
+            "struct AInitParams { Foo *f = nullptr; };",
+            "    Bar *bar_member;")
+        flags = _initparams_flags(lines)
+        self.assertEqual(flags, [True, False])
 
 
 class AllowContext(unittest.TestCase):
