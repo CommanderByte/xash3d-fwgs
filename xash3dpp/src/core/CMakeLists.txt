@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.16)
 # Provides:
 #   • <xash3dpp/core/clock.hpp>        — frame clock + timing cvars
 #   • <xash3dpp/core/error.hpp>        — ErrorCode enum + helpers
+#   • <xash3dpp/core/legacy_random.hpp> — instance-owned GoldSrc RNG
 #
 # The DIAGNOSTICS TIER (log.cpp, thread_role.cpp — the implementations behind
 # <xash3dpp/core/log.hpp>, <xash3dpp/core/assert.hpp>,
@@ -21,6 +22,7 @@ cmake_minimum_required(VERSION 3.16)
 add_library(xash3dpp_core STATIC
     error.cpp
     clock.cpp
+    legacy_random.cpp
 )
 
 target_include_directories(xash3dpp_core
