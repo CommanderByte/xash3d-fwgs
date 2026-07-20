@@ -92,7 +92,18 @@ struct EngineBridge
     // replacements); typically the svgame mempool equivalent.
     ::xash::memory::PoolHandle misc_pool;
 
-    // Host state mirrored for the slots
+    // Host state mirrored for the slots.
+    // INVARIANT: every mirrored scalar below must be re-stamped wherever its
+    // source changes. A mirror that is read but never written is invisible to
+    // stub_scan (no marker) and to compliance_scan (no rule) — `sv_time` was
+    // exactly that from Chunk 6 until the 2026-07-20 modernization audit, which
+    // left legacy's 0.5 s edict slot-reuse grace permanently inoperative on the
+    // game-DLL path (see below).
+    //
+    // sv.time — drives EdictArena's reuse grace (sv_game.c:1051) and
+    // SV_SetLightStyle's change stamp. Re-stamped at the four sites where
+    // `rt.level.time` moves: physics.cpp (both frame-advance paths),
+    // spawn.cpp (spawn epoch), save_bridge.cpp (loadgame header time).
     double      sv_time     = 0.0;  // sv.time (edict freetime/reuse)
     int         max_clients = 0;    // svs.maxclients
     int         developer   = 0;    // host_developer (AlertMessage gates)

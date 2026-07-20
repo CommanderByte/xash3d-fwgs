@@ -289,6 +289,16 @@ static void test_frame_loop_dedicated()
     CHECK( fx.rt.level.time > t0 );                     // clock advanced
     CHECK( fx.rt.level.frametime > 0.09f && fx.rt.level.frametime < 0.11f );
     CHECK_EQ( g_err_calls, 0 );
+
+    // REGRESSION (modernization audit 2026-07-20): the ABI shim's sv.time
+    // mirror must track the server clock. It was read at four pfn slots and
+    // written nowhere in production, so it sat at 0.0 forever — which made
+    // EdictArena's reuse guard (`freetime < 2.0f || sv_time - freetime > 0.5f`)
+    // short-circuit TRUE on every game-DLL free, permanently disabling legacy's
+    // 0.5 s slot-reuse grace (sv_game.c:1051). A stale mirror is invisible to
+    // stub_scan and compliance_scan alike, so it needs a test.
+    CHECK_EQ( fx.rt.bridge.sv_time, fx.rt.level.time );
+    CHECK( fx.rt.bridge.sv_time > t0 );
 }
 
 // ---------------------------------------------------------------------------
@@ -311,6 +321,10 @@ static void test_frame_loop_early_return()
     sv::host_server_frame( fx.rt, 0.2 );
     CHECK( fx.rt.level.framecount > fc0 );
     CHECK_EQ( g_err_calls, 0 );
+
+    // The fixed-`sv_fps` loop is the OTHER clock-advance path; its sv.time
+    // mirror must be stamped too (see the regression note above).
+    CHECK_EQ( fx.rt.bridge.sv_time, fx.rt.level.time );
 }
 
 // ---------------------------------------------------------------------------

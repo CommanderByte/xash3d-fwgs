@@ -1742,6 +1742,7 @@ bool sv_run_game_frame( ServerRuntime &rt, float sv_fps ) noexcept
             sv_physics( rt );
             rt.level.time_residual -= fps;
             rt.level.time += fps;
+            rt.bridge.sv_time = rt.level.time; // ABI-shim mirror of sv.time
             numFrames++;
         }
         return numFrames != 0;
@@ -1749,6 +1750,7 @@ bool sv_run_game_frame( ServerRuntime &rt, float sv_fps ) noexcept
 
     sv_physics( rt );
     rt.level.time += rt.level.frametime;
+    rt.bridge.sv_time = rt.level.time; // ABI-shim mirror of sv.time
     return true;
 }
 

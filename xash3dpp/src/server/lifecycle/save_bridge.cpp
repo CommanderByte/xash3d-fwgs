@@ -976,6 +976,7 @@ bool save_exec_load_game( ServerRuntime &rt, std::string_view save_name ) noexce
         // sv.time = header.time, restored AFTER SpawnServer reset it (sv_save.c:1692).
         rt.level.time    = header_time;
         rt.globals.time  = header_time;
+        rt.bridge.sv_time = rt.level.time; // ABI-shim mirror of sv.time
     }
 
     // Restore pauses until the client connects (sv_save.c:1647/1941).

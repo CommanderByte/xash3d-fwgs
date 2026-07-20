@@ -270,6 +270,7 @@ bool spawn_server( ServerRuntime &rt, const char *mapname,
     rt.precache.clear();
     rt.level.time       = 1.0;  // sv.time = globals->time = 1.0 (spawn epoch)
     rt.globals.time     = 1.0f;
+    rt.bridge.sv_time   = rt.level.time; // ABI-shim mirror of sv.time
     rt.level.background  = background;
 
     // MSG_Init( &sv.signon ) (sv_init.c:987): rewind the signon buffer for the

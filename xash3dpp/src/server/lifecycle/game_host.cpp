@@ -109,6 +109,7 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     rt.bridge.max_clients    = rt.persistent.maxclients;
     rt.bridge.dedicated      = rt.cfg.dedicated;
     rt.bridge.developer      = rt.cfg.developer;
+    rt.bridge.sv_time        = rt.level.time; // seed; re-stamped per frame
     rt.bridge.game_dir       = rt.cfg.game_dir;
     rt.bridge.host_error     = rt.cfg.host_error;
     rt.bridge.host_error_ctx = rt.cfg.host_error_ctx;
