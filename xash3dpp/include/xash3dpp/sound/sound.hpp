@@ -130,6 +130,11 @@ struct SoundInitParams
     // directly).
     ::xash::cmd_cvar::CmdCvarContext *cmd_cvar = nullptr; // @lifetime: caller (outlives Sound)
 
+    // Canonical process RNG seam used by the dormant DSP branches and by the
+    // dsp_profile stress command. nullptr is deliberately inert (returns the
+    // requested lower bound); Sound never creates a private fallback stream.
+    int ( *random_long )( int low, int high ) = nullptr;
+
     // S9.7b thread topology (threading-model §3.4).  false (default) keeps the
     // whole pipeline SINGLE-THREADED on T_Main — byte-for-byte the S9.6
     // behaviour, which is what the deterministic witness and every existing

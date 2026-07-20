@@ -423,7 +423,7 @@ Result<void> Sound::init( const SoundInitParams &params )
     impl_->mixer_.channels().resize( ::xash::limits::sound_max_channels );
     impl_->mixer_.set_vox_advance( &impl_->vox_ );
 
-    impl_->room_dsp_ = std::make_unique<RoomDsp>( impl_->pool_ );
+    impl_->room_dsp_ = std::make_unique<RoomDsp>( impl_->pool_, params.random_long );
     impl_->mixer_.set_room_dsp( impl_->room_dsp_.get() );
 
     // An injected loader (Q-4) wins outright: it is a complete replacement for

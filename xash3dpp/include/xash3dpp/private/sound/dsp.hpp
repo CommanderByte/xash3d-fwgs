@@ -338,7 +338,8 @@ public:
     // delay-line buffers (P-7; PoolIntBuffer above) — caller-owned, must
     // outlive this RoomDsp (mirrors SaveBuffer's pool-parameter constructor,
     // private/save/save_buffer.hpp).
-    explicit RoomDsp( ::xash::memory::PoolHandle pool ) noexcept;
+    explicit RoomDsp( ::xash::memory::PoolHandle pool,
+                      int ( *random_long )( int low, int high ) = nullptr ) noexcept;
     ~RoomDsp() override = default; // SX_Free minus Cmd_RemoveCommand (S9.6); PoolIntBuffer members self-free.
 
     RoomDsp( const RoomDsp & )            = delete;
@@ -401,6 +402,7 @@ public:
                                            double ( *now_seconds )() noexcept ) noexcept;
 
 private:
+    [[nodiscard]] int random_long( int low, int high ) const noexcept;
     void check_presets() noexcept;                     // SX_CheckPresets (s_dsp.c:783-844)
     void reload_room_fx() noexcept;                     // SX_ReloadRoomFX (s_dsp.c:196-202)
     void apply_preset( const RoomPreset &preset ) noexcept; // the 9 Cvar_DirectSetValue calls (s_dsp.c:824-832)
@@ -418,6 +420,7 @@ private:
     void dly_do_stereo_delay( portable_samplepair_t *paint, int count ) noexcept; // DLY_DoStereoDelay (s_dsp.c:386-441)
 
     ::xash::memory::PoolHandle pool_;
+    int ( *random_long_ )( int low, int high ) = nullptr;
 
     // --- cvar-equivalent state (defaults match SX_Init's CVAR_DEFINE*) -----
     bool  room_off_        = false; // "0"
@@ -463,8 +466,8 @@ private:
     // once from idsp_dma_speed (fixed, see k_idsp_dma_speed) and never
     // change — which means the `!sxmod1`/`!sxmod2` RNG-trigger branches in
     // rvb_do_amod are UNREACHABLE for any value these members can hold
-    // (350/450, both always nonzero). Preserved structurally (see dsp.cpp's
-    // random_long stub) rather than special-cased away, per parity-first.
+    // (350/450, both always nonzero). Preserved structurally and routed through
+    // the injected process callback rather than special-cased away.
     int sxamodl_ = 255, sxamodr_ = 255, sxamodlt_ = 255, sxamodrt_ = 255;
     int sxmod1cur_ = 350, sxmod2cur_ = 450, sxmod1_ = 350, sxmod2_ = 450;
 

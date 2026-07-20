@@ -52,14 +52,12 @@
 //     survives from the previous iteration either — which is what makes the
 //     repeat-run comparison meaningful rather than tautological.
 //
-//  4. RNG — `dsp.cpp`'s `random_long()` carries a function-local `static`
-//     counter that would ADVANCE between runs in the same process. Every one of
-//     its call sites is documented-dead for a live RoomDsp (sxmod1_/sxmod2_ are
-//     the fixed 350/450, reverb's `dly.mod` is always nonzero, stereodly's is
-//     always forced to 0) and `profile()` is never invoked here. That claim is
-//     not taken on faith: because the static would advance, run #2 could not
-//     possibly match run #1 if any of those branches were live. The repeated-run
-//     equality check below IS the proof.
+//  4. RNG — SoundInitParams leaves the injected random-long callback null.
+//     Every DSP processing call site is documented-dead for a live RoomDsp
+//     (sxmod1_/sxmod2_ are fixed 350/450, reverb's `dly.mod` is always nonzero,
+//     stereodly's is always forced to 0), and `profile()` is never invoked.
+//     The witness therefore proves that decoder processing does not reach the
+//     dormant sites; it makes no cross-subsystem stream-scheduling claim.
 //
 //  5. HASH / MAP ITERATION ORDER — `SfxRegistry::by_name_`
 //     (unordered_map<string,handle>) and `VoxSystem::bound_`
@@ -575,9 +573,8 @@ void test_witness_is_repeatable()
                  static_cast<unsigned long long>( first_hash ), nonzero, static_cast<int>( peak ) );
 
     // Repeat, in the same process. Note this also re-runs everything that has
-    // process-lifetime state: dsp.cpp's random_long() static counter would have
-    // advanced if any of its (documented-dead) branches were live, so a match
-    // here is a positive proof that no RNG is on the path (determinism note 4).
+    // A match confirms that no injected/random-dependent DSP path is reached
+    // by decoder processing (determinism note 4).
     for( int run = 1; run < k_runs; ++run )
     {
         WitnessResult again;

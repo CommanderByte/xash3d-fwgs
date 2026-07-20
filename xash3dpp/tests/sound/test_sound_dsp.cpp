@@ -27,6 +27,20 @@
 #include <cstdint>
 
 static int g_pass = 0, g_fail = 0;
+static int g_random_calls = 0;
+
+static int random_spy( int low, int high )
+{
+    ++g_random_calls;
+    CHECK_EQ( low, 0 );
+    CHECK_EQ( high, 3000 );
+    return high;
+}
+
+static double fixed_profile_time() noexcept
+{
+    return 17.0;
+}
 
 using namespace xash::sound;
 using ::xash::abi::portable_samplepair_t;
@@ -422,6 +436,25 @@ static void test_clear_state_lazy_teardown()
     expect_pair( "post-clear passthrough (delay freed)", after[0], before[0].left, before[0].right );
 }
 
+// The private DSP generator is gone: profile's 512 stereo samples consume
+// exactly 1,024 draws through the injected callback. A null callback is inert
+// (lower-bound samples) and never manufactures another stream.
+static void test_profile_routes_random_draws_through_injected_callback()
+{
+    ::xash::memory::ScopedPool pool( "test_dsp_random_callback" );
+    RoomDsp dsp( pool.handle(), &random_spy );
+
+    g_random_calls = 0;
+    const auto result = dsp.profile( 0, std::nullopt, &fixed_profile_time );
+    CHECK_EQ( g_random_calls, 1024 );
+    CHECK_EQ( result.seconds, 0.0 );
+
+    RoomDsp inert( pool.handle() );
+    const auto inert_result = inert.profile( 0, std::nullopt, &fixed_profile_time );
+    CHECK_EQ( inert_result.seconds, 0.0 );
+    CHECK_EQ( g_random_calls, 1024 );
+}
+
 // ===========================================================================
 // 7. Full RoomFX block through the S9.3 paint pipeline — a byte-pinned
 //    roombuffer transform through Mixer::paint_channels with a known preset.
@@ -514,6 +547,7 @@ int main()
     RUN_TEST( test_pass_math_stereo_delay );
 
     RUN_TEST( test_clear_state_lazy_teardown );
+    RUN_TEST( test_profile_routes_random_draws_through_injected_callback );
 
     RUN_TEST( test_full_paint_pipeline_with_known_preset );
 

@@ -19,6 +19,7 @@
 #include <xash3dpp/private/cmd_cvar/compat_policy.hpp>
 
 #include <cmath>
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -768,6 +769,14 @@ struct NullPolicy final : ::xash::cmd_cvar::ICompatPolicy
     bool        is_overridable_command( std::string_view ) const noexcept override { return false; }
 };
 
+std::atomic<int> g_profile_random_calls { 0 };
+
+int profile_random_spy( int low, int high )
+{
+    g_profile_random_calls.fetch_add( 1, std::memory_order_relaxed );
+    return high >= low ? high : low;
+}
+
 } // namespace
 
 static void test_sound_start_local_and_snapshot()
@@ -834,6 +843,34 @@ static void test_sound_command_dispatch_user_data_plumbing()
     ctx.cmd_execute_string( "stopsound" );
     CHECK( snd.channels_snapshot().empty() );
 
+    snd.shutdown();
+}
+
+static void test_dsp_profile_uses_injected_random_and_refuses_live_topology()
+{
+    AlwaysTrustedOracle oracle;
+    NullPolicy          policy;
+    ::xash::cmd_cvar::CmdCvarContext ctx;
+    REQUIRE( ctx.init( { &oracle, &policy } ) );
+
+    SinkDevice      sink;
+    SoundInitParams params;
+    params.device      = &sink;
+    params.cmd_cvar    = &ctx;
+    params.random_long = &profile_random_spy;
+
+    Sound snd;
+    REQUIRE( snd.init( params ).has_value() );
+
+    g_profile_random_calls.store( 0, std::memory_order_relaxed );
+    ctx.cmd_execute_string( "dsp_profile" );
+    CHECK_EQ( g_profile_random_calls.load( std::memory_order_relaxed ), 1024 );
+
+    REQUIRE( snd.start_topology().has_value() );
+    ctx.cmd_execute_string( "dsp_profile" );
+    CHECK_EQ( g_profile_random_calls.load( std::memory_order_relaxed ), 1024 );
+
+    snd.stop_topology();
     snd.shutdown();
 }
 
@@ -956,6 +993,7 @@ int main()
     // 7. Sound end-to-end + command dispatch through a real CmdCvarContext.
     RUN_TEST( test_sound_start_local_and_snapshot );
     RUN_TEST( test_sound_command_dispatch_user_data_plumbing );
+    RUN_TEST( test_dsp_profile_uses_injected_random_and_refuses_live_topology );
     RUN_TEST( test_sound_register_is_lazy_end_to_end );
     RUN_TEST( test_sound_start_with_pos_survives_unresolvable_entity );
 

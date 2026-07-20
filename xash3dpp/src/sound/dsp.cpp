@@ -25,27 +25,6 @@ void dly_move_pointer( DelayLine &dly ) noexcept
         dly.idelayoutput = 0;
 }
 
-// COM_RandomLong stand-in (common/common.c:130). The three legacy call sites
-// that use it (RVB_DoAMod's `!sxmod1`/`!sxmod2` branches, RVB_DoReverbForOneDly's
-// `!dly->mod` branch, DLY_DoStereoDelay's `dly->mod` branch) are ALL
-// unreachable given RoomDsp's fixed sxmod1_/sxmod2_ (350/450 — always
-// nonzero, since idsp_dma_speed is hardcoded and never re-queried, s_dsp.c:
-// 503 recon note) and the fact that reverb's `mod` field is always set
-// nonzero by rvb_set_up_dly while stereodly's `mod` is always forced to 0 by
-// dly_check_new_stereo_delay_val (see the member comments in dsp.hpp). A
-// bit-exact COM_RandomLong port is therefore NOT load-bearing for parity;
-// this stand-in exists only so the (dead) branch structure compiles and
-// matches source shape 1:1 for structural fidelity / future-proofing.
-[[nodiscard]] int random_long( int lo, int hi ) noexcept
-{
-    static std::uint32_t state = 0x9E3779B9u;
-    state                      = state * 1664525u + 1013904223u;
-    if( hi <= lo )
-        return lo;
-    const std::uint32_t range = static_cast<std::uint32_t>( hi - lo ) + 1u;
-    return lo + static_cast<int>( state % range );
-}
-
 } // namespace
 
 void PoolIntBuffer::zero() noexcept
@@ -58,13 +37,20 @@ void PoolIntBuffer::zero() noexcept
 // Lifecycle
 // ===========================================================================
 
-RoomDsp::RoomDsp( ::xash::memory::PoolHandle pool ) noexcept : pool_( pool )
+RoomDsp::RoomDsp( ::xash::memory::PoolHandle pool,
+                  int ( *random_long )( int low, int high ) ) noexcept
+    : pool_( pool ), random_long_( random_long )
 {
     // monodly_/reverbdly_[0,1]/stereodly_ default-construct inactive
     // (dly_t's `nulldly` zero-struct assignment, s_dsp.c:213-218). rgsxlp_
     // zero-inits via {} (s_dsp.c:220). sxamod*_/sxmod*_ members already
     // carry SX_Init's literal values (255/350/450) as in-class defaults.
     reload_room_fx(); // SX_ReloadRoomFX() tail call (s_dsp.c:252)
+}
+
+int RoomDsp::random_long( int low, int high ) const noexcept
+{
+    return random_long_ != nullptr ? random_long_( low, high ) : low;
 }
 
 // ===========================================================================
