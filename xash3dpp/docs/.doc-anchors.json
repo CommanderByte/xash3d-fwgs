@@ -46,7 +46,7 @@
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|1": {
    "line": 237,
@@ -55,7 +55,7 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|cmd_dispatch.cpp|0": {
    "line": 197,
@@ -297,6 +297,38 @@
     "// Enable NVIDIA High Performance Graphics while using Integrated Graphics."
    ],
    "target": "game_launch/game.cpp"
+  },
+  "xash3dpp/docs/boundaries/physics-boundary.md|pm_trace.cpp|0": {
+   "line": 94,
+   "snapshot": [
+    "abi::edict_t *ed = env.arena->edict_num( static_cast<std::size_t>( pe->info ));"
+   ],
+   "target": "xash3dpp/src/server/physics/pm_trace.cpp"
+  },
+  "xash3dpp/docs/boundaries/physics-boundary.md|pm_trace.hpp|0": {
+   "line": 52,
+   "snapshot": [
+    "struct PmTraceEnv"
+   ],
+   "target": "xash3dpp/include/xash3dpp/private/server/pm_trace.hpp"
+  },
+  "xash3dpp/docs/boundaries/physics-boundary.md|world/clip.cpp|0": {
+   "line": 237,
+   "snapshot": [
+    "if ( rotated )",
+    "{",
+    "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
+  },
+  "xash3dpp/docs/boundaries/physics-boundary.md|world/clip.cpp|1": {
+   "line": 237,
+   "snapshot": [
+    "if ( rotated )",
+    "{",
+    "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/boundaries/platform-boundary.md|lib_posix.c|0": {
    "line": 153,
@@ -888,14 +920,14 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|1": {
    "line": 211,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|mod_bmodel.c|0": {
    "line": 3845,
@@ -987,7 +1019,7 @@
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|1": {
    "line": 237,
@@ -996,14 +1028,14 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|2": {
    "line": 211,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|common/pmove.h|0": {
    "line": 26,
@@ -1054,10 +1086,8 @@
    "target": "pm_shared/pm_defs.h"
   },
   "xash3dpp/docs/implementation-plan.md|pm_trace.cpp|0": {
-   "line": 92,
+   "line": 94,
    "snapshot": [
-    "if ( env.arena == nullptr )",
-    "return 0;",
     "abi::edict_t *ed = env.arena->edict_num( static_cast<std::size_t>( pe->info ));"
    ],
    "target": "xash3dpp/src/server/physics/pm_trace.cpp"
@@ -2847,7 +2877,7 @@
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/abi-modernization.md|src/abi/CMakeLists.txt|0": {
    "line": 14,
@@ -6640,21 +6670,21 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|1": {
    "line": 211,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|2": {
    "line": 220,
    "snapshot": [
     "!vector_is_null( view.angles() );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|3": {
    "line": 237,
@@ -6663,7 +6693,7 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|4": {
    "line": 237,
@@ -6672,7 +6702,7 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|5": {
    "line": 237,
@@ -6681,7 +6711,7 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|6": {
    "line": 237,
@@ -6690,14 +6720,14 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|7": {
    "line": 211,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|edict_arena.cpp|0": {
    "line": 77,
@@ -6764,21 +6794,21 @@
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept"
    ],
-   "target": "xash3dpp/src/server/world/hulls.cpp"
+   "target": "xash3dpp/src/world/hulls.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|hulls.cpp|1": {
    "line": 118,
    "snapshot": [
     ""
    ],
-   "target": "xash3dpp/src/server/world/hulls.cpp"
+   "target": "xash3dpp/src/world/hulls.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|hulls.cpp|2": {
    "line": 118,
    "snapshot": [
     ""
    ],
-   "target": "xash3dpp/src/server/world/hulls.cpp"
+   "target": "xash3dpp/src/world/hulls.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|include/xash3dpp/private/server/edict_arena.hpp|0": {
    "line": 36,
@@ -6836,7 +6866,7 @@
    "snapshot": [
     "[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,"
    ],
-   "target": "xash3dpp/src/server/world/links.cpp"
+   "target": "xash3dpp/src/world/links.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|map_loader/map_loader.hpp|0": {
    "line": 17,
@@ -7070,7 +7100,7 @@
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const Vec3 &v ) noexcept"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/utilities/string.cpp|0": {
    "line": 31,
@@ -7119,21 +7149,21 @@
     "{",
     "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
    ],
-   "target": "xash3dpp/src/server/world/clip.cpp"
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/hulls.cpp|0": {
    "line": 114,
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept"
    ],
-   "target": "xash3dpp/src/server/world/hulls.cpp"
+   "target": "xash3dpp/src/world/hulls.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/links.cpp|0": {
    "line": 39,
    "snapshot": [
     "[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,"
    ],
-   "target": "xash3dpp/src/server/world/links.cpp"
+   "target": "xash3dpp/src/world/links.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/sound-modernization.md|audio_command.hpp|0": {
    "line": 106,

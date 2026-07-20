@@ -277,22 +277,31 @@ ______________________________________________________________________
    "independent streams"** in GoldSrc. The tree currently has **three**
    separately-seeded, algorithmically-different stand-ins (HB-12's own
    inventory lists only two — the third is in `sound/dsp.cpp`).
-4. **Decide the pmove trace layer's edict lookup — this is what blocks
-   `xash3dpp_physics`.** The 2026-07-20 promotion extracted `xash3dpp_world`
-   cleanly (zero `ServerRuntime` coupling) but could NOT extract the shared
-   physics half, for a specific reason: `pm_trace.cpp` needs the edict
-   *store*, not just edicts — it resolves `pe->info` back through
-   `env.arena->edict_num(...)` (`pm_trace.cpp:92-94`), and `EdictArena` is
-   server-owned by Q-20. Either move the store down a layer (which re-opens
-   Q-20) or give `PmTraceEnv` an index→edict lookup interface matching the
-   `IModelResolver`/`IClipHooks` pattern `MoveEnv` already uses — the latter
-   puts a virtual call in a byte-exact trace inner loop and wants parity
-   review, not a drive-by. The measured split is recorded in
-   `src/physics/CMakeLists.txt`: `pm_trace.cpp` (800 lines, 0 refs),
-   `init_client_move.cpp` (495, 2) and `movevars.cpp` (105, 2) are
-   shared-shaped; `physics.cpp` (1808, **39**), `pmove.cpp` (541, 7) and
-   `run_cmd.cpp` (281, 3) are server-only. Legacy splits it the same way
-   (`engine/common/pm_trace.c` vs `engine/server/sv_phys.c`).
+4. **Sever the pmove trace layer's one edict-store reach — mechanical, not a
+   decision.** *(Corrected 2026-07-20 after a per-TU read; the earlier framing
+   below was a false trichotomy — see `boundaries/physics-boundary.md` §3.)*
+   The shared kernel `pm_trace.cpp` has **exactly one** role-owned reach in 800
+   lines: `physent_modelindex` at `pm_trace.cpp:94` resolves `pe->info → edict
+   → v.modelindex` through `env.arena->edict_num(...)`. **All the shared code
+   wants from the server is one `int`** (a model index), which it hands to the
+   neutral `IModelResolver`. It is not "the edict store" in any deep sense.
+   The fix is legacy-precedented and mechanical: legacy's `SV_CopyEdictToPhysEnt`
+   resolves the model *at gather time*; our OQ-2 (2026-07-19) chose to re-resolve
+   at trace time, which is what dragged the store into the shared code. Restore
+   the gather-time shape in **neutral** form — each role's gather fills a
+   per-physent `int` model index (server from `edict→modelindex`, client from
+   `cl_entity→modelindex`) — and the `arena` field leaves `PmTraceEnv`. **No
+   virtual call in the trace loop, no reopening Q-20, no touching the byte-exact
+   arithmetic.** Caveat: the client half of the gather is Chunk 12 code and does
+   not exist yet, so "the client can fill the same int" is reasoned from legacy,
+   not verified against our tree — confirm when that gather is written. The
+   measured split is in `src/physics/CMakeLists.txt`: the shared surface is
+   `pm_trace.cpp` alone (800 lines, 0 `ServerRuntime` refs); `init_client_move.cpp`
+   (495, 2) and `movevars.cpp` (105, 2) are server producers/harness, not shared
+   code; `physics.cpp` (1808, **39**, `SV_Physics` world-sim), `pmove.cpp` (541,
+   7, the gather) and `run_cmd.cpp` (281, 3) are server-only. Legacy splits it
+   the same way: `engine/common/pm_trace.c` shared, versus the server-only
+   `engine/server/sv_phys.c` and `sv_pmove.c`.
 5. **Decide explicitly whether narrowing the `ServerRuntime &` corridor in
    `src/server/physics/` is in or out of scope.** Narrowing signatures and
    porting parity math in the same wave is the collision to avoid. Either
