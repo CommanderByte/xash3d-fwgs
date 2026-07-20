@@ -37,6 +37,25 @@ static int g_pass = 0, g_fail = 0;
 
 namespace {
 
+static void test_shared_trace_predicates()
+{
+    CHECK( wr::vector_is_null( {} ));
+    CHECK( !wr::vector_is_null( { 0.0f, -0.0f, 1.0f } ));
+
+    CHECK( wr::check_angles( 90.99f ));  // legacy truncation
+    CHECK( wr::check_angles( -270.99f ));
+    CHECK( !wr::check_angles( 89.99f ));
+    CHECK( !wr::check_angles( 0.0f ));
+    CHECK( !wr::check_angles( 360.0f ));
+
+    const Vec3 lo{ -1.0f, -2.0f, -3.0f };
+    const Vec3 hi{ 1.0f, 2.0f, 3.0f };
+    CHECK( wr::bounds_intersect( lo, hi, hi, { 4.0f, 5.0f, 6.0f } ));
+    CHECK( wr::bounds_intersect( lo, hi, { -4.0f, -5.0f, -6.0f }, lo ));
+    CHECK( !wr::bounds_intersect( lo, hi, { 1.0001f, -1.0f, -1.0f },
+                                  { 2.0f, 1.0f, 1.0f } ));
+}
+
 struct FixtureResolver final : wr::IModelResolver
 {
     std::optional<wr::BrushModel> brush_model( int modelindex ) noexcept override
@@ -334,6 +353,7 @@ int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
 
+    RUN_TEST( test_shared_trace_predicates );
     RUN_TEST( test_hull_for_bsp_selection );
     RUN_TEST( test_hull_for_entity );
     RUN_TEST( test_world_clip_hit );

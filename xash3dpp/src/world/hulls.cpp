@@ -116,11 +116,6 @@ hull_for_entity( const MoveEnv &env, abi::edict_t *ent, const Vec3 &mins,
 
 namespace {
 
-[[nodiscard]] bool vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept
-{
-    return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
-}
-
 // Cvar read with the LEGACY REGISTERED DEFAULT when the cvar is absent —
 // cvar_variable_value returns 0 for unregistered names, which would silently
 // flip sv_clienttrace/mod_studiocache to their non-default (off) behaviour.

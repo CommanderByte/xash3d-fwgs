@@ -6,6 +6,7 @@
 //   xash3dpp_core       — thread-role assertion (OQ-9: main-thread only)
 
 #include <xash3dpp/world/links.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/core/thread_role.hpp>
@@ -39,17 +40,6 @@ void set_axis( Vec3 &v, int axis, float value ) noexcept
         v.y = value;
     else
         v.z = value;
-}
-
-// Legacy BoundsIntersect (world.h): strict-inequality reject per axis.
-[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,
-                                     const Vec3 &min2, const Vec3 &max2 ) noexcept
-{
-    if ( min1.x > max2.x || min1.y > max2.y || min1.z > max2.z )
-        return false;
-    if ( max1.x < min2.x || max1.y < min2.y || max1.z < min2.z )
-        return false;
-    return true;
 }
 
 } // namespace

@@ -35,29 +35,6 @@ namespace {
 // MOVE_MISSILE expands monster boxes by ±15 units (sv_world.c:1341).
 inline constexpr float k_missile_expand = 15.0f;
 
-[[nodiscard]] bool vector_is_null( const Vec3 &v ) noexcept
-{
-    return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
-}
-
-// world.h check_angles: exact multiples of 90 (as truncated ints).
-[[nodiscard]] bool check_angles( float x ) noexcept
-{
-    const int i = static_cast<int>( x );
-    return i == 90 || i == 180 || i == 270 ||
-           i == -90 || i == -180 || i == -270;
-}
-
-[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,
-                                     const Vec3 &min2, const Vec3 &max2 ) noexcept
-{
-    if ( min1.x > max2.x || min1.y > max2.y || min1.z > max2.z )
-        return false;
-    if ( max1.x < min2.x || max1.y < min2.y || max1.z < min2.z )
-        return false;
-    return true;
-}
-
 // World_MoveBounds: ±1 expanded sweep box.
 void move_bounds( const Vec3 &start, const Vec3 &mins, const Vec3 &maxs,
                   const Vec3 &end, Vec3 &boxmins, Vec3 &boxmaxs ) noexcept

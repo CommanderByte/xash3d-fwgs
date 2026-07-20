@@ -34,6 +34,35 @@ namespace xash::cmd_cvar { class CmdCvarContext; }
 
 namespace xash::world {
 
+// Legacy world.h micro-predicates shared by world clipping and the pmove
+// trace kernel.  Keep the exact comparisons and float-to-int truncation: they
+// participate in the Q-18 parity fence.
+[[nodiscard]] inline bool
+vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept
+{
+    return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
+}
+
+[[nodiscard]] inline bool check_angles( float x ) noexcept
+{
+    const int i = static_cast<int>( x );
+    return i == 90 || i == 180 || i == 270 ||
+           i == -90 || i == -180 || i == -270;
+}
+
+[[nodiscard]] inline bool
+bounds_intersect( const ::xash::utilities::Vec3 &min1,
+                  const ::xash::utilities::Vec3 &max1,
+                  const ::xash::utilities::Vec3 &min2,
+                  const ::xash::utilities::Vec3 &max2 ) noexcept
+{
+    if ( min1.x > max2.x || min1.y > max2.y || min1.z > max2.z )
+        return false;
+    if ( max1.x < min2.x || max1.y < min2.y || max1.z < min2.z )
+        return false;
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Seams
 // ---------------------------------------------------------------------------

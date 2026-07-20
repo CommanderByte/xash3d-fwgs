@@ -63,21 +63,8 @@ void store_vec( abi::vec3_t dst, const Vec3 &v ) noexcept
     dst[2] = v.z;
 }
 
-// world.h VectorIsNull.
-[[nodiscard]] bool vector_is_null( const Vec3 &v ) noexcept
-{
-    return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
-}
-
-// world.h check_angles: exact ±90/±180/±270 (as truncated ints) — the same
-// helper clip.cpp uses for the transform_bbox decision.  (NOT "any non-multiple
-// of 90" — 0/360 and off-axis angles must read false.)
-[[nodiscard]] bool check_angles( float x ) noexcept
-{
-    const int i = static_cast<int>( x );
-    return i == 90 || i == 180 || i == 270 ||
-           i == -90 || i == -180 || i == -270;
-}
+using ::xash::world::check_angles;
+using ::xash::world::vector_is_null;
 
 // clamp usehull to the 4-entry player-bounds table (SetupPMove only ever sets
 // 0/1; defensive, never alters parity for valid input).

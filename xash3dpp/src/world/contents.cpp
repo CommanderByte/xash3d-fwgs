@@ -27,21 +27,6 @@ using abi::EntityView;
 
 namespace {
 
-[[nodiscard]] bool vector_is_null( const Vec3 &v ) noexcept
-{
-    return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
-}
-
-[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,
-                                     const Vec3 &min2, const Vec3 &max2 ) noexcept
-{
-    if ( min1.x > max2.x || min1.y > max2.y || min1.z > max2.z )
-        return false;
-    if ( max1.x < min2.x || max1.y < min2.y || max1.z < min2.z )
-        return false;
-    return true;
-}
-
 // The shared rotated-bmodel local-point recipe (sv_world.c:552-563 and
 // :754-764): rotate when the model carries an origin brush and the entity
 // has angles; otherwise plain offset subtraction.
