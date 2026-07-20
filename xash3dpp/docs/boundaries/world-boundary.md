@@ -62,7 +62,7 @@ given.
 
 ## 3. Invariants and Quirks
 
-- **HB-2 fenced.** `clip.cpp:242-278` — the `if ( rotated )` block, marked
+- **HB-2 fenced.** `clip.cpp:245-281` — the `if ( rotated )` block, marked
   `TODO(Q-18)` in code — is the rotated-brush ULP kernel. It is byte-exact
   no-touch: no FMA, no reassociation, no `std::ranges` rewrite. The 2026-07-20
   promotion was a pure file move; its entire diff was one include path.
@@ -97,6 +97,20 @@ own entity set, not a lock here.
 - The `tests/world/` fixtures link `xash3dpp_server` because `EdictArena` is
   the tree's only edict allocator (server-owned by Q-20). That is a fixture
   dependency, not a library one.
+
+## Role & parity
+
+- **Role:** shared-deterministic. The edict-aware trace/link layer is composed
+  over the map_loader kernel and is reached by the server world trace today and
+  by Chunk-12 client prediction next; results are compared, so a divergence is a
+  prediction error.
+- **Counterpart path:** server (live) + client prediction (Chunk 12), each over
+  its own `MoveEnv` / `LinkEnv` and entity set.
+- **Neutral seam:** every entry point is a pure function of `const WorldData &` +
+  the injected context + caller-owned edicts; zero owned state (P-3).
+- **Parity fence:** HB-2 — the rotated-brush ULP kernel at `clip.cpp:242-278` is
+  byte-exact no-touch.
+- **Annotation:** `clip.cpp` carries the `// ROLE: shared-deterministic` banner.
 
 ## Extension axes (Q-21)
 

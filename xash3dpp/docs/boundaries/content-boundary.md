@@ -368,6 +368,20 @@ off-main render/trace consumer needs.
 
 ______________________________________________________________________
 
+## Role & parity
+
+- **Role:** shared substrate with a float-exact obligation. The model/image
+  loaders are role-neutral, but the **studio bone/hull math** feeds the
+  shared-deterministic collision path — the server world trace and the Chunk-11
+  shared `pm_trace` resolve studio hitboxes through it, so a ULP drift there is a
+  cross-role divergence, not just a render nit.
+- **Parity fence:** HB-2 — the studio bone transform / hitbox math is byte-exact
+  no-touch (no FMA, no reassociation).
+- **Consumers:** server world trace + client render + (Chunk 11) shared
+  `pm_trace`, all through `IModelResolver` / studio hull queries.
+- **Annotation:** `model/bone_solver.cpp` carries the `// ROLE: shared-deterministic`
+  banner.
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. Content is where the

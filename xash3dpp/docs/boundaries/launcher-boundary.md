@@ -136,6 +136,11 @@ is N/A (the launcher installs no handlers; crash/signal wiring is `platform` +
 
 ______________________________________________________________________
 
+## Role & parity
+
+- **Role:** role-neutral entry point — the executable that registers
+  `ThreadRole::Main` and starts the host. No cross-role parity obligation.
+
 ## Extension axes (Q-21)
 
 > Added 2026-07-06 (as-built pass). Evaluated against

@@ -262,6 +262,14 @@ entire public surface `server` calls through `ILevelChangeExecutor`; the
 `.sav` codec internals (token table, ETABLE, DirectoryCopy/Extract, field
 framing) are `xash3dpp_save`-private.
 
+## Role & parity
+
+- **Role:** server-authoritative, with a cross-**version** format obligation
+  (not cross-role): the `.sav` / `.HL1-3` layout must round-trip across engine
+  versions. The client never reads saves, so there is no client/server parity
+  obligation; the fence here is the on-disk byte format, exercised by the
+  real-hl.dll round-trip witness.
+
 ## Extension axes (Q-21)
 
 Evaluated against `xash3dpp/docs/design/extension-goals.md` §2/§3 (G-1..G-5,

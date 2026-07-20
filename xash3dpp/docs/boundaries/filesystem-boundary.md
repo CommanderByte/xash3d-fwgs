@@ -456,6 +456,11 @@ alongside the host-params consolidation that already owns those call sites.
 
 ______________________________________________________________________
 
+## Role & parity
+
+- **Role:** role-neutral substrate — VFS / pack access used by every role. No
+  cross-role parity obligation.
+
 ## Extension axes (Q-21)
 
 > Added 2026-07-06 (as-built pass); axis set completed 2026-07-19

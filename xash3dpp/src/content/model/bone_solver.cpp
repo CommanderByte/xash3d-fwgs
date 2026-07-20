@@ -1,4 +1,7 @@
 // xash3dpp — studio bone kernel implementation
+// ROLE: shared-deterministic — studio bone/hitbox math feeds the shared
+//   world/pm_trace hitbox path; a ULP drift is a cross-role divergence.
+//   Parity fence: HB-2 (bit-exact; no FMA, no reassociation).
 // Legacy reference: public/xash3d_mathlib.c (R_StudioCalcBones),
 //   engine/common/mod_studio.c (Mod_StudioCalcBoneAdj).
 //

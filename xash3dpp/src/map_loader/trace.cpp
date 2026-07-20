@@ -1,4 +1,6 @@
 // xash3dpp — clip-hull trace kernel
+// ROLE: shared-deterministic — the clip-hull trace runs identically for every
+//   role that traces; parity fence: HB-2 / Q-18 (float op order is exact).
 // Legacy reference: engine/common/pm_trace.c (function-by-function port;
 // see trace.hpp).  Q-18 PARITY-CRITICAL: every float expression mirrors the
 // legacy operation order; plane_diff keeps the axial fast path; the

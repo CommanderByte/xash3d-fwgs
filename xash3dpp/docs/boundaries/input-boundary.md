@@ -353,6 +353,11 @@ organized as sibling source files (keys/, joy/, gyro/, touch/, osk/)
 mirroring the networking-boundary precedent's subfolder-at-scaffold-time
 lesson.
 
+## Role & parity
+
+- **Role:** client-only — SDL input sampling, key binding and the on-screen
+  keyboard. Runs solely on the client; no cross-role parity obligation.
+
 ## Extension axes (Q-21)
 
 Axis set re-read live from `extension-goals.md` §2/§3 at assembly time

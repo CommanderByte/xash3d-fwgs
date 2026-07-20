@@ -283,6 +283,11 @@ interface exists until a second real backend lands. Threading is documented in
 
 ______________________________________________________________________
 
+## Role & parity
+
+- **Role:** role-neutral substrate — the pool allocator beneath every role. No
+  cross-role parity obligation.
+
 ## Extension axes (Q-21)
 
 > Added 2026-07-06 (as-built pass); axis set completed 2026-07-19

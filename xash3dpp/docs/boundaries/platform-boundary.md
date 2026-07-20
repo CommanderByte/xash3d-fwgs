@@ -312,6 +312,11 @@ called before any socket functions and `socket_shutdown()` called at teardown;
 
 ______________________________________________________________________
 
+## Role & parity
+
+- **Role:** role-neutral substrate — stateless OS/syscall wrappers (files,
+  sockets, threads, dlopen) under every role. No cross-role parity obligation.
+
 ## Extension axes (Q-21)
 
 > Added 2026-07-06 (as-built pass). Evaluated against

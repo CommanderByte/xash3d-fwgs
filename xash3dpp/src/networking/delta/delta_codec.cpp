@@ -1,4 +1,6 @@
 // xash3dpp — delta struct codecs and baseline testing
+// ROLE: shared-format — the wire delta codec must encode (server) and decode
+//   (client) bit-identically; parity fence: HB-2 wire bit-codec / field widths.
 // Legacy reference: engine/common/net_encode.c — MSG_Write/ReadDeltaUsercmd,
 // MSG_Write/ReadDeltaEvent, MSG_Write/ReadDeltaMovevars, MSG_Write/
 // ReadClientData, MSG_Write/ReadWeaponData, MSG_Write/ReadDeltaEntity,

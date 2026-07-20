@@ -42,14 +42,14 @@
    "target": "engine/client/cl_frame.c"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|0": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|1": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -313,7 +313,7 @@
    "target": "xash3dpp/include/xash3dpp/private/server/pm_trace.hpp"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|world/clip.cpp|0": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -322,7 +322,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|world/clip.cpp|1": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -905,7 +905,7 @@
    "target": "xash3dpp/src/utilities/build.cpp"
   },
   "xash3dpp/docs/boundaries/world-boundary.md|clip.cpp|0": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -913,8 +913,17 @@
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
-  "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|0": {
+  "xash3dpp/docs/boundaries/world-boundary.md|clip.cpp|1": {
    "line": 242,
+   "snapshot": [
+    "Vec3 offset = sel->offset;",
+    "ut::Matrix3x4 matrix = ut::Matrix3x4::identity();",
+    ""
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
+  },
+  "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|0": {
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -923,7 +932,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|1": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -1015,14 +1024,14 @@
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|0": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|1": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -1031,7 +1040,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|2": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -2873,7 +2882,7 @@
    "target": "public/swaplib.h"
   },
   "xash3dpp/docs/legacy-survey/overview.md|clip.cpp|0": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -6664,7 +6673,7 @@
    "target": "xash3dpp/src/server/clients/snapshot.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|0": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6673,21 +6682,21 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|1": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|2": {
-   "line": 225,
+   "line": 228,
    "snapshot": [
     "!vector_is_null( view.angles() );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|3": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6696,7 +6705,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|4": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6705,7 +6714,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|5": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6714,7 +6723,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|6": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6723,7 +6732,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|7": {
-   "line": 216,
+   "line": 219,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -7130,7 +7139,7 @@
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/world/clip.cpp|0": {
-   "line": 35,
+   "line": 38,
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const Vec3 &v ) noexcept"
    ],
@@ -7177,7 +7186,7 @@
    "target": "xash3dpp/include/xash3dpp/utilities/string.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/clip.cpp|0": {
-   "line": 242,
+   "line": 245,
    "snapshot": [
     "if ( rotated )",
     "{",

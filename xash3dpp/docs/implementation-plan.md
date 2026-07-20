@@ -266,8 +266,8 @@ ______________________________________________________________________
    skeletons with no spec, which is why `q21_scan`'s 16/16 is silence rather
    than health.
 2. **Correct the HB-2 fence anchor first.** `decisions-architecture.md:946-954`
-   names `clip.cpp:216` for the rotated-brush ULP kernel; the real anchor is
-   the `if (rotated)` block at **`clip.cpp:242-278`** (marked `TODO(Q-18)`
+   names `clip.cpp:219` for the rotated-brush ULP kernel; the real anchor is
+   the `if (rotated)` block at **`clip.cpp:245-281`** (marked `TODO(Q-18)`
    in-code). Chunk 11's parity work runs directly through it, so fix the anchor
    before, not after.
 3. **Reuse one shared RNG instance — do not copy the placeholder a third
@@ -704,7 +704,7 @@ ______________________________________________________________________
   five subsystems independently flagged the same prohibition: map_loader
   (Q-18 trace/PVS/CRC kernel), content (studio bone math), networking (wire
   bit-codec + delta widths + LZSS + OOB magic), server (rotated-brush ULP
-  `clip.cpp:216`), utilities (double-precision studio math). Record the union
+  `clip.cpp:219`), utilities (double-precision studio math). Record the union
   once (a `decisions-architecture.md` note or an `extension-goals.md`-style
   invariant list) so no future modernization pass (FMA/reassoc/`std::ranges`
   rewrite) silently perturbs a golden-gated kernel. *Docs*:

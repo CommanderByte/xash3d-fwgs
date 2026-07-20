@@ -207,6 +207,11 @@ not discharge it.
 | `assert_thread_role(Main)` | enforcement call | — | 3 sites: `Clock::init` / `shutdown` / `set_frame_rate_gate`. `tick()` omits the assert by design (test-stub allowance) |
 | `Clock::ClockStats stats_` | plain struct snapshot | Clock instance | Written on Main at each accepted `tick()`; read via `stats()` — no atomic, so off-main readers observe a possibly-stale-but-consistent-enough snapshot (P-4 note) |
 
+## Role & parity
+
+- **Role:** role-neutral substrate — logging, clock, thread-role registry and
+  queue primitives; used by every role. No cross-role parity obligation.
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. Core is **pivotal**: it is

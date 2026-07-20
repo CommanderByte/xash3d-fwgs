@@ -195,6 +195,13 @@ slot implementations and use `utilities::strcmp` on NUL-terminated C-strings
 (not a bounded `string_view` over-read) — they are out of scope for this spec.
 Net: `abi` is a **negative data point** for that sweep.
 
+## Role & parity
+
+- **Role:** role-neutral bridge — the `extern "C"` by-name shim that game /
+  client / menu DLLs link against; it forwards to the live engine and runs on
+  whatever thread the caller is on. No cross-role parity obligation (ABI-exact
+  forwarding is the Q-7 layout contract, not a compute-parity one).
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. **`abi` is the frozen seam

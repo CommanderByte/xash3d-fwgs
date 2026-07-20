@@ -1,4 +1,7 @@
 // xash3dpp — server trace clipping (Chunk 6 S5b)
+// ROLE: shared-deterministic — the world trace/clip kernel runs on server
+//   authority and (Chunk 12) client prediction and is compared per frame;
+//   parity fence: the HB-2 rotated-brush ULP block (clip.cpp:242-278).
 // Legacy reference: engine/server/sv_world.c :836-1405;
 // engine/common/world.h/.c; public/matrixlib.c :397
 //

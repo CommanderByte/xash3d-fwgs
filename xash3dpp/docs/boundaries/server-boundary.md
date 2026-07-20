@@ -491,6 +491,28 @@ aspirational cvar/command registration.
 
 ______________________________________________________________________
 
+## Threading
+
+Main-thread only, by contract (OQ-9): every `ServerRuntime` entry point runs on
+`ThreadRole::Main`, and the runtime holds no internal synchronisation. Because
+this is the authority half of the physics shared-deterministic pair, a Chunk-12
+client predictor on another thread must run its **own** `PmTraceEnv` over its own
+snapshot and never reach into this runtime. A full `/analyse-threading` pass is
+due when client prediction lands; the detail is in
+`docs/threading-analysis/server-threading.md`.
+
+## Role & parity
+
+- **Role:** server-authoritative — the authority over world state (entities,
+  physics dispatch, snapshots). It owns no cross-role parity obligation of its
+  own, **but it is the authority half of the shared-deterministic player-move
+  pair**: it runs the shared `pm_trace` kernel (today under `src/server/physics/`)
+  and its result is the truth the Chunk-12 client predicts against.
+- **Counterpart:** client prediction (Chunk 12) over the same neutral physent
+  snapshot; the neutral seam is `SV_CopyEdictToPhysEnt` producing `physent_t[]`.
+- **Parity fence:** the shared kernel's determinism (see physics-boundary); the
+  rotated-brush ULP block is HB-2 in `world/clip.cpp`.
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. **Server is the centre of

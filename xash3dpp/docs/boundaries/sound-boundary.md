@@ -359,6 +359,12 @@ Q-11 test applied per `decisions-architecture.md §Q-11` (5 criteria; score
 
 ______________________________________________________________________
 
+## Role & parity
+
+- **Role:** client-only — audio mixing / playback on the client. The float-exact
+  PCM path is a cross-*arch* determinism property (byte-identical x86/x64
+  witness), not a cross-role one; no client/server parity obligation.
+
 ## Extension axes (Q-21)
 
 Axis set re-read at draft time from `extension-goals.md` §2/§3 (G-1..G-5,

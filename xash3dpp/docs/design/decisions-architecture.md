@@ -951,8 +951,8 @@ document for extension posture. Concretely:
   door-rule pass may perturb — map_loader (Q-18 trace/PVS/CRC kernel),
   content (studio bone math), networking (wire bit-codec, delta field
   widths, LZSS, OOB packet magic), server (rotated-brush ULP behaviour at
-  `clip.cpp:242-278`, the `if ( rotated )` block carrying the in-code
-  `TODO(Q-18)` — the anchor read `clip.cpp:216` until 2026-07-20, which is
+  `clip.cpp:245-281`, the `if ( rotated )` block carrying the in-code
+  `TODO(Q-18)` — the anchor read `clip.cpp:219` until 2026-07-20, which is
   an unrelated `hull_for_entity` call and fenced nothing), utilities
   (double-precision studio math). Byte-exact
   parity beats every other rule in these files — FMA, reassociation, and
@@ -1101,11 +1101,15 @@ build-time teeth. *Domain* = which game concept, expressed by the boundary
 spec. *Role* = **who runs the code**, and it had no representation at all;
 that gap is what let shared-deterministic code (the physics trace kernel) be
 filed inside a role-owning target (`src/server/`). Role values:
-`server-authoritative`, `client-only`, `shared-deterministic`, `shared-input`,
-`offline-tool`. Only **shared-deterministic** — code both client prediction
-and server authority run, whose results are compared bit-for-bit so a
-divergence is a prediction error, not just a bug — carries a hard cross-role
-parity obligation. The others are informational.
+`server-authoritative`, `client-only`, `shared-deterministic`, `shared-format`,
+`role-neutral`, `offline-tool`. Two carry a hard cross-role parity obligation:
+**shared-deterministic** — code both client prediction and server authority
+*run*, whose results are compared bit-for-bit so a divergence is a prediction
+error (the physics/world/map_loader trace kernels) — and **shared-format** —
+bytes both sides must agree on, a wire or disk layout (the networking delta
+codec; movevars is a shared-format *input* delivered over that channel). The
+rest (`server-authoritative`, `client-only`, `role-neutral`, `offline-tool`)
+are informational.
 
 **Placement rule — directory-tracks-target.** A top-level `src/<name>/` is one
 target `xash3dpp_<name>`; nesting means organisation *within* a target, never a

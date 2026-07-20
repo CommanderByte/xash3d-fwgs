@@ -631,6 +631,19 @@ the LZSS sliding-window size (`window_size = 4096`) and its hash-bucket count
 part of the `sizeof(goldsrc_delta_t) == 56` ABI assert). They stay inline as
 wire/ABI-frozen values.
 
+## Role & parity
+
+- **Role:** shared-format. The wire delta codec must be bit-identical between the
+  server (encode) and the client (decode): the same field tables, bit widths,
+  LZSS framing and out-of-band magic on both sides, or the stream desyncs.
+- **Neutral seam:** both sides drive one `DeltaTables` loaded from `delta.lst`;
+  the codec is symmetric by construction and sits below both roles.
+- **Parity fence:** HB-2 — wire bit-codec, delta field widths, LZSS and the OOB
+  magic are byte-exact no-touch.
+- **Counterpart:** server datagram producer to client parser.
+- **Annotation:** `delta/delta_codec.cpp` carries the `// ROLE: shared-format`
+  banner.
+
 ## Extension axes (Q-21)
 
 > Added 2026-07-06 (as-built pass). Evaluated against

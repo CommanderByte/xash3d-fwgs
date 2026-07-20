@@ -12,7 +12,7 @@
 > Low-priority items (two dedup targets, one `std::ranges` opportunity, one
 > stale-doc note), while refreshing the three pre-existing Low items in
 > place. The HB-2 rotated-brush anchor is corrected below: the fenced block
-> is `clip.cpp:242-278`, not `clip.cpp:216` as an earlier pass (and
+> is `clip.cpp:245-281`, not `clip.cpp:219` as an earlier pass (and
 > `decisions-architecture.md:946-954`, not owned by this report) recorded.
 > C++ standard in use: C++**23** (`xash3dpp/src/server/CMakeLists.txt`,
 > `target_compile_features(xash3dpp_server PUBLIC cxx_std_23)`; the tree-wide
@@ -283,7 +283,7 @@ ______________________________________________________________________
 
 ### H-3: 16 definitions of the same handful of world/physics micro-predicates under 4 competing names
 
-- **File(s)**: `src/server/world/clip.cpp:35` (`vector_is_null`),
+- **File(s)**: `src/server/world/clip.cpp:38` (`vector_is_null`),
   `:36` (`bounds_intersect`), `:43` (`check_angles`); `world/contents.cpp:25,30`;
   `world/links.cpp:45`; `world/hulls.cpp:119`; `physics/pm_trace.cpp:65,73`;
   `physics/physics.cpp:67` (`is_null`); `physics/run_cmd.cpp:45`
@@ -295,9 +295,9 @@ ______________________________________________________________________
   once more beyond its canonical home. A mechanical grep over `src/server`
   puts the real blast radius at ~69 call sites (not the ~87 the first pass
   estimated). Three of these predicates — `vector_is_null`, `bounds_intersect`,
-  `check_angles` — are the gating checks at `clip.cpp:225` and `:228-229` that
+  `check_angles` — are the gating checks at `clip.cpp:228` and `:228-229` that
   decide whether the HB-2-fenced `if (rotated)` rotated-brush transform at
-  `clip.cpp:242-278` runs.
+  `clip.cpp:245-281` runs.
 - **Suggested replacement**: Delete 9 of the 16 definitions in two groups.
   Group A (Vec3-typed, pure move): promote `vector_is_null(const Vec3&)`,
   `bounds_intersect(const Vec3&,...)`, and `check_angles(float)` into
@@ -316,7 +316,7 @@ ______________________________________________________________________
 - **Boundary-safe**: Yes, with the verbatim-copy constraint above. None of the
   nine deleted bodies performs float accumulation or reordering; the fenced
   kernel is the `if (rotated)` transform math itself
-  (`clip.cpp:242-278`, in-code `TODO(Q-18)`), not the boolean gates that
+  (`clip.cpp:245-281`, in-code `TODO(Q-18)`), not the boolean gates that
   decide whether it runs.
 - **Rationale**: The largest pure-duplication cluster found in this
   subsystem — one canonical definition per predicate instead of up to seven,
@@ -394,7 +394,7 @@ ______________________________________________________________________
   frozen `pm_shared` work, so it is a scheduling collision to avoid, not a
   correctness question. Leave the physics.cpp orchestrator-adjacent adapters
   (`sv_move`, `pt_contents`) alone.
-- **Boundary-safe**: Yes. None of the 30 leaves sits in the `clip.cpp:242-278`
+- **Boundary-safe**: Yes. None of the 30 leaves sits in the `clip.cpp:245-281`
   ULP kernel; behaviour-preserving by construction since only the parameter
   type narrows, not the body.
 - **Rationale**: `[EXT:P-5]` (narrowest-state signatures) — makes read/write
@@ -535,7 +535,7 @@ ______________________________________________________________________
   `SOLID_CUSTOM` clip provider. Record this as door-debt in
   `server-boundary.md`'s Q-21 Extension-axes table with the Chunk-11 owner
   named, rather than leaving it silently unreferenced. The guard sites sit
-  structurally distant from the actual HB-2 fenced block (`clip.cpp:242-278`)
+  structurally distant from the actual HB-2 fenced block (`clip.cpp:245-281`)
   — the caution that they might interact with the ULP transform is prudent
   to check once Chunk 11 wires them, but nothing in the current dead code
   touches it.
@@ -727,9 +727,9 @@ ______________________________________________________________________
   A bounds-check-and-log above the cap is allowed; changing behaviour below it
   is not.
 - **Do not touch the rotated-brush / trace math for tidiness (Q-18).** The
-  HB-2-fenced kernel is the `if (rotated)` block at `world/clip.cpp:242-278`
+  HB-2-fenced kernel is the `if (rotated)` block at `world/clip.cpp:245-281`
   (in-code `TODO(Q-18)` noting the rotated-brush transform is ULP-inexact vs.
-  legacy) — **not** `clip.cpp:216` as the 2026-07-06 pass and
+  legacy) — **not** `clip.cpp:219` as the 2026-07-06 pass and
   `decisions-architecture.md:946-954` (owned elsewhere) record; that anchor
   has drifted. The fix there is toward *more* exactness, not a
   `std::ranges`/FMA rewrite. The trace/contents/hull kernels join the

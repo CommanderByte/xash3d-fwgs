@@ -578,6 +578,12 @@ against the plan above. The skeleton matched the plan; the material drifts are:
 
 ---
 
+## Role & parity
+
+- **Role:** role-neutral substrate — the process/frame owner that establishes
+  `ThreadRole::Main` and drives the frame loop. No cross-role parity obligation;
+  it hosts the server (and, at Chunk 12, the client) but computes no shared state.
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. **Host is the frame-loop

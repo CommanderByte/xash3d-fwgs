@@ -196,6 +196,13 @@ false precision on a library with no thread affinity of its own.
 transforms once implemented, so it stays in the pure/stateless row; no thread
 concern is added by finishing its stubs.
 
+## Role & parity
+
+- **Role:** role-neutral substrate — vector / matrix / string / CRC helpers under
+  every role. No cross-role parity obligation, **except** the double-precision
+  studio math helpers, which are in the HB-2 float-exact set because they feed
+  the shared-deterministic studio hull / trace path (see content, map_loader).
+
 ## Extension axes (Q-21)
 
 > Added 2026-07-06 (as-built pass). Evaluated against

@@ -420,6 +420,13 @@ are not individually asserted: they run inside the same main-thread dispatch and
 are exercised by the unit tests on the test thread, so a blanket per-entry assert
 would false-trip the harness. See per-header `@thread-safety` contracts.
 
+## Role & parity
+
+- **Role:** role-neutral substrate — the command/cvar registry, used by every
+  role (`sv_*`, `cl_*`, engine cvars alike). No cross-role parity obligation. It
+  *sources* the shared-input `movevars_t` values, but their agreement is the
+  server producer's concern (see server / physics), not the registry's.
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. cmd_cvar is not merely a

@@ -283,6 +283,19 @@ has moved past the "Chunk 6 future" framing used in §2 and §5.
   `bsp_lumps.cpp` — `stricmp(keyname.c_str(), …)`). Negative data point for the
   cross-cutting sweep.
 
+## Role & parity
+
+- **Role:** shared-deterministic **by contract**. The BSP data plus the
+  edict-free trace / PVS / PAS / CRC kernel are consumed identically by the
+  server world trace, the Chunk-11 shared `pm_trace`, and (Chunk 12) the client;
+  they must agree bit-for-bit or prediction and visibility diverge.
+- **Neutral seam:** the kernel takes `const WorldData &` + ray/leaf geometry and
+  never sees an edict — neutral by construction (Q-6 concurrent-read-safe).
+- **Parity fence:** HB-2 — the Q-18 trace / PVS / CRC math is byte-exact no-touch.
+- **Counterpart:** every role that traces or tests visibility.
+- **Annotation:** `trace/trace.cpp` carries the `// ROLE: shared-deterministic`
+  banner.
+
 ## Extension axes (Q-21)
 
 Evaluated against `docs/design/extension-goals.md`. map_loader is the
