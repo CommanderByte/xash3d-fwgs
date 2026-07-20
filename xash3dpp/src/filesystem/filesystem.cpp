@@ -14,6 +14,7 @@
 #include <xash3dpp/private/filesystem/os_file_factory.hpp>
 #include <xash3dpp/utilities/hash.hpp>
 #include <xash3dpp/utilities/path.hpp>
+#include <xash3dpp/utilities/string.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -65,7 +66,11 @@ static void collect_paths_for_dir( xash::memory::PoolHandle pool,
     for ( const auto& at : k_archive_types ) {
         for ( const auto& entry : entries ) {
             const auto ext = xash::utilities::file_extension( entry );
-            if ( ext.size() < 2 || ext.substr(1) != at.extension ) continue;
+            // Legacy compares archive extensions with Q_stricmp
+            // (filesystem.c:3441), so `FOO.PAK` mounts there. A case-sensitive
+            // compare here silently skipped it.
+            if ( ext.size() < 2 ||
+                 !xash::utilities::ci_equal( ext.substr(1), at.extension ) ) continue;
             const std::string full = xash::utilities::path_join( dir, entry );
             auto backend = at.factory( pool, full, flags | at.default_flags );
             if ( backend )
@@ -334,7 +339,8 @@ bool Filesystem::mount_archive(std::string_view path, SearchPathFlags flags) {
     const std::string_view ext = ext_sv.substr(1);
 
     for (const auto& at : k_archive_types) {
-        if (ext != at.extension) continue;
+        // Q_stricmp parity — see the collect path above.
+        if (!xash::utilities::ci_equal(ext, at.extension)) continue;
         auto backend = at.factory(impl_->pool_, path, flags);
         if (!backend) {
             ::xash::core::logf(::xash::core::LogLevel::Warning, "filesystem",

@@ -187,6 +187,60 @@ static void test_mount_archive_bad_ext()
     fs.shutdown();
 }
 
+// write_minimal_pak — a valid single-entry PACK. The backend rejects a
+// zero-entry directory, so one real entry is the minimum that exercises the
+// extension-dispatch path all the way through to a mounted backend.
+//   [ 0..11] DiskHeader: "PACK" + dirofs + dirlen
+//   [12..22] data: "hello world"
+//   [23..86] Directory: 1 x DiskEntry (name[56] + filepos + filelen)
+static void write_minimal_pak( const std::filesystem::path& path )
+{
+    static constexpr std::int32_t k_ofs    = 12;
+    static constexpr std::int32_t k_size   = 11;
+    static constexpr std::int32_t k_dirofs = k_ofs + k_size; // 23
+    static constexpr std::int32_t k_dirlen = 64;             // one entry
+
+    std::ofstream f( path, std::ios::binary );
+    f.write( "PACK", 4 );
+    f.write( reinterpret_cast<const char*>( &k_dirofs ), 4 );
+    f.write( reinterpret_cast<const char*>( &k_dirlen ), 4 );
+    f.write( "hello world", k_size );
+    char name[56]{};
+    std::strncpy( name, "scripts/test.txt", sizeof( name ) - 1 );
+    f.write( name, 56 );
+    f.write( reinterpret_cast<const char*>( &k_ofs ), 4 );
+    f.write( reinterpret_cast<const char*>( &k_size ), 4 );
+}
+
+// REGRESSION (modernization audit 2026-07-20): legacy matches archive
+// extensions with Q_stricmp (filesystem.c:3441), so `FOO.PAK` mounts there.
+// xash3dpp compared with `!=` at both the mount and the collect site, so any
+// archive with a non-lowercase extension — routine on case-preserving Windows
+// filesystems and in redistributed mod content — was silently skipped with no
+// log line. The sibling k_wad_types table in this same subsystem already used
+// ci_equal, so this was intra-subsystem inconsistency, not a design tradeoff.
+static void test_mount_archive_extension_is_case_insensitive()
+{
+    xash::filesystem::Filesystem fs;
+    fs.init( rootdir(), "valve", "game" );
+
+    const auto lower = g_testdir / "case_lower.pak";
+    const auto upper = g_testdir / "case_upper.PAK";
+    const auto mixed = g_testdir / "case_mixed.PaK";
+    write_minimal_pak( lower );
+    write_minimal_pak( upper );
+    write_minimal_pak( mixed );
+
+    CHECK( fs.mount_archive( lower.string(),
+                             xash::filesystem::SearchPathFlags::None ) );
+    CHECK( fs.mount_archive( upper.string(),
+                             xash::filesystem::SearchPathFlags::None ) );
+    CHECK( fs.mount_archive( mixed.string(),
+                             xash::filesystem::SearchPathFlags::None ) );
+
+    fs.shutdown();
+}
+
 // ===========================================================================
 // 8. add_game_directory / file_exists / open / load_file
 // ===========================================================================
@@ -747,6 +801,7 @@ int main()
     RUN_TEST( test_allow_direct_paths );
     RUN_TEST( test_find_library_no_game );
     RUN_TEST( test_mount_archive_bad_ext );
+    RUN_TEST( test_mount_archive_extension_is_case_insensitive );
 
     // Integration tests (read from and write to the temp directory).
     RUN_TEST( test_add_game_directory );
