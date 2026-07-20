@@ -30,8 +30,8 @@
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
+#include <xash3dpp/world/links.hpp>
 #include <xash3dpp/utilities/string.hpp>
 
 #include <cstdio>

@@ -5,13 +5,13 @@
 //   xash3dpp_map_loader — world_hull views + BoxHull
 //   xash3dpp_core       — logging for the legacy Host_Error conditions
 
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/content/studio.hpp>
 #include <xash3dpp/core/log.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 
 namespace xash::server {
 

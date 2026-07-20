@@ -26,8 +26,8 @@
 #include <xash3dpp/private/server/lightstyles.hpp>
 #include <xash3dpp/private/server/precache.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/links.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 namespace xash::networking {
 class DeltaTables; // S9 — usercmd/event/entity_state delta tables (delta.hpp)

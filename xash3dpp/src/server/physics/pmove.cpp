@@ -26,7 +26,7 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/world/links.hpp>
 
 #include <cstddef>
 

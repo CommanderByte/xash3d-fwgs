@@ -5,13 +5,13 @@
 //   xash3dpp_map_loader — box_leafnums (cluster fill + straddle topnode)
 //   xash3dpp_core       — thread-role assertion (OQ-9: main-thread only)
 
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/world/links.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/map_loader/pvs.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 
 #include <cstring>
 

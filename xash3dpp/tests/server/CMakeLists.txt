@@ -69,10 +69,6 @@ target_compile_definitions(test_engine_table PRIVATE
 )
 add_dependencies(test_engine_table fake_game_dll_full)
 
-xash3dpp_add_test(test_world_links SOURCE world/test_world_links.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader)
-xash3dpp_add_test(test_world_trace SOURCE world/test_world_trace.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)
-xash3dpp_add_test(test_world_contents SOURCE world/test_world_contents.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities)
-xash3dpp_add_test(test_studio_trace SOURCE world/test_studio_trace.cpp LIBS xash3dpp_server xash3dpp_core xash3dpp_map_loader xash3dpp_utilities xash3dpp_cmd_cvar xash3dpp_content)
 
 # S7 — lifecycle: precache registries + game-DLL host orchestration.
 xash3dpp_add_test(test_precache SOURCE lifecycle/test_precache.cpp

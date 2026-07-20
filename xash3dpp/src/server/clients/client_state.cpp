@@ -23,7 +23,7 @@
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/pmove.hpp> // sv_run_cmd (SV_ParseClientMove)

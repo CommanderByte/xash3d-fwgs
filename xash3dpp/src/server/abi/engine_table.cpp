@@ -27,7 +27,7 @@
 #include <xash3dpp/map_loader/pvs.hpp>
 #include <xash3dpp/platform/platform.hpp>
 #include <xash3dpp/private/server/clients.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/info_string.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp> // ServerRuntime (pfnRunPlayerMove)
 #include <xash3dpp/private/server/pmove.hpp>      // sv_run_cmd (pfnRunPlayerMove)

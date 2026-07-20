@@ -437,7 +437,7 @@ ______________________________________________________________________
 
 ### M-3: CMakeLists PUBLIC-links three dependencies server's public header does not need
 
-- **File(s)**: `src/server/CMakeLists.txt:65-70`,
+- **File(s)**: `src/server/CMakeLists.txt:66-71`,
   `include/xash3dpp/server/server.hpp:17-27`.
 - **Current pattern**: `server.hpp`, the subsystem's only public header,
   includes exactly one cross-subsystem xash3dpp header

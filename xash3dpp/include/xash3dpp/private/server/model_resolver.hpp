@@ -21,7 +21,7 @@
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/precache.hpp>
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include <array>
 #include <cstddef>

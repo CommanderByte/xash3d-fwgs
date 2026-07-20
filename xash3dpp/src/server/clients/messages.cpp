@@ -21,7 +21,7 @@
 #include <xash3dpp/networking/delta.hpp>         // DeltaTables::write_delta_event
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
-#include <xash3dpp/private/server/entity_view.hpp> // invoker entvars (origin/angles/…)
+#include <xash3dpp/abi/entity_view.hpp> // invoker entvars (origin/angles/…)
 #include <xash3dpp/private/server/lifecycle.hpp>  // ServerRuntime (emit_svc_restore)
 #include <xash3dpp/private/server/snapshot.hpp>  // k_max_event_bits/queue (shared w/ emit_events)
 #include <xash3dpp/utilities/string.hpp>

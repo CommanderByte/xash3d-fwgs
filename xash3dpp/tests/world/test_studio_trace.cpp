@@ -14,11 +14,11 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/map_loader/trace.hpp>
 #include <xash3dpp/private/cmd_cvar/compat_policy.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/model_resolver.hpp> // StudioHullCache
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/trace.hpp>
 
-#include "../../test_helpers.hpp"
+#include "../test_helpers.hpp"
 
 #include <cstdint>
 #include <cstdio>

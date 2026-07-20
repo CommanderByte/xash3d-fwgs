@@ -15,7 +15,7 @@
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 
 #include "../../content/studio_builder.hpp"
 #include "../../map_loader/bsp/test_bsp_builder.hpp"

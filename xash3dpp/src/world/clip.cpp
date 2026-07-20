@@ -7,13 +7,13 @@
 //   xash3dpp_utilities  — Matrix3x4 (from_angles/invert_ortho), Vec3
 //   xash3dpp_core       — logging, thread-role assertion (OQ-9)
 
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/utilities/matrix.hpp>
 
 namespace xash::server {

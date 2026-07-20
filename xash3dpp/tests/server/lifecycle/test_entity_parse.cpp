@@ -14,12 +14,12 @@
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/model_resolver.hpp>
 #include <xash3dpp/private/server/world_hooks.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/links.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include "../abi/fake_dll_state.hpp"
 #include "../../map_loader/bsp/test_bsp_builder.hpp"

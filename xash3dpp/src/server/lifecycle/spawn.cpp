@@ -29,9 +29,9 @@
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/physics.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/world/links.hpp>
 
 #include <cstdio>
 #include <cstring>

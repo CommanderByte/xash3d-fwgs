@@ -31,7 +31,7 @@
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/map_loader/trace.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
-#include <xash3dpp/private/server/world_trace.hpp> // IModelResolver, transforms
+#include <xash3dpp/world/trace.hpp> // IModelResolver, transforms
 #include <xash3dpp/utilities/matrix.hpp>
 
 #include <cmath>

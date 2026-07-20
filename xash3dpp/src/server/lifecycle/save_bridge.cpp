@@ -19,10 +19,10 @@
 
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/engine_bridge.hpp> // alloc_private_data
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
-#include <xash3dpp/private/server/world_trace.hpp> // point_contents
+#include <xash3dpp/world/trace.hpp> // point_contents
 
 #include <xash3dpp/private/save/adjacent_transfer.hpp>
 #include <xash3dpp/private/save/client_state.hpp>

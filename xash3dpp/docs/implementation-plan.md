@@ -37,7 +37,7 @@ ______________________________________________________________________
 | save | 13 | ✓ | ✓ | **Complete** (Chunk 8 — save/restore ACHIEVED 2026-07-20: `.sav`/`.HL1-3` codec + save-directory + `SV_GetSaveComment` + landmark-transition machinery, wired behind `ILevelChangeExecutor`; real-`hl.dll` save→load round trip on `c0a0` witnessed; SAV-OQ-1/2/3 landed) |
 | sound | 10 | ✓ | ✓ | **Complete** (Chunk 9, null/sink device stop-line) |
 | ui | 0 | ✗ | ✗ | **Skeleton** |
-| world | 0 | ✗ | ✗ | **Skeleton** |
+| world | 4 | ✓ | ✓ | **Complete** (promoted out of `server` 2026-07-20 — BSP spatial queries, entity linking, SV_Move/SV_ClipMoveToEntity over the map_loader trace kernel. Written during Chunk 6 S5 with zero `ServerRuntime` coupling, so the promotion was a pure file move; Chunk 12 client prediction is the second consumer that made it load-bearing) |
 
 ______________________________________________________________________
 
@@ -144,7 +144,7 @@ ______________________________________________________________________
 
 ### Chunk 6 — server ✅ DONE *(dedicated-server milestone — ACHIEVED 2026-07-05)*
 
-**Subsystems**: `server` (incl. the server-side pmove bridge `sv_pmove.c`, moved in from Chunk 11 per the boundary spec's satellite table)\
+**Subsystems**: `server`, `world` (incl. the server-side pmove bridge `sv_pmove.c`, moved in from Chunk 11 per the boundary spec's satellite table; `world` was built here as `src/server/world/` and promoted to its own target 2026-07-20)\
 **Depends on**: cmd_cvar, networking (Chunk 2), map_loader (Chunk 5), host, filesystem, memory, platform\
 **Recon/Boundary**: ✅ done 2026-07-04 (commit `43b07bb7`) — boundary spec `docs/boundaries/server-boundary.md`; deep dives `legacy-survey/deep-dive-server-{lifecycle,game-dll-bridge,clients,physics,world-frame,save-boundary}.md`. **Scaffold OQs decided 2026-07-04**: `server-boundary#OQ-1` → **Q-19 PHS_PLACEMENT** (PHS lands as a map_loader `phs` query module, in Chunk 6 scope) and `#OQ-5` → **Q-20 EDICT_STORE** (ABI-exact edict array as single store behind a zero-cost access seam); crosswalk in `decisions-architecture.md` §3a. **Scaffold unblocked.**\
 **Legacy reference**: `engine/server/sv_main.c`, `sv_game.c` (159-slot `enginefuncs_t`), `sv_world.c`, `sv_phys.c`, `sv_pmove.c`, `sv_frame.c`, `sv_client.c`\

@@ -7,11 +7,11 @@
 //   xash3dpp_map_loader — hull point contents, contents constants
 //   xash3dpp_utilities  — Matrix3x4 rotation for water/trigger bmodels
 
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/map_loader/contents.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/utilities/matrix.hpp>
 
 namespace xash::server {

@@ -19,7 +19,7 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/networking/networking.hpp>       // NetworkContext::send_packet
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 
 #include <array>

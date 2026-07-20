@@ -21,7 +21,7 @@
 #include <xash3dpp/content/bone_solver.hpp> // StudioHitboxHull (OQ-2)
 #include <xash3dpp/map_loader/trace.hpp>
 #include <xash3dpp/map_loader/world.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/world/links.hpp>
 #include <xash3dpp/utilities/math.hpp>
 #include <xash3dpp/utilities/matrix.hpp>
 

@@ -28,8 +28,8 @@
 #include <xash3dpp/private/server/clients.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/physics.hpp>    // update_base_velocity, sv_impact
-#include <xash3dpp/private/server/world_links.hpp> // link_edict, LinkEnv
-#include <xash3dpp/private/server/world_trace.hpp> // SvTrace
+#include <xash3dpp/world/links.hpp> // link_edict, LinkEnv
+#include <xash3dpp/world/trace.hpp> // SvTrace
 
 #include <cstddef>
 

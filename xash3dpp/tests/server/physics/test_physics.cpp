@@ -13,12 +13,12 @@
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/trace.hpp>
 #include <xash3dpp/map_loader/world.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/physics.hpp>
 #include <xash3dpp/private/server/pm_trace.hpp>
 #include <xash3dpp/private/server/pmove.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/world/links.hpp>
 #include <xash3dpp/utilities/math.hpp>
 
 #include "../abi/fake_dll_state.hpp"

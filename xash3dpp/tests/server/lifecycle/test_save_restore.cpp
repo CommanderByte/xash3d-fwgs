@@ -15,7 +15,7 @@
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/save_bridge.hpp>
 

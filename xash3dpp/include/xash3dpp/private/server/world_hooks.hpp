@@ -13,8 +13,8 @@
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/private/server/game_dll.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/links.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 namespace xash::server {
 

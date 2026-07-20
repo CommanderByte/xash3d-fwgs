@@ -12,7 +12,7 @@
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/limits.hpp>
-#include <xash3dpp/private/server/world_trace.hpp>
+#include <xash3dpp/world/trace.hpp>
 
 #include <cstddef>
 

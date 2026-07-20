@@ -15,7 +15,7 @@
 #include <xash3dpp/platform/os_socket.hpp>
 #include <xash3dpp/platform/platform_sockets.hpp>
 #include <xash3dpp/private/server/clients.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/utilities/string.hpp>
 

@@ -11,12 +11,12 @@
 #include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/memory/memory.hpp>
 #include <xash3dpp/private/server/edict_arena.hpp>
-#include <xash3dpp/private/server/entity_view.hpp>
-#include <xash3dpp/private/server/world_links.hpp>
+#include <xash3dpp/abi/entity_view.hpp>
+#include <xash3dpp/world/links.hpp>
 
-#include "../../map_loader/bsp/test_bsp_builder.hpp"
+#include "../map_loader/bsp/test_bsp_builder.hpp"
 
-#include "../../test_helpers.hpp"
+#include "../test_helpers.hpp"
 
 #include <optional>
 #include <vector>

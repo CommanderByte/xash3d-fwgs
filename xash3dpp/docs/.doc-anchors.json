@@ -6943,7 +6943,7 @@
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/CMakeLists.txt|0": {
-   "line": 65,
+   "line": 66,
    "snapshot": [
     "PUBLIC  xash3dpp_networking    # S7 \u2014 DeltaTables (Delta_Init per spawn)",
     "PUBLIC  xash3dpp_cmd_cvar      # S7 \u2014 state mirrors, FCVAR_EXTDLL dance",

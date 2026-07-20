@@ -12,8 +12,10 @@
 #   abi/      — game-DLL ABI shim: DLL loader, GiveFnptrsToDll handshake,
 #               enginefuncs_t population, DLL_FUNCTIONS resolution (S6);
 #               EdictArena + string pool + typed accessor seam (S4, Q-20)
-#   world/    — areanodes, SV_LinkEdict, SV_Move/SV_ClipMoveToEntity over
-#               the map_loader trace kernel, lightstyles (S5)
+#   (world/   — PROMOTED 2026-07-20 to the xash3dpp_world target: it had zero
+#               ServerRuntime coupling and Chunk 12's client prediction is a
+#               second consumer.  Server keeps only the server-side binding:
+#               lifecycle/world_hooks.cpp + lifecycle/model_resolver.cpp.)
 #   physics/  — sv_phys movetypes/pushers + the sv_pmove bridge (S8)
 #   clients/  — connection state machine, snapshots, multicast, user
 #               messages, query.cpp/filter.cpp/log.cpp satellites (S9)
@@ -24,15 +26,11 @@ add_library(xash3dpp_server STATIC
     abi/string_pool.cpp
     abi/game_dll.cpp
     abi/engine_table.cpp
-    world/links.cpp
-    world/hulls.cpp
-    world/clip.cpp
-    world/contents.cpp
-    world/light.cpp
     lifecycle/precache.cpp
     lifecycle/game_host.cpp
     lifecycle/model_resolver.cpp
     lifecycle/world_hooks.cpp
+    lifecycle/lightstyles.cpp
     lifecycle/entity_parse.cpp
     lifecycle/spawn.cpp
     lifecycle/save_bridge.cpp
@@ -62,6 +60,9 @@ target_link_libraries(xash3dpp_server
     PUBLIC  xash3dpp_utilities
     PUBLIC  xash3dpp_memory
     PUBLIC  xash3dpp_map_loader
+    PUBLIC  xash3dpp_world         # promoted 2026-07-20 — SV_Move/SV_LinkEdict
+                                   #   over the map_loader kernel; server binds
+                                   #   it through MoveEnv/LinkEnv
     PUBLIC  xash3dpp_networking    # S7 — DeltaTables (Delta_Init per spawn)
     PUBLIC  xash3dpp_cmd_cvar      # S7 — state mirrors, FCVAR_EXTDLL dance
     PUBLIC  xash3dpp_filesystem    # S7 — delta.lst, resource lists (via delta)

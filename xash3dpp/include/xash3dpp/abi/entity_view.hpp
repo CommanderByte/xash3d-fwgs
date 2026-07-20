@@ -18,6 +18,20 @@
 #include <cstdint>
 #include <span>
 
+// LOCATION vs NAMESPACE (2026-07-20): this header lives at the abi layer
+// because that is what it is — a header-only, zero-cost typed view over the
+// FROZEN abi::edict_t/entvars_t (Q-20's "typed access seam"), depending on
+// nothing but <abi/edict.hpp> and <utilities/math.hpp>. It moved here out of
+// private/server/ when xash3dpp_world was promoted, because the world layer
+// needs it and a world -> private/server include was a real layering cycle.
+//
+// The NAMESPACE is still xash::server, deliberately. It also exports Vec3,
+// vec_axis, to_vec3 and store_vec3 into that namespace, and the server/world
+// TUs spell all five unqualified; renaming it to xash::abi is a mechanical
+// but tree-wide change with no behavioural content, so it is recorded as a
+// Chunk-12 obligation (the client becoming the second consumer is the point
+// at which it stops being cosmetic) rather than bundled into the promotion.
+
 namespace xash::server {
 
 using Vec3 = ::xash::utilities::Vec3;
