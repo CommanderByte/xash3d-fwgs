@@ -2,6 +2,7 @@
 // Legacy reference: engine/common/cvar.c
 
 #include <xash3dpp/private/cmd_cvar/context_impl.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/platform/console.hpp>
 
 namespace xash::cmd_cvar {
@@ -13,6 +14,8 @@ namespace xash::cmd_cvar {
 void CmdCvarContext::add_cvar_observer(ICvarObserver *observer,
                                        std::uint32_t  flag_mask) noexcept
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if (impl_->observer_count >= ::xash::limits::cmd_observer_max)
         return; // silently drop; limit enforced by table capacity
 

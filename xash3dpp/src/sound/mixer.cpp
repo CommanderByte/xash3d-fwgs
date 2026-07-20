@@ -248,6 +248,9 @@ Mixer::Mixer()
     raw_channels_.reserve( ::xash::limits::sound_max_raw_channels );
 }
 
+// compliance-allow(thread-assert): private per-block scratch zeroing; its
+// sole caller Mixer::paint_channels() already asserts AudioDecoder, and the
+// hot path stays assert-free by design
 void Mixer::clear_buffers( int num_samples ) noexcept
 {
     // Zero (num_samples+1) pairs of both scratch buffers (s_mix.c:534).

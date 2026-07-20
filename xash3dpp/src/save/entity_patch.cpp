@@ -34,6 +34,8 @@ void append_i32_le( std::vector<std::byte> &out, std::int32_t v ) noexcept
 }
 } // namespace
 
+// compliance-allow(thread-assert): pure serializer that reads a const
+// caller-owned EntityTable and returns a fresh buffer, mutating nothing
 std::vector<std::byte> write_entity_patch( const EntityTable &table ) noexcept
 {
     std::vector<std::byte> out;

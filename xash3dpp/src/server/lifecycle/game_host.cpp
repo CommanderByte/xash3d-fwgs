@@ -50,6 +50,8 @@ void private_data_releaser( void *ctx, ::xash::abi::edict_t *ed )
 // XASH3DPP-STUB(chunk6): the operator console surface (kick/status/
 // serverinfo/...) lands with the client machinery in S9; these seams keep
 // the legacy registration/removal ORDER points so S9 only fills bodies.
+// compliance-allow(thread-assert): empty XASH3DPP-STUB(chunk6) order-point —
+// ignores its argument and mutates nothing
 void register_operator_commands( ServerRuntime & ) {}
 void kill_operator_commands( ServerRuntime & ) {}
 

@@ -127,6 +127,8 @@ void EdictArena::free_edict( edict_t *ed, double sv_time )
 
 void EdictArena::init_edict( edict_t *ed )
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     free_private( ed );
     std::memset( &ed->v, 0, sizeof( entvars_t ));
     ed->v.pContainingEntity = ed;

@@ -230,6 +230,8 @@ void Input::Impl::mouse_button_event(int button, bool down) noexcept
 
 // Key_ClearStates (Quirk 5): skipped entirely during changelevel; else
 // replays releases through the real event path before force-zeroing.
+// compliance-allow(thread-assert): every mutation is delegated to key_event /
+// mouse_button_event, which assert on the Main role themselves
 void Input::Impl::clear_states() noexcept
 {
     if (changelevel) { return; }

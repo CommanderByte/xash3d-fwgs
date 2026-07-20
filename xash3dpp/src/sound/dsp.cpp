@@ -709,6 +709,9 @@ void RoomDsp::process( portable_samplepair_t *roombuffer, int num_samples ) noex
 // SX_ClearState (s_dsp.c:868-877)
 // ===========================================================================
 
+// compliance-allow(thread-assert): delay-line state reset on whichever thread
+// owns the channel array (CONDITIONAL role, dsp.hpp header) — enforced at
+// apply_command()'s Main/AudioDecoder callers
 void RoomDsp::clear_state() noexcept
 {
     // Cvar_DirectSet(&room_type, "0") — room_type's own CHANGED flag has no

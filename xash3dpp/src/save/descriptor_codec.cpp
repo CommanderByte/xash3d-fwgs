@@ -65,6 +65,8 @@ constexpr std::size_t k_transform_scratch = 64;
     return std::bit_cast<float>( u );
 }
 
+// compliance-allow(thread-assert): pure little-endian float encoder over a
+// caller-supplied pointer, no shared or object state
 void write_f32_le( std::byte *p, float v ) noexcept
 {
     const auto u = std::bit_cast<std::uint32_t>( v );
@@ -74,6 +76,8 @@ void write_f32_le( std::byte *p, float v ) noexcept
     p[3] = static_cast<std::byte>( ( u >> 24 ) & 0xFFu );
 }
 
+// compliance-allow(thread-assert): pure little-endian int encoder over a
+// caller-supplied pointer, no shared or object state
 void write_i32_le( std::byte *p, std::int32_t v ) noexcept
 {
     const auto u = static_cast<std::uint32_t>( v );

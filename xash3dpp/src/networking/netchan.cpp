@@ -591,6 +591,9 @@ Result<std::size_t> Netchan::transmit( std::span<const std::byte> unreliable, //
     return bytes_written;
 }
 
+// compliance-allow(thread-assert): byte-aligned shim delegating to
+// Netchan::transmit — T_NetIO single-thread caller contract; role unasserted
+// until the NetIO thread is split out (G-2)
 Result<std::size_t> Netchan::transmit_bits( std::span<const std::byte> unreliable,
                                             std::size_t                length_in_bits,
                                             std::span<std::byte>       out ) noexcept

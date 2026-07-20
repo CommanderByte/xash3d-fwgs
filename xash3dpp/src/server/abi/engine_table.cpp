@@ -233,6 +233,8 @@ SvTrace no_hit_trace( const Vec3 &end ) noexcept
 
 void register_external_cvar( abi::cvar_t *variable, bool ext_dll )
 {
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+
     if ( variable == nullptr || variable->name == nullptr )
         return;
 

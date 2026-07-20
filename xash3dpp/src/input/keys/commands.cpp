@@ -8,6 +8,7 @@
 #include <xash3dpp/private/input/input_impl.hpp>
 
 #include <xash3dpp/core/log.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 
 namespace xash::input {
 
@@ -111,6 +112,8 @@ void cmd_joy_calibrate_gyro(void *user)
 
 void Input::Impl::register_cvars_and_commands() noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+
     if (cvars == nullptr) { return; }
 
     constexpr std::uint32_t kPriv = ::xash::cmd_cvar::FCMD_PRIVILEGED;

@@ -88,6 +88,8 @@ void StringPool::empty_pool( bool clear_stats )
         stats_ = {};
 }
 
+// compliance-allow(thread-assert): pure static escape transform over
+// caller-supplied dst/src buffers, touches no pool state
 std::size_t StringPool::process_string( char *dst, const char *src ) noexcept
 {
     std::size_t i = 0;

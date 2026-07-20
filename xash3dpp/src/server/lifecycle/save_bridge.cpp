@@ -177,6 +177,8 @@ public:
 
     // szCurrentMapName (eiface.h:345): copied with Q_strncpy truncation
     // semantics (sv_save.c:941) into the 32-byte field.
+    // compliance-allow(thread-assert): writes only the stack-local restore
+    // bridge's own szCurrentMapName buffer, no engine state
     void set_current_map( std::string_view name ) noexcept override
     {
         const std::size_t n =
@@ -394,6 +396,8 @@ public:
 
     // szCurrentMapName sink — forwards to the shared dispatch_restore state
     // (see EntityRestorerBridge::set_current_map / AdjacentLevelBridge).
+    // compliance-allow(thread-assert): thin delegator to the inner restore
+    // bridge's caller-owned name buffer
     void set_current_map( std::string_view name ) noexcept override
     {
         inner_.set_current_map( name );

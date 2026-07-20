@@ -82,6 +82,8 @@ void clients_init( ClientMachinery &cm ) noexcept
 
 // --- registry ---------------------------------------------------------------
 
+// compliance-allow(thread-assert): member mutation on the caller-owned
+// registry; its only entry reg_user_msg (messages.cpp:125) asserts Main
 int UserMessageRegistry::register_message( const char *name, int size ) noexcept
 {
     if ( name == nullptr || name[0] == '\0' )

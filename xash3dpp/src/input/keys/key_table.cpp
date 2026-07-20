@@ -303,6 +303,8 @@ void KeyTable::unbindall() noexcept
     (void)set_binding(Key::StartButton, "cancelselect");  // keys are always valid
 }
 
+// compliance-allow(thread-assert): owned key-table leaf, mutated only through
+// already-asserting Input:: entry points and the T_Main-only ctor
 void KeyTable::resetkeys() noexcept
 {
     // Quirk 3: resetkeys clears then replays the ENTIRE keynames[] table.

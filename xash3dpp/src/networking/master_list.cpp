@@ -73,6 +73,9 @@ public:
         }
     }
 
+    // compliance-allow(thread-assert): thin delegator to
+    // NetworkContext::send_packet — T_NetIO single-thread caller contract;
+    // role unasserted until the NetIO thread is split out (G-2)
     void send_shutdown() noexcept override
     {
         if( cfg_.lan_only() )

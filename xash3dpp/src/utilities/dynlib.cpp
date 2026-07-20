@@ -5,6 +5,8 @@
 
 namespace xash::utilities {
 
+// compliance-allow(thread-assert): writes only through caller-supplied slot
+// pointers in a caller-owned table, no subsystem state
 void clear_exports( std::span<const ExportEntry> table ) noexcept
 {
     for( const auto &e : table )

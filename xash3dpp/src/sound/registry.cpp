@@ -89,6 +89,9 @@ std::optional<AudioData> FilesystemAudioLoader::load( std::string_view name ) no
 // SfxRegistry
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): registry-table mutation serialized on
+// Sound::Impl::registry_mutex_; the owning Sound::register_sound() entry
+// asserts Main (sound.cpp:712)
 SfxHandle SfxRegistry::register_sound( std::string_view name ) noexcept
 {
     if( name.empty() )

@@ -49,6 +49,8 @@ inline void copy_vec3( abi::vec3_t dst, const abi::vec3_t src ) noexcept
     dst[2] = src[2];
 }
 
+// compliance-allow(thread-assert): pure inline helper zeroing a
+// caller-supplied vec3, no shared state
 inline void clear_vec3( abi::vec3_t v ) noexcept
 {
     v[0] = v[1] = v[2] = 0.0f;
@@ -219,6 +221,9 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
 // SV_AddLinksToPmove (sv_pmove.c:190) — collect solid + visible entities
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): TU-private recursive area-node walk
+// filling the caller's playermove_t; sole entry sv_setup_pmove
+// (pmove.cpp:351) asserts Main
 void add_links_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
                          const AreaNode *node, abi::edict_t *pl,
                          const abi::vec3_t pmove_mins,
@@ -301,6 +306,9 @@ void add_links_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
 // SV_AddLaddersToPmove (sv_pmove.c:282)
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): TU-private recursive area-node walk
+// filling the caller's playermove_t; sole entry sv_setup_pmove
+// (pmove.cpp:351) asserts Main
 void add_ladders_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
                            const AreaNode *node, const abi::vec3_t pmove_mins,
                            const abi::vec3_t pmove_maxs ) noexcept

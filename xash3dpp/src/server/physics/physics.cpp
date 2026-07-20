@@ -579,6 +579,8 @@ int fly_move( ServerRuntime &rt, abi::edict_t *ent, float time,
 }
 
 // SV_AddGravity (sv_phys.c:737): the "add gravity incorrectly" basevel fold.
+// compliance-allow(thread-assert): TU-private per-entity step of the asserted
+// sv_physics chain (physics.cpp:1652), per-frame hot path
 void add_gravity( ServerRuntime &rt, abi::edict_t *ent ) noexcept
 {
     EntityView  v = EntityView( ent );

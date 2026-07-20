@@ -23,6 +23,9 @@ thread_local ThreadRole tls_role{ ThreadRole::Unknown };
 
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): the role-registry primitive itself —
+// mutates only the caller's own thread_local, and by definition runs before
+// any role exists to assert
 void register_thread_role( ThreadRole role ) noexcept
 {
     tls_role = role;

@@ -153,6 +153,8 @@ int find_best_baseline( ServerRuntime &rt, int index,
 // entities the game DLL accepts, honouring the portal dedup mask, EF_REQUEST_PHS
 // mask switch, and EF_MERGE_VISIBILITY portal recursion.  `num` tracks the
 // accepted count (capped at MAX_VISIBLE_PACKET-1, overflow silently discarded).
+// compliance-allow(thread-assert): TU-private recursive gather reached only
+// through write_entities_to_client (snapshot.cpp:875, asserts Main)
 void add_entities_to_packet( ServerRuntime &rt, ::xash::abi::edict_t *view,
                              ::xash::abi::edict_t *client, int &num,
                              bool from_client ) noexcept
@@ -1041,6 +1043,8 @@ inline constexpr std::size_t k_wire_max     = 65536; // NET_MAX_MESSAGE
 // `bits` long) plus the netchan's reliable queue into a wire packet and hand it
 // to the host-owned NetworkContext, addressed to the client.  Advances the
 // bandwidth-choke cleartime by the bytes sent.  No-op when offline (rt.net null).
+// compliance-allow(thread-assert): TU-private netchan flush; both entries
+// (send_client_datagram :1069, send_client_messages :1144) assert Main
 void transmit_client( ServerRuntime &rt, ServerClient &cl, int slot,
                       std::span<const std::byte> unreliable,
                       std::size_t bits ) noexcept

@@ -297,6 +297,9 @@ std::vector<GameInfo> Filesystem::scan_game_directories(std::string_view root) c
     return result;
 }
 
+// compliance-allow(thread-assert): exclusive-lock-guarded mutation
+// (unique_lock paths_mutex) — any-thread writer by documented contract, not
+// thread-confined
 void Filesystem::add_game_directory(std::string_view dir, SearchPathFlags flags) {
     std::vector<SearchPath> new_paths;
     collect_paths_for_dir(impl_->pool_, dir, flags, new_paths);
@@ -306,6 +309,9 @@ void Filesystem::add_game_directory(std::string_view dir, SearchPathFlags flags)
     impl_->stats_.search_path_count = impl_->search_paths.size();
 }
 
+// compliance-allow(thread-assert): exclusive-lock-guarded mutation
+// (unique_lock paths_mutex) — same any-thread writer class as
+// add_game_directory
 void Filesystem::add_game_hierarchy(std::string_view dir, SearchPathFlags flags) {
     std::vector<SearchPath> new_paths;
     collect_hierarchy(impl_->pool_, dir, flags, new_paths);
@@ -315,6 +321,9 @@ void Filesystem::add_game_hierarchy(std::string_view dir, SearchPathFlags flags)
     impl_->stats_.search_path_count = impl_->search_paths.size();
 }
 
+// compliance-allow(thread-assert): exclusive-lock-guarded mutation
+// (unique_lock paths_mutex) — non-Static path removal serialised against
+// concurrent readers
 void Filesystem::clear_paths() {
     std::unique_lock lock{impl_->paths_mutex};
     auto& paths = impl_->search_paths;

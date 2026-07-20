@@ -291,6 +291,9 @@ Result<std::size_t> recvfrom( const OsSocket &sock,
 // TCP stream I/O
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): stateless ::send() wrapper over a
+// caller-owned OsSocket handle — header-contracted T_NetIO-ready, thread
+// affinity belongs to the handle owner
 Result<std::size_t> send_stream( const OsSocket &sock,
                                   std::span<const std::byte> data ) noexcept
 {
@@ -315,6 +318,9 @@ Result<std::size_t> recv_stream( const OsSocket &sock,
     return static_cast<std::size_t>( n );
 }
 
+// compliance-allow(thread-assert): stateless non-blocking ::connect() wrapper
+// over a caller-owned OsSocket handle — header-contracted T_NetIO-ready, not
+// a Main-pinned lifecycle step
 Result<void> connect_stream( const OsSocket &sock,
                                const NetAddress &to ) noexcept
 {

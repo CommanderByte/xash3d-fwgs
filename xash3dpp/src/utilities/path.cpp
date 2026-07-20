@@ -159,6 +159,8 @@ void fix_slashes( char *path ) noexcept
     }
 }
 
+// compliance-allow(thread-assert): in-place truncation of a caller-owned char
+// buffer, no shared or subsystem state
 void remove_line_feed( char *str, std::size_t size ) noexcept
 {
     if( !str || !size ) return;
@@ -256,6 +258,8 @@ std::string trim_space( std::string_view src )
     return std::string( src.data() + start, end - start );
 }
 
+// compliance-allow(thread-assert): value-returning transform — copies the
+// input and resizes a local, mutates nothing observable
 std::string remove_line_feed( std::string_view s )
 {
     std::string result( s );

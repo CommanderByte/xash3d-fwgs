@@ -84,6 +84,9 @@ void DeltaTables::Impl::custom_encode( DeltaTable &dt,
                           static_cast<const std::uint8_t *>( to ));
 }
 
+// compliance-allow(thread-assert): sim-thread single-thread caller contract
+// (NOT NetIO — networking-threading.md flip nuance) — delta-table state has
+// no internal sync; owning subsystem serialises init/parse/encode
 bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
                                    std::uint32_t flags, int bits,
                                    float multiplier, float post_multiplier ) noexcept
@@ -141,6 +144,9 @@ bool DeltaTables::Impl::add_field( DeltaTable &dt, const char *name,
     return true;
 }
 
+// compliance-allow(thread-assert): sim-thread single-thread caller contract
+// (NOT NetIO — networking-threading.md flip nuance) — delta-table state has
+// no internal sync; owning subsystem serialises init/parse/encode
 void DeltaTables::Impl::reset_tables() noexcept
 {
     for( auto &dt : tables )
@@ -233,6 +239,9 @@ bool DeltaTables::init( ::xash::filesystem::Filesystem &fs ) noexcept // complia
         reinterpret_cast<const char *>( file.data()), file.size() }); // SAFETY: re-views the delta.lst byte buffer as char for text parsing; same object, byte<->char aliasing is well-defined
 }
 
+// compliance-allow(thread-assert): sim-thread single-thread caller contract
+// (NOT NetIO — networking-threading.md flip nuance) — delta-table state has
+// no internal sync; owning subsystem serialises init/parse/encode
 bool DeltaTables::init_from_script( std::string_view script ) noexcept
 {
     // Legacy Delta_Init shuts down first when already initialised; a fresh
@@ -250,6 +259,9 @@ bool DeltaTables::init_from_script( std::string_view script ) noexcept
     return true;
 }
 
+// compliance-allow(thread-assert): sim-thread single-thread caller contract
+// (NOT NetIO — networking-threading.md flip nuance) — delta-table state has
+// no internal sync; owning subsystem serialises init/parse/encode
 void DeltaTables::init_client() noexcept
 {
     // already initialised (local game: server tables live in-process)
@@ -287,6 +299,9 @@ bool DeltaTables::is_initialized() const noexcept
 // Game-DLL hook surface
 // ---------------------------------------------------------------------------
 
+// compliance-allow(thread-assert): sim-thread single-thread caller contract
+// (NOT NetIO — networking-threading.md flip nuance) — delta-table state has
+// no internal sync; owning subsystem serialises init/parse/encode
 bool DeltaTables::register_encoder( const char *name, DeltaEncodeFn fn ) noexcept
 {
     DeltaTable *dt = impl_->find_struct_by_encoder( name );

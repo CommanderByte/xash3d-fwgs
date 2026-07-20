@@ -87,6 +87,9 @@ TouchButtonRecord *TouchModel::add_button(std::list<TouchButtonRecord> &list, st
     return &list.back();
 }
 
+// compliance-allow(thread-assert): private list-mutation helper on the
+// caller-owned TouchModel, reached only via already-asserting Input:: touch
+// entry points
 void TouchModel::remove_button_from_list(std::list<TouchButtonRecord> &list, std::string_view name,
                                           bool privileged) noexcept
 {
@@ -172,6 +175,9 @@ void TouchModel::hide_buttons(std::string_view name, bool hide, bool privileged)
     }
 }
 
+// compliance-allow(thread-assert): thin delegator to remove_button_from_list
+// over caller-owned model state; the role is pinned at
+// Input::touch_remove_button
 void TouchModel::remove_button(std::string_view name, bool privileged) noexcept
 {
     remove_button_from_list(list_user_, name, privileged);
@@ -192,6 +198,8 @@ TouchButtonRecord *TouchModel::add_client_button(std::string_view name, std::str
     return b;
 }
 
+// compliance-allow(thread-assert): appends to the default-button table of the
+// caller-owned TouchModel; no in-tree caller exists to pin a thread role
 void TouchModel::add_default_button(std::string_view name, std::string_view texture, std::string_view command,
                                      float x1, float y1, float x2, float y2, const std::uint8_t color[4],
                                      TouchRoundMode round, float aspect, TouchButtonFlags flags) noexcept
@@ -204,6 +212,8 @@ void TouchModel::add_default_button(std::string_view name, std::string_view text
     default_buttons_.push_back(std::move(b));
 }
 
+// compliance-allow(thread-assert): clears the default-button table of the
+// caller-owned TouchModel; no in-tree caller exists to pin a thread role
 void TouchModel::reset_default_buttons() noexcept
 {
     default_buttons_.clear();
@@ -417,6 +427,9 @@ bool TouchModel::want_visible_cursor(bool touch_enable, bool touch_emulate, bool
     return (touch_enable && touch_emulate) || clientonly_ || touch_in_menu;
 }
 
+// compliance-allow(thread-assert): private finger-tracker reset on the
+// caller-owned model, reached only from the already-asserting
+// Input::touch_event path
 void TouchModel::reset_fingers() noexcept
 {
     // in_touch.c:2105 — deliberately NOT edit_/selection_ (those belong to

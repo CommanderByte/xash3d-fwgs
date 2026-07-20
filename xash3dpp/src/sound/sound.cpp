@@ -153,6 +153,9 @@ private:
 // register_cvar — the CVAR_DEFINE-equivalent field-by-field setup +
 // cvar_register_engine call (context_init.cpp precedent; Cvar has a deleted
 // copy-assignment via its atomic member, so fields are set individually).
+// compliance-allow(thread-assert): init-time cvar registration over
+// caller-owned Cvar storage; main-thread-only lifecycle by contract (sole
+// caller Sound::init() asserts Main)
 void register_cvar( ::xash::cmd_cvar::CmdCvarContext &ctx, ::xash::cmd_cvar::Cvar &cv, const char *name,
                     const char *def, std::uint32_t flags, const char *desc ) noexcept
 {

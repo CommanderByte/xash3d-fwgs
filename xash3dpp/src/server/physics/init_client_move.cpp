@@ -87,6 +87,8 @@ void store_vec( float *p, const Vec3 &v ) noexcept
            env.models != nullptr && env.player_bounds != nullptr;
 }
 
+// compliance-allow(thread-assert): pure value factory returning a fresh
+// miss-trace by value, reads and writes nothing
 [[nodiscard]] abi::pmtrace_t clear_trace() noexcept
 {
     abi::pmtrace_t t{};

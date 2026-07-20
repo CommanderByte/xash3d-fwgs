@@ -323,6 +323,8 @@ void cmd_touch_aspectratio(void *user)
 
 void Input::Impl::register_touch_commands() noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+
     if (cvars == nullptr) { return; }
 
     // 9 unprivileged.

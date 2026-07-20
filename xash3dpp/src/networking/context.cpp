@@ -230,6 +230,9 @@ Result<std::size_t> NetworkContext::get_packet(
     return *rx;
 }
 
+// compliance-allow(thread-assert): T_NetIO single-thread caller contract —
+// transport stack has no internal sync; role unasserted until the NetIO
+// thread is split out (G-2)
 Result<void> NetworkContext::send_packet(
     SocketKind                  sock,
     std::span<const std::byte>  data,
