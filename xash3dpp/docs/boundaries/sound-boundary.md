@@ -277,18 +277,38 @@ own inline TODO) unconditionally zeroes `ch->sample`/`ch->forced_end`/clears
 `FL_CHAN_FINISHED`/nulls `ch->data` on EVERY call, even on out-of-range/null
 paths — preserved-but-flagged as suspect (`s_vox.c:170-188`).
 
-**DSP off-by-one — `idsp_room == 29` vs 28-max table (adjudicate).**
+**DSP off-by-one — `idsp_room == 29` vs 28-max table (decided, S9.5).**
 `MAX_ROOM_TYPES = ARRAYSIZE(rgsxpre)` = 29, but the clamp
 `bound(0, idsp_room, MAX_ROOM_TYPES)` is **inclusive**, permitting
 `idsp_room == 29` — out of bounds for a 29-element array (valid indices
 0-28; `s_dsp.c:21,809,822`). This only manifests if `room_type`/
-`roomwater_type` cvars are hand-set to exactly 29. **Open quirk decision,
-not silently fixed:** the rewrite must choose reproduce (keep the UB-shaped
-read, e.g. via a padded/sentinel table entry to make it defined) or clamp
-(fix to `MAX_ROOM_TYPES - 1`, a deliberate behavioral deviation from legacy).
-Recorded as SND-OQ-6 below pending adjudication — parity-first bias favors
-reproduce-with-defined-behavior (pad the table) over silent clamp, but this
-is a design call, not a fact.
+`roomwater_type` cvars are hand-set to exactly 29. **Resolved 2026-07-20
+(SND-OQ-6): REPRODUCE-WITH-DEFINED-BEHAVIOUR.** Both preset tables are
+padded to a 30th row (index 29, `k_max_room_types`) with an all-zero
+`RoomPreset`; the clamp bound itself (`k_max_room_types = 29`) is kept
+textually distinct from the padded storage size (`k_room_preset_count = 30`)
+so `bound(0, idsp_room, MAX_ROOM_TYPES)` stays byte-for-byte identical to
+legacy — index 29 is still reachable, the off-by-one is preserved, not
+fixed. A zeroed row (rather than any attempt to "recover" the legacy OOB
+content) was chosen because that content is whatever bytes happen to follow
+the static array in a given compiled binary's data segment — build-,
+compiler- and optimisation-level-dependent, not a reproducible or
+meaningful value; the task brief's own fallback ("if the padded-row
+contents cannot be made meaningful, a zeroed row with a comment is the
+defined superset") applies directly. The zeroed row is behaviourally
+indistinguishable from preset 0 ("off") for every field that affects
+observable mix output: `room_size == 0` and `room_delay == 0` both disable
+their respective delay lines exactly like preset 0's own values, and the
+two fields where the zeroed row numerically differs from preset 0
+(`room_rvblp`/`room_dlylp`, 1.0/2.0 in preset 0 vs 0.0/0.0 in the sentinel)
+are read only inside an ACTIVE delay line's lowpass branch, which never
+runs once its governing size/delay is 0. Implemented in
+`xash3dpp/include/xash3dpp/private/sound/dsp.hpp` (`k_room_presets_release`/
+`k_room_presets_hlalpha052`, file-header rationale) + `src/sound/dsp.cpp`;
+pinned by `tests/sound/test_sound_dsp.cpp`'s `test_snd_oq6_sentinel_row_content`
+(raw content) and `test_snd_oq6_index29_behaves_like_off` (behavioural
+equivalence to room 0). Decision also recorded in
+`decisions-architecture.md` §3a.
 
 **Menu/key_dest gating baked into the mix.** Multiple independent gates key
 off `cls.key_dest`/`cl.paused`/`cl.background`/`Host_IsSinglePlayerGame()`
@@ -445,7 +465,7 @@ ______________________________________________________________________
 | **SND-OQ-3** | Queue-full policy for the audio MPSC | Legacy has no queue (synchronous calls) so there is no precedent. A dropped `SND_STOP` is audible (the sound keeps playing when the caller expected it stopped) — worse than a dropped `SND_START` (silently missing one sound effect). Recommended shape: bounded MPSC with drop-oldest-non-STOP policy, or a small reserved-capacity fast lane for STOP/CHANGE commands so they can never be dropped by a full queue of START commands. Needs a design decision, not just an implementation default. | **blocks-scaffold** — the command enum/priority shape affects the MPSC's item type |
 | **SND-OQ-4** | Music streaming: fence `s_stream` out vs. codec vends `IAudioStream` | R9.2's evidence: soundlib already has two parallel per-format v-tables — `loadwavfmt_t` (1 fn, one-shot decode) and `streamfmt_t` (5 fns: open/read/seek/tell/close) — the stream table is strictly wider, confirming streaming is architecturally distinct from one-shot load in legacy already. Two shapes to choose between: (a) fence `s_stream.c`'s background-track logic out of the `Sound` class entirely as its own small satellite (parallels the mp3/ogg Q-11 split), with the codec-vended `stream_t` staying soundlib's concern; or (b) formalize an `IAudioStream` interface at the `Sound`/soundlib boundary that every decoder (WAV/mp3/ogg/opus) implements uniformly, replacing the `streamfmt_t` v-table. (b) is more P-4/P-5-conformant (typed interface vs. raw fn-pointer table) but is new design, not a straight port. | **blocks-scaffold** — determines whether `Sound` links against soundlib's stream v-table directly or against a new interface |
 | **SND-OQ-5** | Ring payload int16 — byte-identical rationale | The legacy DMA ring buffer is always 16-bit stereo (`sound.h:29-31`: `SOUND_DMA_SPEED=44100`, hardcoded 2-channel/16-bit output — R9.1 Owned state). The SPSC ring's payload type should stay `int16_t` (interleaved stereo) to keep `S_TransferPaintBuffer`'s reinterpret-as-flat-int-stream logic and `CLIP16`'s clamp semantics unchanged — a float or wider intermediate type in the ring would require a second clamp/convert stage that risks non-bit-exact output vs. legacy. Recommendation: ring payload = `int16_t[2]` (interleaved), matching `S_WriteLinearBlastStereo16`'s existing output shape exactly; do not introduce a float mixing stage in the ring itself (the mix kernels already produce clamped int32 accumulator values before the final `CLIP16` narrow). | **blocks-scaffold** — the SPSC ring's item type and the mix kernel output contract are the same decision |
-| **SND-OQ-6** (DSP off-by-one) | `idsp_room == 29` reproduce-vs-clamp | See Quirks section — reproduce (pad table to 30 entries with a defined sentinel) vs. clamp to `MAX_ROOM_TYPES - 1`. Parity-first bias favors reproduce, but genuinely undecided. | non-blocking for scaffold; blocks DSP port correctness sign-off |
+| **SND-OQ-6** (DSP off-by-one) | `idsp_room == 29` reproduce-vs-clamp | **Resolved 2026-07-20 (S9.5):** reproduce-with-defined-behaviour — both preset tables padded to a 30th, all-zero sentinel row (index 29); see Quirks section above for the full rationale (behaviourally identical to preset 0 "off") and the decisions-architecture.md §3a entry. | closed — DSP port correctness sign-off unblocked |
 
 ______________________________________________________________________
 

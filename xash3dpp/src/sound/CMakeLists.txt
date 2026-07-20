@@ -2,8 +2,11 @@
 # Slice S9.2: IAudioCodec + WavCodec (soundlib decode layer, WAV only). Slice
 # S9.3: the 12 mix kernels + paint pipeline core.  Slice S9.4: VOX sentence
 # word-sequencer (sentences.txt parse/lookup/word-grammar, amplitude trim,
-# the sentence pitch bend, the IVoxWordAdvance implementation).  DSP and the
-# MPSC/SPSC thread topology land in later slices (sound-boundary.md).
+# the sentence pitch bend, the IVoxWordAdvance implementation).  Slice S9.5:
+# room-effects DSP (RoomDsp : IRoomDsp — both preset tables + the SND-OQ-6
+# padded sentinel row, AMod/Reverb/Delay/StereoDelay passes, delay-line state
+# pool-owned per P-7).  The MPSC/SPSC thread topology lands in later slices
+# (sound-boundary.md).
 # ogg/opus/mp3 are separate satellite targets per the boundary Q-11 table —
 # not linked here yet (codec.hpp reserves their rows).
 # Legacy reference: engine/client/sound/, engine/platform/ (the SNDDMA seam),
@@ -15,6 +18,7 @@ add_library(xash3dpp_sound STATIC
     codec_wav.cpp
     mixer.cpp
     vox.cpp
+    dsp.cpp
 )
 
 target_include_directories(xash3dpp_sound

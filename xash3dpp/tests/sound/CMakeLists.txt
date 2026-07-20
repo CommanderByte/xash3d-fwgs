@@ -33,3 +33,10 @@ xash3dpp_add_test(test_sound_mixer LIBS xash3dpp_sound)
 # overwrite quirk, sentence-terminates-on-bad-word, and a full 3-word sentence
 # mix through vox_mix_channel_to_buffer (byte-pinned).
 xash3dpp_add_test(test_sound_vox LIBS xash3dpp_sound)
+
+# Room-effects DSP (slice S9.5): both 29-row preset tables pinned (+ the
+# SND-OQ-6 padded sentinel row), coeff-table switching, per-pass hand-derived
+# integer-math vectors (AMod/Reverb/Delay/StereoDelay), a full RoomFX block
+# through the S9.3 paint pipeline with a known preset (byte-pinned), ClearState
+# semantics, and the room-selection matrix (waterlevel/room_type/off cases).
+xash3dpp_add_test(test_sound_dsp LIBS xash3dpp_sound xash3dpp_memory)
