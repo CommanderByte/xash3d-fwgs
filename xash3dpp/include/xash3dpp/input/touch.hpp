@@ -9,6 +9,12 @@
 #include <cstdint>
 #include <string>
 
+// @annotation-exempt: cold-value-type — every enum below is plain data
+// (TouchButtonFlags's operator|/&/~/has_flag are pure, stateless functions),
+// and TouchButtonDesc/OskStateDesc are read-only POD snapshots returned BY
+// VALUE from Input::touch_buttons()/Input::osk_state(); none carries shared
+// mutable state, so the QN annotation matrix's @thread-safety requirement
+// does not apply here.
 namespace xash::input {
 
 // touchButtonType (in_touch.c:24-32) — derived from the command string's

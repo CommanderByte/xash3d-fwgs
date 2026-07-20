@@ -7,10 +7,22 @@
 > input/{input.c,in_keys.c,in_joy.c,in_gyro.c,in_touch.c,in_osk.c}`
 > (~5,002 lines total per A0 fact base), `engine/platform/{platform.h,
 > sdl2/{in_sdl2.c,joy_sdl2.c},linux/in_evdev.c}`, `engine/cdll_exp.h`,
-> `engine/cdll_int.h`, `engine/menu_int.h`. This is a **pre-implementation
-> draft** — not yet reconciled with any shipped code (0 TUs, per A0 census).
-> Every load-bearing claim below carries its legacy `file:line` citation,
-> lifted verbatim from the R10.* fragments; no citation was invented.
+> `engine/cdll_int.h`, `engine/menu_int.h`. Every load-bearing claim below
+> carries its legacy `file:line` citation, lifted verbatim from the R10.*
+> fragments; no citation was invented.
+>
+> **AS-BUILT 2026-07-20** (Chunk 10 shipped `8720af2b`; this reconciliation
+> pass was added by the campaign close-out audit, which caught that the doc
+> had never been refreshed and that the campaign's "doc closure" claim was
+> therefore false). The subsystem is no longer a draft: `xash3dpp_input` is
+> 9 source TUs, 9 public headers (`input/`) plus 5 private
+> (`private/input/`), and 6 test executables. The ratified stop-line (Q-23)
+> holds — `IEventSource` supplies events and a polled pointer delta,
+> `IWindowControls` is split out and null-backed, and there is no window and
+> no SDL anywhere in the shipped pump; `MockEventSource` drives every test.
+> Sections below that still read as forward-looking predictions ("when
+> implemented …") describe work that has landed; where the as-built shape
+> differs from the prediction it is called out inline.
 
 ## Responsibility
 
@@ -206,8 +218,8 @@ above — explicitly not part of either interface.
 | `write_bindings(file)` | `Key_WriteBindings` (in_keys.c:462-484) |
 | commands: `bind`/`unbind`/`unbindall`/`resetkeys`/`bindlist` | in_keys.c:341-503 — restricted (trust-gated) vs unrestricted split, see Quirks |
 | ~24 `touch_*` commands (9 unrestricted, 15 restricted) | in_touch.c:1134-1157, R10.4 census |
-| 14 `touch_*` cvars + `touch_enable` | in_touch.c:1160-1187 |
-| ~26 `joy_*`/`gyro_*` cvars | in_joy.c:48-72, in_gyro.c:20-27, R10.3 |
+| 22 `touch_*` cvars + `touch_enable` (23 total) | in_touch.c:1160-1187 |
+| 32 `joy_*`/`gyro_*` cvars (24 joy_* + 8 gyro_*) | in_joy.c:48-72, in_gyro.c:20-27, R10.3 |
 | `key_rotate` cvar | in_keys.c:161 |
 
 ## Dependencies (what this module calls)
@@ -226,7 +238,7 @@ above — explicitly not part of either interface.
 | State | Legacy backing | Notes |
 |---|---|---|
 | `keys[265]` (`enginekey_t`: binding ptr, `down:1`, `gamedown:1`, `repeats:30`) | in_keys.c:22-43 | file-scope static; deliberately over-provisioned vs. ~255 real keys, +9 international slots |
-| `keynames[]` (~130 rows, name/keynum/default-bind) | in_keys.c:45-159 | static const; drives lookup, `Key_Init`'s initial binds, `resetkeys`'s full-default replay |
+| `keynames[]` (101 rows, name/keynum/default-bind) | in_keys.c:45-159 | static const; drives lookup, `Key_Init`'s initial binds, `resetkeys`'s full-default replay |
 | static `tinystr[16]` return buffer in `Key_KeynumToString` | in_keys.c:229 | classic C-ABI reuse hazard — **must not survive the port** as a shared mutable buffer; becomes a typed return value |
 | `key_rotate` cvar | in_keys.c:161 | |
 | `cls.key_dest` (external `keydest_t`) | in_keys.c:560 (client.h) | owned by the broader client state, input reads/writes it but does not declare it — treat as a dependency-in, not owned-here, in the final class design |
@@ -237,7 +249,7 @@ above — explicitly not part of either interface.
 | `joyaxis[]`/`joyaxesmap[]` (hardware→engine axis binding) | in_joy.c | written by the SDL event handler, read by `Joy_FinalizeMove` |
 | `gyrocal` module-static (gyro calibration state machine) | joy_sdl2.c:67-138 | |
 | `joy_gyro_speed`/`joy_gyro_speed_display`, `gyro_speed` | in_joy.c:299-303, in_gyro.c:38-48 | display buffer survives the per-frame clear; live buffer does not |
-| ~26 `joy_*`/`gyro_*` cvars, 14 `touch_*` cvars + `touch_enable`, `key_rotate` | in_joy.c:48-72, in_gyro.c:20-27, in_touch.c:1160-1187 | full census in Interface above |
+| 32 `joy_*`/`gyro_*` cvars, 22 `touch_*` cvars + `touch_enable`, `key_rotate` | in_joy.c:48-72, in_gyro.c:20-27, in_touch.c:1160-1187 | full census in Interface above (counts corrected 2026-07-20 against the shipped registration sites `src/input/keys/commands.cpp:144-178` and `src/input/touch/touch.cpp:359-381`) |
 | module statics `in_mouseactive`, `in_mouseinitialized`, `in_lastvalidpos`, `in_mouse_savedpos`, `in_mstate`, `inputstate` (lastpitch/lastyaw) | input.c:29-40 | mouse activation state machine |
 | function-local edge latches `s_bRawInput` (`IN_SetRelativeMouseMode`), `s_bMouseGrab` (`IN_SetMouseGrab`) | input.c:214,250 | Race-static-buf shape, see Threading |
 | function-local `static uint moveflags` in `IN_JoyAppendMove` | input.c:480 | persists across frames; must become explicit owned state if collect/append ever split onto different call sites |
@@ -351,7 +363,7 @@ Axis set re-read live from `extension-goals.md` §2/§3 at assembly time
 | **P-4** Typed introspection surfaces | **Yes** | `bindings_snapshot()` replaces raw `keys[265]` array access; `key/key_dest` state gets typed accessors (Interface section) rather than an `extern` poke. Any future debug overlay of active bindings/touch layout extends this snapshot, never reaches into `Impl`. |
 | **G-5** Scripting runtime / **G-1** MCP service (synthetic-event injection door) | **Yes** | `IEventSource` is the natural injection seam: a `MockEventSource` (or a future scripting/MCP driver) implements the same interface a real SDL backend does and feeds synthetic key/mouse/touch events through the identical `Key_Event`/`IN_TouchEvent` dispatch path. Commands (`bind`, `touch_*`, `joy_*` cvars) are already reachable via `cmd_add`/`cvar_*` per extension-goals §G-5's existing script-surface-v0 list — no new door needed there, input just needs to not invent a private bypass around `cmd_cvar`. |
 | **P-3** Context-first entry points | **Yes — door-debt today, closes at port time** | Legacy is almost entirely file-scope statics (`keys[265]`, `touch`, `osk`, `joyaxis[]`, module statics in input.c). The rewrite's `Input` class must hold these as members, not globals — this is the single largest P-3 gap in the surveyed material (R10.4's own Uncertainties flags this for touch/OSK explicitly). No exception is warranted; this is ordinary Q-2/P-3 context-object work, not an ABI-forced global. |
-| **P-2** Published-snapshot reads | Door-keep, not yet a consumer | No current off-main reader exists (input is `T_Main`-only per the ratified model). If G-3/G-1 ever wants live input-state readout off-main, `bindings_snapshot()`/a future `InputStats` counter is the extension point — never a raw reference into `Impl`. |
+| **P-2** Published-snapshot reads | **Built; no off-main consumer yet** | `InputStats` is implemented and wired (Tier-1 atomics incremented on the routed-event paths, `input/stats.hpp`), and `bindings_snapshot()` ships copyable state with owned strings. Input remains `T_Main`-only per the ratified model, so no off-main reader exists — but the extension point is real code now, not a prediction. A future G-3/G-1 off-main readout consumes these; never a raw reference into `Impl`. |
 | **P-7** Pool-owned RAII lifecycle | Partial — `touch.mempool` precedent | Legacy already pool-owns touch-button memory via `Mem_AllocPool("Touch")` (in_touch.c:94) — the rewrite continues that pattern through the memory subsystem's `create_<thing>`/`pool_new<T>` idiom rather than reinventing allocation. |
 | **G-2** Game ABI v2 | Consumer, not owner | The `cldll_func_t`/`cl_enginefunc_t` slots this module drives (External ABI contracts) are exactly the kind of context-less, non-reentrant callback surface G-2 will eventually rework; input's job today is only to keep its **internal** surface context-first (P-3) so a v2 slot redesign has something sane to bind to later. No action owed now beyond that. |
 | **G-3** Dedicated debug thread / **G-4** expanded debugging | Consumer via P-4 | Any future input-state overlay/debug-thread export reads `bindings_snapshot()` — same rule as P-2/P-4 rows, not a distinct door. |
@@ -396,13 +408,16 @@ scripting/MCP driver) must marshal onto `T_Main` before calling into
 `IEventSource`'s consumers — there is no cross-thread contract to design
 here, only the discipline that injection never bypasses `T_Main`.
 
-**Assert/annotation duty**: no `assert_thread_role` call sites exist yet
-(0 TUs). When the class-based `Input`/`IEventSource`/`IWindowControls`
-surface is implemented, every mutator gets `@thread-safety: T_Main-only`
-plus (once thread-role assertion is wired for this subsystem, matching the
-networking precedent's eventual flip) `assert_thread_role(ThreadRole::Main)` —
-there is no `T_Input`-split analog to networking's `T_NetIO` planned or
-warranted; this is a permanent Main-thread confinement, not a staged door.
+**Assert/annotation duty** (as-built 2026-07-20): the confinement is
+permanent — there is no `T_Input`-split analog to networking's `T_NetIO`
+planned or warranted, so `assert_thread_role(ThreadRole::Main)` is the
+correct assertion on every mutating entry point, not a staged door. The
+close-out audit found the coverage did NOT match that claim (7 call sites
+against ~29 mutating entries, while `input.hpp`'s own header asserted that
+"every mutating entry point asserts `ThreadRole::Main`"); the gap was closed
+rather than the claim narrowed. Pure const queries are deliberately exempt.
+Private headers carry `@thread-safety: T_Main only`; public value-type
+headers carry the cold-value-type exemption marker.
 
 ## Open questions
 

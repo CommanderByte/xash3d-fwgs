@@ -99,6 +99,15 @@ inline constexpr SfxHandle k_sentence_handle      = -99999; // SENTENCE_INDEX (s
 // nullopt == "could not resolve/decode"; SfxRegistry itself synthesizes the
 // S_CreateDefaultSound fallback (see make_default_sound below) so load_sfx()
 // always succeeds, matching S_LoadSound's own unconditional guarantee.
+//
+// @thread-safety: load() is reachable from BOTH T_Main (SfxRegistry::
+// load_sfx() — registration-time decode) AND T_AudioDecoder (sound.cpp's
+// LockedSfxResolver, serving a VOX word's lazy resolve — deliberately called
+// with Sound::Impl::registry_mutex_ released, gate finding CONC-9). No single
+// per-call assert can name both legitimate callers; every implementation
+// must therefore be reentrant and must not touch state shared with the
+// registry (see registry.cpp's FilesystemAudioLoader::load() for the
+// concrete instance of this contract).
 // ---------------------------------------------------------------------------
 class IAudioLoader
 {
@@ -119,6 +128,11 @@ public:
 // FilesystemAudioLoader — production IAudioLoader: Filesystem::load_file +
 // the linked codec table (codec.hpp). See file-header deviations for the
 // simplified (single-path) resolution vs. soundlib's fuller FS_LoadSound.
+//
+// @thread-safety: see IAudioLoader's @thread-safety above — load() is called
+// from both T_Main and T_AudioDecoder and must stay reentrant; this
+// implementation touches only its borrowed `fs_` (itself a stateless-per-call
+// handle) and returns an owned AudioData, so it satisfies that contract.
 // ---------------------------------------------------------------------------
 class FilesystemAudioLoader final : public IAudioLoader
 {

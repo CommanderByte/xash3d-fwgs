@@ -147,6 +147,11 @@ float TouchModel::aspect_ratio(const TouchTunables &, float actual_width, float 
     return 9.0f / 16.0f;
 }
 
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void TouchModel::set_client_only(bool state) noexcept
 {
     if (clientonly_ == state) { return; }
@@ -204,6 +209,11 @@ void TouchModel::reset_default_buttons() noexcept
     default_buttons_.clear();
 }
 
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void TouchModel::load_defaults(const TouchTunables &t) noexcept
 {
     for (auto &d : default_buttons_) {

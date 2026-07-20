@@ -60,9 +60,12 @@ public:
     // legacy's parallel streamfmt_t v-table (soundlib.h:30-39 — open/read/
     // setpos/getpos/free, 5 fns vs. loadwavfmt_t's 1 — R9.2 evidence that
     // streaming is architecturally distinct from one-shot load already in
-    // legacy). Uncomment once IAudioStream is designed (boundary "Two shapes
-    // to choose between: (a) fence s_stream out as a satellite, or (b)
-    // formalize IAudioStream uniformly" — undecided, SND-OQ-4 blocks-scaffold):
+    // legacy). SND-OQ-4 was DECIDED 2026-07-19 (campaign B3, decisions-
+    // architecture.md §3a / sound-boundary.md §Open questions): shape (a) —
+    // `s_stream.c`'s background-track logic is fenced OUT of Chunk 9 scope
+    // entirely, and this codec seam RESERVES the `IAudioStream` vend point
+    // below so the follow-up streaming slice is purely additive rather than a
+    // refactor. Uncomment once IAudioStream itself is designed:
     //
     // [[nodiscard]] virtual std::unique_ptr<IAudioStream>
     //     open_stream( std::string_view name, std::span<const std::byte> file ) const;

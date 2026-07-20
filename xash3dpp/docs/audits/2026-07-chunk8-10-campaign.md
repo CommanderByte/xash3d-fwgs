@@ -103,8 +103,92 @@ P-3 exception class for no gain.
 | 39 | D/S9.7a | Core queue family (`MpscQueue<T,Cap,Reserve>` Vyukov ticket queue + `SpscRing<T,Cap>`): adversarial concurrency review re-derived every atomic access on a weak (ARM) model and REFUTED-the-code on all four attack vectors it was asked to break (producer publish, slot-reuse free/overwrite, relaxed dequeue gate, SPSC wrap-vs-publish). Findings were edge-hardening: F1 logical over-admission at the 32-bit `size_t` counter wrap (physical overwrite never possible), F2 signed-overflow UB in the Vyukov generation diff, F3 occupancy accessors can underflow to a wrapped-huge value under concurrent sampling, F4 a false "2^64 unreachable" comment on 32-bit, F8 missing `Threads::Threads` (breaks the GCC/Clang target, invisible on MSVC) | adversarial reviewer (opus, refute posture) | SHIP + 4 MINOR/NIT + 1 portability | ALL FIXED pre-commit (orchestrator): counters widened to explicit `uint64_t` (kills F1/F4 on every target) with an `is_always_lock_free` static_assert; diff subtracts unsigned then casts once (F2); occupancy samples the TRAILING counter first and clamps (F3); `find_package(Threads)` + `Threads::Threads` on both core tests (F8). F5 (counter-wrap regime untestable through the public API) and F6 (x86-TSO cannot discriminate a dropped release/acquire — green x86 is NOT ordering proof) recorded as in-file caveats; TSan/ARM side-lane remains the deferred item |
 | 40 | D/S9.7b | Sound thread topology (first multi-threaded subsystem in the tree): a **four-dimension gate** — parity-of-moved-semantics, adversarial concurrency, lifecycle/teardown, decision conformance — with an independent refute pass on every finding (33 agents). 85 claims checked, 52 confirmed correct, 36 findings raised, **11 refuted** by verification (2 reported as BLOCKER/DIVERGENCE turned out NOT-A-DEFECT). Confirmed defects: **cross-thread use-after-free** — `SfxRegistry::release()` destroyed a shared cache entry from T_AudioDecoder during VOX word retirement while other live channels and in-flight `AudioCommand::source` pointers still borrowed it (converged on independently by parity F-1/F-2 AND concurrency CONC-1; the epoch fence orders commands, it does not protect buffers); `dsp_profile` mutating decoder-owned RoomDsp from T_Main (a race the ORCHESTRATOR introduced in the S9.6 gate fix); `flush()` failing OPEN on two paths despite being the quiesce licence; MouthSlots (entnum, amplitude) pair tearing; FrameUpdate droppable; `resolve_origin` unable to express legacy's IN/OUT contract (`cl_frame.c:1387-1392`) so a sound with a valid server `pos` for an unparsed entity went SILENT instead of playing; unlocked registry read from `soundlist`; no quiesce against an external OS callback at ring teardown; priority inversion holding the registry mutex across file I/O | 4-dimension gate + refute pass (33 agents) | 1 UAF + 1 race + 7 MAJOR/MINOR | ALL FIXED pre-commit: decoded audio RETAINED for the registry lifetime (address stability made unconditional; adjudicated deviation recorded), dsp_profile refused while running, `flush()` now `[[nodiscard]] bool`, mouth pair packed into one atomic, FrameUpdate on the reserved lane, resolve_origin made true IN/OUT + local-player branch, registry read locked, in-callback quiesce counter, decode moved outside the lock (double-checked install). 8 new regression tests incl. the end-to-end F-8 witness (empty snapshot before the fix, one audible channel after). **SND-OQ-3 AMENDED** (bounded-spin-then-counted-drop ratified over the register's "blocks/asserted in debug" — an assert on producer saturation turns a stalled decoder into an abort and makes the guarantee untestable); **SND-OQ-2 RESOLVED**. Master volume partially wired (fade curve + gate producer marked chunk12) |
 | 41 | D/S9.8 | Sink-device integration witness — the Chunk 9 closer: console-scripted 25-frame sequence (play/playvol/play2/speak/stopsound + room_type/waterlevel/s_lerping cvars) through the full pipeline into SinkDevice; PCM byte-identical across 12 in-process repeats x 10 standalone runs x BOTH arches (FNV 0xDF1088E7D0D531CF, authoritative check is memcmp vs committed bytes so a digest collision cannot mask divergence; determinism argued source-by-source: no wall clock in the measured path, total happens-before via role workers, no map iteration or pointer values in output, /fp:precise + integer-generated sources for cross-arch float identity). Resolves gate finding CONC-6: internal_pump now DERIVED from IAudioDevice::drives_own_callback() instead of hardcoded. New Q-4 seams: SoundInitParams::audio_loader (injected decode seam), external_decoder + Sound::decoder_step() (commanded pump). The plan's post-chunk fan-out (kernel-parity matrix + channel-allocation policy agent) is adjudicated DISCHARGED-BY-EXCEEDING: S9.3's parity gate verified the kernel matrix by independent macro expansion, S9.6's line-audit covered the allocation policy, and the S9.7b four-dimension gate re-verified both post-move | witness + focused reviewer on the 3 non-test seams | — | committed with Chunk 9 closure |
+| 42 | F/close-out | **Campaign close-out mini-audit** (9 auditors: doc accuracy x3, Q-21 posture x2 via extension-door-auditor, threading currency x2, plus the abi-watchdog and dependency-graph exit gates). 145 claims checked, 27 findings. **Both hard exit gates GREEN**: abi-watchdog CLEAR across the vendored `sound_api.hpp` pins, input's keydefs static_assert approach, save's TYPEDESCRIPTION usage, and the fake-DLL probes (14 checked, 0 findings); dependency-graph confirms `xash3dpp_sound`/`xash3dpp_input` are LEAF static libs with no host/server/launcher edge and core gained no downward edges (6 checked, 0 findings). Findings were doc-currency and annotation debt, not defects: **the campaign's own "Chunk 10 doc closure 2026-07-20" claim was FALSE** — `input-boundary.md` still read "pre-implementation draft, 0 TUs" and had not been touched since the recon commit; `input.hpp`'s header claimed "every mutating entry point asserts ThreadRole::Main" against 7 assert sites for ~29 entries; sound carried 13 unresolved thread-assert candidate-warnings; `sound-boundary.md`'s own OQ table still showed SND-OQ-4/OQ-5 open after the campaign decided them (drift that had propagated into `codec.hpp`); `core-boundary.md` never mentioned the queue family it now owns and still called its synchronisation footprint exhaustive; the design brief documented a templated `spawn_thread` signature that was never built that way; `thread_role.hpp` cited pre-renumbering chunk numbers; and three cvar/table censuses undercounted legacy (touch 14→22, joy/gyro ~26→32, keynames ~130→101) | close-out audit (9 agents) | 13 MAJOR + 13 MINOR + 1 NOTE, 0 BLOCKER | ALL FIXED at close-out: input-boundary reconciled with an as-built banner and corrected censuses, input assert coverage brought up to its claim rather than the claim narrowed, sound's 13 candidates resolved per-site (real Main asserts on the device lifecycle setters; conditional-role compliance-allow where asserting Main would be WRONG because the decoder owns the object), OQ rows and stale code comments corrected, core-boundary given a queue-family section, brief signature corrected, chunk numbers fixed. The false doc-closure claim is corrected in the plan heading rather than quietly overwritten |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
+
+## Campaign close — final report (2026-07-20)
+
+**Verdict: COMPLETE.** Chunks 8 (save/restore), 9 (sound) and 10 (input) all
+shipped and are flipped DONE in `implementation-plan.md`; `status --check`
+drift is clean.
+
+### Exit gates
+
+| Gate | Result |
+|---|---|
+| Build + tests, both arches | 124/124 x64, 124/124 x86, 0 errors, 0 new warnings |
+| `status --check` drift | clean (input + sound rows flipped Complete) |
+| `q21_scan` | 16/16 boundaries clean, 0 missing axes |
+| `workflow_sync` (stage 2) | 0 findings |
+| `markdown_lint` (docs scope) | 0 issues |
+| abi-watchdog re-baseline | **CLEAR** — vendored `sound_api.hpp` pins, input keydefs static_asserts, save TYPEDESCRIPTION usage, fake-DLL probes; no frozen-header conflict |
+| dependency-graph leaf rule | **CLEAR** — `xash3dpp_sound`/`xash3dpp_input` are leaf static libs, no host/server/launcher edge; `core` gained no downward edges |
+| `compliance_scan` thread-assert | sound 0 candidates / 9 documented allows; input 0 candidates / 9 documented allows |
+
+### Census delta (campaign start → close)
+
+| Metric | Start | Close |
+|---|---|---|
+| src TUs | 132 | 167 |
+| tests (per arch) | 95 | 124 |
+| `assert_thread_role` sites | — | 248 (save 38, sound 27, input 37 new this campaign) |
+| Subsystems with 0 TUs closed | save, sound, input | all three now Complete |
+
+### Phase log
+
+| Phase | Output |
+|---|---|
+| A — recon + boundary specs | 3 boundary specs + 2 deep-dives, ~14 read-only recon agents |
+| B — decisions | Q-23 (backend stop-line), Q-24 (queue-family home), HB-4 design brief, the SND-OQ set, B5 command-context overload |
+| C — Chunk 8 save | S8.1-S8.8 + platform spike; real retail `hl.dll` save→load witness |
+| D — Chunk 9 sound | S9.0-S9.8; first threads in the tree; byte-identical cross-arch PCM witness |
+| E — Chunk 10 input | S10.1-S10.6 in a worktree lane, merged and double-gated |
+| F — close-out | 9-auditor mini-audit + exit gates + this report |
+
+### What the gates caught (the case for the discipline)
+
+Across the campaign the verification gates caught **1 cross-thread
+use-after-free, 1 data race, 1 ABI blocker, and 30+ behavioural divergences
+before any of it was committed** — including several that no test in the
+suite would have failed on. The highest-value catches:
+
+- **S9.7b — cross-thread use-after-free** (converged on independently by two
+  gate dimensions): `SfxRegistry::release()` destroyed a decoded buffer from
+  the decoder thread while other live channels and queued commands still
+  borrowed it. The slice's own epoch-fence safety argument had a real gap —
+  the fence orders commands, it does not protect buffers.
+- **S9.7b — `dsp_profile` data race**: a race the ORCHESTRATOR introduced in
+  the S9.6 gate fix, caught by the next gate. Gates catch their author too.
+- **S9.7b — silent-sound divergence**: `resolve_origin` could not express
+  legacy's IN/OUT contract, so a sound fired with a valid server position for
+  an unparsed entity was inaudible where legacy plays it.
+- **S8.2 / S8.5 — wire-breaking save-format divergences** (FIELD_STRING token
+  index; FIELD_MODELNAME raw copy) — both would have produced saves the
+  legacy engine could not read.
+- **S9.3 — float-chain divergence**: pitch computed in double throughout,
+  where legacy rounds to float at a parameter boundary; every pitched sound
+  would have de-synced its resample accumulator, masked by the default
+  `basePitch == 100`.
+- **Close-out — a false claim by the orchestrator**: the campaign asserted
+  "Chunk 10 doc closure 2026-07-20" while `input-boundary.md` still read
+  "pre-implementation draft, 0 TUs". Corrected in place, not overwritten.
+
+Equally important, the **adversarial verify passes refuted 11 of 36 findings**
+on the highest-risk slice (two of them reported as blocker/divergence but not
+defects at all) and refuted or downgraded several more elsewhere — acting on
+raw finder output would have meant substantial churn on correct code.
+
+### Decisions amended rather than obeyed
+
+**SND-OQ-3** was ratified as "START overflow blocks the producer, asserted in
+debug"; the implementation spins bounded and then drops with a counter. The
+implementation is right — an assert on producer saturation turns a merely
+stalled decoder into a process abort and makes the guarantee untestable — so
+the register, the design brief, and the boundary spec were amended to say what
+the code does and why the original wording was withdrawn. Recorded here
+because "the decision was wrong" is a legitimate gate outcome and should not
+be laundered into silent drift.
 
 ## Deferred with owner
 

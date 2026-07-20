@@ -57,9 +57,14 @@ rides the same two primitives designed here.
 
 ### 3.3 `platform::spawn_thread`
 
-- Signature shape: `spawn_thread(core::ThreadRole role, const char *name,
-  ThreadPriority prio, Fn &&fn) -> JoinHandle` (exact C++ shape finalized
-  at S9.0 implementation; `JoinHandle` is join-on-destruction RAII).
+- Signature **as built** (S9.0): `spawn_thread(core::ThreadRole role,
+  const char *name, ThreadPriority prio, ThreadFn fn, void *user) ->
+  JoinHandle` — a plain function pointer plus an opaque user pointer, NOT a
+  templated forwarding reference (a template would force `spawn_thread` into
+  a header and drag `<thread>` across the platform boundary; the `void *user`
+  slot mirrors `CommandCtxFn`'s shape). `JoinHandle` is join-on-destruction
+  RAII wrapping `std::thread`. The authoritative row is in
+  `boundaries/platform-boundary.md`'s Interface table.
 - Registers `role` via `register_thread_role` as the FIRST action on the
   new thread; the assert machinery fires in every build (thread_role.hpp
   as-built; threading-model doc corrected 2026-07-19).

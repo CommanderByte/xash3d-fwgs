@@ -17,6 +17,10 @@
 #include <type_traits>
 #include <variant>
 
+// @annotation-exempt: cold-value-type — every struct below is a trivially-
+// copyable POD payload (each carries its own static_assert), and InputEvent
+// is a value-type variant over them; none carries shared mutable state, so
+// the QN annotation matrix's @thread-safety requirement does not apply here.
 namespace xash::input {
 
 // event_down / event_up / event_motion — legacy touchEventType (client/input.h:61-66).

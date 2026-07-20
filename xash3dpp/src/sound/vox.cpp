@@ -7,11 +7,20 @@
 // cross-call VOX_ParseWordParams default-carryover, the single-immediate-
 // slot overwrite). Legacy C engine is REFERENCE-ONLY.
 //
-// @thread-safety: see vox.hpp's file header — mirrors the Mixer's
-// compliance-allow(thread-assert) posture (T_AudioDecoder, unasserted this
-// slice; networking-boundary precedent, context.cpp:81).
+// @thread-safety: see vox.hpp's file header for the full rationale — VoxSystem
+// is confined to whichever thread OWNS THE CHANNEL ARRAY (T_AudioDecoder while
+// the S9.7b topology runs, T_Main when it does not), a CONDITIONAL role
+// enforced at the Sound::* (Main) / AudioTopology::decoder_step() /
+// Mixer::paint_channels() (AudioDecoder) entry points rather than per-call
+// here. (The earlier "mirrors the Mixer's unasserted posture, T_AudioDecoder"
+// framing described the pre-S9.7b slice, before paint_channels() asserted for
+// real; that posture was retired with S9.7b — this header now states the
+// current one.)
 
 #include <xash3dpp/private/sound/vox.hpp>
+
+#include <xash3dpp/core/assert.hpp>
+#include <xash3dpp/core/thread_role.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -481,6 +490,10 @@ void ImmediateSentenceSlot::set( std::string_view name ) noexcept
 
 void VoxSystem::load_sentence_file( std::span<const std::byte> data )
 {
+    // T_Main registration-time entry (VOX_Init/S_RegisterSound) — unlike the
+    // rest of VoxSystem, this one is NOT reached through the channel-array-
+    // owner conditional (vox.hpp's file-header rationale); real assert (FIX B).
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     // VOX_ReadSentenceFile calls VOX_Shutdown() before parsing (s_vox.c:575).
     clear();
     parse_sentence_file( data, sentences_ );
@@ -530,6 +543,13 @@ std::optional<VoxSentence> VoxSystem::build_sentence( std::string_view name ) co
     return sentence;
 }
 
+// compliance-allow(thread-assert): word-advance-time resolve (S9.6 lazy
+// resolution), reached from bind_channel()/next_word() — both funnel through
+// whichever thread owns the channel array (T_AudioDecoder while the S9.7b
+// topology runs, T_Main when it does not; see this file's header rationale).
+// No single per-call assert can encode that conditional role; it is enforced
+// at the two entry points that DO know the mode (Sound::* asserts Main,
+// AudioTopology::decoder_step()/Mixer::paint_channels() assert AudioDecoder).
 bool VoxSystem::load_word( MixChannel &chan, ChannelState &state ) noexcept
 {
     // SetBits( ch->flags, FL_CHAN_SENTENCE_FINISHED ); — unconditional, first.

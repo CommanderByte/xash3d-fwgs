@@ -184,6 +184,11 @@ void Input::Impl::engine_append_move(float frametime, MoveCmd &cmd, bool active)
 }
 
 // IN_Commands (input.c:617-640).
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void Input::Impl::run_commands(double frametime) noexcept
 {
     if (source != nullptr) { source->evdev_frame(); }
@@ -267,6 +272,11 @@ void Input::Impl::toggle_client_mouse(KeyDest newstate, KeyDest oldstate) noexce
 
 // IN_SetRelativeMouseMode (input.c:212-246) — edge-latched via member state
 // (Threading table: was a function-local static, Race-static-buf shape).
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void Input::Impl::set_relative_mouse_mode(bool set) noexcept
 {
     if (set && !s_raw_input) {
@@ -279,6 +289,11 @@ void Input::Impl::set_relative_mouse_mode(bool set) noexcept
 }
 
 // IN_SetMouseGrab (input.c:248-269).
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void Input::Impl::set_mouse_grab(bool set) noexcept
 {
     if (set && !s_mouse_grab) {
@@ -291,6 +306,11 @@ void Input::Impl::set_mouse_grab(bool set) noexcept
 }
 
 // IN_ActivateMouse / IN_DeactivateMouse (input.c:302-329).
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void Input::Impl::activate_mouse() noexcept
 {
     if (!in_mouseinitialized) { return; }
@@ -299,6 +319,11 @@ void Input::Impl::activate_mouse() noexcept
     in_mouseactive = true;
 }
 
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 void Input::Impl::deactivate_mouse() noexcept
 {
     if (!in_mouseinitialized) { return; }
@@ -331,7 +356,12 @@ void Input::mouse_move() noexcept
 
 void Input::host_input_frame(double frametime) noexcept
 {
-    // Host_InputFrame (input.c:649-654).
+    // Host_InputFrame (input.c:649-654). run_commands()/mouse_move() each
+    // assert Main independently as their own first statement; this entry
+    // asserts too (FIX A: every public mutating entry, even a pure 2-call
+    // composite with no mutation of its own) so the invariant holds even if
+    // a future edit inserts logic here before the delegating calls.
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     run_commands(frametime);
     mouse_move();
 }

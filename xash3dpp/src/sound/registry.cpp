@@ -33,6 +33,17 @@ AudioData make_default_sound() noexcept
 // ---------------------------------------------------------------------------
 // FilesystemAudioLoader — a SIMPLIFIED single-path resolution (see
 // registry.hpp file-header deviations vs. soundlib's fuller FS_LoadSound).
+//
+// compliance-allow(thread-assert): reachable from BOTH T_Main
+// (SfxRegistry::load_sfx() — registration-time decode, registry.hpp's
+// @thread-safety header) AND T_AudioDecoder (sound.cpp's LockedSfxResolver,
+// serving a VOX word's lazy resolve — deliberately called with
+// Sound::Impl::registry_mutex_ RELEASED per gate finding CONC-9, so this call
+// itself is never under the registry's lock). No single per-call assert can
+// name both legitimate callers; the implementation must therefore stay
+// reentrant and touch no state shared with the registry (it borrows only
+// `fs_`, which is itself a stateless-per-call filesystem handle, and returns
+// an owned AudioData with no aliasing into registry-owned storage).
 // ---------------------------------------------------------------------------
 std::optional<AudioData> FilesystemAudioLoader::load( std::string_view name ) noexcept
 {

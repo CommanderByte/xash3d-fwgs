@@ -56,8 +56,8 @@ enum class ThreadRole
     AudioCallback,  // OS-driven audio buffer-fill callback (real-time)
     AudioDecoder,   // background audio stream decoder
     Worker,         // generic worker-pool thread
-    Render,         // dedicated render thread (PLANNED — Chunk 10)
-    NetIO,          // networking I/O thread (PLANNED — Chunk 2)
+    Render,         // dedicated render thread (PLANNED — Chunk 13)
+    NetIO,          // networking I/O thread (PLANNED — deferred)
 };
 
 // ---------------------------------------------------------------------------

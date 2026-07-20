@@ -7,6 +7,9 @@
 
 #include <xash3dpp/sound/device.hpp>
 
+#include <xash3dpp/core/assert.hpp>
+#include <xash3dpp/core/thread_role.hpp>
+
 #include <algorithm>
 #include <cstdint>
 
@@ -50,6 +53,9 @@ void NullDevice::close() noexcept
 
 void NullDevice::set_active( bool active ) noexcept
 {
+    // device.hpp's IAudioDevice @thread-safety header: "all four methods are
+    // T_Main lifecycle calls" — real assert, not a compliance-allow (FIX B).
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     // Topology-symmetry Activate that legacy s_stub omits (SND-OQ-2): tracked
     // but inert — NullDevice never pulls from the source regardless.
     active_ = active;
@@ -57,6 +63,8 @@ void NullDevice::set_active( bool active ) noexcept
 
 void NullDevice::set_fill_source( IAudioFillSource *source ) noexcept
 {
+    // device.hpp's IAudioDevice @thread-safety header: T_Main lifecycle call.
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     source_ = source; // accepted for API symmetry; never invoked
 }
 
@@ -81,11 +89,15 @@ void SinkDevice::close() noexcept
 
 void SinkDevice::set_active( bool active ) noexcept
 {
+    // device.hpp's IAudioDevice @thread-safety header: T_Main lifecycle call.
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     active_ = active;
 }
 
 void SinkDevice::set_fill_source( IAudioFillSource *source ) noexcept
 {
+    // device.hpp's IAudioDevice @thread-safety header: T_Main lifecycle call.
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
     source_ = source;
 }
 

@@ -142,17 +142,34 @@ void Input::set_key_dest(KeyDest dest) noexcept
     impl_->key_dest = dest;
 }
 
-void Input::set_changelevel(bool changelevel) noexcept { impl_->changelevel = changelevel; }
+void Input::set_changelevel(bool changelevel) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->changelevel = changelevel;
+}
 bool Input::changelevel() const noexcept { return impl_->changelevel; }
 
 void Input::key_event(Key key, bool down) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     impl_->stats.key_events_routed.fetch_add(1, std::memory_order_relaxed);
     impl_->key_event(key, down);
 }
-void Input::clear_states() noexcept { impl_->clear_states(); }
-void Input::char_event(int ch) noexcept { impl_->char_event(ch); }
-void Input::enable_text_input(bool enable, bool force) noexcept { impl_->enable_text_input(enable, force); }
+void Input::clear_states() noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->clear_states();
+}
+void Input::char_event(int ch) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->char_event(ch);
+}
+void Input::enable_text_input(bool enable, bool force) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->enable_text_input(enable, force);
+}
 
 // ---------------------------------------------------------------------------
 // Bindings (S10.2)
@@ -160,25 +177,72 @@ void Input::enable_text_input(bool enable, bool force) noexcept { impl_->enable_
 
 std::optional<Key> Input::string_to_keynum(std::string_view name) const noexcept { return impl_->keys.string_to_keynum(name); }
 std::string Input::keynum_to_string(Key key) const noexcept { return impl_->keys.keynum_to_string(key); }
-bool Input::set_binding(Key key, std::string_view binding) noexcept { return impl_->keys.set_binding(key, binding); }
+bool Input::set_binding(Key key, std::string_view binding) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    return impl_->keys.set_binding(key, binding);
+}
 std::string_view Input::get_binding(Key key) const noexcept { return impl_->keys.get_binding(key); }
-std::optional<Key> Input::get_key(std::string_view binding_prefix) const noexcept { return impl_->keys.get_key(binding_prefix); }
+
+// get_key() walks the full keys_ table (KeyTable::get_key's linear
+// prefix scan) rather than indexing a single record — same mutable-state
+// iteration hazard as bindings_snapshot()/write_bindings_text()/
+// bindlist_text() below, so it asserts too (FIX A: snapshot-shaped query).
+std::optional<Key> Input::get_key(std::string_view binding_prefix) const noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    return impl_->keys.get_key(binding_prefix);
+}
 
 std::optional<std::string> Input::lookup_binding(std::string_view binding_prefix) const noexcept
 {
+    // Walks keys_ via KeyTable::get_key() — same reasoning as get_key() above.
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     auto key = impl_->keys.get_key(binding_prefix);
     if (!key.has_value()) { return std::nullopt; }
     return impl_->keys.keynum_to_string(*key);
 }
 
-void Input::bind(Key key, std::string_view command) noexcept { (void)impl_->keys.set_binding(key, command); }
-bool Input::unbind(Key key) noexcept { return impl_->keys.unbind(key); }
-void Input::unbindall() noexcept { impl_->keys.unbindall(); }
-void Input::resetkeys() noexcept { impl_->keys.resetkeys(); }
+void Input::bind(Key key, std::string_view command) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    (void)impl_->keys.set_binding(key, command);
+}
+bool Input::unbind(Key key) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    return impl_->keys.unbind(key);
+}
+void Input::unbindall() noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->keys.unbindall();
+}
+void Input::resetkeys() noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->keys.resetkeys();
+}
 
-std::vector<BindingEntry> Input::bindings_snapshot() const noexcept { return impl_->keys.bindings_snapshot(); }
-std::string Input::write_bindings_text() const noexcept { return impl_->keys.write_bindings_text(); }
-std::string Input::bindlist_text() const noexcept { return impl_->keys.bindlist_text(); }
+// bindings_snapshot()/write_bindings_text()/bindlist_text() are const but
+// each WALKS the full mutable keys_ vector to build their result (a loop,
+// not a single-record index like is_down()/get_binding()) — FIX A treats
+// that as needing the assert too (a query "built by walking mutable state").
+std::vector<BindingEntry> Input::bindings_snapshot() const noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    return impl_->keys.bindings_snapshot();
+}
+std::string Input::write_bindings_text() const noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    return impl_->keys.write_bindings_text();
+}
+std::string Input::bindlist_text() const noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    return impl_->keys.bindlist_text();
+}
 
 // ---------------------------------------------------------------------------
 // Joy / gyro (S10.3)
@@ -186,6 +250,7 @@ std::string Input::bindlist_text() const noexcept { return impl_->keys.bindlist_
 
 void Input::set_joy_capabilities(bool have_gyro) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     if (impl_->cvars != nullptr && impl_->cv.joy_have_gyro != nullptr) {
         impl_->cvars->cvar_full_set(impl_->cv.joy_have_gyro->abi.name, have_gyro ? "1" : "0", impl_->cv.joy_have_gyro->abi.flags);
     }
@@ -195,6 +260,7 @@ GyroCalibrationState Input::joy_calibration_state() const noexcept { return impl
 
 void Input::set_joy_calibration_state(GyroCalibrationState state) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     if (impl_->cvars != nullptr && impl_->cv.joy_calibrated != nullptr) {
         int v = static_cast<int>(state);
         char buf[4];
@@ -213,15 +279,21 @@ bool Input::joy_active() const noexcept
 
 void Input::start_gyro_calibration() noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     if (impl_->source != nullptr) { impl_->source->calibrate_gamepad_gyro(); }
     impl_->gyro_cal.restart(impl_->gyro_time_now);
     set_joy_calibration_state(GyroCalibrationState::NotCalibrated);
 }
 
-void Input::set_clock_now(double seconds) noexcept { impl_->gyro_time_now = seconds; }
+void Input::set_clock_now(double seconds) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->gyro_time_now = seconds;
+}
 
 void Input::lock_input_devices(bool lock) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     // IN_LockInputDevices (Quirk 11) — pure FCVAR_READ_ONLY bitfield flip,
     // fully reentrant/idempotent (input.c:92-108).
     constexpr std::uint32_t k_read_only = ::xash::cmd_cvar::FCVAR_READ_ONLY;

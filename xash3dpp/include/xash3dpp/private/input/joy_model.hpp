@@ -8,6 +8,8 @@
 // each call (JoyTunables/DeviceGyroTunables), read fresh from the live cvars
 // by Input's orchestration layer (src/input/joy/joy.cpp). This keeps the
 // math testable without a CmdCvarContext.
+//
+// @thread-safety: T_Main only.
 
 #include <xash3dpp/input/joy.hpp>
 #include <xash3dpp/input/key.hpp>

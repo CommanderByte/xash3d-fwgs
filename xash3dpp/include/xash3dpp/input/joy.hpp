@@ -5,6 +5,11 @@
 
 #include <cstdint>
 
+// @annotation-exempt: cold-value-type — JoyAxis/GyroCalibrationState/JoyHat
+// are plain enums (JoyHat's operator|/has_hat are pure, stateless functions),
+// and JoyAxisState is a POD snapshot struct returned BY VALUE from
+// Input::joy_axis_state(); none carries shared mutable state, so the QN
+// annotation matrix's @thread-safety requirement does not apply here.
 namespace xash::input {
 
 // engineAxis_t (client/input.h:127-136).

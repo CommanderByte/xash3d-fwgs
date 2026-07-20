@@ -71,6 +71,14 @@ RoomDsp::RoomDsp( ::xash::memory::PoolHandle pool ) noexcept : pool_( pool )
 // Cvar-equivalent setters
 // ===========================================================================
 
+// compliance-allow(thread-assert): the §4.3 cvar-equivalent setters below run
+// on whichever thread owns the channel array — T_AudioDecoder while the
+// S9.7b topology runs (apply_command() applies a main-polled
+// MixConfigSnapshot decoder-side, audio_command.cpp:263-275), T_Main when it
+// does not — a CONDITIONAL role per dsp.hpp's file-header rationale, not a
+// fixed one. No single per-call assert can express that; it is enforced at
+// the entry points that DO know the mode (Sound::* asserts Main, sound.cpp;
+// AudioTopology::decoder_step() asserts AudioDecoder, topology.cpp).
 void RoomDsp::set_dsp_coeff_table( float table ) noexcept
 {
     if( table != dsp_coeff_table_ )
@@ -78,6 +86,8 @@ void RoomDsp::set_dsp_coeff_table( float table ) noexcept
     dsp_coeff_table_ = table;
 }
 
+// compliance-allow(thread-assert): same conditional-role rationale as
+// set_dsp_coeff_table() above (dsp.hpp file header).
 void RoomDsp::set_hisound( int quality ) noexcept
 {
     if( quality != hisound_ )
@@ -85,6 +95,8 @@ void RoomDsp::set_hisound( int quality ) noexcept
     hisound_ = quality;
 }
 
+// compliance-allow(thread-assert): same conditional-role rationale as
+// set_dsp_coeff_table() above (dsp.hpp file header).
 void RoomDsp::set_room_size( float v ) noexcept
 {
     if( v != room_size_ )
@@ -92,6 +104,8 @@ void RoomDsp::set_room_size( float v ) noexcept
     room_size_ = v;
 }
 
+// compliance-allow(thread-assert): same conditional-role rationale as
+// set_dsp_coeff_table() above (dsp.hpp file header).
 void RoomDsp::set_room_delay( float v ) noexcept
 {
     if( v != room_delay_ )
@@ -99,6 +113,8 @@ void RoomDsp::set_room_delay( float v ) noexcept
     room_delay_ = v;
 }
 
+// compliance-allow(thread-assert): same conditional-role rationale as
+// set_dsp_coeff_table() above (dsp.hpp file header).
 void RoomDsp::set_room_left( float v ) noexcept
 {
     if( v != room_left_ )
@@ -669,6 +685,13 @@ void RoomDsp::dly_do_stereo_delay( portable_samplepair_t *paint, int count ) noe
 // SX_RoomFX (s_dsp.c:846-864)
 // ===========================================================================
 
+// compliance-allow(thread-assert): called from Mixer::paint_channels(), which
+// itself asserts ThreadRole::AudioDecoder while the S9.7b topology runs — but
+// paint_channels() also runs (unasserted at this depth) when the topology is
+// not running, so process() is confined to whichever thread owns the channel
+// array at the time (T_AudioDecoder or T_Main), same conditional role as the
+// setters above (dsp.hpp file header). No per-call assert here can encode
+// that; the mode is only known at Mixer::paint_channels()/Sound::* entry.
 void RoomDsp::process( portable_samplepair_t *roombuffer, int num_samples ) noexcept
 {
     if( room_off_ || num_samples == 0 )

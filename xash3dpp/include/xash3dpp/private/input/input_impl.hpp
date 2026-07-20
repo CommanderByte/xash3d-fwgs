@@ -2,6 +2,8 @@
 // xash3dpp — Input::Impl — the full aggregate state behind the pimpl.
 // Shared by every src/input/**/*.cpp translation unit that implements a
 // piece of Input's behaviour (keys/, joy/, touch/, osk/, move assembly).
+//
+// @thread-safety: T_Main only.
 
 #include <xash3dpp/input/event.hpp>
 #include <xash3dpp/input/input.hpp>

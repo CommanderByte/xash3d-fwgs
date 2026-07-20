@@ -11,6 +11,10 @@
 #include <cstdint>
 #include <string>
 
+// @annotation-exempt: cold-value-type — BindingEntry is a pure POD row
+// returned BY VALUE from Input::bindings_snapshot(); it carries no shared
+// mutable state of its own (each caller owns an independent copy), so the QN
+// annotation matrix's @thread-safety requirement does not apply here.
 namespace xash::input {
 
 // One row of a bindings_snapshot() result.  |key_name| is the legacy

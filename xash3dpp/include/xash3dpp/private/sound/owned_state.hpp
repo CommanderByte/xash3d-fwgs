@@ -7,8 +7,21 @@
 // mixer/clock/channel logic lands in S9.2+.
 //
 // @thread-safety: internal to the Sound pimpl.  The disposition column records
-// each field's eventual thread home (mix-thread-private, MPSC-crossed, ...);
-// none of that is enforced here because no worker threads run in this slice.
+// each field's eventual thread home (mix-thread-private, MPSC-crossed, ...).
+// Sound now runs real T_AudioDecoder/T_AudioCallback threads (S9.7b topology),
+// so "no worker threads run in this slice" is stale for the struct as a whole
+// — but it is still true for MOST of the individual fields below, which
+// remain exactly what their own per-field comments already say: MixClock
+// (mix_clock_) and AmbientState (ambient_state_) are pure layout with no
+// reader/writer anywhere yet, and ChannelState/RawChannelState
+// (channels_/raw_channels_) are explicitly "empty stub" / "reserve deferred"
+// — the REAL per-channel mixing array is Mixer's own channels_/raw_channels_
+// (mixer.hpp), a distinct, already-wired member. DmaState (dma_) IS populated
+// (from DeviceCaps at open/close) but only ever touched on T_Main today.
+// FadeState (fade_state_) is the one field that actually crosses threads —
+// written by T_Main fade commands, read at paint time via MixGateSnapshot's
+// gain param (its own comment below) — so it is the sole candidate here a
+// future thread assertion would have anything to guard.
 
 #include <xash3dpp/abi/sound_api.hpp> // channel_t, rawchan_t, snd_format_t, sound_t
 #include <xash3dpp/limits.hpp>

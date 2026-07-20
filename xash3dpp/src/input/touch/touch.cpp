@@ -396,10 +396,17 @@ int Input::touch_event(TouchEventType type, int finger_id, float x, float y, flo
 
 void Input::touch_get_move(float &forward, float &side, float &pitch, float &yaw) noexcept
 {
+    // Touch_GetMove mutates TouchModel state (self-clears yaw/pitch — see
+    // TouchModel::get_move's doc comment), not a pure query.
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     impl_->touch.get_move(forward, side, pitch, yaw);
 }
 
-void Input::touch_set_client_only(bool state) noexcept { impl_->touch.set_client_only(state); }
+void Input::touch_set_client_only(bool state) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->touch.set_client_only(state);
+}
 
 bool Input::touch_want_visible_cursor() const noexcept
 {
@@ -411,6 +418,7 @@ bool Input::touch_want_visible_cursor() const noexcept
 
 void Input::touch_key_event(Key key, bool down, float mouse_x_norm, float mouse_y_norm) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     if (!touch_want_visible_cursor()) { return; }
     auto r = impl_->touch.key_event(key, down, mouse_x_norm, mouse_y_norm);
     if (r.fire) { impl_->touch_event(r.type, r.finger_id, r.x, r.y, r.dx, r.dy); }
@@ -418,14 +426,28 @@ void Input::touch_key_event(Key key, bool down, float mouse_x_norm, float mouse_
 
 void Input::touch_notify_resize(float refstate_width, float refstate_height) noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     impl_->touch.notify_resize(refstate_width, refstate_height);
 }
 
-void Input::touch_remove_button(std::string_view name, bool privileged) noexcept { impl_->touch.remove_button(name, privileged); }
-void Input::touch_hide_buttons(std::string_view name, bool hide, bool privileged) noexcept { impl_->touch.hide_buttons(name, hide, privileged); }
+void Input::touch_remove_button(std::string_view name, bool privileged) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->touch.remove_button(name, privileged);
+}
+void Input::touch_hide_buttons(std::string_view name, bool hide, bool privileged) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->touch.hide_buttons(name, hide, privileged);
+}
 
+// Walks impl_->touch.list_user() (a loop over mutable per-instance state) to
+// build the returned vector — same "snapshot built by walking mutable state"
+// shape as Input::bindings_snapshot(), so FIX A treats it as needing the
+// assert despite being const.
 std::vector<TouchButtonDesc> Input::touch_buttons() const noexcept
 {
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     std::vector<TouchButtonDesc> out;
     out.reserve(impl_->touch.list_user().size());
     for (const auto &b : impl_->touch.list_user()) {
@@ -444,6 +466,12 @@ std::vector<TouchButtonDesc> Input::touch_buttons() const noexcept
 
 bool Input::osk_key_event(Key key, bool down) noexcept
 {
+    // A true Input:: entry point (not reached through Input::key_event) that
+    // itself drives impl_->key_event()/impl_->char_event() for OSK-internal
+    // reinjection — FIX A: this was the entry missing an assert that let
+    // Impl::key_event's own (pre-existing) assert be the only thing catching
+    // an off-Main caller here.
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
     bool osk_cvar = (impl_->cv.osk_enable != nullptr) ? (impl_->cv.osk_enable->abi.value != 0.0f) : false;
     auto outcome = impl_->osk.key_event(key, down, osk_cvar);
     if (outcome.reinject_enter) { impl_->key_event(Key::Enter, outcome.reinject_enter_down); }
@@ -453,7 +481,11 @@ bool Input::osk_key_event(Key key, bool down) noexcept
     return outcome.consumed;
 }
 
-void Input::osk_enable_text_input(bool enable, bool force) noexcept { impl_->osk.enable_text_input(enable, force); }
+void Input::osk_enable_text_input(bool enable, bool force) noexcept
+{
+    ::xash::core::assert_thread_role(::xash::core::ThreadRole::Main);
+    impl_->osk.enable_text_input(enable, force);
+}
 OskStateDesc Input::osk_state() const noexcept { return impl_->osk.state(); }
 
 } // namespace xash::input

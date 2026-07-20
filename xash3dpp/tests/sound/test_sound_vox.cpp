@@ -11,6 +11,7 @@
 #include <xash3dpp/private/sound/vox.hpp>
 #include <xash3dpp/private/sound/mixer.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/sound/audio_data.hpp>
 
 #include <cmath>
@@ -727,6 +728,14 @@ static void test_full_sentence_mix_three_words()
 
 int main()
 {
+    // FIX B (chunks-8/9/10 close-out): VoxSystem::load_sentence_file() now
+    // carries a REAL assert_thread_role(Main) (it is a T_Main registration-
+    // time entry, not under the channel-array-owner conditional the rest of
+    // VoxSystem uses) — register the role here, matching every sibling sound
+    // test file's established convention (test_sound_device.cpp,
+    // test_sound_lifecycle.cpp, test_sound_entry.cpp).
+    xash::core::register_thread_role( xash::core::ThreadRole::Main );
+
     // 1. Ported legacy XASH_ENGINE_TESTS cases.
     RUN_TEST( test_ported_vox_get_directory );
     RUN_TEST( test_ported_vox_lookup_string );

@@ -237,7 +237,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### Chunk 10 — input ✅ DONE *(implementation landed 2026-07-19 `8720af2b`; doc closure 2026-07-20)*
+### Chunk 10 — input ✅ DONE *(implementation landed 2026-07-19 `8720af2b`; boundary spec reconciled to as-built 2026-07-20 by the close-out audit — the earlier "doc closure" claim was premature and is corrected here)*
 
 **Subsystems**: `input`\
 **Depends on**: platform *(done)*\

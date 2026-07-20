@@ -232,6 +232,11 @@ std::string KeyTable::keynum_to_string(Key key) const noexcept
     return buf;
 }
 
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 bool KeyTable::set_binding(Key key, std::string_view binding) noexcept
 {
     if (!key_in_range(key)) { return false; }
@@ -343,6 +348,11 @@ std::vector<BindingEntry> KeyTable::bindings_snapshot() const noexcept
     return out;
 }
 
+// compliance-allow(thread-assert): private leaf reached ONLY through an
+// already-asserting public `Input::` entry point (close-out audit, 2026-07-20).
+// Input is permanently T_Main-confined — there is no T_Input split planned or
+// warranted — so the assertion belongs at the entry, not repeated in the
+// data-and-lookup layer beneath it.
 std::string KeyTable::write_bindings_text() const noexcept
 {
     // Key_WriteBindings (in_keys.c:462-484): unbindall header, then one

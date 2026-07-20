@@ -56,7 +56,7 @@
 |---|---|---|
 | in_keys.c:22-28,43 | `enginekey_t` (binding ptr, `down:1`, `gamedown:1`, `repeats:30`) in file-scope static array `keys[265]` | high |
 | in_keys.c:37-43 | 265 = over-provisioned vs ~255 real keys + 9 international slots | high |
-| in_keys.c:45-159 | `keynames[]` static const table, ~130 rows (name, keynum, default-bind) | high |
+| in_keys.c:45-159 | `keynames[]` static const table, 101 rows (name, keynum, default-bind) — count corrected 2026-07-20 by the campaign close-out audit | high |
 | in_keys.c:229 | Static `tinystr[16]` return buffer in `Key_KeynumToString`, reused across calls | high |
 | in_keys.c:161 | `key_rotate` cvar (`FCVAR_ARCHIVE\|FCVAR_FILTERABLE`) | high |
 | in_keys.c:560 (client.h) | `cls.key_dest` — owned by broader `client_t cls`, not local | high |
@@ -416,7 +416,7 @@ Scope: EVENT MODEL ONLY. Rendering (`ref.dllFuncs.*`, `CL_DrawString`,
 | legacy file:line | claim | confidence |
 |---|---|---|
 | in_touch.c:1134-1157 | 24 commands: 9 unprivileged (`Cmd_AddCommand`: addbutton, removebutton, settexture, setcolor, setcommand, setflags, show, hide, fade), 15 restricted (`Cmd_AddRestrictedCommand`: enableedit, disableedit, list, removeall, loaddefaults, roundall, exportconfig, set_stroke, setclientonly, reloadconfig, writeconfig, deleteprofile, generate_code, toggleselection, aspectratio) | high |
-| in_touch.c:1160-1187 | 14 `touch_*` cvars registered separately, plus `touch_enable` (defined in input.c, not this file) | high |
+| in_touch.c:1160-1187 | 22 `touch_*` cvars registered separately, plus `touch_enable` (defined in input.c, not this file) = 23 — count corrected 2026-07-20 by the campaign close-out audit | high |
 
 ### 4.6 Chunk-12 fence list (not analyzed further)
 

@@ -159,6 +159,28 @@ No magic number literals requiring limits.hpp entries within core source files �
 
 Core has **no satellite subsystem attachments** (Q-11 inapplicable). Core is a utility library, not a domain service.
 
+## Queue family (P-1 primitives, added 2026-07-20)
+
+`core` owns the two generic lock-free primitives of the P-1 queue family
+(Q-24 `QUEUE_FAMILY_HOME`; contracts in
+`design/thread-spawn-and-inbox-brief.md` §3.1/§3.2):
+
+| Header | Type | Contract |
+|---|---|---|
+| `core/mpsc_queue.hpp` | `MpscQueue<T, Capacity, ReserveCapacity>` | Bounded Vyukov-ticket MPSC, single consumer. Trivially-copyable `T` only; no allocation after construction and none on any push/pop. `try_push` (normal region) + `push_reserved_class` (may use the reserved headroom) let a consumer subsystem's full-queue POLICY compose without forking the queue — the primitive itself never blocks and never drops, it returns `false`. |
+| `core/spsc_ring.hpp` | `SpscRing<T, Capacity>` | Fixed-size SPSC ring, exactly one release-store/acquire-load pair per side. `try_write` short-writes rather than overwriting unread data; `read` returns 0 on empty and the caller owns the silence path. Occupancy is a first-class accessor — this retires the legacy `s_rawend` volatile-peek idiom. |
+
+Both carry explicitly 64-bit position/generation counters (not `size_t`) so
+the numeric-wrap window is unreachable on 32-bit targets, with a
+`std::atomic<pos_t>::is_always_lock_free` static_assert — an adversarial
+concurrency review found the original `size_t` counters admitted past the
+advertised ceiling across the wrap. **Genericity is pinned by construction**:
+core instantiates only non-audio types and no audio vocabulary appears in
+either header. Sound is the first consumer (S9.7b); the Main-inbox drain
+contract they were designed for remains DESIGNED-NOT-BUILT — sound's queue
+runs Main→worker, the opposite direction from the G-1/G-3 inbox, and does
+not discharge it.
+
 ## Threading
 
 | Component | Constraint |

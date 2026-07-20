@@ -3,6 +3,8 @@
 // Legacy reference: engine/client/input/in_osk.c.
 // Drawing (OSK_Draw/OSK_DrawSymbolButton/OSK_DrawSpecialButton) is a Chunk 12
 // fence (INP-OQ-2) — this is the state machine + key-event intercept only.
+//
+// @thread-safety: T_Main only.
 
 #include <xash3dpp/input/key.hpp>
 #include <xash3dpp/input/touch.hpp>
