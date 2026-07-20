@@ -74,17 +74,18 @@ void store_vec( float *p, const Vec3 &v ) noexcept
 {
     bridge = engine_bridge();
     if ( bridge == nullptr || bridge->pmove == nullptr ||
+         bridge->pmove_model_indices == nullptr ||
          bridge->move_env == nullptr )
         return false;
     pm            = bridge->pmove;
     env.world     = bridge->move_env->world;
     env.models    = bridge->move_env->models;
-    env.arena     = bridge->arena;
+    env.model_indices = bridge->pmove_model_indices;
     env.player_bounds = bridge->player_bounds;
     env.pusher_ext    = bridge->move_env->pusher_ext;
     env.cvars         = bridge->move_env->cvars; // OQ-2: mod_studiocache gate
-    return env.world != nullptr && env.arena != nullptr &&
-           env.models != nullptr && env.player_bounds != nullptr;
+    return env.world != nullptr && env.models != nullptr &&
+           env.player_bounds != nullptr;
 }
 
 // compliance-allow(thread-assert): pure value factory returning a fresh
@@ -109,8 +110,14 @@ abi::pmtrace_t pfn_player_trace( float *start, float *end, int flags,
     PmTraceEnv        env;
     if ( !pm_context( b, pm, env ) )
         return clear_trace();
-    return pm_player_trace_ext( env, *pm, vec_of( start ), vec_of( end ), flags,
-                                pm->physents, pm->numphysent, ignore_pe, nullptr );
+    return pm_player_trace_ext(
+        env, *pm, vec_of( start ), vec_of( end ), flags,
+        PmPhysentView {
+            std::span<abi::physent_t>( pm->physents,
+                                       static_cast<std::size_t>( pm->numphysent )),
+            std::span<const int>( env.model_indices->physents.data(),
+                                  static_cast<std::size_t>( pm->numphysent )) },
+        ignore_pe, nullptr );
 }
 
 abi::pmtrace_t pfn_player_trace_ex( float *start, float *end, int flags,
@@ -121,8 +128,14 @@ abi::pmtrace_t pfn_player_trace_ex( float *start, float *end, int flags,
     PmTraceEnv        env;
     if ( !pm_context( b, pm, env ) )
         return clear_trace();
-    return pm_player_trace_ext( env, *pm, vec_of( start ), vec_of( end ), flags,
-                                pm->physents, pm->numphysent, -1, filter );
+    return pm_player_trace_ext(
+        env, *pm, vec_of( start ), vec_of( end ), flags,
+        PmPhysentView {
+            std::span<abi::physent_t>( pm->physents,
+                                       static_cast<std::size_t>( pm->numphysent )),
+            std::span<const int>( env.model_indices->physents.data(),
+                                  static_cast<std::size_t>( pm->numphysent )) },
+        -1, filter );
 }
 
 int pfn_test_player_position( float *pos, abi::pmtrace_t *ptrace )
@@ -182,10 +195,16 @@ float pfn_trace_model( abi::physent_t *pe, float *start, float *end,
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
     PmTraceEnv        env;
-    const abi::pmtrace_t result =
-        pm_context( b, pm, env )
-            ? pm_trace_model( env, *pm, pe, vec_of( start ), vec_of( end ) )
-            : clear_trace();
+    abi::pmtrace_t result = clear_trace();
+    if ( pm_context( b, pm, env ) && pe != nullptr && b->arena != nullptr &&
+         pe->info >= 0 )
+    {
+        const abi::edict_t *ed =
+            b->arena->edict_num( static_cast<std::size_t>( pe->info ));
+        if ( ed != nullptr )
+            result = pm_trace_model( env, *pm, pe, ed->v.modelindex,
+                                     vec_of( start ), vec_of( end ));
+    }
     // Fill ONLY the shared trace_t/pmtrace_t prefix (allsolid..plane) — the
     // exact fields legacy's PM_RecursiveHullCheck writes through the
     // `(pmtrace_t *)trace` pun (pm_trace.c:777).  A whole-struct copy would
@@ -453,6 +472,7 @@ void sv_init_client_move( ServerRuntime &rt ) noexcept
 
     // register the working set + hull table on the bridge the callbacks reach.
     rt.bridge.pmove         = &pm;
+    rt.bridge.pmove_model_indices = &rt.pmove_model_indices;
     rt.bridge.player_bounds = &rt.hull_bounds;
 
     // Pmove_Init is a no-op here: the box hull is a per-call value type

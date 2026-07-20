@@ -113,7 +113,8 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
 // ---------------------------------------------------------------------------
 
 [[nodiscard]] bool copy_edict_to_physent( ServerRuntime &rt, abi::physent_t *pe,
-                                          abi::edict_t *ed ) noexcept
+                                          abi::edict_t *ed,
+                                          int &model_index_out ) noexcept
 {
     const int modelindex = ed->v.modelindex;
     if ( !has_model( rt, modelindex ))
@@ -144,11 +145,9 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
                    sizeof( pe->name ));
     }
 
-    // pe->model / pe->studiomodel stay null by design: the P3 trace family
-    // (pm_trace.cpp) resolves a physent's brush submodel through the arena +
-    // IModelResolver (pe->info -> edict -> modelindex), not an opaque engine
-    // handle, so nothing needs to be stashed here.  The model type still
-    // selects mins/maxs below.
+    // pe->model / pe->studiomodel stay null by design. The role-owned aligned
+    // sidecar snapshots modelindex at this same successful append point; the
+    // shared trace kernel never follows pe->info back into the live arena.
     pe->model = pe->studiomodel = nullptr;
 
     switch ( ed->v.solid )
@@ -162,8 +161,8 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
     case abi::k_solid_bbox:
         // OQ-2 (resolved 2026-07-19): legacy stashes pe->studiomodel here for
         // hitbox tracing; xash3dpp keeps the handle null BY DESIGN — the
-        // trace family resolves studio hulls at trace time via
-        // pe->info -> arena -> modelindex -> IModelResolver::studio_hulls
+        // trace family resolves studio hulls at trace time via the aligned
+        // model-index sidecar -> IModelResolver::studio_hulls
         // (pm_trace.cpp pm_studio_hulls), so nothing needs stashing. The
         // physent already carries the full pose (frame/sequence/angles/
         // origin/controller/blending, copied below).
@@ -172,7 +171,7 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
         copy_vec3( pe->maxs, ed->v.maxs );
         break;
     case abi::k_solid_custom:
-        // handles stay null (resolved via the arena at trace time — see above);
+        // handles stay null (resolved via the sidecar at trace time — see above);
         // pm_trace.cpp routes SOLID_CUSTOM to the S8 physics-interface sweep.
         copy_vec3( pe->mins, ed->v.mins );
         copy_vec3( pe->maxs, ed->v.maxs );
@@ -216,6 +215,7 @@ void copy_cstr( char *dst, const char *src, std::size_t cap ) noexcept
     copy_vec3( pe->vuser3, ed->v.vuser3 );
     copy_vec3( pe->vuser4, ed->v.vuser4 );
 
+    model_index_out = modelindex;
     return true;
 }
 
@@ -252,9 +252,14 @@ void add_links_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
 
         if ( pm.numvisent < abi::k_max_physents )
         {
-            abi::physent_t *pe = &pm.visents[pm.numvisent];
-            if ( copy_edict_to_physent( rt, pe, check ))
+            const int index = pm.numvisent;
+            abi::physent_t *pe = &pm.visents[index];
+            int model_index = 0;
+            if ( copy_edict_to_physent( rt, pe, check, model_index ))
+            {
+                rt.pmove_model_indices.visents[static_cast<std::size_t>( index )] = model_index;
                 pm.numvisent++;
+            }
         }
 
         if ( check->v.solid == abi::k_solid_not &&
@@ -289,9 +294,14 @@ void add_links_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
 
         if ( pm.numphysent < abi::k_max_physents )
         {
-            abi::physent_t *pe = &pm.physents[pm.numphysent];
-            if ( copy_edict_to_physent( rt, pe, check ))
+            const int index = pm.numphysent;
+            abi::physent_t *pe = &pm.physents[index];
+            int model_index = 0;
+            if ( copy_edict_to_physent( rt, pe, check, model_index ))
+            {
+                rt.pmove_model_indices.physents[static_cast<std::size_t>( index )] = model_index;
                 pm.numphysent++;
+            }
         }
     }
 
@@ -336,9 +346,14 @@ void add_ladders_to_pmove( ServerRuntime &rt, abi::playermove_t &pm,
         if ( pm.nummoveent == abi::k_max_moveents )
             return;
 
-        abi::physent_t *pe = &pm.moveents[pm.nummoveent];
-        if ( copy_edict_to_physent( rt, pe, check ))
+        const int index = pm.nummoveent;
+        abi::physent_t *pe = &pm.moveents[index];
+        int model_index = 0;
+        if ( copy_edict_to_physent( rt, pe, check, model_index ))
+        {
+            rt.pmove_model_indices.moveents[static_cast<std::size_t>( index )] = model_index;
             pm.nummoveent++;
+        }
     }
 
     if ( node->axis == -1 )
@@ -431,8 +446,12 @@ void sv_setup_pmove( ServerRuntime &rt, ServerClient &cl,
     }
 
     // always start with the world (edict 0)
-    (void)copy_edict_to_physent( rt, &pm.physents[0], rt.arena.edict_num( 0 ));
+    int world_model_index = 0;
+    (void)copy_edict_to_physent( rt, &pm.physents[0], rt.arena.edict_num( 0 ),
+                                 world_model_index );
+    rt.pmove_model_indices.physents[0] = world_model_index;
     pm.visents[0]  = pm.physents[0];
+    rt.pmove_model_indices.visents[0] = world_model_index;
     pm.numphysent  = 1;
     pm.numvisent   = 1;
 

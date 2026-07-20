@@ -17,12 +17,10 @@
 //   * SOLID_CUSTOM sweep (SV_ClipPMoveToEntity) is an S8 physics-interface
 //     seam (physFuncs.ClipPMoveToEntity); the milestone default is no-hit.
 //
-// Q-20: pmove bridge — raw `edict->v.modelindex` read (physent resolution).
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/private/server/pm_trace.hpp>
 
-#include <xash3dpp/abi/edict.hpp>
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/content/studio.hpp> // StudioView (pe->studiomodel rule)
@@ -30,7 +28,6 @@
 #include <xash3dpp/limits.hpp>
 #include <xash3dpp/map_loader/contents.hpp>
 #include <xash3dpp/map_loader/trace.hpp>
-#include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/world/trace.hpp> // IModelResolver, transforms
 #include <xash3dpp/utilities/matrix.hpp>
 
@@ -73,23 +70,12 @@ using ::xash::world::vector_is_null;
     return ( usehull >= 0 && usehull < 4 ) ? usehull : 0;
 }
 
-// physent -> legacy modelindex (pe->info indexes the live edict arena, set by
-// SV_CopyEdictToPhysEnt at gather time).
-[[nodiscard]] int physent_modelindex( const PmTraceEnv &env,
-                                      const abi::physent_t *pe ) noexcept
-{
-    if ( env.arena == nullptr )
-        return 0;
-    abi::edict_t *ed = env.arena->edict_num( static_cast<std::size_t>( pe->info ));
-    return ed != nullptr ? ed->v.modelindex : 0;
-}
-
 [[nodiscard]] std::optional<BrushModel>
-physent_brush( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
+physent_brush( const PmTraceEnv &env, int model_index ) noexcept
 {
     if ( env.models == nullptr || env.world == nullptr )
         return std::nullopt;
-    return env.models->brush_model( physent_modelindex( env, pe ));
+    return env.models->brush_model( model_index );
 }
 
 // SV_CopyEdictToPhysEnt's pe->studiomodel rule (sv_pmove.c:74-101),
@@ -102,13 +88,14 @@ physent_brush( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
 // under the flag, and a flagless SOLID_BBOX studio never takes the hitbox
 // path even at usehull 2 (PM_AllowHitBoxTrace sees a NULL studiomodel).
 [[nodiscard]] bool
-pm_studiomodel_set( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
+pm_studiomodel_set( const PmTraceEnv &env, const abi::physent_t *pe,
+                    int model_index ) noexcept
 {
     if ( env.models == nullptr )
         return false;
     if ( pe->solid == abi::k_solid_not || pe->solid == abi::k_solid_bsp )
         return false;
-    const auto bytes = env.models->studio_bytes( physent_modelindex( env, pe ));
+    const auto bytes = env.models->studio_bytes( model_index );
     if ( bytes.empty() )
         return false; // not a studio model (legacy mod->type != mod_studio)
     if ( pe->solid == abi::k_solid_bbox )
@@ -142,7 +129,8 @@ pm_studiomodel_set( const PmTraceEnv &env, const abi::physent_t *pe ) noexcept
 // point hull (usehull 2) force-opens the hitbox gate (PM_AllowHitBoxTrace's
 // second arm; the STUDIO_TRACE_HITBOX arm lives with the provider).
 [[nodiscard]] int
-pm_studio_hulls( const PmTraceEnv &env, const abi::physent_t *pe, int usehull,
+pm_studio_hulls( const PmTraceEnv &env, const abi::physent_t *pe,
+                 int model_index, int usehull,
                  std::span<::xash::content::StudioHitboxHull> out ) noexcept
 {
     const ml::HullBounds &pb =
@@ -170,7 +158,7 @@ pm_studio_hulls( const PmTraceEnv &env, const abi::physent_t *pe, int usehull,
     pose.use_cache = env.cvars == nullptr || sc == nullptr ||
                      sc->abi.value != 0.0f;
 
-    return env.models->studio_hulls( physent_modelindex( env, pe ), pose, out );
+    return env.models->studio_hulls( model_index, pose, out );
 }
 
 // The three hull kinds the pmove trace resolves a physent to (studio always
@@ -315,8 +303,7 @@ void finalize( ml::TraceResult &t, const LocalRay &r, const Vec3 &start,
 abi::pmtrace_t
 pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
                      const Vec3 &start, const Vec3 &end, int flags,
-                     abi::physent_t *ents, int numents, int ignore_pe,
-                     PmIgnore filter ) noexcept
+                     PmPhysentView ents, int ignore_pe, PmIgnore filter ) noexcept
 {
     const int usehull = clamp_usehull( pm.usehull );
 
@@ -327,9 +314,15 @@ pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
     int total_ent      = -1;
     int total_hitgroup = 0; // Mod_HitgroupForStudioHull of the winning hit
 
-    for ( int i = 0; i < numents; ++i )
+    const std::size_t count =
+        ents.entities.size() < ents.model_indices.size()
+            ? ents.entities.size()
+            : ents.model_indices.size();
+    for ( std::size_t index = 0; index < count; ++index )
     {
-        abi::physent_t *pe = &ents[i];
+        const int model_index = ents.model_indices[index];
+        abi::physent_t *pe = &ents.entities[index];
+        const int i = static_cast<int>( index );
 
         if ( i != 0 && ( flags & abi::k_pm_world_only ))
             break;
@@ -344,7 +337,7 @@ pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
             continue;
         }
 
-        const auto brush = physent_brush( env, pe );
+        const auto brush = physent_brush( env, model_index );
 
         // SOLID_NOT water/content brushes are gathered but not swept.
         if ( brush.has_value() && pe->solid == abi::k_solid_not &&
@@ -364,7 +357,7 @@ pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
         // before the studiomodel branch is ever reached.
         const bool studio_set =
             !brush.has_value() && pe->solid != abi::k_solid_custom &&
-            pm_studiomodel_set( env, pe );
+            pm_studiomodel_set( env, pe, model_index );
 
         // studio physents skip when PM_STUDIO_IGNORE is set (otherwise:
         // the OQ-2 hitbox path below, else the bbox hull fallback).
@@ -380,7 +373,7 @@ pm_player_trace_ext( const PmTraceEnv &env, abi::playermove_t &pm,
              env.player_bounds != nullptr )
         {
             studio_count = pm_studio_hulls(
-                env, pe, usehull,
+                env, pe, model_index, usehull,
                 std::span<::xash::content::StudioHitboxHull>( studio_buf ));
         }
 
@@ -470,20 +463,28 @@ int pm_test_player_position( const PmTraceEnv &env, abi::playermove_t &pm,
 
     // legacy quirk: the reported trace is an origin->origin sweep, but the
     // solid test below uses the passed `pos`.
+    const PmPhysentView physents {
+        std::span<abi::physent_t>( pm.physents,
+                                   static_cast<std::size_t>( pm.numphysent )),
+        std::span<const int>( env.model_indices->physents.data(),
+                              static_cast<std::size_t>( pm.numphysent ))
+    };
     const abi::pmtrace_t trace =
         pm_player_trace_ext( env, pm, vec_of( pm.origin ), vec_of( pm.origin ),
-                             0, pm.physents, pm.numphysent, -1, filter );
+                             0, physents, -1, filter );
     if ( ptrace != nullptr )
         *ptrace = trace;
 
     for ( int i = 0; i < pm.numphysent; ++i )
     {
         abi::physent_t *pe = &pm.physents[i];
+        const int model_index =
+            env.model_indices->physents[static_cast<std::size_t>( i )];
 
         if ( filter != nullptr && filter( pe ))
             continue;
 
-        const auto brush = physent_brush( env, pe );
+        const auto brush = physent_brush( env, model_index );
 
         if ( brush.has_value() && pe->solid == abi::k_solid_not &&
              pe->skin != ml::k_contents_none )
@@ -496,10 +497,11 @@ int pm_test_player_position( const PmTraceEnv &env, abi::playermove_t &pm,
             studio_buf[::xash::limits::studio_max_bones];
         int studio_count = 0;
         if ( !brush.has_value() && pe->solid != abi::k_solid_custom &&
-             env.player_bounds != nullptr && pm_studiomodel_set( env, pe ))
+             env.player_bounds != nullptr &&
+             pm_studiomodel_set( env, pe, model_index ))
         {
             studio_count = pm_studio_hulls(
-                env, pe, usehull,
+                env, pe, model_index, usehull,
                 std::span<::xash::content::StudioHitboxHull>( studio_buf ));
         }
 
@@ -586,13 +588,14 @@ int pm_test_player_position( const PmTraceEnv &env, abi::playermove_t &pm,
 // ---------------------------------------------------------------------------
 
 abi::pmtrace_t pm_trace_model( const PmTraceEnv &env, abi::playermove_t &pm,
-                               abi::physent_t *pe, const Vec3 &start,
+                               abi::physent_t *pe, int model_index,
+                               const Vec3 &start,
                                const Vec3 &end ) noexcept
 {
     ml::TraceResult t{};
     t.endpos = end; // PM_InitTrace(end)
 
-    const auto brush = physent_brush( env, pe );
+    const auto brush = physent_brush( env, model_index );
     if ( !brush.has_value() )
         return make_pmtrace( t, -1 ); // legacy asserts a brush; no-hit instead
 
@@ -653,12 +656,24 @@ trace_line_impl( const PmTraceEnv &env, abi::playermove_t &pm, const Vec3 &start
     switch ( flags )
     {
     case abi::k_pm_traceline_physentsonly:
-        tr = pm_player_trace_ext( env, pm, start, end, 0, pm.physents,
-                                  pm.numphysent, ignore_pe, filter );
+        tr = pm_player_trace_ext(
+            env, pm, start, end, 0,
+            PmPhysentView {
+                std::span<abi::physent_t>( pm.physents,
+                                           static_cast<std::size_t>( pm.numphysent )),
+                std::span<const int>( env.model_indices->physents.data(),
+                                      static_cast<std::size_t>( pm.numphysent )) },
+            ignore_pe, filter );
         break;
     case abi::k_pm_traceline_anyvisible:
-        tr = pm_player_trace_ext( env, pm, start, end, 0, pm.visents,
-                                  pm.numvisent, ignore_pe, filter );
+        tr = pm_player_trace_ext(
+            env, pm, start, end, 0,
+            PmPhysentView {
+                std::span<abi::physent_t>( pm.visents,
+                                           static_cast<std::size_t>( pm.numvisent )),
+                std::span<const int>( env.model_indices->visents.data(),
+                                      static_cast<std::size_t>( pm.numvisent )) },
+            ignore_pe, filter );
         break;
     default:
         break;
@@ -716,11 +731,13 @@ int pm_point_contents( const PmTraceEnv &env, abi::playermove_t &pm,
     for ( int i = 1; i < pm.numphysent; ++i )
     {
         const abi::physent_t *pe = &pm.physents[i];
+        const int model_index =
+            env.model_indices->physents[static_cast<std::size_t>( i )];
 
         if ( pe->solid != abi::k_solid_not ) // disabled?
             continue;
 
-        const auto brush = physent_brush( env, pe );
+        const auto brush = physent_brush( env, model_index );
         if ( !brush.has_value() ) // only brushes have special contents
             continue;
 

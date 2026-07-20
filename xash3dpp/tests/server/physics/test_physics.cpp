@@ -39,7 +39,24 @@ namespace sv  = xash::server;
 namespace abi = xash::abi;
 namespace cc  = xash::cmd_cvar;
 namespace ml  = xash::map_loader;
+namespace bsp = xash::map_loader::bsp;
 using Vec3    = xash::utilities::Vec3;
+
+struct RecordingModelResolver final : xash::world::IModelResolver
+{
+    int calls = 0;
+    int last_model_index = -1;
+
+    std::optional<xash::world::BrushModel>
+    brush_model( int model_index ) noexcept override
+    {
+        ++calls;
+        last_model_index = model_index;
+        return std::nullopt;
+    }
+
+    bool is_studio( int ) noexcept override { return false; }
+};
 
 static int g_pass = 0, g_fail = 0;
 
@@ -92,6 +109,14 @@ static void setup_tree()
 
     auto builder = test_bsp::make_minimal_world();
     builder.set_entities( k_spawn_entities );
+    std::vector<bsp::dmodel_t> models( 2 );
+    models[0] = { { -64.0f, -64.0f, -64.0f },
+                  { 64.0f, 64.0f, 64.0f },
+                  {}, { 0, 0, -1, -1 }, 2, 0, 2 };
+    models[1] = { { -16.0f, -16.0f, -16.0f },
+                  { 16.0f, 16.0f, 16.0f },
+                  {}, { 0, 0, 0, 0 }, 0, 0, 0 };
+    builder.set_lump_records( bsp::k_lump_models, models );
     write_bytes( g_root / "game" / "maps" / "phys.bsp", builder.build() );
 }
 
@@ -458,6 +483,8 @@ static void test_pmove_gather()
     sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
     CHECK_EQ( fx.rt.pmove->numphysent, 2 );
     CHECK_EQ( fx.rt.pmove->numvisent, 2 );
+    CHECK_EQ( fx.rt.pmove_model_indices.physents[0], abi::k_world_index );
+    CHECK_EQ( fx.rt.pmove_model_indices.visents[0], abi::k_world_index );
     // find the prop physent and check its copied fields.
     bool found = false;
     for ( int i = 0; i < fx.rt.pmove->numphysent; ++i )
@@ -469,9 +496,20 @@ static void test_pmove_gather()
             CHECK_EQ( pe.solid, abi::k_solid_bbox );
             CHECK( pe.mins[0] == -8.0f && pe.maxs[2] == 8.0f );
             CHECK( std::string( pe.name ) == "models/thing.mdl" );
+            CHECK_EQ( fx.rt.pmove_model_indices.physents[static_cast<std::size_t>( i )], mi );
         }
     }
     CHECK( found );
+    bool found_visible = false;
+    for ( int i = 0; i < fx.rt.pmove->numvisent; ++i )
+    {
+        if ( fx.rt.pmove->visents[i].info == fx.rt.arena.index_of( prop ) )
+        {
+            found_visible = true;
+            CHECK_EQ( fx.rt.pmove_model_indices.visents[static_cast<std::size_t>( i )], mi );
+        }
+    }
+    CHECK( found_visible );
 
     // moved beyond the cube → culled.
     prop->v.origin[0]  = 500.0f;
@@ -492,6 +530,24 @@ static void test_pmove_gather()
     fake_ladder->v.skin = ml::k_contents_ladder;
     sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
     CHECK_EQ( fx.rt.pmove->nummoveent, 0 );
+
+    // A real inline brush ladder is appended to moveents with its model index
+    // captured at the exact same successful append point.
+    const int ladder_model = fx.rt.precache.model_index( "*1" );
+    REQUIRE( ladder_model > 0 );
+    abi::edict_t *ladder = spawn_prop(
+        fx, abi::k_solid_not, Vec3{ 25, 0, 0 }, Vec3{ -8, -8, -8 },
+        Vec3{ 8, 8, 8 }, ladder_model );
+    ladder->v.skin = ml::k_contents_ladder;
+    fx.rt.links.link_edict( ladder, false, fx.rt.link_env );
+    CHECK( fx.rt.models.brush_model( ladder_model ).has_value() );
+    sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
+    CHECK_EQ( fx.rt.pmove->nummoveent, 1 );
+    if ( fx.rt.pmove->nummoveent > 0 )
+    {
+        CHECK_EQ( fx.rt.pmove->moveents[0].info, fx.rt.arena.index_of( ladder ) );
+        CHECK_EQ( fx.rt.pmove_model_indices.moveents[0], ladder_model );
+    }
     CHECK_EQ( g_err_calls, 0 );
 }
 
@@ -546,10 +602,21 @@ static sv::PmTraceEnv make_pm_env( PhysFixture &fx )
     sv::PmTraceEnv env;
     env.world         = fx.rt.move_env.world;
     env.models        = &fx.rt.models;
-    env.arena         = &fx.rt.arena;
+    env.model_indices = &fx.rt.pmove_model_indices;
     env.player_bounds = &fx.rt.hull_bounds;
     env.pusher_ext    = false;
     return env;
+}
+
+static sv::PmPhysentView physents_view( PhysFixture &fx,
+                                        abi::playermove_t &pm, int count )
+{
+    return {
+        std::span<abi::physent_t>( pm.physents,
+                                   static_cast<std::size_t>( count )),
+        std::span<const int>( fx.rt.pmove_model_indices.physents.data(),
+                              static_cast<std::size_t>( count ))
+    };
 }
 
 static void set_vec3( abi::vec3_t d, const Vec3 &v )
@@ -629,7 +696,8 @@ static void test_pm_player_trace_world()
     }
 
     const abi::pmtrace_t got = sv::pm_player_trace_ext(
-        env, pm, start, end, 0, pm.physents, pm.numphysent, -1, nullptr );
+        env, pm, start, end, 0, physents_view( fx, pm, pm.numphysent ), -1,
+        nullptr );
 
     CHECK( got.fraction == exp.fraction );
     CHECK( got.endpos[0] == exp.endpos.x );
@@ -665,18 +733,19 @@ static void test_pm_box_physent()
     set_vec3( pm.physents[0].mins, Vec3{ -8, -8, -8 } );
     set_vec3( pm.physents[0].maxs, Vec3{ 8, 8, 8 } );
     pm.physents[0].info = fx.rt.arena.index_of( prop );
+    fx.rt.pmove_model_indices.physents[0] = mi;
 
     // sweep straight through the expanded box → a mid-ray impact on physent 0.
     const abi::pmtrace_t hit = sv::pm_player_trace_ext(
-        env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 }, 0, pm.physents, 1, -1,
-        nullptr );
+        env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 }, 0,
+        physents_view( fx, pm, 1 ), -1, nullptr );
     CHECK_EQ( hit.ent, 0 );
     CHECK( hit.fraction > 0.0f && hit.fraction < 1.0f );
 
     // ignore_pe skips the only ent → clear trace.
     const abi::pmtrace_t miss = sv::pm_player_trace_ext(
-        env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 }, 0, pm.physents, 1,
-        /*ignore_pe=*/0, nullptr );
+        env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 }, 0,
+        physents_view( fx, pm, 1 ), /*ignore_pe=*/0, nullptr );
     CHECK_EQ( miss.ent, -1 );
     CHECK( miss.fraction == 1.0f );
 
@@ -686,7 +755,7 @@ static void test_pm_box_physent()
     // to no studio data — the entity is still bbox-traced under the flag.
     const abi::pmtrace_t still_hit = sv::pm_player_trace_ext(
         env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 },
-        abi::k_pm_studio_ignore, pm.physents, 1, -1, nullptr );
+        abi::k_pm_studio_ignore, physents_view( fx, pm, 1 ), -1, nullptr );
     CHECK_EQ( still_hit.ent, 0 );
     CHECK( still_hit.fraction > 0.0f && still_hit.fraction < 1.0f );
 
@@ -711,6 +780,106 @@ static void test_pm_box_physent()
                                            nullptr ),
               -1 );
     CHECK_EQ( g_err_calls, 0 );
+}
+
+static void test_pm_model_index_snapshot_survives_edict_mutation()
+{
+    PhysFixture fx( /*dedicated=*/false, /*maxclients=*/1, /*sv_fps=*/0.0f );
+    abi::edict_t *pl = make_client( fx, Vec3{ 0, 0, 0 } );
+    const int brush_model = fx.rt.precache.model_index( "*1" );
+    REQUIRE( brush_model > 0 );
+    abi::edict_t *brush = spawn_prop(
+        fx, abi::k_solid_bsp, Vec3{ 40, 0, 0 }, Vec3{ -16, -16, -16 },
+        Vec3{ 16, 16, 16 }, brush_model );
+
+    sv::ServerClient cl;
+    cl.edict = pl;
+    abi::usercmd_t cmd {};
+    cmd.msec = 20;
+    sv::sv_setup_pmove( fx.rt, cl, cmd, "" );
+
+    abi::playermove_t &pm = *fx.rt.pmove;
+    int gathered = -1;
+    for ( int i = 0; i < pm.numphysent; ++i )
+        if ( pm.physents[i].info == fx.rt.arena.index_of( brush ))
+            gathered = i;
+    REQUIRE( gathered >= 0 );
+
+    const abi::physent_t snapshot = pm.physents[gathered];
+    const int snapshot_model =
+        fx.rt.pmove_model_indices.physents[static_cast<std::size_t>( gathered )];
+    CHECK_EQ( snapshot_model, brush_model );
+
+    // Isolate the gathered entry so the comparison cannot be won by world.
+    pm.physents[0] = snapshot;
+    fx.rt.pmove_model_indices.physents[0] = snapshot_model;
+    pm.numphysent = 1;
+    pm.usehull = 0;
+    const sv::PmTraceEnv env = make_pm_env( fx );
+    const auto before = sv::pm_player_trace_ext(
+        env, pm, Vec3{ 120, 0, 0 }, Vec3{ -40, 0, 0 }, 0,
+        physents_view( fx, pm, 1 ), -1, nullptr );
+    REQUIRE( before.fraction < 1.0f );
+
+    brush->v.modelindex = 0; // live role state changes after gather
+    const auto after = sv::pm_player_trace_ext(
+        env, pm, Vec3{ 120, 0, 0 }, Vec3{ -40, 0, 0 }, 0,
+        physents_view( fx, pm, 1 ), -1, nullptr );
+    CHECK( after.fraction == before.fraction );
+    CHECK_EQ( after.ent, before.ent );
+    CHECK( after.endpos[0] == before.endpos[0] );
+    CHECK( after.plane.normal[0] == before.plane.normal[0] );
+    CHECK( after.plane.dist == before.plane.dist );
+}
+
+static void test_pmove_sidecars_replace_prefix_for_sequential_players()
+{
+    PhysFixture fx( /*dedicated=*/true, /*maxclients=*/2, /*sv_fps=*/0.0f );
+    abi::edict_t *p1 = make_client( fx, Vec3{ 0, 0, 0 } );
+    abi::edict_t *p2 = make_client( fx, Vec3{ 600, 0, 0 } );
+    const int studio_model = fx.rt.precache.model_index( "models/near_one.mdl" );
+    const int brush_model = fx.rt.precache.model_index( "*1" );
+    REQUIRE( studio_model > 0 );
+    REQUIRE( brush_model > 0 );
+    abi::edict_t *near_one = spawn_prop(
+        fx, abi::k_solid_bbox, Vec3{ 40, 0, 0 }, Vec3{ -8, -8, -8 },
+        Vec3{ 8, 8, 8 }, studio_model );
+    abi::edict_t *near_two = spawn_prop(
+        fx, abi::k_solid_bsp, Vec3{ 640, 0, 0 }, Vec3{ -8, -8, -8 },
+        Vec3{ 8, 8, 8 }, brush_model );
+
+    abi::usercmd_t cmd {};
+    cmd.msec = 20;
+    sv::ServerClient cl1;
+    cl1.edict = p1;
+    sv::sv_setup_pmove( fx.rt, cl1, cmd, "" );
+    bool saw_one = false;
+    for ( int i = 1; i < fx.rt.pmove->numphysent; ++i )
+        if ( fx.rt.pmove->physents[i].info == fx.rt.arena.index_of( near_one ))
+        {
+            saw_one = true;
+            CHECK_EQ( fx.rt.pmove_model_indices.physents[static_cast<std::size_t>( i )],
+                      studio_model );
+        }
+    CHECK( saw_one );
+
+    sv::ServerClient cl2;
+    cl2.edict = p2;
+    sv::sv_setup_pmove( fx.rt, cl2, cmd, "" );
+    bool saw_two = false;
+    bool stale_one = false;
+    for ( int i = 1; i < fx.rt.pmove->numphysent; ++i )
+    {
+        stale_one |= fx.rt.pmove->physents[i].info == fx.rt.arena.index_of( near_one );
+        if ( fx.rt.pmove->physents[i].info == fx.rt.arena.index_of( near_two ))
+        {
+            saw_two = true;
+            CHECK_EQ( fx.rt.pmove_model_indices.physents[static_cast<std::size_t>( i )],
+                      brush_model );
+        }
+    }
+    CHECK( saw_two );
+    CHECK( !stale_one );
 }
 
 // PM_StuckTouch: dedup by ent, deltavelocity stamp, append, and the cap.
@@ -776,6 +945,11 @@ static void test_pm_init_client_move()
     // functional call through the installed pointer: gather the world, then
     // PM_PointContents at X<128 → water (hull-0), reaching the bridge.
     abi::edict_t *pl = make_client( fx, Vec3{ 0.0f, 0.0f, 0.0f } );
+    const int inline_model = fx.rt.precache.model_index( "*1" );
+    REQUIRE( inline_model > 0 );
+    abi::edict_t *active_brush = spawn_prop(
+        fx, abi::k_solid_bsp, Vec3{ 0, 0, 0 }, Vec3{ -16, -16, -16 },
+        Vec3{ 16, 16, 16 }, inline_model );
     sv::ServerClient cl;
     cl.edict = pl;
     abi::usercmd_t ucmd{};
@@ -795,12 +969,54 @@ static void test_pm_init_client_move()
     alignas( abi::pmtrace_t ) unsigned char tbuf[sizeof( abi::pmtrace_t )];
     std::memset( tbuf, 0xAB, sizeof( tbuf ) );
     float ms[3] = { 200.0f, 0.0f, 0.0f };
-    float me[3] = { 0.0f, 0.0f, 0.0f };
-    (void)pm.PM_TraceModel( &pm.physents[0], ms, me,
-                            reinterpret_cast<abi::trace_t *>( tbuf ) );
+    float me[3] = { -100.0f, 0.0f, 0.0f };
+    int active_index = -1;
+    for ( int i = 0; i < pm.numphysent; ++i )
+        if ( pm.physents[i].info == fx.rt.arena.index_of( active_brush ))
+            active_index = i;
+    REQUIRE( active_index >= 0 );
+    RecordingModelResolver recorder;
+    xash::world::IModelResolver *saved_models = fx.rt.move_env.models;
+    fx.rt.move_env.models = &recorder;
+
+    const float active_fraction = pm.PM_TraceModel(
+        &pm.physents[active_index], ms, me,
+        reinterpret_cast<abi::trace_t *>( tbuf ) );
+    CHECK( active_fraction == 1.0f ); // recorder deliberately resolves no brush
+    CHECK_EQ( recorder.calls, 1 );
+    CHECK_EQ( recorder.last_model_index, inline_model );
     for ( std::size_t i = offsetof( abi::pmtrace_t, ent ); i < sizeof( tbuf );
           ++i )
         CHECK_EQ( static_cast<int>( tbuf[i] ), 0xAB ); // untouched past prefix
+
+    // The role adapter resolves pe->info, not the physent's address: copied
+    // active values and valid entities outside all active lists retain the
+    // rewrite's existing TraceModel behavior.
+    abi::physent_t copied = pm.physents[active_index];
+    const float copied_fraction =
+        pm.PM_TraceModel( &copied, ms, me, nullptr );
+    CHECK( copied_fraction == active_fraction );
+    CHECK_EQ( recorder.calls, 2 );
+    CHECK_EQ( recorder.last_model_index, inline_model );
+
+    abi::edict_t *outside = spawn_prop(
+        fx, abi::k_solid_bsp, Vec3{ 0, 0, 0 }, Vec3{ -16, -16, -16 },
+        Vec3{ 16, 16, 16 }, inline_model );
+    abi::physent_t outside_pe {};
+    outside_pe.info  = fx.rt.arena.index_of( outside );
+    outside_pe.solid = abi::k_solid_bsp;
+    CHECK( pm.PM_TraceModel( &outside_pe, ms, me, nullptr ) == 1.0f );
+    CHECK_EQ( recorder.calls, 3 );
+    CHECK_EQ( recorder.last_model_index, inline_model );
+
+    abi::physent_t invalid = outside_pe;
+    invalid.info = -1;
+    CHECK( pm.PM_TraceModel( &invalid, ms, me, nullptr ) == 1.0f );
+    CHECK_EQ( recorder.calls, 3 );
+    invalid.info = static_cast<int>( fx.rt.arena.max_edicts() );
+    CHECK( pm.PM_TraceModel( &invalid, ms, me, nullptr ) == 1.0f );
+    CHECK_EQ( recorder.calls, 3 );
+    fx.rt.move_env.models = saved_models;
     CHECK_EQ( g_err_calls, 0 );
 }
 
@@ -1001,6 +1217,8 @@ int main()
     RUN_TEST( test_pm_point_contents );
     RUN_TEST( test_pm_player_trace_world );
     RUN_TEST( test_pm_box_physent );
+    RUN_TEST( test_pm_model_index_snapshot_survives_edict_mutation );
+    RUN_TEST( test_pmove_sidecars_replace_prefix_for_sequential_players );
     RUN_TEST( test_pm_stuck_touch );
     RUN_TEST( test_pm_init_client_move );
     RUN_TEST( test_sv_run_cmd_chain );

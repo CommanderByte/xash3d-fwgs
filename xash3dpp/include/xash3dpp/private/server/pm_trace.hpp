@@ -21,14 +21,14 @@
 // content pipeline, so it is stubbed at the fn-ptr table (P3b), exactly like
 // the studio hitbox hulls fall back to the bbox here (Chunk 7 / OQ-2).
 //
-// Q-20: part of the pmove bridge — the sanctioned raw `edict->v.` access site
-// (physent modelindex is resolved via the arena, matching pmove.cpp).
-//
 // Threading: main-thread only (server-boundary OQ-9).
 
 #include <xash3dpp/abi/pm_defs.hpp>
 #include <xash3dpp/map_loader/world.hpp> // HullBoundsTable
 #include <xash3dpp/utilities/math.hpp>
+
+#include <array>
+#include <span>
 
 namespace xash::cmd_cvar { class CmdCvarContext; }
 
@@ -40,21 +40,35 @@ namespace xash::world { struct IModelResolver; } // world/trace.hpp
 
 namespace xash::server {
 
-class EdictArena;      // edict_arena.hpp
-
 // Filter callback the DLL may pass (pm_defs.h pfnIgnore): non-null overrides
 // the ignore_pe index; a physent it returns non-zero for is skipped.
 using PmIgnore = int ( * )( ::xash::abi::physent_t *pe );
 
+// Server-owned snapshots aligned with playermove_t's three frozen physent
+// arrays. The ABI arrays stay untouched; only each list's valid num* prefix is
+// observable by the shared trace kernel.
+struct PmTraceModelIndices
+{
+    std::array<int, ::xash::abi::k_max_physents> physents {};
+    std::array<int, ::xash::abi::k_max_physents> visents {};
+    std::array<int, ::xash::abi::k_max_moveents> moveents {};
+};
+
+struct PmPhysentView
+{
+    std::span<::xash::abi::physent_t> entities;
+    std::span<const int>               model_indices;
+};
+
 // Per-call environment for the pmove trace family — the world + resolver the
-// physent hulls resolve against, the arena (physent->info -> edict ->
-// modelindex), the player hull-bounds table (usehull index), and the
-// pusher-ext toggle.  Mirrors MoveEnv, sourced from the physent list.
+// physent hulls resolve against, the aligned model-index snapshots, the player
+// hull-bounds table (usehull index), and the pusher-ext toggle. Mirrors MoveEnv,
+// sourced from the physent list.
 struct PmTraceEnv
 {
     const ::xash::map_loader::WorldData *world  = nullptr; // @lifetime: engine
     ::xash::world::IModelResolver       *models = nullptr; // @lifetime: engine
-    EdictArena                          *arena  = nullptr; // @lifetime: engine
+    const PmTraceModelIndices *model_indices = nullptr; // @lifetime: role owner
     const ::xash::map_loader::HullBoundsTable *player_bounds = nullptr; // @lifetime: engine
     bool pusher_ext = false; // ENGINE_PHYSICS_PUSHER_EXT (transform_bbox path)
     // OQ-2: mod_studiocache gate for the studio hull provider (PM has no
@@ -70,7 +84,7 @@ struct PmTraceEnv
 pm_player_trace_ext( const PmTraceEnv &env, ::xash::abi::playermove_t &pm,
                      const ::xash::utilities::Vec3 &start,
                      const ::xash::utilities::Vec3 &end, int flags,
-                     ::xash::abi::physent_t *ents, int numents, int ignore_pe,
+                     PmPhysentView ents, int ignore_pe,
                      PmIgnore filter ) noexcept;
 
 // PM_TestPlayerPosition (:535): point-in-solid test of `pos` against every
@@ -85,7 +99,8 @@ pm_test_player_position( const PmTraceEnv &env, ::xash::abi::playermove_t &pm,
 // trace (its `.fraction` is the legacy float return).
 [[nodiscard]] ::xash::abi::pmtrace_t
 pm_trace_model( const PmTraceEnv &env, ::xash::abi::playermove_t &pm,
-                ::xash::abi::physent_t *pe, const ::xash::utilities::Vec3 &start,
+                ::xash::abi::physent_t *pe, int model_index,
+                const ::xash::utilities::Vec3 &start,
                 const ::xash::utilities::Vec3 &end ) noexcept;
 
 // PM_TraceLine (:791) / PM_TraceLineEx (:814): usehull-swapping traceline over
