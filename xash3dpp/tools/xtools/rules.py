@@ -346,9 +346,25 @@ JUDGMENT_CHECKS = [
 ]
 
 MUTATOR_NAMES = (
-    "init|shutdown|reset|flush|clear|add|remove|register|unregister|set_\\w+|update_\\w+"
+    "init(?:_\\w+)?|shutdown(?:_\\w+)?|reset\\w*|flush(?:_\\w+)?|clear(?:_\\w+)?"
+    "|add(?:_\\w+)?|remove(?:_\\w+)?|register(?:_\\w+)?|unregister(?:_\\w+)?"
+    "|set_\\w+|update_\\w+"
     # QN wave (2026-07-06): the mutating verbs the 6B retrofit measures —
     # candidate-judged, so const-path or leaf-helper matches stay judgeable.
-    "|send|transmit|write_\\w+|spawn\\w*|activate\\w*|deactivate\\w*|run_\\w+"
-    "|process|connect|disconnect|drop_\\w+|load\\w*|unload\\w*|start|stop"
+    "|send(?:_\\w+)?|transmit(?:_\\w+)?|write_\\w+|spawn\\w*|activate\\w*"
+    "|deactivate\\w*|run_\\w+|process(?:_\\w+)?|connect(?:_\\w+)?"
+    "|disconnect(?:_\\w+)?|drop_\\w+|load\\w*|unload\\w*|start(?:_\\w+)?"
+    "|stop(?:_\\w+)?"
+    # 2026-07-20 audit fix: these 16 verbs were bare, and _MUTATOR_DEF_RX
+    # anchors the alternation straight to `(`, so a bare verb could only ever
+    # match a whole identifier — `clear_world`, `send_packet`,
+    # `transmit_client`, `connect_client` and `register_thread_role` itself
+    # were invisible, making every "N sites / M waivers" figure quoted in the
+    # boundary docs a scanner artifact rather than a semantic inventory.
+    # `(?:_\\w+)?` and not `\\w*`: measured over src/**/*.cpp, `\\w*` adds 8
+    # names beyond `(?:_\\w+)?` and all 8 are false positives (`sendto`,
+    # `Server::initialized`, `Sound::initialized`, `Clock::starttime`,
+    # `addr_string`, `sends_qport`).  `reset` is the one exception, promoted
+    # to `reset\\w*` because its only wildcard-form matches — `Input::resetkeys`
+    # and `KeyTable::resetkeys` — are both genuine mutators (legacy Quirk 3).
 )

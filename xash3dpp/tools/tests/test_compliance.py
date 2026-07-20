@@ -485,6 +485,42 @@ class MutatorDefRx(unittest.TestCase):
     def test_return_statement_not_matched(self):
         self.assertFalse(self._m("    return load( x );"))
 
+    def test_suffixed_bare_verbs_match(self):
+        """2026-07-20 audit: the 16 bare verbs anchored straight to `(`, so a
+        suffixed mutator could never match.  55 definition sites across 51
+        names were invisible — including register_thread_role itself."""
+        for line in (
+                "void MapLoader::clear_world() noexcept {",
+                "bool NetworkContext::send_packet( const Packet &p ) {",
+                "void transmit_client( ServerRuntime &rt, int i ) noexcept {",
+                "bool connect_client( ServerRuntime &rt, const Addr &a ) {",
+                "void register_thread_role( ThreadRole role ) noexcept {",
+                "void Filesystem::add_game_directory( const char *d ) {",
+                "void unregister_save_commands( ServerRuntime &rt ) noexcept {",
+        ):
+            with self.subTest(line=line):
+                self.assertTrue(self._m(line))
+
+    def test_reset_wildcard_matches_legacy_quirk_name(self):
+        """`reset` is the one verb promoted to `reset\\w*` rather than
+        `reset(?:_\\w+)?`: both of its wildcard-form matches in the tree are
+        genuine mutators (legacy Quirk 3 resetkeys)."""
+        self.assertTrue(self._m("void KeyTable::resetkeys() noexcept {"))
+
+    def test_verb_prefixed_non_mutators_not_matched(self):
+        """Why `(?:_\\w+)?` and not `\\w*`: measured over src/**/*.cpp, `\\w*`
+        surfaces these 6 extra names and every one is a false positive."""
+        for line in (
+                "int sendto( int s, const void *b, int n ) noexcept {",
+                "bool Server::initialized() const noexcept {",
+                "bool Sound::initialized() const noexcept {",
+                "double Clock::starttime() const noexcept {",
+                "const char *addr_string( const netadr_t &a ) noexcept {",
+                "bool sends_qport() const noexcept {",
+        ):
+            with self.subTest(line=line):
+                self.assertFalse(self._m(line))
+
 
 if __name__ == "__main__":
     unittest.main()
