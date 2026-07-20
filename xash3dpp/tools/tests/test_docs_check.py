@@ -126,6 +126,17 @@ class ParsePredicate(unittest.TestCase):
                 self.assertIsNone(parse_predicate(bad))
 
 
+class GlobStar(unittest.TestCase):
+    def test_double_star_matches_zero_directories(self):
+        """`src/world/**/*.cpp` must match src/world/clip.cpp, not just
+        deeper files -- plain fnmatch requires at least one directory."""
+        from xtools.docs import _matches_glob
+        pat = "xash3dpp/src/world/**/*.cpp"
+        self.assertTrue(_matches_glob("xash3dpp/src/world/clip.cpp", pat))
+        self.assertTrue(_matches_glob("xash3dpp/src/world/sub/clip.cpp", pat))
+        self.assertFalse(_matches_glob("xash3dpp/src/server/clip.cpp", pat))
+
+
 class Compare(unittest.TestCase):
     def test_operators(self):
         self.assertTrue(compare(2, "==", 2))

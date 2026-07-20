@@ -119,5 +119,44 @@ class ParseBoundaryAxes(unittest.TestCase):
         self.assertNotIn("G-2", covered)
 
 
+class PlanDenominator(unittest.TestCase):
+    """The denominator is the subsystems the PLAN names, not the docs that
+    already exist (which cannot detect silence) and not the src/ directory
+    listing (which re-couples the metric to directories and counts ones no
+    chunk plans)."""
+
+    PLAN = """## Status Table
+
+### Chunk 6 — server ✅ DONE
+**Subsystems**: `server`, `world`\
+**Status**: done
+
+### Chunk 11 — physics (pm_shared)
+**Subsystems**: `physics`\
+**Status**: todo
+
+### Chunk 12 — client
+**Subsystems**: `client`, `demo` stub, `ui` stub\
+**Status**: todo
+"""
+
+    def test_planned_set_is_the_union_of_subsystems_lines(self):
+        from xtools.q21 import plan_denominator
+        planned, owners, status = plan_denominator(self.PLAN)
+        self.assertEqual(planned,
+                         ["client", "demo", "physics", "server", "ui", "world"])
+        self.assertEqual(owners["world"], ["6"])
+        self.assertEqual(status["6"], "done")
+
+    def test_owning_labels_are_deduped(self):
+        """A chunk naming a subsystem twice must not report it twice."""
+        from xtools.q21 import plan_denominator
+        plan = ("### Chunk 6 — server\n"
+                "**Subsystems**: `world`, `world`\n"
+                "**Status**: done\n")
+        _, owners, _ = plan_denominator(plan)
+        self.assertEqual(owners["world"], ["6"])
+
+
 if __name__ == "__main__":
     unittest.main()

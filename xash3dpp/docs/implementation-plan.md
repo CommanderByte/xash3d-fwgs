@@ -277,22 +277,41 @@ ______________________________________________________________________
    "independent streams"** in GoldSrc. The tree currently has **three**
    separately-seeded, algorithmically-different stand-ins (HB-12's own
    inventory lists only two — the third is in `sound/dsp.cpp`).
-4. **Decide explicitly whether narrowing the `ServerRuntime &` corridor in
+4. **Decide the pmove trace layer's edict lookup — this is what blocks
+   `xash3dpp_physics`.** The 2026-07-20 promotion extracted `xash3dpp_world`
+   cleanly (zero `ServerRuntime` coupling) but could NOT extract the shared
+   physics half, for a specific reason: `pm_trace.cpp` needs the edict
+   *store*, not just edicts — it resolves `pe->info` back through
+   `env.arena->edict_num(...)` (`pm_trace.cpp:92-94`), and `EdictArena` is
+   server-owned by Q-20. Either move the store down a layer (which re-opens
+   Q-20) or give `PmTraceEnv` an index→edict lookup interface matching the
+   `IModelResolver`/`IClipHooks` pattern `MoveEnv` already uses — the latter
+   puts a virtual call in a byte-exact trace inner loop and wants parity
+   review, not a drive-by. The measured split is recorded in
+   `src/physics/CMakeLists.txt`: `pm_trace.cpp` (800 lines, 0 refs),
+   `init_client_move.cpp` (495, 2) and `movevars.cpp` (105, 2) are
+   shared-shaped; `physics.cpp` (1808, **39**), `pmove.cpp` (541, 7) and
+   `run_cmd.cpp` (281, 3) are server-only. Legacy splits it the same way
+   (`engine/common/pm_trace.c` vs `engine/server/sv_phys.c`).
+5. **Decide explicitly whether narrowing the `ServerRuntime &` corridor in
    `src/server/physics/` is in or out of scope.** Narrowing signatures and
    porting parity math in the same wave is the collision to avoid. Either
    answer is fine; no answer is not.
-5. **State where the consolidated world/physics micro-predicates live** before
+6. **State where the consolidated world/physics micro-predicates live** before
    any new physics TU is written, or the duplication regrows: 16 definitions
    under 4 competing names today, 3 of which gate the fenced block.
-6. The four `switch(movetype)` sites are **parity-shaped by choice** and are
+7. The four `switch(movetype)` sites are **parity-shaped by choice** and are
    the slot the deferred `physFuncs` override hooks fit into. Explicitly **not**
    to be table-ified — this was proposed once and correctly refused.
-7. Record the already-ratified threading contract (single global `pmove_t`,
+8. Record the already-ratified threading contract (single global `pmove_t`,
    players sequential, no new global physics state). Transcription, not a
    decision.
-8. Note that `src/physics/` is an **empty placeholder** — the `pm_shared` work
-   lives in `src/server/physics/`. Same for `src/world/`. Two of the six
-   skeleton directories are factually misleading about what is unbuilt.
+9. Note that `src/physics/` is still an **empty placeholder** — the
+   `pm_shared` work lives in `src/server/physics/`, and item 4 above is what
+   has to be decided before the target can exist. *(This item also named
+   `src/world/`; that one was resolved on 2026-07-20 — the world code was
+   already decoupled and is now the `xash3dpp_world` target with its own
+   boundary spec, so `physics` is the last misleading skeleton of the two.)*
 
 ______________________________________________________________________
 

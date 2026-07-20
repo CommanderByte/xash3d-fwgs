@@ -276,9 +276,21 @@ def _prod_files() -> list[Path]:
     return out
 
 
-def _glob_files(glob: str) -> list[Path]:
-    """Repo-relative glob -> files.  `**` spans directories."""
+def _matches_glob(rel: str, pat: str) -> bool:
+    """fnmatch, but `**/` also matches ZERO directories.
+
+    Plain fnmatch requires `a/**/b` to have something between a and b, so
+    `src/world/**/*.cpp` missed files sitting directly in src/world/ -- a
+    predicate that then reported "matched no files" rather than a count.
+    """
     import fnmatch
+    if fnmatch.fnmatch(rel, pat):
+        return True
+    return "**/" in pat and fnmatch.fnmatch(rel, pat.replace("**/", "", 1))
+
+
+def _glob_files(glob: str) -> list[Path]:
+    """Repo-relative glob -> files.  `**` spans zero or more directories."""
     pat = glob.lstrip("./")
     roots = [SRC, INCLUDE, TESTS, REPO / "xash3dpp" / "tools"]
     out = []
@@ -289,7 +301,7 @@ def _glob_files(glob: str) -> list[Path]:
             if not p.is_file():
                 continue
             rel = p.relative_to(REPO).as_posix()
-            if fnmatch.fnmatch(rel, pat):
+            if _matches_glob(rel, pat):
                 out.append(p)
     return sorted(set(out))
 

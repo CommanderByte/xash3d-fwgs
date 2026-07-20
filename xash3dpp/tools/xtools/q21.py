@@ -14,8 +14,10 @@ import re
 
 from . import DOCS, REPO
 from . import md
+from .state import _parse_chunks
 
 GOALS_DOC = DOCS / "design" / "extension-goals.md"
+PLAN_DOC = DOCS / "implementation-plan.md"
 BOUNDARIES_DIR = DOCS / "boundaries"
 
 # extension-goals.md axis headings: `### G-1 — In-engine MCP service`
@@ -75,6 +77,36 @@ def parse_boundary_axes(text: str) -> tuple[set[str], bool]:
     return covered, True
 
 
+# The denominator is the set of subsystems the PLAN names, not the set of docs
+# that already exist and not the `src/` directory listing.
+#
+# Globbing existing docs cannot detect silence: a subsystem with no boundary
+# spec contributes no slot, so "16/16 clean" read as full coverage while six
+# subsystems had never been asked (2026-07 audit).  Taking `xtools.subsystems()`
+# instead would fix that but re-couple the metric to directories, so deleting an
+# unbuilt skeleton would silently shrink the denominator again -- and it counts
+# directories no chunk plans.  implementation-plan.md is the authority CLAUDE.md
+# names, it is delete-proof, and a subsystem enters the denominator exactly when
+# the plan starts claiming it.  `state._parse_chunks` already parses the
+# `**Subsystems**:` lines and each chunk's status, so this reuses it rather than
+# growing a second parser for the same doc.
+
+
+def plan_denominator(text: str) -> tuple[list[str], dict[str, list[str]],
+                                         dict[str, str]]:
+    """(planned subsystems, subsystem -> owning chunk labels, label -> status)"""
+    owners: dict[str, list[str]] = {}
+    status: dict[str, str] = {}
+    for c in _parse_chunks(text):
+        label = c.get("label", "?")
+        status[label] = c.get("status", "")
+        for sub in c.get("subsystems") or []:
+            labels = owners.setdefault(sub, [])
+            if label not in labels:      # a chunk may name a subsystem twice
+                labels.append(label)
+    return sorted(owners), owners, status
+
+
 def scan() -> dict:
     """Diff every boundary doc's Extension-axes coverage against the current
     goal set.  Findings (missing-axis / no-q21-section) mean exit 1 at the
@@ -83,10 +115,36 @@ def scan() -> dict:
     axes = parse_goal_axes(
         GOALS_DOC.read_text(encoding="utf-8", errors="replace"))
     axis_set = set(axes)
+    plan_text = PLAN_DOC.read_text(encoding="utf-8", errors="replace")
+    planned, owners, chunk_status = plan_denominator(plan_text)
     boundaries: dict[str, dict] = {}
     findings: list[dict] = []
-    for doc in sorted(BOUNDARIES_DIR.glob("*-boundary.md")):
-        sub = doc.name[:-len("-boundary.md")]
+    pending: list[dict] = []
+    have = {d.name[:-len("-boundary.md")]: d
+            for d in sorted(BOUNDARIES_DIR.glob("*-boundary.md"))}
+
+    for sub in sorted(set(planned) | set(have)):
+        doc = have.get(sub)
+        if doc is None:
+            # No spec.  Whether that is a DEFECT depends on the owning chunk:
+            # a subsystem whose chunk has started owes its spec now (the entry
+            # gates say so); one whose chunk is still `todo` does not, and
+            # reporting it as a finding would paint the gate permanently red on
+            # work nobody can action -- which is how the stale reports became
+            # invisible in the first place.
+            labels = owners.get(sub, [])
+            started = [l for l in labels
+                       if chunk_status.get(l) in ("done", "in-progress")]
+            entry = {"subsystem": sub, "chunks": labels,
+                     "detail": "no %s-boundary.md" % sub}
+            if started:
+                findings.append({
+                    "doc": sub, "kind": "no-boundary-doc", "axis": "",
+                    "detail": "%s has no boundary spec and its chunk(s) %s "
+                              "have started" % (sub, ", ".join(started))})
+            else:
+                pending.append(entry)
+            continue
         rel = doc.relative_to(REPO).as_posix()
         covered, has_section = parse_boundary_axes(
             doc.read_text(encoding="utf-8", errors="replace"))
@@ -109,10 +167,14 @@ def scan() -> dict:
                     "detail": "%s: no row/verdict for %s" % (rel, ax)})
     return {
         "axes": axes,
+        "planned": planned,
         "boundaries": boundaries,
         "findings": findings,
+        "pending_specs": pending,
         "summary": {
             "docs": len(boundaries),
+            "planned": len(planned),
+            "pending": len(pending),
             "docs_clean": sum(1 for b in boundaries.values()
                               if b["has_section"] and not b["missing"]),
             "missing_total": sum(len(b["missing"])

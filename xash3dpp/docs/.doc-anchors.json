@@ -872,6 +872,15 @@
    ],
    "target": "xash3dpp/src/utilities/build.cpp"
   },
+  "xash3dpp/docs/boundaries/world-boundary.md|clip.cpp|0": {
+   "line": 237,
+   "snapshot": [
+    "if ( rotated )",
+    "{",
+    "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
+  },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|0": {
    "line": 237,
    "snapshot": [
@@ -1043,6 +1052,15 @@
     "int\t\tplayer_index;\t// So we don't try to run the PM_CheckStuck nudging too quickly."
    ],
    "target": "pm_shared/pm_defs.h"
+  },
+  "xash3dpp/docs/implementation-plan.md|pm_trace.cpp|0": {
+   "line": 92,
+   "snapshot": [
+    "if ( env.arena == nullptr )",
+    "return 0;",
+    "abi::edict_t *ed = env.arena->edict_num( static_cast<std::size_t>( pe->info ));"
+   ],
+   "target": "xash3dpp/src/server/physics/pm_trace.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|sv_client.c|0": {
    "line": 3305,

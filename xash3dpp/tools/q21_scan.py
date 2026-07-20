@@ -29,12 +29,15 @@ def main() -> int:
     def human(data):
         s = data["summary"]
         print("axes: %s" % ", ".join(data["axes"]))
-        print("%d/%d boundary doc(s) clean; %d missing axis row(s), "
-              "%d unknown axis id(s)" % (
-                  s["docs_clean"], s["docs"], s["missing_total"],
-                  s["unknown_total"]))
+        print("%d/%d planned subsystem(s) have a boundary spec; "
+              "%d of those clean; %d missing axis row(s), %d unknown axis id(s)"
+              % (s["docs"], s["planned"], s["docs_clean"],
+                 s["missing_total"], s["unknown_total"]))
         for f in data["findings"]:
             print("  [%s] %s" % (f["kind"], f["detail"]))
+        for pnd in data.get("pending_specs", []):
+            print("  pending: %s owes a spec at chunk start (%s not started)"
+                  % (pnd["subsystem"], "/".join(pnd["chunks"]) or "unscheduled"))
         for sub, b in data["boundaries"].items():
             if b["unknown_axes"]:
                 print("  note: %s names unknown axes %s (not in "
