@@ -6,6 +6,9 @@
 #
 # ABI note: cdll_int.h / cdll_exp.h callbacks are FROZEN.
 #
-# TODO: add source files and add_library target when implementation begins.
+# RESERVED — no CMake target exists yet. This is a directory reservation for
+# Chunk 12 (client); per Q-25 (directory-tracks-target) src/client/ maps 1:1 to
+# a target xash3dpp_client, created only when Chunk 12 begins. Until then this
+# file is the plan for that target, not a build unit.
 # Likely dependencies: xash3dpp_networking, xash3dpp_world, xash3dpp_physics,
 #                      xash3dpp_renderer, xash3dpp_filesystem
