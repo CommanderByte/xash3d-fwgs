@@ -47,7 +47,7 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 - `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-24 register;
   §3a is the boundary-spec OQ crosswalk (blocks-scaffold rows gate work);
   §4.3 applies to all new code.
-- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (22) +
+- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (23) +
   `.github/agents/*.agent.md` (4) — the single source of truth for the
   workflow. Adapters in `.claude/commands|agents/` and
   `.opencode/commands|agents/` are thin delegators — **edit the `.github/`

@@ -269,6 +269,7 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 | `pre-pr` | After finish-subsystem; final gate before opening PR | No |
 | `analyse-subsystem` | Before rewriting a legacy subsystem | Yes (docs only) |
 | `analyse-modernization` | Optional future cleanup | Yes (docs only) |
+| `analyse-modernization-pack` | Read-only modernization slice for multi-agent audit fan-out (does NOT write the report) | No |
 | `analyse-utility-consolidation` | Deduplication planning | Yes (docs only) |
 | `migrate-to-memory` | Memory migration pass | Yes |
 | `retriever` | Enforce one rule across the entire codebase until clean | Yes |

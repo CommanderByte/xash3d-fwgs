@@ -46,7 +46,7 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 - `xash3dpp/docs/design/decisions-architecture.md` — Q-1..Q-24 register;
   §3a is the boundary-spec OQ crosswalk (blocks-scaffold rows gate work);
   §4.3 applies to all new code.
-- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (22) +
+- `.github/WORKFLOW.md` + `.github/prompts/*.prompt.md` (23) +
   `.github/agents/*.agent.md` (4) — the single source of truth for the
   workflow. Adapters in `.claude/commands|agents/` and
   `.opencode/commands|agents/` are thin delegators — **edit the `.github/`
@@ -88,8 +88,9 @@ agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
 
 ## Claude Code specifics
 
-- Slash commands (thin adapters over `.github/prompts/`, all 22):
-  /analyse-modernization, /analyse-subsystem, /analyse-threading,
+- Slash commands (thin adapters over `.github/prompts/`, all 23):
+  /analyse-modernization, /analyse-modernization-pack, /analyse-subsystem,
+  /analyse-threading,
   /analyse-utility-consolidation, /assess-impact, /audit-extension-doors,
   /bisect, /dependency-graph, /detail-audit, /document-architecture,
   /finish-subsystem, /implement-audit, /init, /limits-audit,
