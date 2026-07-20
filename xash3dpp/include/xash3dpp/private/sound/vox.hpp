@@ -146,6 +146,15 @@ struct VoxWord
     std::uint8_t     start        = 0;       // voxword_t::start  (percent playback start)
     std::uint8_t     end          = 100;     // voxword_t::end    (percent playback end)
     bool             in_cache     = false;   // FL_VOXWORD_IN_CACHE — "already registered/cached, don't release"
+
+    // S9.6 lazy-resolution fix: the resolved "<dir>/<word>" path
+    // (s_vox.c:500), stored so `audio` can be resolved LATER (at
+    // word-advance time, load_word()) instead of eagerly at build_sentence()
+    // time — see IVoxAudioResolver's doc comment and build_sentence()'s.
+    // Appended at the END of the struct (not interleaved) so every existing
+    // positional aggregate-init call site (`VoxWord{ &audio, 100, ... }`)
+    // keeps compiling unchanged with `path` defaulting to "".
+    std::string path;
 };
 
 [[nodiscard]] constexpr VoxWord make_default_vox_word() noexcept { return VoxWord{}; }
@@ -251,16 +260,30 @@ struct VoxSentence
 // already-resolved sfx" (data == NULL, checked AFTER, s_vox.c:155) — both
 // terminate the sentence IDENTICALLY (VOX_LoadWord's early return leaves
 // FL_CHAN_SENTENCE_FINISHED set either way), so collapsing the two failure
-// classes into one nullptr changes no observable mix-side behaviour. This
-// slice resolves EAGERLY at sentence-build time (VoxSystem::build_sentence,
-// mirroring VOX_LoadSound's own eager per-word S_FindName loop,
-// s_vox.c:493-512) rather than lazily at word-advance time like the real
-// S_LoadSound call inside VOX_LoadWord — S9.6's real wiring, which must also
-// match S_MixNormalChannelsToRoombuffer's OWN per-mix-block S_LoadSound call
-// (s_mix.c:351, entirely outside VOX's scope), will restore the lazy
-// two-phase shape; the OBSERVABLE word-resolution-failure behaviour this
-// slice's tests pin (a bad word terminates the sentence at that word) is
-// identical either way.
+// classes into one nullptr changes no observable mix-side behaviour.
+//
+// S9.6 LAZY-RESOLUTION FIX: an earlier slice (S9.4) called resolve() EAGERLY
+// for every word at sentence-build time (VoxSystem::build_sentence), which
+// decoded audio for words that might never be reached. This was reverted:
+// build_sentence() now only PARSES the word list (storing each word's
+// "<dir>/<word>" path on VoxWord::path, s_vox.c:500) and never calls
+// resolve() at all; VoxSystem::load_word() (called from bind_channel() for
+// word 0, and from next_word() for every later word — i.e. exactly at
+// word-ADVANCE time, matching the real S_LoadSound call inside VOX_LoadWord,
+// s_vox.c:153) is the ONLY call site left. A word whose `audio` is already
+// non-null (constructed directly, bypassing build_sentence — several tests
+// do this) is left alone: load_word() only resolves when `audio == nullptr`.
+// This restores the two-phase shape S9.4's own doc comment called for
+// ("mirroring VOX_LoadSound's eager per-word S_FindName loop" for
+// STRUCTURE, "lazily at word-advance time like the real S_LoadSound call"
+// for DECODE) with one simplification: legacy's S_FindName (name lookup,
+// not decode) really IS eager in legacy (s_vox.c:507, inside the same
+// per-word build loop that also collects volume/pitch/start/end/
+// timecompress); this port defers BOTH the name lookup and the decode to
+// load_word() time, since resolve() collapses them into one call (see
+// above) and splitting IVoxAudioResolver into a separate find()/load() pair
+// was judged not worth the added interface surface for this slice — see the
+// S9.6 uncertainty list.
 //
 // @thread-safety: implementations must tolerate being called from whichever
 // thread VoxSystem::build_sentence()/free_word() run on (see the file-header
@@ -321,11 +344,46 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// IVoxTimeLeftQuery — SND_GetChannelTimeLeft's sentence branch
+// (s_main.c:291-320), S9.6. Kept separate from IVoxWordAdvance (rather than
+// adding a new pure virtual there) so channel allocation (T_Main, S9.6) does
+// not force every IVoxWordAdvance implementer/test-double (including
+// test_sound_mixer.cpp's mock, S9.3) to grow a method it does not need.
+// VoxSystem is the only production implementer (multiple inheritance below).
+// ---------------------------------------------------------------------------
+class IVoxTimeLeftQuery
+{
+public:
+    IVoxTimeLeftQuery() noexcept                              = default;
+    virtual ~IVoxTimeLeftQuery()                               = default;
+    IVoxTimeLeftQuery( const IVoxTimeLeftQuery & )             = delete;
+    IVoxTimeLeftQuery &operator=( const IVoxTimeLeftQuery & )  = delete;
+
+    // Sum of the CURRENT word's remaining samples (forced_end - sample,
+    // s_main.c:299) plus every not-yet-reached word's full/partial
+    // (word.end percent) sample count. Like legacy, this FORCES a load of
+    // every remaining word for the estimate (S_LoadSound, s_main.c:311-313
+    // — a self-flagged legacy wart, "TODO: this function needs to be
+    // removed after whole sound subsystem rewrite", s_main.c:281): the
+    // S9.6 parity audit showed skipping lookahead resolution under-reports
+    // a live sentence's time-left and flips SND_PickDynamicChannel's
+    // eviction choice in saturated scenes. Resolution uses the channel's
+    // bound resolver with load_word()'s exact bookkeeping (audio+in_cache
+    // cached on the word, so the later real advance skips its own
+    // resolve); the sum stops at the first word that FAILS to resolve
+    // (s_main.c:309-313's breaks). Non-const for exactly that caching
+    // side effect. Returns 0 if `chan` has no bound sentence or is
+    // already SENTENCE_FINISHED.
+    [[nodiscard]] virtual int time_left( const MixChannel &chan ) noexcept = 0;
+};
+
+// ---------------------------------------------------------------------------
 // VoxSystem — the sentence table + word-list builder + the IVoxWordAdvance
 // implementation driving a bound channel's word list via the S9.3 hook
-// contract (Mixer::set_vox_advance).
+// contract (Mixer::set_vox_advance), plus the IVoxTimeLeftQuery channel-
+// allocation seam (S9.6).
 // ---------------------------------------------------------------------------
-class VoxSystem final : public IVoxWordAdvance
+class VoxSystem final : public IVoxWordAdvance, public IVoxTimeLeftQuery
 {
 public:
     VoxSystem() noexcept  = default;
@@ -362,14 +420,16 @@ public:
 
     // VOX_LoadSound (s_vox.c:444-521), MINUS the channel-binding tail
     // (`ch->words = ...; ch->word_index = 0; VOX_LoadWord(ch)` — see
-    // bind_channel). Returns nullopt on any of VOX_LoadSound's early-return
-    // error paths (unknown sentence name / directory-prefix overflow /
-    // sentence text >= sound_vox_sentence_text_max) — exactly like legacy,
-    // which never signals failure to ITS caller either; it just leaves
-    // ch->words untouched (== not a VOX channel). `resolver` resolves every
-    // word's audio EAGERLY (see IVoxAudioResolver's doc comment).
-    [[nodiscard]] std::optional<VoxSentence> build_sentence( std::string_view name,
-                                                              IVoxAudioResolver &resolver ) const;
+    // bind_channel) AND minus any audio resolution (S9.6 lazy-resolution
+    // fix — see IVoxAudioResolver's doc comment above): every parsed word
+    // gets its "<dir>/<word>" path recorded on VoxWord::path but `audio`
+    // stays nullptr until load_word() resolves it at word-advance time.
+    // Returns nullopt on any of VOX_LoadSound's early-return error paths
+    // (unknown sentence name / directory-prefix overflow / sentence text >=
+    // sound_vox_sentence_text_max) — exactly like legacy, which never
+    // signals failure to ITS caller either; it just leaves ch->words
+    // untouched (== not a VOX channel).
+    [[nodiscard]] std::optional<VoxSentence> build_sentence( std::string_view name ) const;
 
     // S9.6 wiring point: bind a freshly-built sentence's word list to a mix
     // channel — the VOX_LoadSound tail (`ch->words = ...; ch->word_index =
@@ -394,6 +454,18 @@ public:
     // only calls this for chan.is_sentence channels routed through
     // vox_mix_channel_to_buffer with a non-null vox_ hook.
     [[nodiscard]] bool next_word( MixChannel &chan ) noexcept override;
+
+    // IVoxTimeLeftQuery (S9.6) — see the interface doc comment above.
+    [[nodiscard]] int time_left( const MixChannel &chan ) noexcept override;
+
+    // VOX_SetChanVol (s_vox.c:190-204), S9.6 wiring point: scales
+    // chan.leftvol/rightvol by the CURRENT bound word's volume percent
+    // (no-op at 100, the default, or if `chan` has no bound sentence / is
+    // SENTENCE_FINISHED — matching `!ch->words || FL_CHAN_SENTENCE_FINISHED`
+    // s_vox.c:194). Called from SND_Spatialize (channel_alloc.cpp) AFTER the
+    // distance/pan computation, exactly like legacy's own call site
+    // (s_main.c:574,607).
+    void apply_word_volume( MixChannel &chan ) const noexcept;
 
 private:
     // Per-channel driver state (channel_t::words + channel_t::word_index,

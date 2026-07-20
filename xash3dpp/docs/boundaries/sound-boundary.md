@@ -398,6 +398,27 @@ ______________________________________________________________________
   (UB, s_vox.c:272-275); the rewrite falls through to the name scan →
   no-sentence. UB-only input, hardening.
 
+### Adjudicated entry-surface deviations (S9.6 parity audit, 2026-07-20)
+
+- **`register_sound` is ALWAYS lazy**: legacy eager-decodes at register
+  time when no registration sequence is active (`if( !s_registering )
+  S_LoadSound( sfx )`, s_load.c:333); the rewrite never models
+  registration sequences and defers every decode to first play. A live
+  channel always loads its source at play time, so no channel observes a
+  cache legacy would have populated — the only observable losses are the
+  late-precache warning timing and eager decode-error reporting, both
+  outside the audited surface. Sanctioned (audit F-4).
+- **`stop_sound` on an unresolvable name returns early** where legacy
+  dereferences the null `S_FindName` result (s_main.c:1456 → :520, UB).
+  Reject-gracefully family; for resolvable names both engines create the
+  fresh sfx slot side effect identically (audit uncertainty #5).
+- **Channel display-name truncation not reproduced**: legacy stores
+  `ch->name` in a `char[16]` (Q_strncpy truncation, s_main.c:700 /
+  sound_api.h:78); the rewrite keeps the full name. Affects only
+  `channels_snapshot` display today; the Chunk-8 save wiring must decide
+  whether serialized channel names re-truncate to 15 chars (audit F-7,
+  owner recorded in the campaign deferred list).
+
 ## Threading
 
 ### Ratified topology (§3.4) and SND-OQ-1 resolved shape

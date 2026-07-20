@@ -486,7 +486,7 @@ void VoxSystem::load_sentence_file( std::span<const std::byte> data )
     parse_sentence_file( data, sentences_ );
 }
 
-std::optional<VoxSentence> VoxSystem::build_sentence( std::string_view name, IVoxAudioResolver &resolver ) const
+std::optional<VoxSentence> VoxSystem::build_sentence( std::string_view name ) const
 {
     if( name.empty() )
         return std::nullopt; // !pszin guard (s_vox.c:454-455)
@@ -519,11 +519,10 @@ std::optional<VoxSentence> VoxSystem::build_sentence( std::string_view name, IVo
         if( !parse_word_params( raw_words[i], word, running_default ) )
             continue; // defaults-only block OR a syntax error (s_vox.c:493-498)
 
-        const std::string path = dir + raw_words[i]; // szpath + word-name (s_vox.c:500)
-
-        bool in_cache = false;
-        word.audio    = resolver.resolve( path, in_cache );
-        word.in_cache = in_cache;
+        // szpath + word-name (s_vox.c:500). S9.6 lazy-resolution fix: record
+        // the path only — audio/in_cache stay at their nullptr/false
+        // defaults until load_word() resolves them at word-advance time.
+        word.path = dir + raw_words[i];
 
         sentence.words.push_back( word );
     }
@@ -550,12 +549,20 @@ bool VoxSystem::load_word( MixChannel &chan, ChannelState &state ) noexcept
 
     VoxWord &word = state.sentence.words[state.word_index];
 
+    if( word.audio == nullptr && state.resolver != nullptr )
+    {
+        // S9.6 lazy-resolution fix: THIS is the real word-advance-time
+        // resolve call (S_LoadSound inside VOX_LoadWord, s_vox.c:153) —
+        // build_sentence() deliberately left `audio` unset (see its doc
+        // comment). A word constructed with `audio` already non-null
+        // (bypassing build_sentence, several tests do this) is left alone.
+        bool in_cache = false;
+        word.audio    = state.resolver->resolve( word.path, in_cache );
+        word.in_cache = in_cache;
+    }
+
     if( word.audio == nullptr )
         return false; // !word->sfx (s_vox.c:150-151) — sentence terminates at this word
-
-    // (S9.6 collapses S_LoadSound's lazy decode-on-mix here too — word.audio
-    // is already the resolved AudioData in this self-contained slice; see
-    // IVoxAudioResolver's doc comment.)
 
     chan.flags &= ~::xash::abi::k_fl_chan_sentence_finished; // ClearBits
     chan.source = word.audio;                                 // ch->data = data
@@ -650,6 +657,74 @@ bool VoxSystem::next_word( MixChannel &chan ) noexcept
     free_word( chan, state );
     ++state.word_index;
     return load_word( chan, state );
+}
+
+int VoxSystem::time_left( const MixChannel &chan ) noexcept
+{
+    auto it = bound_.find( &chan );
+    if( it == bound_.end() )
+        return 0;
+
+    // "sentences are special, count all remaining words" (s_main.c:291-296).
+    if( chan.flags & ::xash::abi::k_fl_chan_sentence_finished )
+        return 0;
+
+    ChannelState &state = it->second;
+
+    // current word (s_main.c:299).
+    int remaining = static_cast<int>( chan.forced_end - chan.sample );
+
+    // remaining words (s_main.c:303-320). Legacy FORCES S_LoadSound on
+    // every remaining word for the estimate (s_main.c:311-313) — reproduce
+    // it with load_word()'s exact resolve bookkeeping (S9.6 parity-audit
+    // fix; see IVoxTimeLeftQuery's doc comment).
+    for( std::size_t i = state.word_index + 1; i < state.sentence.words.size(); ++i )
+    {
+        VoxWord &word = state.sentence.words[i];
+        if( word.audio == nullptr && state.resolver != nullptr )
+        {
+            bool in_cache = false;
+            word.audio    = state.resolver->resolve( word.path, in_cache );
+            word.in_cache = in_cache;
+        }
+        if( word.audio == nullptr )
+            break; // !word->sfx / failed load (s_main.c:308-313)
+
+        const int end = word.end;
+        // Legacy accumulates via float compound-assign on an int:
+        // `remaining += sc->samples * 0.01f * end` promotes remaining to
+        // float, adds, and truncates back EACH iteration (s_main.c:317-318)
+        // — visibly different from adding a pre-truncated term when
+        // remaining is negative (e.g. -1 + 0.7f: legacy 0, per-term -1).
+        if( end != 0 )
+            remaining = static_cast<int>( static_cast<float>( remaining ) +
+                                          static_cast<float>( word.audio->samples ) * 0.01f * static_cast<float>( end ) );
+        else
+            remaining += static_cast<int>( word.audio->samples ); // int += int (s_main.c:319)
+    }
+
+    return remaining;
+}
+
+void VoxSystem::apply_word_volume( MixChannel &chan ) const noexcept
+{
+    auto it = bound_.find( &chan );
+    if( it == bound_.end() )
+        return; // !ch->words (s_vox.c:194)
+
+    const ChannelState &state = it->second;
+    if( chan.flags & ::xash::abi::k_fl_chan_sentence_finished )
+        return; // s_vox.c:194
+
+    if( state.word_index >= state.sentence.words.size() )
+        return;
+
+    const VoxWord &word = state.sentence.words[state.word_index];
+    if( word.volume == 100 )
+        return; // s_vox.c:199-200
+
+    chan.leftvol  = static_cast<int>( static_cast<float>( chan.leftvol ) * static_cast<float>( word.volume ) * 0.01f );
+    chan.rightvol = static_cast<int>( static_cast<float>( chan.rightvol ) * static_cast<float>( word.volume ) * 0.01f );
 }
 
 } // namespace xash::sound

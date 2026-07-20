@@ -99,6 +99,7 @@ P-3 exception class for no gain.
 | 35 | D/S9.3 | Pitch computed in double throughout — legacy rounds basePitch*0.01 to FLOAT at the VOX_ModifyPitch parameter and multiplies float*float (every pitched sound de-syncs the resample accumulator; masked by basePitch=100 tests) | parity gate (43/44 confirmed; kernels verified by independent macro expansion + vector re-derivation) | DIVERGENCE | FIXED pre-commit (orchestrator): compute_channel_pitch reproduces the exact double-multiply -> float-param-round -> float*float chain; pinned by a test asserting the float value AND rejecting the double value |
 | 36 | D/S9.4 | VOX: 45/47 confirmed (all 4 legacy embedded tests ported verbatim; stereo trim stride + FreeWord zeroing quirks pinned); 2 hardening deviations were in-code-only | parity gate | 2 DEVIATIONS (1 legal-input: the trailing-whitespace degenerate entry; 1 UB-only: negative-overflow handle) | sanctioned in the sound-boundary deviations section (document-not-reproduce adjudication) |
 | 37 | D/S9.5 | DSP: 60/61 confirmed (both 30-row preset tables, four passes incl. the rgsxlp FIFO self-overwrite, SND-OQ-6 sentinel row proven); 1 divergence — `dsp_coeff_table` stored as `int`, but legacy coerces the cvar TWO ways: `switch((int)value)` for the table pointer (s_dsp.c:787) vs exact-float `== 1.0f` for the reverb gain (s_dsp.c:703), so fractional 1.5 gets alpha table + release gain | parity gate | DIVERGENCE | FIXED pre-commit (orchestrator): field stored as float, both coercions kept distinct at their legacy sites; fractional-1.5 asymmetry pinned on BOTH sides (gain in the reverb test, table selection in the mono-delay test) |
+| 38 | D/S9.6 | Entry surface: 46/57 confirmed (constants byte-for-byte, all 25 cvars + 13 commands name/default/flag-exact incl. the play2-never-removed leak, S_StartSound operation order + every field write, pick/alter steal quirks, pan law float-exact). Findings: F-1 sentence steal-order DIVERGENCE (time_left skipped lookahead resolution, under-reporting vs legacy's forced S_LoadSound s_main.c:311-313 → wrong eviction in saturated scenes); F-2 sqrtf-vs-double-sqrt distance MINOR; F-3 per-term-truncating accumulation MINOR; F-11 dsp_profile restricted command missing; F-4 always-lazy register + hardening/scope items | parity gate (60/61-style line audit) + reviewer gate (SHIP, 1 bounds-assert warning) | 1 DIVERGENCE + 2 MINOR + 1 gap | F-1/F-2/F-3/F-11 ALL FIXED pre-commit (orchestrator): time_left force-resolves with load_word bookkeeping + legacy float compound-assign shape (both pinned by new tests incl. the -1+0.7f→0 discriminator), spatialize distance through double-sqrt (VectorLength shape), dsp_profile registered FCMD_PRIVILEGED wired to RoomDsp::profile; F-4/#5 sanctioned in sound-boundary entry-surface deviations; F-5/F-7/F-9/F-10 recorded deferred-with-owner; reviewer bounds assert added |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
 
@@ -115,3 +116,28 @@ P-3 exception class for no gain.
   insufficient (testing strategy, plan).
 - clang/TSan side-lane over `core::MpscQueue`/`SpscRing`: developer-run,
   recorded taken-or-declined at S9.7a.
+- Reserved sfx slot 0 (`*default`): legacy reserves `s_knownSfx[0]` as an
+  always-valid silence sfx so real handles start at 1 (s_load.c:361-366);
+  the S9.6 registry starts real handles at 0. Self-consistent today
+  (handles never cross the wire), but the precache/networking wiring must
+  either reserve slot 0 or re-audit every "handle 0 == default" assumption.
+  Owner: Chunk 12 client wiring (S9.6 audit F-5).
+- Channel `name[16]` truncation for serialization: see the sound-boundary
+  entry-surface deviations — the Chunk-8/12 save wiring owns the decision
+  (S9.6 audit F-7).
+- Ambient channels (`S_InitAmbientChannels`/`S_UpdateAmbientSounds`) +
+  `S_ClearBuffer` in stop-all: need world-leaf/client state; the ambient
+  range `[0,4)` is carved and excluded from all S9.6 allocation scans
+  (audit F-9 verified no ported path depends on it). Owner: Chunk 12.
+- `soundlist`/`s_info`/`music`/`s_fade` full command bodies: registered
+  with correct names/flags but summary bodies pending s_stream (SND-OQ-4)
+  and the fade curve. Owner: Chunk 12/13 (S9.6 audit F-10).
+- `warning C4530` (chrono try/catch under `/EHs-c-`) on FRESH rebuilds of
+  any TU that includes `xash3dpp/filesystem/filesystem.hpp` (its public
+  `file_time()` returns `std::filesystem::file_time_type`, dragging
+  `<filesystem>` -> `<chrono>` into no-exceptions TUs; sound.cpp is the
+  first sound-side instance, and legacy-abi TUs show the same class).
+  Benign under the no-exceptions posture (throw => terminate is the
+  intended contract), invisible to incremental gate builds. Real fix is an
+  interface change (POD file-time return) across the 7 filesystem
+  backends — its own gated slice. Owner: post-campaign hygiene follow-up.

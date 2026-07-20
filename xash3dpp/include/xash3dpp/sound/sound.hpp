@@ -14,7 +14,15 @@
 // This slice wires ONLY the lifecycle + device open/close.  No mixer, no codec,
 // no channel plumbing (S9.2/S9.3).  The class is EngineContext-embeddable
 // (direct member, like Server/Host) AND constructible via create_sound().
+//
+// Slice S9.6 ("entry surface") layers the channel-based mixer's public API on
+// top: register_sound/start_sound/start_local_sound/stop_sound/
+// stop_all_sounds (s_main.c/s_load.c), update_frame (the ListenerSnapshot
+// publish point — also polls DSP-relevant cvars, boundary §4.3), and
+// channels_snapshot() (the P-4 typed introspection surface). See
+// docs/boundaries/sound-boundary.md §Interface for the full legacy mapping.
 
+#include <xash3dpp/abi/sound_api.hpp>
 #include <xash3dpp/sound/device.hpp>
 #include <xash3dpp/sound/errors.hpp>
 #include <xash3dpp/sound/providers.hpp>
@@ -22,8 +30,13 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace xash::filesystem { class Filesystem; }
+namespace xash::cmd_cvar { class CmdCvarContext; }
 
 namespace xash::sound {
 
@@ -70,9 +83,43 @@ struct SoundInitParams
     // Requested output format (defaults to 44.1 kHz / stereo / 16-bit).
     DeviceSpec spec {};
 
-    // TODO(S9.2/S9.3): filesystem for soundlib decode (WAV/MP3/OGG/Opus) + the
-    //   cmd_cvar context for the 11 cvars / 13 commands S_Init registers.
-    ::xash::filesystem::Filesystem *filesystem = nullptr; // @lifetime: caller
+    // soundlib decode (WAV; MP3/OGG/Opus are separate satellite targets, not
+    // linked here).  nullptr -> registered sounds always resolve to the
+    // synthesized default (silent) sound (SfxRegistry's S_CreateDefaultSound
+    // fallback) — a headless/test load still runs the full entry surface.
+    ::xash::filesystem::Filesystem *filesystem = nullptr; // @lifetime: caller (outlives Sound)
+
+    // cmd_cvar context (S9.6): the 11 cvars / 13 commands S_Init registers
+    // (sound-boundary.md §Cvar/command census).  nullptr -> no cvar/command
+    // registration (a headless/test load can still call start_sound() etc.
+    // directly).
+    ::xash::cmd_cvar::CmdCvarContext *cmd_cvar = nullptr; // @lifetime: caller (outlives Sound)
+};
+
+// ---------------------------------------------------------------------------
+// ChannelInfo / channels_snapshot() (P-4) — the typed introspection surface
+// replacing direct snd.channels[]/S_GetCurrentStaticSounds/
+// S_GetCurrentDynamicSounds array pokes (sound-boundary.md §Interface). Main-
+// thread read; a copyable snapshot, safe to hold past the next start/stop.
+// ---------------------------------------------------------------------------
+enum class ChannelClass : std::uint8_t
+{
+    Dynamic, // [NUM_AMBIENTS, MAX_DYNAMIC_CHANNELS) — includes the (unallocated
+             // this slice) ambient sub-range [0, NUM_AMBIENTS)
+    Static,  // [MAX_DYNAMIC_CHANNELS, total_channels)
+    Raw,     // raw/voice streaming channels (allocation not wired this slice —
+             // reserved for the P-4 surface's future completeness)
+};
+
+struct ChannelInfo
+{
+    std::string  sfx_name;              // registered sfx name (chan->name for a sentence, else the sfx's own name)
+    int          entnum          = 0;   // entity soundsource
+    Vec3         origin          {};    // world position (entity-relative channels: last resolved origin)
+    int          left_vol        = 0;   // 0-255
+    int          right_vol       = 0;   // 0-255
+    ChannelClass channel_class   = ChannelClass::Dynamic;
+    double       position_samples = 0.0; // playback position, in source frames (chan->sample)
 };
 
 // ---------------------------------------------------------------------------
@@ -111,7 +158,77 @@ public:
     // The format negotiated at open time.  Zero-valued before init().
     [[nodiscard]] const DeviceCaps &caps() const noexcept;
 
+    // -----------------------------------------------------------------------
+    // Entry surface (Chunk 9, slice S9.6). Main-thread only; every entry
+    // asserts ThreadRole::Main (QN). See sound-boundary.md §Interface for the
+    // legacy S_* mapping cited on each method below.
+    // -----------------------------------------------------------------------
+
+    // S_RegisterSound (s_load.c:312-336). '!'-prefixed names route to VOX and
+    // resolve LAZILY at play time (the immediate-sentence slot is written,
+    // nothing is decoded here).  Returns -1 (k_invalid_sound_handle) on an
+    // empty/oversized name or table overflow.
+    [[nodiscard]] ::xash::abi::sound_t register_sound( std::string_view name ) noexcept;
+
+    // S_StartSound (s_main.c:626-740). Handles BOTH the dynamic and static
+    // (chan == k_chan_static) variants internally, exactly like legacy.
+    // `pos` mirrors the legacy `const vec3_t pos` NULL-ability: nullopt ->
+    // the last update_frame()'d listener view-origin (`refState.vieworg`).
+    void start_sound( std::optional<Vec3> pos, int ent, int chan, ::xash::abi::sound_t handle, float fvol,
+                      float attn, int pitch, std::uint32_t flags ) noexcept;
+
+    // S_StartLocalSound (s_main.c:955-966): registers + plays on the
+    // listener entnum; `reliable` -> CHAN_STATIC else CHAN_AUTO, always
+    // ATTN_NONE/PITCH_NORM/SND_LOCALSOUND|SND_STOP_LOOPING.
+    void start_local_sound( std::string_view name, float volume, bool reliable ) noexcept;
+
+    // S_StopSound (s_main.c:1451-1458, GAME_EXPORT): resolves `soundname`
+    // via the registry (creating a fresh, cache-less slot if unknown — same
+    // as legacy) then S_AlterChannel(...,SND_STOP).
+    void stop_sound( int entnum, int channel, std::string_view soundname ) noexcept;
+
+    // S_StopAllSounds (s_main.c:1465-1492): resets to MAX_DYNAMIC_CHANNELS,
+    // frees every channel (incl. VOX unbind), clears DSP state, and zeroes
+    // the soundfade. `ambient` restarts the ambient channel init (this
+    // slice: a no-op — ambient allocation is not wired, see the S9.6
+    // uncertainty list).
+    void stop_all_sounds( bool ambient ) noexcept;
+
+    // S_UpdateFrame (s_main.c:1590-1598): publishes the listener pose this
+    // frame's start_sound()/spatialize calls read (SND-OQ-1: the ONLY
+    // listener-state source — never a live global). ALSO polls the DSP
+    // room-selection input (ListenerSnapshot::waterlevel) into the owned
+    // RoomDsp instance (boundary §4.3 "wire per-frame cvar polling").
+    void update_frame( const ListenerSnapshot &snapshot ) noexcept;
+
+    // channels_snapshot() (P-4) — S_GetCurrentStaticSounds/
+    // S_GetCurrentDynamicSounds/the s_show precedent, typed. Returns every
+    // currently-occupied channel (dynamic + static; raw channels are always
+    // empty this slice — see ChannelClass::Raw).
+    [[nodiscard]] std::vector<ChannelInfo> channels_snapshot() const;
+
 private:
+    // Console command handlers (cmd_add's CommandCtxFn — campaign B5). `user`
+    // is `this` (a Sound*, cast back inside each handler). Declared as members
+    // (not free functions) so they can reach the private Impl — see sound.cpp.
+    // Argument access goes through the SAME CmdCvarContext instance that is
+    // currently dispatching the handler (cmd_argc/cmd_argv's documented
+    // "valid only during cbuf_execute dispatch" contract).
+    static void cmd_play_f( void *user ) noexcept;
+    static void cmd_play2_f( void *user ) noexcept;
+    static void cmd_playvol_f( void *user ) noexcept;
+    static void cmd_stopsound_f( void *user ) noexcept;
+    static void cmd_music_f( void *user ) noexcept;
+    static void cmd_soundlist_f( void *user ) noexcept;
+    static void cmd_s_info_f( void *user ) noexcept;
+    static void cmd_s_fade_f( void *user ) noexcept;
+    static void cmd_soundfade_f( void *user ) noexcept;
+    static void cmd_voicerecord_start_f( void *user ) noexcept;
+    static void cmd_voicerecord_stop_f( void *user ) noexcept;
+    static void cmd_speak_f( void *user ) noexcept;
+    static void cmd_spk_f( void *user ) noexcept;
+    static void cmd_dsp_profile_f( void *user ) noexcept;
+
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };

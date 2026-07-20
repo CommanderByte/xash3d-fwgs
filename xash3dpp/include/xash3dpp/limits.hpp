@@ -603,6 +603,17 @@ inline constexpr std::size_t sound_vox_immediate_name_max = 256; // s_sentenceIm
 inline constexpr std::size_t sound_vox_immediate_name_max = XASH_LIMIT_SOUND_VOX_IMMEDIATE_NAME_MAX;
 #endif
 
+// Entry surface (Chunk 9, slice S9.6). Legacy reference: engine/client/sound/
+// s_load.c:24-25 (MAX_SFX / s_knownSfx[MAX_SFX]). A tunable capacity in this
+// port (std::unordered_map/std::vector, not a fixed hash-chained C array), but
+// kept as an explicit budget so registration overflow is observable/bounded
+// rather than growing without limit on a hot registration path.
+#ifndef XASH_LIMIT_SOUND_MAX_SFX
+inline constexpr std::size_t sound_max_sfx = 8192; // MAX_SFX (s_load.c:24)
+#else
+inline constexpr std::size_t sound_max_sfx = XASH_LIMIT_SOUND_MAX_SFX;
+#endif
+
 // input subsystem
 // Legacy reference: engine/client/input/in_keys.c:37-43 (keys[265] — ~255
 // real keys + 9 international slots) and in_touch.c's touch_button_t fixed

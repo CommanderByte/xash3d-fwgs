@@ -41,6 +41,13 @@ struct ListenerSnapshot
     // group c — DSP room-selection input (legacy reads cl.local.waterlevel on
     //   T_Main; only the derived idsp_room index crosses to the mix thread).
     int waterlevel = 0;
+
+    // group f (S9.6 addition) — BUGCOMP_SPATIALIZE_SOUND_WITH_ATTN_NONE
+    // (host.bugcomp, s_main.c:597). true == the compat bit IS set (the OLD
+    // buggy behaviour that pans ATTN_NONE sounds is kept); false (default) ==
+    // modern behaviour (ATTN_NONE sounds are never panned). See
+    // channel_alloc.cpp's spatialize().
+    bool bugcomp_attn_none = false;
 };
 
 // ---------------------------------------------------------------------------

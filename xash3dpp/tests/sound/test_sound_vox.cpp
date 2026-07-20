@@ -542,11 +542,7 @@ static void test_build_sentence_word_list_with_params_and_default_carryover()
     VoxSystem          vox;
     vox.load_sentence_file( as_span( text ) );
 
-    TestAudioResolver resolver;
-    resolver.known["vox/hello"] = make_mono8( { 10, 20 } );
-    resolver.known["vox/world"] = make_mono8( { 30, 40 } );
-
-    auto sentence = vox.build_sentence( "GREETING", resolver );
+    auto sentence = vox.build_sentence( "GREETING" );
     REQUIRE( sentence.has_value() );
     // "(p150)" is a defaults-only block (no bare word text) — it does NOT
     // become a word entry itself, but updates the running default that
@@ -556,15 +552,36 @@ static void test_build_sentence_word_list_with_params_and_default_carryover()
     REQUIRE( sentence->words.size() == 2 );
     CHECK_EQ( sentence->words[0].pitch, 150 );
     CHECK_EQ( sentence->words[1].pitch, 150 );
-    CHECK( sentence->words[0].audio == &resolver.known["vox/hello"] );
-    CHECK( sentence->words[1].audio == &resolver.known["vox/world"] );
+    // S9.6 lazy-resolution fix: build_sentence() never resolves audio — only
+    // the "<dir>/<word>" path is recorded; audio stays null until the word
+    // is actually reached during playback (load_word/next_word).
+    CHECK( sentence->words[0].path == "vox/hello" );
+    CHECK( sentence->words[1].path == "vox/world" );
+    CHECK( sentence->words[0].audio == nullptr );
+    CHECK( sentence->words[1].audio == nullptr );
+
+    TestAudioResolver resolver;
+    resolver.known["vox/hello"] = make_mono8( { 10, 20 } );
+    resolver.known["vox/world"] = make_mono8( { 30, 40 } );
+
+    MixChannel chan{};
+    chan.leftvol = chan.rightvol = 1;
+    vox.bind_channel( chan, std::move( *sentence ), &resolver );
+    // bind_channel() loads word 0 (VOX_LoadWord) -> lazy resolve happens HERE.
+    CHECK( chan.source == &resolver.known["vox/hello"] );
+
+    // Advance to word 1 -> lazy resolve happens at THIS call, not earlier.
+    chan.flags |= ::xash::abi::k_fl_chan_finished;
+    CHECK( vox.next_word( chan ) );
+    CHECK( chan.source == &resolver.known["vox/world"] );
+
+    vox.unbind_channel( chan );
 }
 
 static void test_build_sentence_unknown_name_fails()
 {
-    VoxSystem          vox;
-    TestAudioResolver  resolver;
-    CHECK( !vox.build_sentence( "NO_SUCH_SENTENCE", resolver ).has_value() );
+    VoxSystem vox;
+    CHECK( !vox.build_sentence( "NO_SUCH_SENTENCE" ).has_value() );
 }
 
 static void test_sentence_terminates_on_bad_word()
@@ -578,17 +595,21 @@ static void test_sentence_terminates_on_bad_word()
     VoxSystem          vox;
     vox.load_sentence_file( as_span( text ) );
 
+    auto sentence = vox.build_sentence( "SENT" );
+    REQUIRE( sentence.has_value() );
+    REQUIRE( sentence->words.size() == 3 );
+    CHECK( sentence->words[0].path == "vox/one" );
+    CHECK( sentence->words[1].path == "vox/two" );
+    CHECK( sentence->words[2].path == "vox/three" );
+    // Nothing resolved yet (S9.6 lazy-resolution fix).
+    CHECK( sentence->words[0].audio == nullptr );
+    CHECK( sentence->words[1].audio == nullptr );
+    CHECK( sentence->words[2].audio == nullptr );
+
     TestAudioResolver resolver;
     resolver.known["vox/one"]   = make_mono8( { 1, 2 } );
     // "vox/two" intentionally absent -> resolve() returns nullptr.
     resolver.known["vox/three"] = make_mono8( { 5, 6 } );
-
-    auto sentence = vox.build_sentence( "SENT", resolver );
-    REQUIRE( sentence.has_value() );
-    REQUIRE( sentence->words.size() == 3 );
-    CHECK( sentence->words[0].audio != nullptr );
-    CHECK( sentence->words[1].audio == nullptr ); // the bad word
-    CHECK( sentence->words[2].audio != nullptr ); // resolvable, but never reached
 
     MixChannel chan{};
     chan.leftvol = chan.rightvol = 1;

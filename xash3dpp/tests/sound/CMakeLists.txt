@@ -40,3 +40,12 @@ xash3dpp_add_test(test_sound_vox LIBS xash3dpp_sound)
 # through the S9.3 paint pipeline with a known preset (byte-pinned), ClearState
 # semantics, and the room-selection matrix (waterlevel/room_type/off cases).
 xash3dpp_add_test(test_sound_dsp LIBS xash3dpp_sound xash3dpp_memory)
+
+# Entry surface (slice S9.6): channel allocation (SND_PickDynamicChannel/
+# PickStaticChannel channel-steal order + every early-out), S_AlterChannel
+# flag matches, hand-derived SND_Spatialize goldens (pan + attenuation),
+# SfxRegistry lazy resolution (register does not resolve; play does),
+# VoxSystem::time_left, and the full Sound entry surface end-to-end
+# (start/stop/register/channels_snapshot + a command dispatched through a
+# real CmdCvarContext proving the user-data plumbing).
+xash3dpp_add_test(test_sound_entry LIBS xash3dpp_sound xash3dpp_cmd_cvar xash3dpp_core)

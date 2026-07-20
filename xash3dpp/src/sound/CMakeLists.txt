@@ -11,6 +11,10 @@
 # not linked here yet (codec.hpp reserves their rows).
 # Legacy reference: engine/client/sound/, engine/platform/ (the SNDDMA seam),
 # engine/{client,common}/soundlib/ (the decode layer).
+# Slice S9.6 ("entry surface"): channel allocation/alter/spatialize
+# (channel_alloc.cpp) + the sfx registry/lazy decode seam (registry.cpp),
+# driving the S9.2-S9.5 components + the cmd_cvar census + a Filesystem-
+# backed IAudioLoader.
 
 add_library(xash3dpp_sound STATIC
     sound.cpp
@@ -19,6 +23,8 @@ add_library(xash3dpp_sound STATIC
     mixer.cpp
     vox.cpp
     dsp.cpp
+    registry.cpp
+    channel_alloc.cpp
 )
 
 target_include_directories(xash3dpp_sound
@@ -29,11 +35,22 @@ target_compile_features(xash3dpp_sound PUBLIC cxx_std_23)
 
 target_link_libraries(xash3dpp_sound
     # utilities: Vec3 (ListenerSnapshot / provider seams); read_le/write_le +
-    # crc32 (the WAV codec's chunk parse + broken-WAV allowlist, codec_wav.cpp).
+    # crc32 (the WAV codec's chunk parse + broken-WAV allowlist, codec_wav.cpp);
+    # atoi/atof (cvar/command argument parsing, sound.cpp).
     PUBLIC  xash3dpp_utilities
     # memory: the "sound" pool (create_pool / destroy_pool).
     PUBLIC  xash3dpp_memory
     # core: thread-role assertions + structured logging (PRIVATE — no public
     # header of xash3dpp_sound exposes a core type).
     PRIVATE xash3dpp_core
+    # cmd_cvar: the S9.6 cvar/command census (PRIVATE — only sound.hpp's
+    # forward-declared CmdCvarContext* is public; the full type is a .cpp
+    # implementation detail).
+    PRIVATE xash3dpp_cmd_cvar
+    # filesystem: FilesystemAudioLoader's Filesystem::load_file (PRIVATE — same
+    # forward-declared-pointer-only public surface as cmd_cvar above).
+    PRIVATE xash3dpp_filesystem
+    # platform: get_time (the dsp_profile command's Platform_DoubleTime,
+    # s_dsp.c:902/906); S9.7b's spawn_thread rides the same edge.
+    PRIVATE xash3dpp_platform
 )

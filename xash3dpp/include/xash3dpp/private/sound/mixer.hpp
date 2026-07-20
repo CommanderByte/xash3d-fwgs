@@ -22,12 +22,14 @@
 // would fire on T_Main. See mixer.cpp for the compliance-allow(thread-assert)
 // rationale (networking-boundary precedent, context.cpp:81).
 
+#include <xash3dpp/abi/sound_api.hpp>              // sound_t (S9.6 MixChannel::sfx_handle)
 #include <xash3dpp/private/sound/mix_kernels.hpp> // Interp, mix_audio, portable_samplepair_t
 #include <xash3dpp/sound/audio_data.hpp>          // AudioData
 #include <xash3dpp/sound/providers.hpp>           // MixGateSnapshot
 
 #include <cstdint>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace xash::sound {
@@ -86,6 +88,27 @@ struct MixChannel
     // legacy's `!ch->words` early return with no special-casing at the mix
     // site (see compute_channel_pitch's word_pitch parameter below).
     std::uint16_t vox_pitch = k_pitch_norm;
+
+    // ------------------------------------------------------------------
+    // S9.6 additions — channel_t identity + allocation/spatialize fields
+    // this slice's channel_alloc.{hpp,cpp} needs (SND_PickDynamicChannel/
+    // SND_PickStaticChannel/S_AlterChannel/SND_Spatialize). Appended at the
+    // END of the struct (not interleaved with the S9.3/S9.4 fields above) so
+    // every existing `MixChannel ch{}; ch.field = ...;` non-designated call
+    // site in the S9.3/S9.4 tests keeps compiling unchanged.
+    // ------------------------------------------------------------------
+
+    // chan->sfx identity (registry.hpp SfxHandle == abi::sound_t). Comparable
+    // for the SND_PickDynamicChannel/PickStaticChannel/S_AlterChannel
+    // identity tests (`ch->sfx == sfx`). k_invalid_sound_handle (registry.hpp)
+    // when unset — `source == nullptr` remains the authoritative "channel is
+    // free" test (matches `!ch->sfx`; see channel_alloc.cpp).
+    ::xash::abi::sound_t sfx_handle = -1; // registry.hpp's k_invalid_sound_handle, duplicated here to avoid a mixer.hpp -> registry.hpp include
+
+    std::string name;        // chan->name — sentence name only (empty otherwise; s_main.c:700,808,911)
+    Vec3        origin {};   // chan->origin (world position; ignored for entity-relative channels)
+    float       dist_mult  = 0.0f; // chan->dist_mult (attn / SND_CLIP_DISTANCE)
+    int         master_vol = 0;    // chan->master_vol (0-255, pre-spatialize)
 };
 
 // ---------------------------------------------------------------------------
