@@ -571,4 +571,26 @@ inline constexpr std::uint32_t sound_dma_speed = 44100;
 inline constexpr std::uint32_t sound_dma_speed = XASH_LIMIT_SOUND_DMA_SPEED;
 #endif
 
+// input subsystem
+// Legacy reference: engine/client/input/in_keys.c:37-43 (keys[265] — ~255
+// real keys + 9 international slots) and in_touch.c's touch_button_t fixed
+// char arrays (name[32], texture[256], command[256], in_touch.c:57-59).
+#ifndef XASH_LIMIT_INPUT_KEY_COUNT
+inline constexpr std::size_t input_key_count = 265; // ARRAYSIZE(keys) — keeps xash::input::k_key_count in sync
+#else
+inline constexpr std::size_t input_key_count = XASH_LIMIT_INPUT_KEY_COUNT;
+#endif
+
+#ifndef XASH_LIMIT_INPUT_TOUCH_NAME_MAX
+inline constexpr std::size_t input_touch_name_max = 32; // touch_button_t::name[32]
+#else
+inline constexpr std::size_t input_touch_name_max = XASH_LIMIT_INPUT_TOUCH_NAME_MAX;
+#endif
+
+#ifndef XASH_LIMIT_INPUT_TOUCH_FIELD_MAX
+inline constexpr std::size_t input_touch_field_max = 256; // touch_button_t::texture[256] / command[256]
+#else
+inline constexpr std::size_t input_touch_field_max = XASH_LIMIT_INPUT_TOUCH_FIELD_MAX;
+#endif
+
 } // namespace xash::limits
