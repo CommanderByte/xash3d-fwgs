@@ -14,6 +14,7 @@
 
 #include <xash3dpp/abi/engine_context_accessor.hpp>
 #include <xash3dpp/core/thread_role.hpp>
+#include <xash3dpp/host/engine_context.hpp>
 
 #include <atomic>
 
@@ -39,3 +40,25 @@ EngineContext *current_engine_context() noexcept
 }
 
 } // namespace xash::abi
+
+namespace xash {
+
+int legacy_random_long_callback( int low, int high ) noexcept
+{
+    EngineContext *ctx = ::xash::abi::current_engine_context();
+    if ( ctx == nullptr )
+        return low;
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+    return ctx->legacy_random.random_long( low, high );
+}
+
+float legacy_random_float_callback( float low, float high ) noexcept
+{
+    EngineContext *ctx = ::xash::abi::current_engine_context();
+    if ( ctx == nullptr )
+        return low;
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
+    return ctx->legacy_random.random_float( low, high );
+}
+
+} // namespace xash

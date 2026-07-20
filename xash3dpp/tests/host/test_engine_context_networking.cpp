@@ -17,6 +17,7 @@
 
 #include "../test_helpers.hpp"
 
+#include <bit>
 #include <cstdint>
 
 using xash::EngineContext;
@@ -147,6 +148,32 @@ static void test_reinit_cycle()
     CHECK( !ctx.networking.is_active() );
 }
 
+// -- canonical random callbacks reach the EngineContext-owned stream -------
+
+static void test_legacy_random_callbacks()
+{
+    CHECK_EQ( xash::legacy_random_long_callback( 17, 99 ), 17 );
+    CHECK( xash::legacy_random_float_callback( 2.5f, 9.0f ) == 2.5f );
+
+    FakePlatformSockets fake;
+    EngineContext ctx;
+    REQUIRE( ctx.init( make_params( &fake ) ) );
+
+    xash::core::LegacyRandom expected;
+    expected.set_seed( 1 );
+    ctx.legacy_random.set_seed( 1 );
+
+    CHECK_EQ( xash::legacy_random_long_callback( 0, 1000000 ),
+              expected.random_long( 0, 1000000 ) );
+    CHECK( std::bit_cast<std::uint32_t>(
+               xash::legacy_random_float_callback( -4.0f, 8.0f )) ==
+           std::bit_cast<std::uint32_t>(
+               expected.random_float( -4.0f, 8.0f )) );
+
+    ctx.shutdown();
+    CHECK_EQ( xash::legacy_random_long_callback( -7, 40 ), -7 );
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -160,6 +187,7 @@ int main()
     RUN_TEST( test_init_activates_networking );
     RUN_TEST( test_default_sockets_fallback );
     RUN_TEST( test_reinit_cycle );
+    RUN_TEST( test_legacy_random_callbacks );
 
     std::printf( "engine_context_networking: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail ? 1 : 0;

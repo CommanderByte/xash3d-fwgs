@@ -67,6 +67,11 @@ struct ServerInitParams
     // an offline server (spawn/physics run; no packet I/O — test fixtures).
     ::xash::networking::NetworkContext *net = nullptr; // @lifetime: engine
 
+    // GoldSrc installs these exact no-capture addresses in both enginefuncs
+    // and playermove_t. nullptr selects one shared inert callback pair.
+    int ( *random_long )( int low, int high ) = nullptr;
+    float ( *random_float )( float low, float high ) = nullptr;
+
     // SV_InitGame → SV_LoadProgs dll path + the active game folder.
     const char *game_dll = "";  // @lifetime: engine
     const char *game_dir = "";  // @lifetime: engine

@@ -44,6 +44,8 @@ struct SnapshotState;   // S9 — svs.baselines + sv.instanced (snapshot.hpp)
 // route here.  The hook may not return control flow guarantees; slot
 // implementations still return a safe value afterwards.
 using HostErrorHook = void ( * )( void *ctx, const char *msg );
+using RandomLongHook = int ( * )( int low, int high );
+using RandomFloatHook = float ( * )( float low, float high );
 
 struct EngineBridge
 {
@@ -114,6 +116,11 @@ struct EngineBridge
     bool        novis       = false;      // sv_novis
     const char *game_dir    = "";         // GI->gamefolder  @lifetime: engine
 
+    // One process-owned legacy stream, injected from EngineContext. These
+    // addresses are installed verbatim into enginefuncs and playermove_t.
+    RandomLongHook  random_long  = nullptr;
+    RandomFloatHook random_float = nullptr;
+
     // pfnSetGroupMask mirror (svs.groupmask/groupop); also pushed into
     // move_env/links when present.
     int group_mask = 0;
@@ -145,6 +152,12 @@ struct EngineBridge
 // kept, not copied.
 void install_engine_bridge( EngineBridge *bridge ) noexcept;
 [[nodiscard]] EngineBridge *engine_bridge() noexcept;
+
+// Return the injected callbacks, or the one stateless inert pair when no
+// EngineContext-backed stream is available. Both table builders call these so
+// their stored function pointers are literally identical.
+[[nodiscard]] RandomLongHook effective_random_long() noexcept;
+[[nodiscard]] RandomFloatHook effective_random_float() noexcept;
 
 // Build a fresh table copy (legacy gpEngfuncs local-copy semantics: the
 // caller's copy goes to the DLL so "bots.dll etc. can't corrupt the

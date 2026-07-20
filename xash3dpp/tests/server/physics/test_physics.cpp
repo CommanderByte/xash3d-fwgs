@@ -98,6 +98,9 @@ static void setup_tree()
 static int  g_err_calls = 0;
 static void err_hook( void *, const char * ) { ++g_err_calls; }
 
+static int fixture_random_long( int low, int ) { return low + 1; }
+static float fixture_random_float( float low, float ) { return low + 0.25f; }
+
 static fake_dll::State *state_of( sv::GameDll &dll )
 {
     auto fn = reinterpret_cast<fake_dll::StateFn>( dll.symbol( "fake_state" ) );
@@ -148,6 +151,8 @@ struct PhysFixture
         rt.cfg.max_edicts = 64;
         rt.cfg.dedicated  = dedicated;
         rt.cfg.host_error = err_hook;
+        rt.cfg.random_long = &fixture_random_long;
+        rt.cfg.random_float = &fixture_random_float;
         rt.cvars          = &ctx;
         rt.fs             = &fs;
         rt.maps           = &maps;
@@ -761,6 +766,12 @@ static void test_pm_init_client_move()
     CHECK( pm.PM_PlaybackEventFull != nullptr );
     CHECK( pm.PM_TraceTexture != nullptr );
     CHECK( pm.PM_TraceSurface != nullptr );
+    CHECK( pm.RandomLong == fx.rt.engine_table.pfnRandomLong );
+    CHECK( pm.RandomFloat == fx.rt.engine_table.pfnRandomFloat );
+    CHECK( pm.RandomLong == &fixture_random_long );
+    CHECK( pm.RandomFloat == &fixture_random_float );
+    CHECK_EQ( pm.RandomLong( 10, 20 ), 11 );
+    CHECK( pm.RandomFloat( 2.0f, 4.0f ) == 2.25f );
 
     // functional call through the installed pointer: gather the world, then
     // PM_PointContents at X<128 → water (hull-0), reaching the bridge.

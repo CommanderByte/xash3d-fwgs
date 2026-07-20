@@ -132,6 +132,8 @@ bool EngineContext::init(const EngineContextInitParams &p) noexcept
         sp.fs           = &filesystem;
         sp.maps         = &map_loader;
         sp.net          = &networking;
+        sp.random_long  = &legacy_random_long_callback;
+        sp.random_float = &legacy_random_float_callback;
         sp.dedicated    = p.dedicated;
         sp.developer    = p.developer;
         // game_dll / game_dir + the Q-5 host_error hook are resolved by the

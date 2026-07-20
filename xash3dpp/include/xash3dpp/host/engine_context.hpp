@@ -15,6 +15,7 @@
 #include <xash3dpp/filesystem/filesystem.hpp>
 #include <xash3dpp/cmd_cvar/context.hpp>
 #include <xash3dpp/core/clock.hpp>
+#include <xash3dpp/core/legacy_random.hpp>
 #include <xash3dpp/host/host.hpp>
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/networking/networking.hpp>
@@ -24,6 +25,12 @@
 #include <string_view>
 
 namespace xash {
+
+// Canonical no-capture functions installed verbatim into every legacy random
+// callback slot. They reach EngineContext::legacy_random through the existing
+// C-ABI context accessor; before publication they return the lower bound.
+[[nodiscard]] int legacy_random_long_callback( int low, int high ) noexcept;
+[[nodiscard]] float legacy_random_float_callback( float low, float high ) noexcept;
 
 // ---------------------------------------------------------------------------
 // EngineContextInitParams — all init-time configuration in one flat struct.
@@ -88,6 +95,7 @@ struct EngineContext {
     filesystem::Filesystem      filesystem;
     cmd_cvar::CmdCvarContext    cmd_cvar;
     core::Clock                 clock;
+    core::LegacyRandom          legacy_random;
     networking::NetworkContext  networking;
     MapLoader                   map_loader;
     Host                        host;

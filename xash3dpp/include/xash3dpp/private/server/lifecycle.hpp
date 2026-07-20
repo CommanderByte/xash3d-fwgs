@@ -63,6 +63,9 @@ struct ServerConfig
     int  developer    = 0;
     bool peoei_broken = false;          // BUGCOMP_PENTITYOFENTINDEX
 
+    int ( *random_long )( int low, int high ) = nullptr;
+    float ( *random_float )( float low, float high ) = nullptr;
+
     // SV_InitGame → SV_LoadProgs dll path (COM_GetCommonLibraryPath); the
     // spawn path loads it lazily on the first SV_SpawnServer.  @lifetime: caller
     const char *game_dll = "";

@@ -277,35 +277,6 @@ double pfn_sys_float_time()
     return ::xash::platform::get_time();
 }
 
-// XASH3DPP-STUB(chunk6): legacy COM_RandomLong/Float (idtech RNG) parity port
-// pending (tracked with the engine_table copy); this xorshift keeps the slots
-// deterministic and non-null.
-std::uint32_t s_pm_rng = 0x1a2bu;
-
-[[nodiscard]] std::uint32_t rng_next() noexcept
-{
-    std::uint32_t x = s_pm_rng;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    s_pm_rng = x;
-    return x;
-}
-
-int pfn_random_long( int low, int high )
-{
-    if ( high <= low )
-        return low;
-    const std::uint32_t range = static_cast<std::uint32_t>( high - low ) + 1u;
-    return low + static_cast<int>( rng_next() % range );
-}
-
-float pfn_random_float( float low, float high )
-{
-    const float t = static_cast<float>( rng_next() ) / 4294967295.0f;
-    return low + t * ( high - low );
-}
-
 // ---------------------------------------------------------------------------
 // Event producer (sv_pmove.c:400-414) → the S9 SV_PlaybackEventFull.
 // ---------------------------------------------------------------------------
@@ -438,8 +409,8 @@ void install_pmove_table( abi::playermove_t &pm ) noexcept
     pm.PM_HullPointContents   = pfn_hull_point_contents;
     pm.PM_PlayerTrace         = pfn_player_trace;
     pm.PM_TraceLine           = pfn_trace_line;
-    pm.RandomLong             = pfn_random_long;
-    pm.RandomFloat            = pfn_random_float;
+    pm.RandomLong             = effective_random_long();
+    pm.RandomFloat            = effective_random_float();
     pm.PM_GetModelType        = pfn_get_model_type;
     pm.PM_GetModelBounds      = pfn_get_model_bounds;
     pm.PM_HullForBsp          = pfn_hull_for_bsp;

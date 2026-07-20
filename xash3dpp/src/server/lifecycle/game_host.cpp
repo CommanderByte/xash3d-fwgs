@@ -115,6 +115,8 @@ bool load_progs( ServerRuntime &rt, const char *dll_path ) noexcept
     rt.bridge.developer      = rt.cfg.developer;
     rt.bridge.sv_time        = rt.level.time; // seed; re-stamped per frame
     rt.bridge.game_dir       = rt.cfg.game_dir;
+    rt.bridge.random_long    = rt.cfg.random_long;
+    rt.bridge.random_float   = rt.cfg.random_float;
     rt.bridge.host_error     = rt.cfg.host_error;
     rt.bridge.host_error_ctx = rt.cfg.host_error_ctx;
     rt.bridge.clients        = &rt.clients; // S9 — messaging pfn slots reach it

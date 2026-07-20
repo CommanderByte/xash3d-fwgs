@@ -69,6 +69,8 @@ bool Server::init( const ServerInitParams &params )
     rt.cfg.dedicated    = params.dedicated;
     rt.cfg.developer    = params.developer;
     rt.cfg.peoei_broken = params.peoei_broken;
+    rt.cfg.random_long  = params.random_long;
+    rt.cfg.random_float = params.random_float;
     if ( params.max_edicts != 0 )
         rt.cfg.max_edicts = params.max_edicts;
     rt.cfg.host_error     = params.host_error;

@@ -56,6 +56,16 @@ namespace {
 
 EngineBridge * g_bridge = nullptr; // compliance-allow(mutable-global, di-global-ref): engine_table ABI-slot carve-out (Q-20) — the game DLL's ~30 context-free pfn shims have fixed ABI signatures with no userdata slot, so they reach engine state through this one file-scope singleton; set once at bridge install, main-thread-only thereafter
 
+int inert_random_long( int low, int )
+{
+    return low;
+}
+
+float inert_random_float( float low, float )
+{
+    return low;
+}
+
 // legacy MAX_MAP_LEAFS (common/bspfile.h, bsp30) — sizes the file-static
 // fat-visibility buffers exactly like sv_game.c:31-32.
 inline constexpr std::size_t k_fat_vis_bytes = ( 32767 + 7 ) / 8;
@@ -1553,38 +1563,6 @@ abi::CRC32_t pfn_crc32_final( abi::CRC32_t pulCRC )
     return ut::crc32_final( pulCRC );
 }
 
-// --- random (engine-local; COM_RandomLong parity is a tracked follow-up) ----
-
-// XASH3DPP-STUB(chunk6): legacy COM_RandomLong/Float (idtech RNG) parity
-// port pending; this xorshift keeps the slots deterministic and non-null.
-std::uint32_t s_rng_state = 0x29Au;
-
-[[nodiscard]] std::uint32_t rng_next() noexcept
-{
-    std::uint32_t x = s_rng_state;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    s_rng_state = x;
-    return x;
-}
-
-int pfn_random_long( int lLow, int lHigh )
-{
-    if ( lHigh <= lLow )
-        return lLow;
-    const std::uint32_t range =
-        static_cast<std::uint32_t>( lHigh - lLow ) + 1u;
-    return lLow + static_cast<int>( rng_next() % range );
-}
-
-float pfn_random_float( float flLow, float flHigh )
-{
-    const float t =
-        static_cast<float>( rng_next() ) / 4294967295.0f;
-    return flLow + t * ( flHigh - flLow );
-}
-
 // --- client view / time ------------------------------------------------------
 
 void pfn_set_view( const abi::edict_t *, const abi::edict_t * )
@@ -1701,7 +1679,7 @@ void pfn_run_player_move( abi::edict_t *client, const float *viewangles,
     cmd.impulse     = impulse;
     cmd.msec        = static_cast<std::int8_t>( msec );
 
-    const int seed = pfn_random_long( 0, 0x7fffffff ); // COM_RandomLong full range
+    const int seed = effective_random_long()( 0, 0x7fffffff );
     sv_run_cmd( rt, *cl, cmd, seed );
     cl->lastcmd = cmd;
 }
@@ -2229,6 +2207,20 @@ EngineBridge *engine_bridge() noexcept
     return g_bridge;
 }
 
+RandomLongHook effective_random_long() noexcept
+{
+    return g_bridge != nullptr && g_bridge->random_long != nullptr
+               ? g_bridge->random_long
+               : &inert_random_long;
+}
+
+RandomFloatHook effective_random_float() noexcept
+{
+    return g_bridge != nullptr && g_bridge->random_float != nullptr
+               ? g_bridge->random_float
+               : &inert_random_float;
+}
+
 // SV_AllocPrivateData (sv_game.c:1092): the one LINK_ENTITY dispatch, shared
 // by pfnCreateNamedEntity and the lifecycle entity-parse path.
 ::xash::abi::edict_t *alloc_private_data( ::xash::abi::edict_t *ent,
@@ -2388,8 +2380,8 @@ EngineBridge *engine_bridge() noexcept
     t.pfnCRC32_ProcessBuffer            = pfn_crc32_process_buffer;
     t.pfnCRC32_ProcessByte              = pfn_crc32_process_byte;
     t.pfnCRC32_Final                    = pfn_crc32_final;
-    t.pfnRandomLong                     = pfn_random_long;
-    t.pfnRandomFloat                    = pfn_random_float;
+    t.pfnRandomLong                     = effective_random_long();
+    t.pfnRandomFloat                    = effective_random_float();
     t.pfnSetView                        = pfn_set_view;
     t.pfnTime                           = pfn_time;
     t.pfnCrosshairAngle                 = pfn_crosshair_angle;
