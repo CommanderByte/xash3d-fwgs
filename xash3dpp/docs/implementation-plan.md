@@ -400,6 +400,31 @@ ______________________________________________________________________
 **ABI surfaces touched**: demo format (internal, breaking change OK)\
 **Deliverable**: Demo record/playback test; MainUI DLL loads
 
+**Entry gate** *(added 2026-07-20; the modernization audit wrote gates for
+Chunks 11/12/13 and left this one without, so any Chunk-14 obligation had no
+landing surface at all)*:
+
+1. **Write both boundary specs first.** `demo` and `ui` are two of the six
+   0-TU skeletons with no spec, which is why `q21_scan`'s 16/16 is silence
+   rather than health — it globs `docs/boundaries/*-boundary.md` and a
+   subsystem with no doc contributes no denominator slot.
+2. **Decide the `q21_scan` denominator before writing them**, not after. It
+   is the same open question Chunk 11's gate raises: adopt
+   `xtools.subsystems()` (22 directories, so 22 slots) or delete the unbuilt
+   skeleton directories. The two are mutually exclusive and L10/L11 of the
+   audit disagreed; whoever writes these specs settles it.
+3. **The demo format is internal and a breaking change is explicitly OK** —
+   it is NOT under the HB-2 byte-exact fence, unlike the networking wire
+   codec it superficially resembles. Do not extend the fence to it by
+   analogy.
+4. **Check the ledger before planning.** Obligations owed to this chunk live
+   in `audits/2026-07-modernization-audit.ledger.md`; the audit's own lesson
+   was that Chunk 12's obligations are spread across nine *other*
+   subsystems, so a scan scoped to `src/demo/` + `src/ui/` will miss them.
+5. `ui` loads the MainUI DLL — a second game-DLL-shaped ABI consumer. Reuse
+   the `GameDll` loader seam rather than growing a parallel one, and record
+   the decision either way.
+
 ______________________________________________________________________
 
 ## Open Questions / Landmines

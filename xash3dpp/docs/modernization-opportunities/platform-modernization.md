@@ -106,7 +106,7 @@ ______________________________________________________________________
 | `is_debugger_present` on macOS / BSD | **Not implemented** | `stub_scan` TODO (`posix/sys.cpp`) — **L-1** |
 | `shell_execute` POSIX double-fork (zombie reaping) | **Not implemented** | `stub_scan` TODO (`posix/sys.cpp`) — **L-2** |
 | High-resolution sleep (`Win32_NanoSleep` / `SDLash_NanoSleep`) | **Not implemented** | Boundary-spec open question — **L-3** |
-| `ThreadPriority::Realtime` (real scheduling, not just the enum value) | **Stubbed by design** | `XASH3DPP-STUB(chunk12)` — logs a Warning, runs at Normal. Tracked as **OBL-12-7** (audit obligations register), awaiting the SDL audio device's T_AudioCallback. Not a modernization finding — see Out-of-scope |
+| `ThreadPriority::Realtime` (real scheduling, not just the enum value) | **Stubbed by design** | `XASH3DPP-STUB(chunk12)` — logs a Warning, runs at Normal. Tracked as **OBL-12-7** (`audits/2026-07-modernization-audit.ledger.md` — the register this cited before it existed), awaiting the SDL audio device's T_AudioCallback. Not a modernization finding — see Out-of-scope |
 | Clipboard / SIGTERM / Android extras | **Not implemented** | Boundary-spec open questions; deferred to host / Android target |
 | `strnicmp` / `strncmp` `string_view` over-read | **N/A — absent** | 0 sites; utilities M-4 / filesystem M-7 pattern does not occur here |
 

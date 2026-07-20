@@ -41,6 +41,29 @@
    ],
    "target": "engine/client/cl_frame.c"
   },
+  "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|0": {
+   "line": 211,
+   "snapshot": [
+    "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
+   ],
+   "target": "xash3dpp/src/server/world/clip.cpp"
+  },
+  "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|1": {
+   "line": 237,
+   "snapshot": [
+    "if ( rotated )",
+    "{",
+    "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
+   ],
+   "target": "xash3dpp/src/server/world/clip.cpp"
+  },
+  "xash3dpp/docs/audits/2026-07-modernization-audit.md|cmd_dispatch.cpp|0": {
+   "line": 197,
+   "snapshot": [
+    "const bool stuffcmd_trusted ="
+   ],
+   "target": "xash3dpp/src/cmd_cvar/cmd_dispatch.cpp"
+  },
   "xash3dpp/docs/boundaries/cmd_cvar-boundary.md|cmd_ops.cpp|0": {
    "line": 18,
    "snapshot": [

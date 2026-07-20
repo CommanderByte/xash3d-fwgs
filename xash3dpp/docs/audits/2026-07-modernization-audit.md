@@ -155,9 +155,17 @@ All confirmed after adversarial refutation attempts, none of which succeeded.
   so `GoldSrcCompatPolicy` is never instantiated and **every GoldSrc compat
   quirk is inert in production**. The Q-12 link-time selection mechanism does
   not select anything. It survived four separate refutation attempts.
-- **`ITrustOracle` has zero production implementations**, so the `stuffcmd`
-  trust gate is permanently open — a seam `cmd_cvar-boundary.md` calls the
-  "headline G-1 provider, already exists".
+- **`ITrustOracle` has zero production implementations** — a seam
+  `cmd_cvar-boundary.md` calls the "headline G-1 provider, already exists".
+  **Correction (2026-07-20 follow-up): this entry said the trust gate is
+  permanently *open*. It is permanently *shut*.** With
+  `trust_oracle == nullptr`, `cmd_dispatch.cpp:197` evaluates
+  `stuffcmd_trusted` to `false`, so every `FCMD_PRIVILEGED` command is
+  REJECTED and cvar writes are attributed to a non-Console source. That makes
+  this a behaviour divergence, not a security hole: legacy grants privilege on
+  a local single-player listen server (`SV_Active() && maxclients == 1`) and
+  xash3dpp never does. Severity is lower than originally written, and the
+  fix direction is the opposite of what "permanently open" implies.
 - **The shipped launcher never constructs an `EngineContext`.** `Host::Main`
   builds init params with "dep pointers intentionally left null"; the
   fully-wired path is exercised by one test file, not the binary. The
@@ -183,12 +191,23 @@ before its two allocations and returns failure without freeing.
 ### 3. A tooling defect invalidated every thread-assert coverage claim
 
 `compliance_scan`'s mutator regex anchors the verb directly to `(`, and 16 of
-its 30 verbs carry no `\w*` suffix. **55 definition sites across 51 distinct
-names are invisible** — including `clear_world`, `send_packet`,
-`transmit_client`, `connect_client`, and `register_thread_role` itself. Every
-"N sites / M waivers" figure in every boundary doc is therefore a scanner
-artifact, not a semantic inventory. Fixing the regex is one line; adjudicating
-the ~55 findings it surfaces is not, so they must land separately.
+its **26** verbs carry no suffix wildcard (this entry said 30; the alternation
+holds 26). Definition sites are invisible wholesale — including `clear_world`,
+`send_packet`, `transmit_client`, `connect_client`, and `register_thread_role`
+itself. Every "N sites / M waivers" figure in every boundary doc is therefore a
+scanner artifact, not a semantic inventory. Fixing the regex is one line;
+adjudicating what it surfaces is not, so they must land separately.
+
+**Discharged 2026-07-20.** The fix uses `(?:_\w+)?`, not the `\w*` proposed
+here: measured over `src/**/*.cpp`, `\w*` adds 8 names beyond `(?:_\w+)?` and
+all 8 are false positives (`sendto`, `Server::initialized`,
+`Sound::initialized`, `Clock::starttime`, `addr_string`, `sends_qport`).
+`reset` is the one exception, promoted to `reset\w*` because both of its
+wildcard-form matches are genuine mutators. Surfaced sites went 199 → 269 and
+findings 8 → 50 (not ~55); a second pass then filtered 7 structural
+non-definitions (ternary continuations, a pure-virtual declaration, variable
+declarations whose TYPE ends in a verb, a const getter). All 50 were
+adjudicated: 5 asserts added, 45 `compliance-allow` with per-site reasons.
 
 ### 4. The zero-impl interface count was right; its meaning was not
 
@@ -234,18 +253,47 @@ Disposition is four-way and mandatory — **fix-doc · fix-code ·
 compliance-allow · false-positive**, plus `escalate` and
 `deferred`. **No silent drops.**
 
+**This table shipped empty.** It was declared mandatory and then left with a
+header and zero rows, which made no finding traceable to a disposition — the
+single largest self-inconsistency in this close-out. It is not reconstructed
+row-by-row here, because the per-finding dispositions live in the artifact
+that actually holds them: `2026-07-modernization-audit.ledger.json` (and its
+human index `.ledger.md`), extracted 2026-07-20 from the Phase-3 lens corpus.
+That corpus carries **100 obligations, 30 open decisions, 61 recommendations
+and 63 shape constraints**, each with evidence and an owner.
+
 | # | Phase | Ref | Sev | Verdict | Disposition | Adjudication / claim |
 |---|---|---|---|---|---|---|
+| 1 | follow-up | mutator-regex defect (theme 3) | High | CONFIRMED | fix-code | Fixed with `(?:_\w+)?`; 50 surfaced candidates all adjudicated (5 asserts, 45 allows). |
+| 2 | follow-up | `snapshot_alloc_ring` OOM (deferred D-1) | High | CONFIRMED — worse than filed | fix-code | Count published before the buffers existed; `[[nodiscard]]` defeated by a `( void )` cast at the sole caller, so the failure path reached a null deref. Fixed with a discriminating regression test. |
+| 3 | follow-up | Q-20 compliance rule "is the guard" | High | CONFIRMED | fix-code | The rule did not exist. Written as `entvars-confinement`; 0 violations, so the confinement had held by convention. |
+| 4 | follow-up | `server-boundary.md` P-3 / P-5 / P-8 rows | Med | CONFIRMED | fix-doc | Three overclaims corrected against re-derived census numbers; P-1/P-4/G-3 re-checked TRUE and left alone. |
+| 5 | follow-up | `IMapLoaderObserver` impl claim | Med | CONFIRMED | fix-doc | Nothing under `src/server/` implements it; recorded as an unowned door. |
+| 6 | follow-up | `assert_main_thread` "thin wrapper" | Med | CONFIRMED | fix-doc | False in six docs plus a shipped header comment that also cited the wrong path. |
+| 7 | follow-up | HB-2 fence anchor `clip.cpp:211` | Med | CONFIRMED | fix-doc | Real kernel is `clip.cpp:237-273`; Chunk 11 entry-gate item 2. |
+| 8 | follow-up | `ITrustOracle` "gate permanently open" | Med | **REFUTED (inverted)** | fix-doc | The gate fails CLOSED. Behaviour divergence, not a security hole. |
+| 9 | follow-up | "16 of 30 verbs" | Low | AMENDED | fix-doc | The alternation holds 26 verbs, not 30. |
+| 10 | follow-up | "~58 obligations / 24 open decisions" | Low | AMENDED | fix-doc | The corpus holds 100 and 30; the lower figures counted only L10's register. |
 
 ______________________________________________________________________
 
 ## Forward-fit: the obligations register
 
-The tree already owes the four remaining chunks **~58 concrete, file:line-
-anchored obligations**, and before this audit **not one was read by any entry
-gate**. They now live where a gate actually reads them — as `**Entry gate**`
-blocks in `implementation-plan.md`'s Chunk 11/12/13 entries — rather than in a
-standalone register, which would have been document #14 by construction.
+The tree already owes the remaining chunks **100 concrete, file:line-anchored
+obligations** (this section said ~58; that counted only L10's forward-fit
+register and not the obligations the other ten lenses raised in their own
+right), and before this audit **not one was read by any entry gate**. The ones
+a chunk can act on live where a gate actually reads them — as `**Entry gate**`
+blocks in `implementation-plan.md`'s Chunk 11/12/13/14 entries.
+
+The full set is now also committed as
+`2026-07-modernization-audit.ledger.json` + `.ledger.md`. Declining to create
+that register was the original call — "document #14 by construction" — but it
+had two costs paid immediately: eleven obligations were reported ownerless
+when they simply had not been written down, and `platform-modernization.md`
+cites an "audit obligations register" that did not exist. A generated,
+machine-readable ledger is not document #14; it is the artifact the prose was
+a lossy summary of.
 
 Distribution: **Chunk 11 is the smallest debt** (11 items, 3 actionable today,
 1 of which was a live correctness defect, now fixed). **Chunk 12 carries over
