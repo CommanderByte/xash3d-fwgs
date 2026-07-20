@@ -18,40 +18,25 @@
 #include <cstdint>
 #include <span>
 
-// LOCATION vs NAMESPACE (2026-07-20): this header lives at the abi layer
-// because that is what it is — a header-only, zero-cost typed view over the
-// FROZEN abi::edict_t/entvars_t (Q-20's "typed access seam"), depending on
-// nothing but <abi/edict.hpp> and <utilities/math.hpp>. It moved here out of
-// private/server/ when xash3dpp_world was promoted, because the world layer
-// needs it and a world -> private/server include was a real layering cycle.
+// LOCATION & NAMESPACE (2026-07-20): this header lives at the abi layer and is
+// namespaced xash::abi because that is what it is — a header-only, zero-cost
+// typed view over the FROZEN abi::edict_t/entvars_t (Q-20's "typed access
+// seam"), depending on nothing but <abi/edict.hpp> and <utilities/math.hpp>.
+// It moved here out of private/server/ when xash3dpp_world was promoted (a
+// world -> private/server include was a real layering cycle); the namespace
+// followed on the pre-Chunk-11 cleanup.
 //
-// The NAMESPACE is still xash::server, deliberately. It also exports Vec3,
-// vec_axis, to_vec3 and store_vec3 into that namespace, and the server/world
-// TUs spell all five unqualified; renaming it to xash::abi is a mechanical
-// but tree-wide change with no behavioural content, so it is recorded as a
-// Chunk-12 obligation (the client becoming the second consumer is the point
-// at which it stops being cosmetic) rather than bundled into the promotion.
+// The Vec3<->float[3] helpers it once exported (vec_axis/to_vec3/store_vec3)
+// now live in xash::utilities (their real home, beside Vec3). The transitional
+// xash::server re-export shims at the bottom keep pre-migration server/world
+// callers compiling and are removed once those TUs spell these via ut::/abi::.
 
-namespace xash::server {
+namespace xash::abi {
 
 using Vec3 = ::xash::utilities::Vec3;
-
-[[nodiscard]] inline float vec_axis( const Vec3 &v, int axis ) noexcept
-{
-    return axis == 0 ? v.x : axis == 1 ? v.y : v.z;
-}
-
-[[nodiscard]] inline Vec3 to_vec3( const float ( &a )[3] ) noexcept
-{
-    return { a[0], a[1], a[2] };
-}
-
-inline void store_vec3( float ( &a )[3], const Vec3 &v ) noexcept
-{
-    a[0] = v.x;
-    a[1] = v.y;
-    a[2] = v.z;
-}
+using ::xash::utilities::store_vec3;
+using ::xash::utilities::to_vec3;
+using ::xash::utilities::vec_axis;
 
 class EntityView
 {
@@ -184,4 +169,17 @@ private:
     ::xash::abi::edict_t *e_; // @lifetime: arena (viewed edict; facade is non-owning)
 };
 
+} // namespace xash::abi
+
+// --- transitional compat shims (removed once server/world migrate) ----------
+// Pre-cleanup, EntityView + the Vec3 helpers lived in xash::server and the
+// server/world TUs spell them unqualified. These re-exports keep those callers
+// compiling while they are migrated to ut::/abi:: spellings; delete this block
+// when the migration is complete.
+namespace xash::server {
+using ::xash::abi::EntityView;
+using ::xash::utilities::store_vec3;
+using ::xash::utilities::to_vec3;
+using ::xash::utilities::vec_axis;
+using Vec3 = ::xash::utilities::Vec3;
 } // namespace xash::server

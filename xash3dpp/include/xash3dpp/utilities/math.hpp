@@ -41,6 +41,27 @@ struct Vec3
 };
 struct Vec4 { vec_t x, y, z, w; };
 
+// Vec3 <-> raw float[3] (the frozen-ABI vec3_t byte layout) conversions plus
+// axis indexing. Relocated here from abi/entity_view.hpp on 2026-07-20: they
+// take a raw float[3], depend only on Vec3, and belong with the Vec3 family
+// rather than the edict view that happened to host them.
+[[nodiscard]] inline float vec_axis( const Vec3 &v, int axis ) noexcept
+{
+    return axis == 0 ? v.x : axis == 1 ? v.y : v.z;
+}
+
+[[nodiscard]] inline Vec3 to_vec3( const float ( &a )[3] ) noexcept
+{
+    return { a[0], a[1], a[2] };
+}
+
+inline void store_vec3( float ( &a )[3], const Vec3 &v ) noexcept
+{
+    a[0] = v.x;
+    a[1] = v.y;
+    a[2] = v.z;
+}
+
 // Euler angle component indices — match legacy PITCH/YAW/ROLL values.
 static constexpr int PITCH = 0;
 static constexpr int YAW   = 1;
