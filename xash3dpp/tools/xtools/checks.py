@@ -961,6 +961,24 @@ def _stub_marker_count(src_files: list[Path]) -> int:
     return count
 
 
+_ROLE_MARKER_RX = re.compile(r"//\s*ROLE:\s*([a-z][a-z-]*)")
+
+
+def _role_marker_count(src_files: list[Path]) -> dict:
+    """Tally `// ROLE: <value>` banners (Q-25) per role value. Raw-line scan —
+    grep-count cannot see comments, so census is the source of truth for the
+    docs_check `census(<sub>, role_markers)` predicate."""
+    by_role: dict[str, int] = {}
+    for path in src_files:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for line in text.splitlines():
+            m = _ROLE_MARKER_RX.search(line)
+            if m:
+                by_role[m.group(1)] = by_role.get(m.group(1), 0) + 1
+    return {"total": sum(by_role.values()),
+            "by_role": dict(sorted(by_role.items()))}
+
+
 def status_table() -> dict:
     rows = []
     for sub in resolve_scope(None):
@@ -1037,7 +1055,8 @@ def census(subsystem: str | None = None) -> dict:
     subs = resolve_scope(subsystem)
     out: dict[str, dict] = {}
     totals = {"src_tu_count": 0, "assert_sites": 0, "allows": 0,
-              "stub_markers": 0, "test_files": 0, "live_tests": 0}
+              "stub_markers": 0, "role_markers": 0,
+              "test_files": 0, "live_tests": 0}
     for sub in subs:
         src_dir = SRC / sub
         srcs = sorted(src_dir.rglob("*.cpp")) if src_dir.is_dir() else []
@@ -1054,12 +1073,14 @@ def census(subsystem: str | None = None) -> dict:
             "compliance_allows_by_rule": dict(sorted(allows.items())),
             "stub_markers": {"total": st["todo_count"],
                              "by_tag": st.get("by_tag", {})},
+            "role_markers": _role_marker_count(srcs),
             "tests": st["tests"],
         }
         totals["src_tu_count"] += len(srcs)
         totals["assert_sites"] += ta["sites"]
         totals["allows"] += sum(allows.values())
         totals["stub_markers"] += st["todo_count"]
+        totals["role_markers"] += out[sub]["role_markers"]["total"]
         totals["test_files"] += st["tests"]["files"]
         totals["live_tests"] += st["tests"]["live"]
     return {"subsystems": out, "totals": totals}

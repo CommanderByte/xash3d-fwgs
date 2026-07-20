@@ -871,7 +871,7 @@ ______________________________________________________________________
   (`BoneControllerView::start()`/`end()`, two structurally identical
   `const noexcept` accessors two lines apart); `:125` carries a
   `compliance-allow(thread-assert)` waiver, `:126` (`end()`) carries none;
-  `xash3dpp/tools/xtools/rules.py:367-373` (`MUTATOR_NAMES`).
+  `xash3dpp/tools/xtools/rules.py:385-391` (`MUTATOR_NAMES`).
 
 - **Current pattern**: `studio.cpp` defines 24 one-line `const` readers
   over a caller-owned span; `start()` is flagged by the compliance scanner

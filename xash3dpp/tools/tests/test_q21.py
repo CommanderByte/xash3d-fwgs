@@ -158,5 +158,28 @@ class PlanDenominator(unittest.TestCase):
         self.assertEqual(owners["world"], ["6"])
 
 
+class RoleParitySection(unittest.TestCase):
+    """The Q-25 required-section check q21.scan() applies: a spec must carry a
+    '## Role & parity' section with a Role: line."""
+
+    def _has(self, text: str) -> bool:
+        from xtools import md
+        from xtools.q21 import _ROLE_PARITY_LINE_RX
+        sec = md.section(text, "Role & parity")
+        return bool(sec and _ROLE_PARITY_LINE_RX.search(sec))
+
+    def test_section_with_role_line_passes(self):
+        self.assertTrue(self._has(
+            "# X\n\n## Role & parity\n\n- **Role:** client-only.\n\n## Next\n"))
+
+    def test_section_without_role_line_fails(self):
+        self.assertFalse(self._has(
+            "# X\n\n## Role & parity\n\n- nothing here\n\n## Next\n"))
+
+    def test_missing_section_fails(self):
+        self.assertFalse(self._has(
+            "# X\n\n## Something else\n\n- **Role:** x\n"))
+
+
 if __name__ == "__main__":
     unittest.main()

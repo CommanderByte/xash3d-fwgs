@@ -293,8 +293,8 @@ has moved past the "Chunk 6 future" framing used in §2 and §5.
   never sees an edict — neutral by construction (Q-6 concurrent-read-safe).
 - **Parity fence:** HB-2 — the Q-18 trace / PVS / CRC math is byte-exact no-touch.
 - **Counterpart:** every role that traces or tests visibility.
-- **Annotation:** `trace/trace.cpp` carries the `// ROLE: shared-deterministic`
-  banner.
+- **Annotation:** `trace.cpp` carries the `// ROLE: shared-deterministic`
+  banner. <!-- verify: census(map_loader, role_markers) >= 1 -->
 
 ## Extension axes (Q-21)
 

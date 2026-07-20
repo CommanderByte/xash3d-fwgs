@@ -642,7 +642,7 @@ wire/ABI-frozen values.
   magic are byte-exact no-touch.
 - **Counterpart:** server datagram producer to client parser.
 - **Annotation:** `delta/delta_codec.cpp` carries the `// ROLE: shared-format`
-  banner.
+  banner. <!-- verify: census(networking, role_markers) >= 1 -->
 
 ## Extension axes (Q-21)
 

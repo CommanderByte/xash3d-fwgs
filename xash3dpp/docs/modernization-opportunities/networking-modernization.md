@@ -155,7 +155,7 @@ ______________________________________________________________________
 - **Current pattern**: `_scan_thread_assert`'s mutator-definition regex is
   `((?:\w[\w:]*::)?(?:MUTATOR_NAMES))\s*\(` — the matched verb must be
   **immediately followed by `(`**. Of the 30 verbs in `MUTATOR_NAMES`
-  (`xtools/rules.py:367-372`), 16 carry no `\w*` suffix wildcard: `init,
+  (`xtools/rules.py:385-390`), 16 carry no `\w*` suffix wildcard: `init,
   shutdown, reset, flush, clear, add, remove, register, unregister, send,
   transmit, process, connect, disconnect, start, stop`. Any mutator whose
   name *extends* one of those is invisible to the scanner. Measured

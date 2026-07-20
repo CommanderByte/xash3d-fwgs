@@ -504,6 +504,25 @@ class EntvarsConfinement(unittest.TestCase):
                 self.assertIsNone(rx.search(p))
 
 
+class RoleMarkerToken(unittest.TestCase):
+    """Q-25: a `// ROLE: <value>` banner must use a defined role value; an
+    unknown token trips the misuse guard, a defined one does not."""
+
+    def test_defined_tokens_pass(self):
+        for tok in ("shared-deterministic", "shared-format",
+                    "server-authoritative", "client-only", "role-neutral",
+                    "offline-tool"):
+            with self.subTest(tok=tok):
+                self.assertFalse(
+                    _hits("role-marker-token", "",
+                          raw="// ROLE: %s — rationale" % tok))
+
+    def test_unknown_token_is_flagged(self):
+        for bad in ("// ROLE: bogus", "// ROLE: shared", "// ROLE: server"):
+            with self.subTest(line=bad):
+                self.assertTrue(_hits("role-marker-token", "", raw=bad))
+
+
 class MutatorDefRx(unittest.TestCase):
     """The broadened thread-assert definition matcher (QN wave)."""
 

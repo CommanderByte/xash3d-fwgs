@@ -28,6 +28,8 @@ _SECTION_RX = re.compile(
     r"^## Extension axes \(Q-21\)\s*$(.*?)(?=^## |\Z)",
     re.MULTILINE | re.DOTALL)
 _TRAILING_PAREN_RX = re.compile(r"\(([^()]*)\)\s*$")
+# Q-25: the '## Role & parity' section must declare a Role: line.
+_ROLE_PARITY_LINE_RX = re.compile(r"(?i)\bRole\s*:")
 
 
 def parse_goal_axes(text: str) -> list[str]:
@@ -146,8 +148,8 @@ def scan() -> dict:
                 pending.append(entry)
             continue
         rel = doc.relative_to(REPO).as_posix()
-        covered, has_section = parse_boundary_axes(
-            doc.read_text(encoding="utf-8", errors="replace"))
+        text = doc.read_text(encoding="utf-8", errors="replace")
+        covered, has_section = parse_boundary_axes(text)
         missing = sorted(axis_set - covered) if has_section else sorted(axis_set)
         boundaries[sub] = {
             "file": rel,
@@ -165,6 +167,18 @@ def scan() -> dict:
                 findings.append({
                     "doc": sub, "kind": "missing-axis", "axis": ax,
                     "detail": "%s: no row/verdict for %s" % (rel, ax)})
+        # Role & parity required-section check (Q-25): a subsystem whose chunk
+        # has started must carry a '## Role & parity' section with a Role: line.
+        # Not gating for still-todo chunks, matching the boundary-doc rule.
+        started = [l for l in owners.get(sub, [])
+                   if chunk_status.get(l) in ("done", "in-progress")]
+        rp = md.section(text, "Role & parity")
+        if started and not (rp and _ROLE_PARITY_LINE_RX.search(rp)):
+            findings.append({
+                "doc": sub, "kind": "no-role-parity", "axis": "",
+                "detail": "%s has no '## Role & parity' section with a Role: "
+                          "line (Q-25); chunk(s) %s have started"
+                          % (rel, ", ".join(started))})
     return {
         "axes": axes,
         "planned": planned,

@@ -110,7 +110,7 @@ own entity set, not a lock here.
   the injected context + caller-owned edicts; zero owned state (P-3).
 - **Parity fence:** HB-2 — the rotated-brush ULP kernel at `clip.cpp:242-278` is
   byte-exact no-touch.
-- **Annotation:** `clip.cpp` carries the `// ROLE: shared-deterministic` banner.
+- **Annotation:** `clip.cpp` carries the `// ROLE: shared-deterministic` banner. <!-- verify: census(world, role_markers) >= 1 -->
 
 ## Extension axes (Q-21)
 

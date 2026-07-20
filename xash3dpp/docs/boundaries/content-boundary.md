@@ -380,7 +380,7 @@ ______________________________________________________________________
 - **Consumers:** server world trace + client render + (Chunk 11) shared
   `pm_trace`, all through `IModelResolver` / studio hull queries.
 - **Annotation:** `model/bone_solver.cpp` carries the `// ROLE: shared-deterministic`
-  banner.
+  banner. <!-- verify: census(content, role_markers) >= 1 -->
 
 ## Extension axes (Q-21)
 

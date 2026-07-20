@@ -4350,7 +4350,7 @@
    "target": "xash3dpp/tests/content/test_studio_layout.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/content-modernization.md|xash3dpp/tools/xtools/rules.py|0": {
-   "line": 367,
+   "line": 385,
    "snapshot": [
     "MUTATOR_NAMES = (",
     "\"init(?:_\\\\w+)?|shutdown(?:_\\\\w+)?|reset\\\\w*|flush(?:_\\\\w+)?|clear(?:_\\\\w+)?\"",
@@ -6189,7 +6189,7 @@
    "target": "xash3dpp/tools/xtools/checks.py"
   },
   "xash3dpp/docs/modernization-opportunities/networking-modernization.md|xtools/rules.py|0": {
-   "line": 367,
+   "line": 385,
    "snapshot": [
     "MUTATOR_NAMES = (",
     "\"init(?:_\\\\w+)?|shutdown(?:_\\\\w+)?|reset\\\\w*|flush(?:_\\\\w+)?|clear(?:_\\\\w+)?\"",

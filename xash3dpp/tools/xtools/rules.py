@@ -59,6 +59,24 @@ RULES: list[Rule] = [
         sets=("all", "prepr", "detail"),
     ),
     Rule(
+        check="role-marker-token",
+        severity="warning",
+        # Q-25: a `// ROLE: <value>` banner must use a defined role value.
+        # match_raw because the marker is a comment (stripped from code lines);
+        # the negative lookahead flags any other token after ROLE:.
+        match_raw=True,
+        pattern=(r"//\s*ROLE:\s*"
+                 r"(?!(?:shared-deterministic|shared-format|"
+                 r"server-authoritative|client-only|role-neutral|"
+                 r"offline-tool)\b)\S"),
+        scopes=("src", "include"),
+        hint="'// ROLE: <value>' must use a Q-25 role value "
+             "(shared-deterministic, shared-format, server-authoritative, "
+             "client-only, role-neutral, offline-tool)",
+        source_ref="decisions-architecture Q-25 (ROLE_AND_PLACEMENT)",
+        sets=("all", "prepr", "detail"),
+    ),
+    Rule(
         check="abi-alloc",
         severity="blocker",
         pattern=r"\b(malloc|calloc|realloc|free)\s*\(",
