@@ -99,7 +99,7 @@ agent/model; generate it with `xash3dpp/tools/agent_workflow.py coauthor
 
 - Codex has no per-command mechanism: to run a workflow step, **open
   `.github/prompts/<name>.prompt.md`, read it, and follow it exactly**
-  (same 22 steps the other frameworks expose as commands).
+  (same 23 steps the other frameworks expose as commands).
 - To list prompts or print the exact framework-specific invocation, run
   `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py list` or
   `& .venv\Scripts\python.exe xash3dpp\tools\agent_workflow.py command codex <name> [args]`.

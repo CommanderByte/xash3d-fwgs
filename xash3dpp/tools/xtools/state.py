@@ -455,13 +455,17 @@ def blocking_oqs() -> list[dict]:
         blocks = cells[3].replace("*", "").replace("`", "").strip().lower()
         if "scaffold" not in blocks:
             continue
+        status = cells[2].replace("*", "").strip()
+        normalized_status = status.lstrip("✅ ").lower()
+        if normalized_status.startswith(("closed", "decided", "resolved", "landed")):
+            continue
         oq_cell = cells[1].replace("*", "").strip()
         om = re.match(r"(OQ-[\d…. ]+|[A-Z]+-OQ-\d+)\s*(?:\((.*)\))?", oq_cell)
         out.append({
             "doc": cells[0].replace("`", "").strip(),
             "oq": (om.group(1).strip() if om else oq_cell),
             "topic": (om.group(2) or "").strip() if om else "",
-            "status": cells[2].replace("*", "").strip(),
+            "status": status,
             "blocks": blocks,
         })
     return out

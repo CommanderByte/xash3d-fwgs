@@ -11,9 +11,9 @@ committing.
 
 | Framework | Entry file | Commands | Subagents | MCP registration | Setup / verify |
 |-----------|-----------|----------|-----------|------------------|----------------|
-| Claude Code | `CLAUDE.md` | `.claude/commands/` (21) | `.claude/agents/` (3) | `.mcp.json` | restart after `.mcp.json` edits |
+| Claude Code | `CLAUDE.md` | `.claude/commands/` (23) | `.claude/agents/` (4) | `.mcp.json` | restart after `.mcp.json` edits |
 | VS Code Copilot | `AGENTS.md` + `.github/copilot-instructions.md` | `.github/prompts/` (native) | `.github/agents/` (native) | `.vscode/mcp.json` | settings committed |
-| opencode | `AGENTS.md` (+ `instructions` array) | `.opencode/commands/` (21) | `.opencode/agents/` (3) | `opencode.json` | `opencode.json` loads both servers |
+| opencode | `AGENTS.md` (+ `instructions` array) | `.opencode/commands/` (23) | `.opencode/agents/` (4) | `opencode.json` | `opencode.json` loads both servers |
 | Codex CLI | `AGENTS.md` | read `.github/prompts/` directly; helper prints commands | - | `.codex/config.toml` | trust once, then `codex mcp list` |
 
 The helper

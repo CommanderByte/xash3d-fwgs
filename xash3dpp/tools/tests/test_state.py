@@ -17,6 +17,7 @@ from pathlib import Path
 # Make the sibling `xtools` package importable (tools/ is tests/'s parent).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from xtools import state  # noqa: E402
 from xtools.state import (_filter_checkpoints, _ladder_from_text,  # noqa: E402
                           _parse_chunks, _scoped_ladder)
 
@@ -135,6 +136,33 @@ class FilterCheckpoints(unittest.TestCase):
         out = _filter_checkpoints(self.ENTRIES, limit=2)
         self.assertEqual([e["step"] for e in out], ["handoff", "pre-pr"])
         self.assertEqual(len(_filter_checkpoints(self.ENTRIES, limit=0)), 3)
+
+
+class BlockingOqs(unittest.TestCase):
+    def test_decided_scaffold_rows_do_not_block(self):
+        register = """\
+## 3a. Boundary-spec OQ crosswalk
+
+| Doc | OQs | Status | Blocks |
+|-----|-----|--------|--------|
+| `physics-boundary` | PHY-OQ-1 (real blocker) | open | scaffold |
+| `sound-boundary` | SND-OQ-1 (historical gate) | **resolved**: done | scaffold |
+| `sound-boundary` | SND-OQ-2 (historical gate) | ✅ **decided**: done | scaffold |
+
+______________________________________________________________________
+"""
+        original = state._REGISTER
+        try:
+            class FakeRegister:
+                @staticmethod
+                def read_text(**_kwargs):
+                    return register
+
+            state._REGISTER = FakeRegister()
+            out = state.blocking_oqs()
+        finally:
+            state._REGISTER = original
+        self.assertEqual([row["oq"] for row in out], ["PHY-OQ-1"])
 
 
 if __name__ == "__main__":

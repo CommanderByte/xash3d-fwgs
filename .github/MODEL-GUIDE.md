@@ -31,9 +31,9 @@ advisory only (Codex CLI runs OpenAI models; its config is user-global).
 
 | Tier | Copilot frontmatter ID | Claude Code alias | opencode string | Codex (advisory) |
 |------|------------------------|-------------------|-----------------|------------------|
-| Budget+ | `claude-haiku-4-5-20251001` | `haiku` | `anthropic/claude-haiku-4-5` | nearest mini tier |
-| Standard | `claude-sonnet-4-6` | `sonnet` | `anthropic/claude-sonnet-4-6` | nearest codex tier |
-| Top | `claude-opus-4-7` | `opus` | `anthropic/claude-opus-4-7` | nearest premium tier |
+| Budget+ | `claude-haiku-4-5-20251001` | `haiku` | `anthropic/claude-haiku-4-5` | `gpt-5.6-luna` |
+| Standard | `claude-sonnet-4-6` | `sonnet` | `anthropic/claude-sonnet-4-6` | `gpt-5.6-terra` |
+| Top | `claude-opus-4-7` | `opus` | `anthropic/claude-opus-4-7` | `gpt-5.6-sol` |
 
 Cross-dialect rule: a given prompt/agent must resolve to the **same tier row**
 in every framework (no silent downgrades — the historical example was
@@ -44,6 +44,25 @@ Codex does not read prompt frontmatter as a command adapter. Pick an
 equivalent tier with `codex -m <model>` / user-global config when needed, and
 use `xash3dpp/tools/agent_workflow.py command codex <prompt> [args]` for the
 canonical prompt invocation.
+
+### Codex GPT-5.6 family
+
+OpenAI's current guidance maps the three Codex models by task shape:
+
+| Model | Use in this repo | Reasoning starting point |
+|-------|------------------|--------------------------|
+| **Sol** (`gpt-5.6-sol`) | Ambiguous, high-value work: architecture, frozen-ABI changes, determinism, parity review, and difficult multi-file implementation | `high`; use `xhigh` for parity/ABI judgment |
+| **Terra** (`gpt-5.6-terra`) | Everyday implementation, mechanical extraction, test iteration, and read-heavy scans with a clear definition of done | `medium`; raise to `high` for complex logic |
+| **Luna** (`gpt-5.6-luna`) | Specific repeatable work: inventories, classification, formatting, and structured summaries | `low` or `medium` |
+
+Start with the lowest effort that reliably clears the gate. Reserve `max` for
+a focused, genuinely hard problem where extra latency and usage are justified;
+do not run an entire chunk at `max` by default. `Ultra` is an orchestration
+setting for work that divides into independent subagent tasks, not a blanket
+quality upgrade for a single tightly coupled implementation slice.
+
+Sources: [Codex model selection](https://learn.chatgpt.com/docs/models#recommended-models),
+[OpenAI model guidance](https://developers.openai.com/api/docs/guides/latest-model).
 
 ---
 

@@ -253,7 +253,7 @@ ______________________________________________________________________
 
 **Subsystems**: `physics`\
 **Depends on**: map_loader (Chunk 5), server (Chunk 6 — edict query interface)\
-**Recon/Boundary**: partial — `design/pm-determinism-decision.md` (Q-18) + `legacy-survey/deep-dive-trace-pvs.md`; full boundary spec needed at chunk start. Note: the server-side pmove bridge (`sv_pmove.c`) moved to Chunk 6 per `server-boundary.md` — this chunk covers the client-prediction path and the both-paths determinism test.\
+**Recon/Boundary**: ✅ boundary spec `docs/boundaries/physics-boundary.md` written 2026-07-20; supporting inputs `design/pm-determinism-decision.md` (Q-18), `legacy-survey/deep-dive-trace-pvs.md`, and `legacy-survey/deep-dive-server-physics.md`. Note: the server-side pmove bridge (`sv_pmove.c`) moved to Chunk 6 per `server-boundary.md` — this chunk covers the client-prediction path and the both-paths determinism test.\
 **Legacy reference**: `pm_shared/pm_move.c`, `pm_shared/pm_trace.c`, `engine/client/dll_int/cl_pmove.c`\
 **Complexity note**: Client prediction and server authority must produce bit-identical results — determinism is the hardest constraint; float/fixed choice from Chunk 5 is locked in here.\
 **ABI surfaces touched**: `pm_shared/` — **FROZEN** (shared client ↔ server)\
@@ -261,15 +261,13 @@ ______________________________________________________________________
 
 **Entry gate** *(modernization audit 2026-07-20)*:
 
-1. **Write the boundary spec.** This entry already says "full boundary spec
-   needed at chunk start" and none exists — `physics` is one of six 0-TU
-   skeletons with no spec, which is why `q21_scan`'s 16/16 is silence rather
-   than health.
-2. **Correct the HB-2 fence anchor first.** `decisions-architecture.md:946-954`
-   names `clip.cpp:219` for the rotated-brush ULP kernel; the real anchor is
-   the `if (rotated)` block at **`clip.cpp:245-281`** (marked `TODO(Q-18)`
-   in-code). Chunk 11's parity work runs directly through it, so fix the anchor
-   before, not after.
+1. ✅ **Boundary spec written.** `docs/boundaries/physics-boundary.md` records
+   the shared-deterministic role, the one-int gather severance, the parity
+   fence, threading posture, and the full Q-21 axis table.
+2. ✅ **HB-2 fence anchor corrected.** The unrelated former
+   `clip.cpp:219` citation is retained only as history;
+   `decisions-architecture.md:949-960` now names the real `if (rotated)` block
+   at **`clip.cpp:245-281`** (marked `TODO(Q-18)` in-code).
 3. **Reuse one shared RNG instance — do not copy the placeholder a third
    time.** Legacy wires the *literal same* `COM_RandomLong`/`COM_RandomFloat`
    pointer into both the engfuncs slot and the pmove slot on both paths,
@@ -316,8 +314,8 @@ ______________________________________________________________________
    players sequential, no new global physics state). Transcription, not a
    decision.
 9. Note that `src/physics/` is still an **empty placeholder** — the
-   `pm_shared` work lives in `src/server/physics/`, and item 4 above is what
-   has to be decided before the target can exist. *(This item also named
+   `pm_shared` work lives in `src/server/physics/`, and item 4's mechanical
+   gather severance must land before the target can exist. *(This item also named
    `src/world/`; that one was resolved on 2026-07-20 — the world code was
    already decoupled and is now the `xash3dpp_world` target with its own
    boundary spec, so `physics` is the last misleading skeleton of the two.)*

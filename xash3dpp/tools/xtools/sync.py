@@ -75,6 +75,12 @@ def _workflow_edit_cell_ok(tools: str, cell: str) -> bool:
     return normalized.startswith("no")
 
 
+def _documented_count(text: str, path: str) -> int | None:
+    """Return the parenthesized count following a backticked path."""
+    match = re.search(r"`%s`\s*\((\d+)\)" % re.escape(path), text)
+    return int(match.group(1)) if match else None
+
+
 def canonical_models() -> dict[str, dict[str, str]]:
     """Parse the canonical model table from MODEL-GUIDE.md.
     Returns {tier: {copilot, claude, opencode}}."""
@@ -370,6 +376,30 @@ def workflow_sync(stage: int = 2) -> dict:
                                          "CLAUDE.md does not list /%s" % cmd.name.removesuffix(".md")))
 
     # ---- stage 2: host configs, state hygiene, AGENTS.md budget, MCP notes --
+    setup = GITHUB / "AGENT-SETUP.md"
+    if setup.is_file():
+        setup_text = setup.read_text(encoding="utf-8", errors="replace")
+        for path, actual in ((".claude/commands/", len(prompts)),
+                             (".opencode/commands/", len(prompts)),
+                             (".claude/agents/", len(agents)),
+                             (".opencode/agents/", len(agents))):
+            documented = _documented_count(setup_text, path)
+            if documented != actual:
+                findings.append(_finding(
+                    2, "doc-counts",
+                    "AGENT-SETUP.md says %s has %r entries; actual is %d"
+                    % (path, documented, actual)))
+    else:
+        findings.append(_finding(2, "doc-counts", "AGENT-SETUP.md missing"))
+    if agents_md.is_file():
+        agents_text = agents_md.read_text(encoding="utf-8", errors="replace")
+        match = re.search(r"same (\d+) steps the other frameworks expose", agents_text)
+        if match and int(match.group(1)) != len(prompts):
+            findings.append(_finding(
+                2, "doc-counts",
+                "AGENTS.md says %s workflow steps; actual is %d"
+                % (match.group(1), len(prompts))))
+
     vs_settings = REPO / ".vscode" / "settings.json"
     if vs_settings.is_file():
         vtext = vs_settings.read_text(encoding="utf-8", errors="replace")

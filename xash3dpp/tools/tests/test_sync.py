@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from xtools.sync import (  # noqa: E402
+    _documented_count,
     _has_actor,
     _tools_allow_edit,
     _vscode_mcp_discovery_disabled,
@@ -17,6 +18,12 @@ from xtools.sync import (  # noqa: E402
 
 
 class WorkflowSyncHelpers(unittest.TestCase):
+    def test_documented_count_reads_path_specific_count(self):
+        text = "`a/commands/` (23) and `a/agents/` (4)"
+        self.assertEqual(_documented_count(text, "a/commands/"), 23)
+        self.assertEqual(_documented_count(text, "a/agents/"), 4)
+        self.assertIsNone(_documented_count(text, "missing/"))
+
     def test_vscode_discovery_accepts_boolean_false(self):
         self.assertTrue(
             _vscode_mcp_discovery_disabled('"chat.mcp.discovery.enabled": false'))
