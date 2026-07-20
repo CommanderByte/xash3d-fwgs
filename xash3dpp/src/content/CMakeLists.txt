@@ -59,6 +59,11 @@ target_link_libraries(xash3dpp_content
     PUBLIC xash3dpp_core
     PUBLIC xash3dpp_filesystem
 )
-# TODO(Chunk 7): PUBLIC xash3dpp_imagelib (skin/miptex decode, O-2) and
+# TODO(chunk13): PUBLIC xash3dpp_imagelib (skin/miptex decode, O-2) and
 #   PUBLIC xash3dpp_map_loader (brush-model dispatch seam, boundary OQ-3) —
 #   wired in when those code paths land, not before (the stub uses neither).
+#   Retagged 2026-07-20: this read `TODO(Chunk 7)` after Chunk 7 shipped
+#   without it.  Chunk 13 owns the imagelib edge (its entry gate item 3), and
+#   a marker naming a DISCHARGED chunk is worse than an untagged one — it
+#   hides behind a closed number and is filtered out by any gate scoped to
+#   open chunks.

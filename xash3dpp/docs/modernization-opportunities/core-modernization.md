@@ -349,7 +349,7 @@ ______________________________________________________________________
   against two *different* threads calling `tick()` at different times, which
   would race on the plain, non-atomic `oldtime` / `last_frame_realtime`
   fields (`clock.cpp:50/53`). `ThreadRole::Render` is a reserved,
-  currently-unused enum slot (`thread_role.hpp:59`) for a future Chunk 13
+  currently-unused enum slot (`thread_role.hpp:63`) for a future Chunk 13
   render thread; if a second thread ever calls `tick()`, this is where it
   would first go wrong.
 
@@ -577,7 +577,7 @@ is out of scope for that reason. The following are out of scope for
   the plain scalars) but its urgency is coupled to the still-open Chunk-12/13
   thread-model decision (does rendering ever move off Main?); if the answer
   stays "no" through Chunk 13, `ThreadRole::Render`'s reservation
-  (`thread_role.hpp:59`) stays unused and M-3 stays a hardening item rather
+  (`thread_role.hpp:63`) stays unused and M-3 stays a hardening item rather
   than a live bug waiting to happen.
 
 ## Cross-cutting flags (for the Phase 14 synthesis)

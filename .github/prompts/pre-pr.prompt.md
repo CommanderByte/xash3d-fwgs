@@ -69,7 +69,12 @@ cite. Findings:
 - `anchor-moved` → the cited text merely moved; rerun with `--repair` and
   commit the rewritten line numbers. Not a judgment call.
 - `anchor-drift` / `unresolved-anchor` → the cited code changed or is gone.
-  Fix the doc claim, or delete it — do NOT re-`--bless` to silence it.
+  Fix the doc claim, or delete it. Re-`--bless` **only** when you changed the
+  cited text on purpose (you rewrote that comment, or you corrected an anchor
+  that pointed at the wrong lines) and you have re-read the site to confirm
+  the citation still means what the doc says. Never `--bless` to make a
+  finding you have not read go away — that is how the claims rotted in the
+  first place.
 - `false-claim` → a `<!-- verify: … -->` predicate no longer holds. Either
   the code regressed or the doc was always wrong; say which in the commit.
 - `ambiguous-basename` notes never gate.

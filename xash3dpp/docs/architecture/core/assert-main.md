@@ -13,8 +13,11 @@ platform layer (`sys.cpp`, `crash.cpp`, `console::read_line`).
 
 New code must use `xash::core::assert_thread_role(ThreadRole::Main)` from
 [thread-role.md](./thread-role.md) instead. This header is retained because
-migrating the three platform call sites has no urgency — the behaviour is
-identical and the two mechanisms do not conflict.
+migrating the four platform call sites has no urgency. **The behaviour is
+NOT identical** (corrected 2026-07-20): `assert_main_thread` silently passes
+until the main-thread id has been captured, while `assert_thread_role(Main)`
+aborts on a thread whose role was never registered. The two mechanisms do
+not conflict, but they are not substitutable.
 
 ## Functions
 

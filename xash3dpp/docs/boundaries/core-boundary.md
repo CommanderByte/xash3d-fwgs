@@ -115,7 +115,7 @@ Core is **internal to xash3dpp_core.a** — no ABI-stable exports (Chunk 3+). Lo
 
 **Public headers**: `include/xash3dpp/core/{log,assert,error,thread_role,clock}.hpp`
 
-**Private detail**: `include/xash3dpp/private/core/assert_main.hpp` (legacy wrapper for platform code)
+**Private detail**: `include/xash3dpp/private/core/assert_main.hpp` (legacy main-thread check for platform code — an independent mechanism, NOT a wrapper over `assert_thread_role`; corrected 2026-07-20)
 
 **No boundary-crossing pointers**: all APIs are free functions or inline value types.
 

@@ -101,7 +101,14 @@ def parse_claims(text: str) -> list[dict]:
     out = []
     for i, line in enumerate(text.splitlines(), start=1):
         for m in CLAIM_RX.finditer(line):
-            out.append({"doc_line": i, "predicate": m.group(1).strip()})
+            pred = m.group(1).strip()
+            # A predicate living in a markdown TABLE CELL must escape any
+            # literal pipe as `\|` or it splits the row -- so unescape it
+            # back before the regex ever sees it.  Most binding claims are
+            # table rows (boundary Extension axes), so this is the common
+            # case, not an edge case.
+            pred = pred.replace(r"\|", "|")
+            out.append({"doc_line": i, "predicate": pred})
     return out
 
 
@@ -471,8 +478,13 @@ def scan(*, checks: str = "all", bless: bool = False,
                 moved = find_snapshot(path, want.get("snapshot") or [])
                 if moved is not None:
                     if repair:
-                        new_raw = a["raw"].replace(
-                            ":%d" % a["line"], ":%d" % moved, 1)
+                        # Shift BOTH ends of a range by the same delta.
+                        # Rewriting only the start produced nonsense like
+                        # `rules.py:367-354` (end before start).
+                        delta = moved - a["line"]
+                        new_raw = "`%s:%d`" % (a["path"], moved) \
+                            if a["end"] == a["line"] else \
+                            "`%s:%d-%d`" % (a["path"], moved, a["end"] + delta)
                         edits.append((a["doc_line"], a["raw"], new_raw))
                         anchors[key]["line"] = moved
                         repaired.append({"doc": rel, "line": a["doc_line"],

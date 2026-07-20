@@ -216,7 +216,7 @@ legacy construct; "**NEW**" = no legacy analog.
 | `Host_Error` (`longjmp`) / `Sys_Error` (abort) | `host.c` / `sys_con.c` | `XASH_FATAL` + typed `ErrorCode::HostFatal`/`FrameAborted` returns | Distilled behaviour; **structured codes are NEW** |
 | structured error vocabulary | *(none)* | `ErrorCode` enum + `error_code_name()` | **NEW** (replaces `qboolean` + out-of-band signalling) |
 | thread-role registry + `assert_thread_role` | *(none)* | `thread_role.hpp` / `thread_role.cpp` (`ThreadRole`, `tls_role`) | **NEW** — the enforcement primitive |
-| `assert_main_thread()` legacy helper | platform code | thin wrapper over `assert_thread_role(ThreadRole::Main)` | Distilled shim |
+| `assert_main_thread()` legacy helper | platform code | **independent** lazily-captured `std::thread::id` check — NOT a wrapper over `assert_thread_role` (corrected 2026-07-20; it silently passes before capture, where `assert_thread_role` aborts) | Distilled shim |
 
 **Build-graph note (D-1):** although these all carry the `xash::core`
 namespace and `xash3dpp/core/` header paths, only `clock.cpp` + `error.cpp`

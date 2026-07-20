@@ -70,6 +70,29 @@ class ParseAnchors(unittest.TestCase):
         self.assertFalse(parse_anchors("`x.cpp:5`")[0]["skipped"])
 
 
+class RepairRange(unittest.TestCase):
+    """--repair must shift BOTH ends of a range anchor by the same delta.
+    Rewriting only the start produced `rules.py:367-354` -- an end before its
+    start -- which then re-reported as drift forever."""
+
+    @staticmethod
+    def _repaired(path: str, line: int, end: int, moved: int) -> str:
+        delta = moved - line
+        return ("`%s:%d`" % (path, moved) if end == line
+                else "`%s:%d-%d`" % (path, moved, end + delta))
+
+    def test_single_line(self):
+        self.assertEqual(self._repaired("a.cpp", 181, 181, 182), "`a.cpp:182`")
+
+    def test_range_shifts_both_ends(self):
+        self.assertEqual(self._repaired("rules.py", 348, 354, 367),
+                         "`rules.py:367-373`")
+
+    def test_range_shifting_backwards(self):
+        self.assertEqual(self._repaired("clip.cpp", 237, 273, 211),
+                         "`clip.cpp:211-247`")
+
+
 class ParsePredicate(unittest.TestCase):
     def test_default_comparison_is_at_least_one(self):
         p = parse_predicate("compliance-rule-exists(entvars-confinement)")
@@ -117,6 +140,12 @@ class ParseClaims(unittest.TestCase):
     def test_extracts_predicate_and_line(self):
         c = parse_claims("intro\n<!-- verify: symbol-exists(foo) -->\n")
         self.assertEqual(c, [{"doc_line": 2, "predicate": "symbol-exists(foo)"}])
+
+    def test_table_cell_pipe_escape_is_undone(self):
+        """Most binding claims live in boundary Extension-axes TABLE ROWS,
+        where a literal `|` must be written `\|` or it splits the row."""
+        c = parse_claims(r"| x | <!-- verify: grep-count(a\|b, s/**/*.cpp) == 2 --> |")
+        self.assertEqual(c[0]["predicate"], "grep-count(a|b, s/**/*.cpp) == 2")
 
     def test_ignores_other_html_comments(self):
         """The docs' only existing HTML comments are pymarkdown pragmas."""

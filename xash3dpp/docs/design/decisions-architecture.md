@@ -384,8 +384,10 @@ ______________________________________________________________________
 - Worker pool (2–4 threads) started at `Host::init()`; audio threads at
   `Sound::init()`.
 - Async asset loading via `JobToken<T>` (atomic status + `unique_ptr` move).
-- `assert_main_thread()` replaced by `assert_thread_role(ThreadRole::Main)`,
-  defined in `core/thread_role.hpp`.
+- `assert_main_thread()` to be replaced by `assert_thread_role(ThreadRole::Main)`,
+  defined in `core/thread_role.hpp`. **Not done** (verified 2026-07-20): the
+  two are independent mechanisms with divergent failure semantics, and 4
+  `assert_main_thread` call sites remain under `src/platform/`.
 - Render thread optional — renderer plugin declares `wants_render_thread`;
   double-buffered `RenderFrame` is the main↔render boundary.
 - Network I/O thread deferred; networking keeps socket access behind the
@@ -948,7 +950,10 @@ document for extension posture. Concretely:
   door-rule pass may perturb — map_loader (Q-18 trace/PVS/CRC kernel),
   content (studio bone math), networking (wire bit-codec, delta field
   widths, LZSS, OOB packet magic), server (rotated-brush ULP behaviour at
-  `clip.cpp:211`), utilities (double-precision studio math). Byte-exact
+  `clip.cpp:237-273`, the `if ( rotated )` block carrying the in-code
+  `TODO(Q-18)` — the anchor read `clip.cpp:211` until 2026-07-20, which is
+  an unrelated `hull_for_entity` call and fenced nothing), utilities
+  (double-precision studio math). Byte-exact
   parity beats every other rule in these files — FMA, reassociation, and
   `std::ranges` rewrites included; any deviation follows the
   parity-precedence bullet above.
@@ -1092,7 +1097,10 @@ Later chunks depend on these; they are scheduled work, not opportunistic.
 - **Filesystem threading hazards** (Q-6 / `threading-model.md` §10): must be
   fixed before the worker pool starts. Two specific sites identified there.
 - **`assert_thread_role` replacing `assert_main_thread`** (Q-6): low effort;
-  required before any background threading work begins.
+  required before any background threading work begins. **Still open** —
+  four `src/platform/` call sites remain, and several docs claimed this had
+  already landed as a "thin wrapper" (all corrected 2026-07-20).
+  <!-- verify: grep-count(assert_main_thread\s*\(, xash3dpp/src/**/*.cpp) == 4 -->
 
 ### 4.2 Bring into conformance when next touched
 

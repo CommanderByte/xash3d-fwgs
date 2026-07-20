@@ -40,6 +40,25 @@ class Rule:
 
 RULES: list[Rule] = [
     Rule(
+        check="entvars-confinement",
+        severity="blocker",
+        # Raw entvars access is `ed->v.<field>`; EntityView is the sanctioned
+        # accessor everywhere else (Q-20).
+        pattern=r"->\s*v\s*\.",
+        scopes=("src",),
+        # The memory contract's owners, named verbatim by Q-20: the ABI shim
+        # (src/abi + src/server/abi), the pmove bridge (src/server/physics)
+        # and the Chunk 8 save serializer (save_bridge + src/save).
+        exclude_path_re=(r"src[\\/](abi|save)[\\/]"
+                         r"|src[\\/]server[\\/](abi|physics)[\\/]"
+                         r"|src[\\/]server[\\/]lifecycle[\\/]save_bridge\.cpp$"),
+        hint="raw entvars_t access is confined to the ABI shim, the pmove "
+             "bridge and the save serializer; use EntityView (Q-20)",
+        source_ref="decisions-architecture Q-20 (EDICT_STORE); "
+                   "server-boundary Extension axes",
+        sets=("all", "prepr", "detail"),
+    ),
+    Rule(
         check="abi-alloc",
         severity="blocker",
         pattern=r"\b(malloc|calloc|realloc|free)\s*\(",

@@ -19,8 +19,12 @@
 //   • assert_thread_role() is a hard runtime check that fires via XASH_FATAL
 //     on mismatch — it logs the actual vs expected role and aborts.
 //   • The legacy assert_main_thread() helper in
-//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for
-//     existing platform code; new code SHOULD use assert_thread_role.
+//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,
+//     not a wrapper over this one: it checks a lazily-captured process-wide
+//     std::thread::id and silently PASSES before that capture, where
+//     assert_thread_role aborts on an unregistered thread.  Kept for the 4
+//     existing platform call sites; new code SHOULD use assert_thread_role.
+//     (Both the wrapper claim and the header path were wrong until 2026-07-20.)
 //
 // Typical usage (worker thread startup):
 //   void worker_thread_main()

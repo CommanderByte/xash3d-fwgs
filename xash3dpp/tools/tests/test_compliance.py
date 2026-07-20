@@ -462,6 +462,48 @@ class OperatorDeletePairing(unittest.TestCase):
             self._lines("class Plain {", "};")), [])
 
 
+class EntvarsConfinement(unittest.TestCase):
+    """Q-20 promised "a compliance-scan rule (no `->v.` outside the allowed
+    set) added when the server scaffold lands"; the scaffold landed and the
+    rule did not, while server-boundary.md asserted it "is the guard".  The
+    confinement did in fact hold by convention, so writing the rule made the
+    doc claim true rather than weakening it."""
+
+    def test_raw_entvars_access_is_flagged(self):
+        for line in ("    ed->v.flags |= k_fl_killme;",
+                     "    if ( pent->v.solid != 0 )",
+                     "    ent -> v . nextthink = 0.0f;"):
+            with self.subTest(line=line):
+                self.assertTrue(_hits("entvars-confinement", line))
+
+    def test_entityview_access_is_not_flagged(self):
+        for line in ("    EntityView v( ed );",
+                     "    if ( v.freed() ) return;",
+                     "    rt.move_env.world = &world;"):
+            with self.subTest(line=line):
+                self.assertFalse(_hits("entvars-confinement", line))
+
+    def test_owner_paths_are_excluded_on_both_separators(self):
+        """str(path) is backslashed on Windows and slashed elsewhere, so the
+        exclusion must accept both -- with `[\\/]` (only a slash) it silently
+        excluded nothing and the rule reported 254 false violations."""
+        rx = re.compile(_rule("entvars-confinement").exclude_path_re)
+        for p in (r"C:\git\x\xash3dpp\src\server\abi\edict_arena.cpp",
+                  "/home/x/xash3dpp/src/server/abi/edict_arena.cpp",
+                  r"C:\x\xash3dpp\src\save\level_state_writer.cpp",
+                  "/x/xash3dpp/src/server/physics/pmove.cpp",
+                  r"C:\x\xash3dpp\src\server\lifecycle\save_bridge.cpp"):
+            with self.subTest(path=p):
+                self.assertTrue(rx.search(p))
+
+    def test_non_owner_server_paths_are_not_excluded(self):
+        rx = re.compile(_rule("entvars-confinement").exclude_path_re)
+        for p in ("/x/xash3dpp/src/server/clients/client_state.cpp",
+                  "/x/xash3dpp/src/server/world/links.cpp"):
+            with self.subTest(path=p):
+                self.assertIsNone(rx.search(p))
+
+
 class MutatorDefRx(unittest.TestCase):
     """The broadened thread-assert definition matcher (QN wave)."""
 

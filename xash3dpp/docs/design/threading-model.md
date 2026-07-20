@@ -8,7 +8,7 @@
 > **Status snapshot (what is built vs planned):**
 >
 > - **IMPLEMENTED today:** filesystem locking under `shared_mutex` (both hazards in §10 are RESOLVED — see [filesystem.cpp L162-183](../../src/filesystem/filesystem.cpp) and [filesystem.cpp L497-520](../../src/filesystem/filesystem.cpp)); `assert_main_thread()` debug helper at [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp) (internal-only, 4 call sites).
-> - **BEING INTRODUCED with this doc:** public `ThreadRole` API at `xash3dpp/include/xash3dpp/core/thread_role.hpp` — `register_thread_role`, `current_thread_role`, `assert_thread_role`. `assert_main_thread()` becomes a thin wrapper over `assert_thread_role(ThreadRole::Main)`; new code uses `assert_thread_role` directly.
+> - **BEING INTRODUCED with this doc:** public `ThreadRole` API at `xash3dpp/include/xash3dpp/core/thread_role.hpp` — `register_thread_role`, `current_thread_role`, `assert_thread_role`. `assert_main_thread()` was to become a thin wrapper over `assert_thread_role(ThreadRole::Main)`; new code uses `assert_thread_role` directly. **NOT DONE (verified 2026-07-20).** `assert_main_thread` is an independent mechanism, not a wrapper: it reads a lazily-captured process-wide `std::thread::id` and **silently passes before that capture**, whereas `assert_thread_role(Main)` reads per-thread TLS and **aborts** on an unregistered thread. Neither calls the other. 4 call sites remain, all under `src/platform/`.
 > - **PLANNED:** `JobToken` worker-pool API (deferred — unscheduled), `dev_worker_threads` cvar (with the pool), render thread + `RenderFrame` (Chunk 13), `T_NetIO` thread (deferred), audio threads (Chunk 9), `// @thread-safety:` annotation rollout (Appendix A).
 > - **Chunk ordering (renumbered 2026-07-04 to `implementation-plan.md`):** 1 = cmd_cvar (**DONE**); 2/4 = networking (**DONE**); 3 = host (**DONE**); 5 = map_loader/world (**DONE**); 6 = server; 7 = content; 9 = sound; 10 = input; 11 = physics; 12 = client; 13 = renderer. The worker pool + `JobToken` (this doc's original "Chunk 4") is now unscheduled — it lands with the first subsystem that needs it (content, Chunk 7, most likely).
 
@@ -78,9 +78,10 @@ void assert_thread_role(ThreadRole expected) noexcept;
 Internally, `current_thread_role()` reads a `thread_local ThreadRole`. The
 existing `assert_main_thread()` helper at
 [assert_main.hpp](../../include/xash3dpp/private/core/assert_main.hpp)
-(4 active call sites today) is **kept** and rewritten as a thin wrapper that
-delegates to `assert_thread_role(ThreadRole::Main)`. New code uses
-`assert_thread_role` directly; existing call sites are not churned.
+(4 active call sites today) is **kept**. It was to be rewritten as a thin
+wrapper delegating to `assert_thread_role(ThreadRole::Main)`; that rewrite
+never happened. **NOT DONE (verified 2026-07-20).** `assert_main_thread` is an independent mechanism, not a wrapper: it reads a lazily-captured process-wide `std::thread::id` and **silently passes before that capture**, whereas `assert_thread_role(Main)` reads per-thread TLS and **aborts** on an unregistered thread. Neither calls the other. 4 call sites remain, all under `src/platform/`. New code uses `assert_thread_role`
+directly; existing call sites are not churned.
 
 ______________________________________________________________________
 

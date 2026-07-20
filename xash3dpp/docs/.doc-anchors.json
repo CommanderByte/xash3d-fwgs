@@ -341,12 +341,42 @@
    ],
    "target": "engine/server/server.h"
   },
+  "xash3dpp/docs/boundaries/server-boundary.md|engine_table.cpp|0": {
+   "line": 55,
+   "snapshot": [
+    "EngineBridge * g_bridge = nullptr; // compliance-allow(mutable-global, di-global-ref): engine_table ABI-slot carve-out (Q-20) \u2014 the game DLL's ~30 context-free pfn shims have fixed ABI signatures with no userdata slot, so they reach engine state through this one file-scope singleton; set once at bridge install, main-thread-only thereafter"
+   ],
+   "target": "xash3dpp/src/server/abi/engine_table.cpp"
+  },
+  "xash3dpp/docs/boundaries/server-boundary.md|engine_table.cpp|1": {
+   "line": 61,
+   "snapshot": [
+    "std::byte s_fatpvs[k_fat_vis_bytes];",
+    "std::byte s_fatphs[k_fat_vis_bytes];"
+   ],
+   "target": "xash3dpp/src/server/abi/engine_table.cpp"
+  },
   "xash3dpp/docs/boundaries/server-boundary.md|host.c|0": {
    "line": 344,
    "snapshot": [
     "SV_GetPlayerCount( &players, &bots );"
    ],
    "target": "engine/common/host.c"
+  },
+  "xash3dpp/docs/boundaries/server-boundary.md|map_loader.cpp|0": {
+   "line": 252,
+   "snapshot": [
+    "void MapLoader::attach_observer( IMapLoaderObserver *obs ) noexcept"
+   ],
+   "target": "xash3dpp/src/map_loader/map_loader.cpp"
+  },
+  "xash3dpp/docs/boundaries/server-boundary.md|sv_game.c|0": {
+   "line": 31,
+   "snapshot": [
+    "static byte fatphs[(MAX_MAP_LEAFS+7)/8];",
+    "static byte clientpvs[(MAX_MAP_LEAFS+7)/8];\t// for find client in PVS"
+   ],
+   "target": "engine/server/sv_game.c"
   },
   "xash3dpp/docs/boundaries/sound-boundary.md|cl_game.c|0": {
    "line": 110,
@@ -820,6 +850,15 @@
    "target": "xash3dpp/src/utilities/build.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|0": {
+   "line": 237,
+   "snapshot": [
+    "if ( rotated )",
+    "{",
+    "// TODO(Q-18): the rotated-brush transform is ULP-inexact vs legacy"
+   ],
+   "target": "xash3dpp/src/server/world/clip.cpp"
+  },
+  "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|1": {
    "line": 211,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
@@ -906,8 +945,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -4095,7 +4134,7 @@
   "xash3dpp/docs/modernization-opportunities/content-modernization.md|xash3dpp/src/content/CMakeLists.txt|0": {
    "line": 62,
    "snapshot": [
-    "# TODO(Chunk 7): PUBLIC xash3dpp_imagelib (skin/miptex decode, O-2) and",
+    "# TODO(chunk13): PUBLIC xash3dpp_imagelib (skin/miptex decode, O-2) and",
     "#   PUBLIC xash3dpp_map_loader (brush-model dispatch seam, boundary OQ-3) \u2014",
     "#   wired in when those code paths land, not before (the stub uses neither)."
    ],
@@ -4231,7 +4270,7 @@
    "target": "xash3dpp/tests/content/test_studio_layout.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/content-modernization.md|xash3dpp/tools/xtools/rules.py|0": {
-   "line": 348,
+   "line": 367,
    "snapshot": [
     "MUTATOR_NAMES = (",
     "\"init(?:_\\\\w+)?|shutdown(?:_\\\\w+)?|reset\\\\w*|flush(?:_\\\\w+)?|clear(?:_\\\\w+)?\"",
@@ -4405,8 +4444,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -4414,20 +4453,20 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/core-modernization.md|thread_role.hpp|2": {
-   "line": 59,
+   "line": 63,
    "snapshot": [
     "Render,         // dedicated render thread (PLANNED \u2014 Chunk 13)"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/core-modernization.md|thread_role.hpp|3": {
-   "line": 59,
+   "line": 63,
    "snapshot": [
     "Render,         // dedicated render thread (PLANNED \u2014 Chunk 13)"
    ],
@@ -4480,8 +4519,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -4489,8 +4528,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -4498,8 +4537,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -6070,7 +6109,7 @@
    "target": "xash3dpp/tools/xtools/checks.py"
   },
   "xash3dpp/docs/modernization-opportunities/networking-modernization.md|xtools/rules.py|0": {
-   "line": 348,
+   "line": 367,
    "snapshot": [
     "MUTATOR_NAMES = (",
     "\"init(?:_\\\\w+)?|shutdown(?:_\\\\w+)?|reset\\\\w*|flush(?:_\\\\w+)?|clear(?:_\\\\w+)?\"",
@@ -6140,8 +6179,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -6149,8 +6188,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
@@ -6158,8 +6197,8 @@
    "line": 21,
    "snapshot": [
     "//   \u2022 The legacy assert_main_thread() helper in",
-    "//     <xash3dpp/private/platform/assert_main.hpp> is a thin wrapper kept for",
-    "//     existing platform code; new code SHOULD use assert_thread_role."
+    "//     <xash3dpp/private/core/assert_main.hpp> is an INDEPENDENT mechanism,",
+    "//     not a wrapper over this one: it checks a lazily-captured process-wide"
    ],
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
