@@ -187,7 +187,7 @@ ______________________________________________________________________
 These questions are raised for discussion; no answer is recorded here.
 Each question links to the section that prompted it.
 
-All 24 questions (Q-1 … Q-24) are decided.
+All 25 questions (Q-1 … Q-25) are decided.
 
 ### Question index
 
@@ -205,6 +205,7 @@ All 24 questions (Q-1 … Q-24) are decided.
 | Q-10 | PLUGIN_VERSION | Q-20 | EDICT_STORE |
 | Q-21 | EXTENSION_POSTURE | Q-22 | LIFECYCLE_MODEL |
 | Q-23 | DEVICE_BACKEND_STOP_LINE | Q-24 | QUEUE_FAMILY_HOME |
+| Q-25 | ROLE_AND_PLACEMENT | | |
 
 File order is historical — Q-14 appears before Q-13 below; do not renumber.
 
@@ -1082,6 +1083,60 @@ T_AudioDecoder, the first thread ever spawned in the tree). JobToken/worker
 pool accession: when the pool is scheduled it joins this same family
 (`MpscQueue` + spawn primitive) — the Chunk-7 hook shortfall (pool never
 landed) is annotated in `extension-goals.md` §4.
+
+### ROLE_AND_PLACEMENT (Q-25): role is an axis distinct from layer and domain; directories track targets
+
+**Decided 2026-07-20** (pre-Chunk-11 cleanup; prompted by the `world`
+promotion and the physics seam analysis). A subsystem was being asked to be
+four things at once — a `src/` directory, a CMake target, a chunk work-unit,
+and a boundary-spec/governance unit — and those had silently diverged
+(`src/abi` 86 lines with a spec vs `src/server/abi` 3109 lines without one;
+`src/physics` empty while 4030 lines of physics live under `src/server/`).
+This entry names the axes and fixes placement so the divergence stops being
+invisible.
+
+**Three axes, kept separate.** *Layer* = dependency depth, expressed by the
+CMake target graph (acyclic; nothing links upward) — the only axis with
+build-time teeth. *Domain* = which game concept, expressed by the boundary
+spec. *Role* = **who runs the code**, and it had no representation at all;
+that gap is what let shared-deterministic code (the physics trace kernel) be
+filed inside a role-owning target (`src/server/`). Role values:
+`server-authoritative`, `client-only`, `shared-deterministic`, `shared-input`,
+`offline-tool`. Only **shared-deterministic** — code both client prediction
+and server authority run, whose results are compared bit-for-bit so a
+divergence is a prediction error, not just a bug — carries a hard cross-role
+parity obligation. The others are informational.
+
+**Placement rule — directory-tracks-target.** A top-level `src/<name>/` is one
+target `xash3dpp_<name>`; nesting means organisation *within* a target, never a
+sub-target; a file lives with the target it links into and **moves when the
+target does** (the `world` move on 2026-07-20 is the precedent). Role is a spec
+field plus a code annotation, **never a directory** (that is how legacy's
+`common/`/`server/`/`client/` became role-buckets-that-are-also-layers, which
+the rewrite correctly tore apart); domain is the boundary spec, never a
+directory. A directory that tracks the enforced axis (the target) cannot
+silently lie the way `server/world/` did.
+
+**Structure follows measured coupling.** Extraction happens only when a block's
+coupling to the runtime aggregate is *already* near zero, and the directory is
+the last thing to change, not the first. `world` extracted cleanly (0
+`ServerRuntime` refs); `src/server/game` (the `sv_game.c` bridge) did **not**
+and stays a source-level module, because `engine_table.cpp` is the server's
+integration hub. Never move code to make an org chart tidy.
+
+**Mechanism + enforcement.** Every boundary spec carries a `## Role & parity`
+section — a mandatory `Role:` line; shared roles add counterpart path, neutral
+seam and parity fence (prototyped in `boundaries/physics-boundary.md`).
+Shared-deterministic TUs carry a `// ROLE: shared-deterministic` banner so the
+obligation is legible at the edit site. `q21_scan` fails a started chunk whose
+spec lacks the section; `census` tallies the markers and a `docs_check`
+`census(...)` predicate plus a `rules.py` misuse guard keep the code-to-spec
+loop honest (grep-count cannot see the comment marker — it is census-tallied).
+
+Relates to Q-1 (SUBSYSTEM_CLASS — this is the placement half Q-1 left open),
+Q-6/Q-20 (threading and edict-store confinement, which the role axis makes
+legible per subsystem), and Q-21 (EXTENSION_POSTURE — the Role & parity
+section sits beside the Extension-axes table in every spec).
 
 ## 4. Application Schedule
 
