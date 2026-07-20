@@ -1,4 +1,5 @@
 #pragma once
+// ROLE: shared-deterministic
 // xash3dpp — pmove trace family: the PM_* callbacks the game DLL's PM_Move
 // invokes to sweep the player hull against the gathered physent list.
 // Legacy reference: engine/common/pm_trace.c — PM_PlayerTraceExt (:325),
@@ -38,7 +39,7 @@ struct WorldData;
 
 namespace xash::world { struct IModelResolver; } // world/trace.hpp
 
-namespace xash::server {
+namespace xash::physics {
 
 // Filter callback the DLL may pass (pm_defs.h pfnIgnore): non-null overrides
 // the ignore_pe index; a physent it returns non-zero for is skipped.
@@ -139,4 +140,4 @@ pm_point_contents_pmove( const PmTraceEnv &env, ::xash::abi::playermove_t &pm,
 void pm_stuck_touch( ::xash::abi::playermove_t &pm, int hitent,
                      ::xash::abi::pmtrace_t *tr ) noexcept;
 
-} // namespace xash::server
+} // namespace xash::physics

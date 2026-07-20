@@ -167,7 +167,7 @@ struct ServerRuntime
     // Move), freed in unload_progs; the pmove bridge (physics/pmove.cpp) fills
     // and drains it per usercmd.
     ::xash::memory::pool_ptr<::xash::abi::playermove_t> pmove;
-    PmTraceModelIndices pmove_model_indices {};
+    ::xash::physics::PmTraceModelIndices pmove_model_indices {};
 
     // sv.lightstyles (S8 animates them in SV_RunLightStyles); the pfnLightStyle
     // slot writes through the bridge pointer install_world_bridge wires.

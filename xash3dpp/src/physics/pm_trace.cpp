@@ -1,3 +1,4 @@
+// ROLE: shared-deterministic
 // xash3dpp — pmove trace family (Chunk 6 pmove-bridge P3a): the PM_* trace /
 // point-contents callbacks the game DLL's PM_Move invokes, composed over the
 // edict-free map_loader kernel and sourced from the gathered physent list.
@@ -19,7 +20,7 @@
 //
 // Threading: main-thread only (server-boundary OQ-9).
 
-#include <xash3dpp/private/server/pm_trace.hpp>
+#include <xash3dpp/physics/pm_trace.hpp>
 
 #include <xash3dpp/abi/server_consts.hpp>
 #include <xash3dpp/cmd_cvar/context.hpp>
@@ -35,7 +36,7 @@
 #include <cstddef>
 #include <optional>
 
-namespace xash::server {
+namespace xash::physics {
 
 using namespace ::xash::world; // consume the world trace/link kernel (Wave 1)
 
@@ -803,4 +804,4 @@ void pm_stuck_touch( abi::playermove_t &pm, int hitent,
     pm.touchindex[pm.numtouch++] = *tr;
 }
 
-} // namespace xash::server
+} // namespace xash::physics

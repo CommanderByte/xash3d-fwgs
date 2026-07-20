@@ -24,7 +24,7 @@
 #include <xash3dpp/private/server/edict_arena.hpp>
 #include <xash3dpp/private/server/game_dll.hpp>
 #include <xash3dpp/private/server/lightstyles.hpp>
-#include <xash3dpp/private/server/pm_trace.hpp>
+#include <xash3dpp/physics/pm_trace.hpp>
 #include <xash3dpp/private/server/precache.hpp>
 #include <xash3dpp/private/server/string_pool.hpp>
 #include <xash3dpp/world/links.hpp>
@@ -77,7 +77,7 @@ struct EngineBridge
     // Both wired by SV_InitClientMove (load_progs); null before then, so the
     // pmove callbacks degrade to their clear-trace / no-op defaults.
     ::xash::abi::playermove_t                 *pmove         = nullptr; // @lifetime: engine
-    PmTraceModelIndices                       *pmove_model_indices = nullptr; // @lifetime: engine
+    ::xash::physics::PmTraceModelIndices      *pmove_model_indices = nullptr; // @lifetime: engine
     const ::xash::map_loader::HullBoundsTable *player_bounds = nullptr; // @lifetime: engine
 
     // S9 clients/messaging (null in pre-S9 fixtures: RegUserMsg / MessageBegin

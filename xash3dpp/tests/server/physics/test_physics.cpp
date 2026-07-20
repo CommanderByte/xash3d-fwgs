@@ -16,7 +16,7 @@
 #include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/private/server/physics.hpp>
-#include <xash3dpp/private/server/pm_trace.hpp>
+#include <xash3dpp/physics/pm_trace.hpp>
 #include <xash3dpp/private/server/pmove.hpp>
 #include <xash3dpp/world/links.hpp>
 #include <xash3dpp/utilities/math.hpp>
@@ -36,6 +36,7 @@
 #include <vector>
 
 namespace sv  = xash::server;
+namespace phy = xash::physics;
 namespace abi = xash::abi;
 namespace cc  = xash::cmd_cvar;
 namespace ml  = xash::map_loader;
@@ -597,9 +598,9 @@ static void test_pmove_finish()
 // pmove trace family (P3a): the PM_* callbacks over the map_loader kernel.
 // ---------------------------------------------------------------------------
 
-static sv::PmTraceEnv make_pm_env( PhysFixture &fx )
+static phy::PmTraceEnv make_pm_env( PhysFixture &fx )
 {
-    sv::PmTraceEnv env;
+    phy::PmTraceEnv env;
     env.world         = fx.rt.move_env.world;
     env.models        = &fx.rt.models;
     env.model_indices = &fx.rt.pmove_model_indices;
@@ -608,7 +609,7 @@ static sv::PmTraceEnv make_pm_env( PhysFixture &fx )
     return env;
 }
 
-static sv::PmPhysentView physents_view( PhysFixture &fx,
+static phy::PmPhysentView physents_view( PhysFixture &fx,
                                         abi::playermove_t &pm, int count )
 {
     return {
@@ -638,21 +639,21 @@ static void test_pm_point_contents()
     ucmd.msec = 50;
     sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
 
-    const sv::PmTraceEnv env = make_pm_env( fx );
+    const phy::PmTraceEnv env = make_pm_env( fx );
     abi::playermove_t   &pm  = *fx.rt.pmove;
 
     // hull-0: X >= 128 → empty, X < 128 → water (unreferenced solid leaf).
-    CHECK_EQ( sv::pm_true_point_contents( env, pm, Vec3{ 200.0f, 0.0f, 0.0f } ),
+    CHECK_EQ( phy::pm_true_point_contents( env, pm, Vec3{ 200.0f, 0.0f, 0.0f } ),
               ml::k_contents_empty );
-    CHECK_EQ( sv::pm_true_point_contents( env, pm, Vec3{ 0.0f, 0.0f, 0.0f } ),
+    CHECK_EQ( phy::pm_true_point_contents( env, pm, Vec3{ 0.0f, 0.0f, 0.0f } ),
               ml::k_contents_water );
     // no water bmodels in the gather → point_contents == world base.
-    CHECK_EQ( sv::pm_point_contents( env, pm, Vec3{ 0.0f, 0.0f, 0.0f } ),
+    CHECK_EQ( phy::pm_point_contents( env, pm, Vec3{ 0.0f, 0.0f, 0.0f } ),
               ml::k_contents_water );
     // CURRENT_* fold is a passthrough here (base is plain water, not a current).
     int truec = 0;
     CHECK_EQ(
-        sv::pm_point_contents_pmove( env, pm, Vec3{ 0.0f, 0.0f, 0.0f }, &truec ),
+        phy::pm_point_contents_pmove( env, pm, Vec3{ 0.0f, 0.0f, 0.0f }, &truec ),
         ml::k_contents_water );
     CHECK_EQ( truec, ml::k_contents_water );
     CHECK_EQ( g_err_calls, 0 );
@@ -671,7 +672,7 @@ static void test_pm_player_trace_world()
     ucmd.msec = 50;
     sv::sv_setup_pmove( fx.rt, cl, ucmd, "" );
 
-    const sv::PmTraceEnv env = make_pm_env( fx );
+    const phy::PmTraceEnv env = make_pm_env( fx );
     abi::playermove_t   &pm  = *fx.rt.pmove;
     pm.usehull               = 0;
 
@@ -695,7 +696,7 @@ static void test_pm_player_trace_world()
         exp.plane.dist = xash::utilities::dot( exp.endpos, exp.plane.normal );
     }
 
-    const abi::pmtrace_t got = sv::pm_player_trace_ext(
+    const abi::pmtrace_t got = phy::pm_player_trace_ext(
         env, pm, start, end, 0, physents_view( fx, pm, pm.numphysent ), -1,
         nullptr );
 
@@ -721,7 +722,7 @@ static void test_pm_box_physent()
     abi::edict_t *prop = spawn_prop( fx, abi::k_solid_bbox, Vec3{ 40, 0, 0 },
                                      Vec3{ -8, -8, -8 }, Vec3{ 8, 8, 8 }, mi );
 
-    const sv::PmTraceEnv env = make_pm_env( fx );
+    const phy::PmTraceEnv env = make_pm_env( fx );
     abi::playermove_t   &pm  = *fx.rt.pmove;
 
     // isolate: one box physent (studio model → box path, no brush), no world.
@@ -736,14 +737,14 @@ static void test_pm_box_physent()
     fx.rt.pmove_model_indices.physents[0] = mi;
 
     // sweep straight through the expanded box → a mid-ray impact on physent 0.
-    const abi::pmtrace_t hit = sv::pm_player_trace_ext(
+    const abi::pmtrace_t hit = phy::pm_player_trace_ext(
         env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 }, 0,
         physents_view( fx, pm, 1 ), -1, nullptr );
     CHECK_EQ( hit.ent, 0 );
     CHECK( hit.fraction > 0.0f && hit.fraction < 1.0f );
 
     // ignore_pe skips the only ent → clear trace.
-    const abi::pmtrace_t miss = sv::pm_player_trace_ext(
+    const abi::pmtrace_t miss = phy::pm_player_trace_ext(
         env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 }, 0,
         physents_view( fx, pm, 1 ), /*ignore_pe=*/0, nullptr );
     CHECK_EQ( miss.ent, -1 );
@@ -753,7 +754,7 @@ static void test_pm_box_physent()
     // the skip inside `if( pe->studiomodel )` (pm_trace.c:385-388), and
     // SV_CopyEdictToPhysEnt leaves studiomodel NULL when the model resolves
     // to no studio data — the entity is still bbox-traced under the flag.
-    const abi::pmtrace_t still_hit = sv::pm_player_trace_ext(
+    const abi::pmtrace_t still_hit = phy::pm_player_trace_ext(
         env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 },
         abi::k_pm_studio_ignore, physents_view( fx, pm, 1 ), -1, nullptr );
     CHECK_EQ( still_hit.ent, 0 );
@@ -761,10 +762,10 @@ static void test_pm_box_physent()
 
     // PM_TraceLine: PHYSENTSONLY hits the box; ANYVISIBLE walks visents (empty).
     pm.numvisent = 0;
-    const abi::pmtrace_t phys = sv::pm_trace_line(
+    const abi::pmtrace_t phys = phy::pm_trace_line(
         env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 },
         abi::k_pm_traceline_physentsonly, 0, -1 );
-    const abi::pmtrace_t vis = sv::pm_trace_line(
+    const abi::pmtrace_t vis = phy::pm_trace_line(
         env, pm, Vec3{ 100, 0, 0 }, Vec3{ 0, 0, 0 },
         abi::k_pm_traceline_anyvisible, 0, -1 );
     CHECK( phys.fraction < 1.0f );
@@ -774,9 +775,9 @@ static void test_pm_box_physent()
     // PM_TestPlayerPosition: inside the box → physent 0; far outside → -1.
     pm.origin[0] = 40.0f; // so the origin->origin probe is well-defined
     CHECK_EQ(
-        sv::pm_test_player_position( env, pm, Vec3{ 40, 0, 0 }, nullptr, nullptr ),
+        phy::pm_test_player_position( env, pm, Vec3{ 40, 0, 0 }, nullptr, nullptr ),
         0 );
-    CHECK_EQ( sv::pm_test_player_position( env, pm, Vec3{ 400, 0, 0 }, nullptr,
+    CHECK_EQ( phy::pm_test_player_position( env, pm, Vec3{ 400, 0, 0 }, nullptr,
                                            nullptr ),
               -1 );
     CHECK_EQ( g_err_calls, 0 );
@@ -815,14 +816,14 @@ static void test_pm_model_index_snapshot_survives_edict_mutation()
     fx.rt.pmove_model_indices.physents[0] = snapshot_model;
     pm.numphysent = 1;
     pm.usehull = 0;
-    const sv::PmTraceEnv env = make_pm_env( fx );
-    const auto before = sv::pm_player_trace_ext(
+    const phy::PmTraceEnv env = make_pm_env( fx );
+    const auto before = phy::pm_player_trace_ext(
         env, pm, Vec3{ 120, 0, 0 }, Vec3{ -40, 0, 0 }, 0,
         physents_view( fx, pm, 1 ), -1, nullptr );
     REQUIRE( before.fraction < 1.0f );
 
     brush->v.modelindex = 0; // live role state changes after gather
-    const auto after = sv::pm_player_trace_ext(
+    const auto after = phy::pm_player_trace_ext(
         env, pm, Vec3{ 120, 0, 0 }, Vec3{ -40, 0, 0 }, 0,
         physents_view( fx, pm, 1 ), -1, nullptr );
     CHECK( after.fraction == before.fraction );
@@ -894,20 +895,20 @@ static void test_pm_stuck_touch()
     pm.velocity[2] = 3.0f;
 
     abi::pmtrace_t tr{};
-    sv::pm_stuck_touch( pm, 5, &tr );
+    phy::pm_stuck_touch( pm, 5, &tr );
     CHECK_EQ( pm.numtouch, 1 );
     CHECK_EQ( pm.touchindex[0].ent, 5 );
     CHECK( pm.touchindex[0].deltavelocity[0] == 1.0f );
     CHECK( pm.touchindex[0].deltavelocity[2] == 3.0f );
 
-    sv::pm_stuck_touch( pm, 5, &tr ); // dedup: same ent not re-added
+    phy::pm_stuck_touch( pm, 5, &tr ); // dedup: same ent not re-added
     CHECK_EQ( pm.numtouch, 1 );
 
-    sv::pm_stuck_touch( pm, 6, &tr ); // a new ent appends
+    phy::pm_stuck_touch( pm, 6, &tr ); // a new ent appends
     CHECK_EQ( pm.numtouch, 2 );
 
     pm.numtouch = abi::k_max_physents; // at the cap → no append
-    sv::pm_stuck_touch( pm, 7, &tr );
+    phy::pm_stuck_touch( pm, 7, &tr );
     CHECK_EQ( pm.numtouch, abi::k_max_physents );
     CHECK_EQ( g_err_calls, 0 );
 }

@@ -39,7 +39,6 @@ add_library(xash3dpp_server STATIC
     physics/movevars.cpp
     physics/physics.cpp
     physics/pmove.cpp
-    physics/pm_trace.cpp
     physics/init_client_move.cpp
     physics/run_cmd.cpp
     clients/info_string.cpp
@@ -74,6 +73,7 @@ target_link_libraries(xash3dpp_server
                                    #   (pfnGetModelPtr / GetBonePosition /
                                    #    GetAttachment, studio hull provider)
     PRIVATE xash3dpp_core
+    PRIVATE xash3dpp_physics      # Chunk 11 shared PM trace kernel
     PRIVATE xash3dpp_platform      # S6 — dynlib load, time
     # Added as the slices land (see server-boundary.md Dependencies):
     # (networking netchan/master_list usage widens in S9; net_io.cpp bridges

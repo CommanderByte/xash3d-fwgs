@@ -35,7 +35,7 @@
 #include <xash3dpp/private/server/engine_bridge.hpp> // EngineBridge, engine_bridge()
 #include <xash3dpp/private/server/info_string.hpp>   // info_value_for_key
 #include <xash3dpp/private/server/lifecycle.hpp>     // ServerRuntime
-#include <xash3dpp/private/server/pm_trace.hpp>
+#include <xash3dpp/physics/pm_trace.hpp>
 
 #include <cstdarg>
 #include <cstddef> // offsetof
@@ -48,6 +48,7 @@ namespace xash::server {
 namespace abi = ::xash::abi;
 namespace ml  = ::xash::map_loader;
 namespace ut  = ::xash::utilities;
+namespace phy = ::xash::physics;
 using ut::Vec3;
 
 namespace {
@@ -70,7 +71,7 @@ void store_vec( float *p, const Vec3 &v ) noexcept
 // Returns false (callbacks then answer a clear-trace/empty default) until
 // SV_InitClientMove has run and a world is bound.
 [[nodiscard]] bool pm_context( EngineBridge *&bridge, abi::playermove_t *&pm,
-                               PmTraceEnv &env ) noexcept
+                               phy::PmTraceEnv &env ) noexcept
 {
     bridge = engine_bridge();
     if ( bridge == nullptr || bridge->pmove == nullptr ||
@@ -107,12 +108,12 @@ abi::pmtrace_t pfn_player_trace( float *start, float *end, int flags,
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( !pm_context( b, pm, env ) )
         return clear_trace();
-    return pm_player_trace_ext(
+    return phy::pm_player_trace_ext(
         env, *pm, vec_of( start ), vec_of( end ), flags,
-        PmPhysentView {
+        phy::PmPhysentView {
             std::span<abi::physent_t>( pm->physents,
                                        static_cast<std::size_t>( pm->numphysent )),
             std::span<const int>( env.model_indices->physents.data(),
@@ -125,12 +126,12 @@ abi::pmtrace_t pfn_player_trace_ex( float *start, float *end, int flags,
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( !pm_context( b, pm, env ) )
         return clear_trace();
-    return pm_player_trace_ext(
+    return phy::pm_player_trace_ext(
         env, *pm, vec_of( start ), vec_of( end ), flags,
-        PmPhysentView {
+        phy::PmPhysentView {
             std::span<abi::physent_t>( pm->physents,
                                        static_cast<std::size_t>( pm->numphysent )),
             std::span<const int>( env.model_indices->physents.data(),
@@ -142,10 +143,10 @@ int pfn_test_player_position( float *pos, abi::pmtrace_t *ptrace )
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( !pm_context( b, pm, env ) )
         return -1;
-    return pm_test_player_position( env, *pm, vec_of( pos ), ptrace, nullptr );
+    return phy::pm_test_player_position( env, *pm, vec_of( pos ), ptrace, nullptr );
 }
 
 int pfn_test_player_position_ex( float *pos, abi::pmtrace_t *ptrace,
@@ -153,10 +154,10 @@ int pfn_test_player_position_ex( float *pos, abi::pmtrace_t *ptrace,
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( !pm_context( b, pm, env ) )
         return -1;
-    return pm_test_player_position( env, *pm, vec_of( pos ), ptrace, filter );
+    return phy::pm_test_player_position( env, *pm, vec_of( pos ), ptrace, filter );
 }
 
 abi::pmtrace_t *pfn_trace_line( float *start, float *end, int flags, int usehull,
@@ -166,9 +167,9 @@ abi::pmtrace_t *pfn_trace_line( float *start, float *end, int flags, int usehull
     static abi::pmtrace_t tr;
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     tr = pm_context( b, pm, env )
-             ? pm_trace_line( env, *pm, vec_of( start ), vec_of( end ), flags,
+             ? phy::pm_trace_line( env, *pm, vec_of( start ), vec_of( end ), flags,
                               usehull, ignore_pe )
              : clear_trace();
     return &tr;
@@ -181,9 +182,9 @@ abi::pmtrace_t *pfn_trace_line_ex( float *start, float *end, int flags,
     static abi::pmtrace_t tr;
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     tr = pm_context( b, pm, env )
-             ? pm_trace_line_ex( env, *pm, vec_of( start ), vec_of( end ), flags,
+             ? phy::pm_trace_line_ex( env, *pm, vec_of( start ), vec_of( end ), flags,
                                  usehull, filter )
              : clear_trace();
     return &tr;
@@ -194,7 +195,7 @@ float pfn_trace_model( abi::physent_t *pe, float *start, float *end,
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     abi::pmtrace_t result = clear_trace();
     if ( pm_context( b, pm, env ) && pe != nullptr && b->arena != nullptr &&
          pe->info >= 0 )
@@ -202,7 +203,7 @@ float pfn_trace_model( abi::physent_t *pe, float *start, float *end,
         const abi::edict_t *ed =
             b->arena->edict_num( static_cast<std::size_t>( pe->info ));
         if ( ed != nullptr )
-            result = pm_trace_model( env, *pm, pe, ed->v.modelindex,
+            result = phy::pm_trace_model( env, *pm, pe, ed->v.modelindex,
                                      vec_of( start ), vec_of( end ));
     }
     // Fill ONLY the shared trace_t/pmtrace_t prefix (allsolid..plane) — the
@@ -223,29 +224,29 @@ int pfn_point_contents( float *p, int *truecontents )
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( !pm_context( b, pm, env ) )
         return ml::k_contents_none;
-    return pm_point_contents_pmove( env, *pm, vec_of( p ), truecontents );
+    return phy::pm_point_contents_pmove( env, *pm, vec_of( p ), truecontents );
 }
 
 int pfn_true_point_contents( float *p )
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( !pm_context( b, pm, env ) )
         return ml::k_contents_empty;
-    return pm_true_point_contents( env, *pm, vec_of( p ) );
+    return phy::pm_true_point_contents( env, *pm, vec_of( p ) );
 }
 
 void pfn_stuck_touch( int hitent, abi::pmtrace_t *tr )
 {
     EngineBridge     *b = nullptr;
     abi::playermove_t *pm = nullptr;
-    PmTraceEnv        env;
+    phy::PmTraceEnv   env;
     if ( pm_context( b, pm, env ) )
-        pm_stuck_touch( *pm, hitent, tr );
+        phy::pm_stuck_touch( *pm, hitent, tr );
 }
 
 // ---------------------------------------------------------------------------
