@@ -100,6 +100,7 @@ P-3 exception class for no gain.
 | 36 | D/S9.4 | VOX: 45/47 confirmed (all 4 legacy embedded tests ported verbatim; stereo trim stride + FreeWord zeroing quirks pinned); 2 hardening deviations were in-code-only | parity gate | 2 DEVIATIONS (1 legal-input: the trailing-whitespace degenerate entry; 1 UB-only: negative-overflow handle) | sanctioned in the sound-boundary deviations section (document-not-reproduce adjudication) |
 | 37 | D/S9.5 | DSP: 60/61 confirmed (both 30-row preset tables, four passes incl. the rgsxlp FIFO self-overwrite, SND-OQ-6 sentinel row proven); 1 divergence — `dsp_coeff_table` stored as `int`, but legacy coerces the cvar TWO ways: `switch((int)value)` for the table pointer (s_dsp.c:787) vs exact-float `== 1.0f` for the reverb gain (s_dsp.c:703), so fractional 1.5 gets alpha table + release gain | parity gate | DIVERGENCE | FIXED pre-commit (orchestrator): field stored as float, both coercions kept distinct at their legacy sites; fractional-1.5 asymmetry pinned on BOTH sides (gain in the reverb test, table selection in the mono-delay test) |
 | 38 | D/S9.6 | Entry surface: 46/57 confirmed (constants byte-for-byte, all 25 cvars + 13 commands name/default/flag-exact incl. the play2-never-removed leak, S_StartSound operation order + every field write, pick/alter steal quirks, pan law float-exact). Findings: F-1 sentence steal-order DIVERGENCE (time_left skipped lookahead resolution, under-reporting vs legacy's forced S_LoadSound s_main.c:311-313 → wrong eviction in saturated scenes); F-2 sqrtf-vs-double-sqrt distance MINOR; F-3 per-term-truncating accumulation MINOR; F-11 dsp_profile restricted command missing; F-4 always-lazy register + hardening/scope items | parity gate (60/61-style line audit) + reviewer gate (SHIP, 1 bounds-assert warning) | 1 DIVERGENCE + 2 MINOR + 1 gap | F-1/F-2/F-3/F-11 ALL FIXED pre-commit (orchestrator): time_left force-resolves with load_word bookkeeping + legacy float compound-assign shape (both pinned by new tests incl. the -1+0.7f→0 discriminator), spatialize distance through double-sqrt (VectorLength shape), dsp_profile registered FCMD_PRIVILEGED wired to RoomDsp::profile; F-4/#5 sanctioned in sound-boundary entry-surface deviations; F-5/F-7/F-9/F-10 recorded deferred-with-owner; reviewer bounds assert added |
+| 39 | D/S9.7a | Core queue family (`MpscQueue<T,Cap,Reserve>` Vyukov ticket queue + `SpscRing<T,Cap>`): adversarial concurrency review re-derived every atomic access on a weak (ARM) model and REFUTED-the-code on all four attack vectors it was asked to break (producer publish, slot-reuse free/overwrite, relaxed dequeue gate, SPSC wrap-vs-publish). Findings were edge-hardening: F1 logical over-admission at the 32-bit `size_t` counter wrap (physical overwrite never possible), F2 signed-overflow UB in the Vyukov generation diff, F3 occupancy accessors can underflow to a wrapped-huge value under concurrent sampling, F4 a false "2^64 unreachable" comment on 32-bit, F8 missing `Threads::Threads` (breaks the GCC/Clang target, invisible on MSVC) | adversarial reviewer (opus, refute posture) | SHIP + 4 MINOR/NIT + 1 portability | ALL FIXED pre-commit (orchestrator): counters widened to explicit `uint64_t` (kills F1/F4 on every target) with an `is_always_lock_free` static_assert; diff subtracts unsigned then casts once (F2); occupancy samples the TRAILING counter first and clamps (F3); `find_package(Threads)` + `Threads::Threads` on both core tests (F8). F5 (counter-wrap regime untestable through the public API) and F6 (x86-TSO cannot discriminate a dropped release/acquire — green x86 is NOT ordering proof) recorded as in-file caveats; TSan/ARM side-lane remains the deferred item |
 
 *(Ledger continues at each phase; C/D/E gate-agent findings append here.)*
 
@@ -114,8 +115,14 @@ P-3 exception class for no gain.
   (`XASH3DPP_LEGACY_SAVE_DIR`): regenerating fixtures by scripting the
   legacy engine build is recorded as deferred unless tier-2 proves
   insufficient (testing strategy, plan).
-- clang/TSan side-lane over `core::MpscQueue`/`SpscRing`: developer-run,
-  recorded taken-or-declined at S9.7a.
+- clang/TSan side-lane over `core::MpscQueue`/`SpscRing`: **DECLINED for
+  now, with reason** (S9.7a) — the toolchain here is MSVC-only, and the
+  adversarial review established that x86-TSO cannot discriminate a
+  dropped release/acquire in the first place, so a green local run would
+  be false assurance either way. The ordering argument rests on the
+  review's independent weak-model re-derivation (all four vectors
+  REFUTED-the-code) plus the in-header justification table. Owner: run
+  under clang/TSan or on ARM hardware when either becomes available.
 - Reserved sfx slot 0 (`*default`): legacy reserves `s_knownSfx[0]` as an
   always-valid silence sfx so real handles start at 1 (s_load.c:361-366);
   the S9.6 registry starts real handles at 0. Self-consistent today
