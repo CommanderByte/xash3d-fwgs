@@ -259,6 +259,41 @@ ______________________________________________________________________
 **ABI surfaces touched**: `pm_shared/` — **FROZEN** (shared client ↔ server)\
 **Deliverable**: `PM_Move` runs identically on both paths; determinism regression test passes
 
+**Entry gate** *(modernization audit 2026-07-20)*:
+
+1. **Write the boundary spec.** This entry already says "full boundary spec
+   needed at chunk start" and none exists — `physics` is one of six 0-TU
+   skeletons with no spec, which is why `q21_scan`'s 16/16 is silence rather
+   than health.
+2. **Correct the HB-2 fence anchor first.** `decisions-architecture.md:946-954`
+   names `clip.cpp:211` for the rotated-brush ULP kernel; the real anchor is
+   the `if (rotated)` block at **`clip.cpp:237-273`** (marked `TODO(Q-18)`
+   in-code). Chunk 11's parity work runs directly through it, so fix the anchor
+   before, not after.
+3. **Reuse one shared RNG instance — do not copy the placeholder a third
+   time.** Legacy wires the *literal same* `COM_RandomLong`/`COM_RandomFloat`
+   pointer into both the engfuncs slot and the pmove slot on both paths,
+   drawing from one process-wide generator; there is **no such thing as
+   "independent streams"** in GoldSrc. The tree currently has **three**
+   separately-seeded, algorithmically-different stand-ins (HB-12's own
+   inventory lists only two — the third is in `sound/dsp.cpp`).
+4. **Decide explicitly whether narrowing the `ServerRuntime &` corridor in
+   `src/server/physics/` is in or out of scope.** Narrowing signatures and
+   porting parity math in the same wave is the collision to avoid. Either
+   answer is fine; no answer is not.
+5. **State where the consolidated world/physics micro-predicates live** before
+   any new physics TU is written, or the duplication regrows: 16 definitions
+   under 4 competing names today, 3 of which gate the fenced block.
+6. The four `switch(movetype)` sites are **parity-shaped by choice** and are
+   the slot the deferred `physFuncs` override hooks fit into. Explicitly **not**
+   to be table-ified — this was proposed once and correctly refused.
+7. Record the already-ratified threading contract (single global `pmove_t`,
+   players sequential, no new global physics state). Transcription, not a
+   decision.
+8. Note that `src/physics/` is an **empty placeholder** — the `pm_shared` work
+   lives in `src/server/physics/`. Same for `src/world/`. Two of the six
+   skeleton directories are factually misleading about what is unbuilt.
+
 ______________________________________________________________________
 
 ### Chunk 12 — client
@@ -267,9 +302,42 @@ ______________________________________________________________________
 **Depends on**: all server-path chunks + sound (Chunk 9) + input (Chunk 10)\
 **Recon/Boundary**: none yet (broad survey only: `legacy-survey/engine-client.md`) — run `/analyse-subsystem client` before scaffold\
 **Legacy reference**: `engine/client/cl_main.c`, `cl_frame.c`, `parse/cl_parse.c`, `dll_int/cl_game.c`, `dll_int/cl_gameui.c`\
-**Complexity note**: Client DLL bridge (`cdll_int.h` / `cdll_exp.h`) plus prediction wiring are the largest surfaces; scope to connect → parse → predict → render-one-frame; defer VGUI/UI to Chunk 13. The thread-model decision (whether network I/O or rendering run off-main) must be made before this chunk starts.\
+**Complexity note**: Client DLL bridge (`cdll_int.h` / `cdll_exp.h`) plus prediction wiring are the largest surfaces; scope to connect → parse → predict → render-one-frame; defer VGUI/UI to Chunk 13.\
 **ABI surfaces touched**: `engine/cdll_int.h`, `engine/cdll_exp.h` — **FROZEN Client DLL ABI**\
 **Deliverable**: Client connects to local server, loads HL `cl_dlls/client.dll`, parses one SVC_PRINT frame; Chunk 12a scope only — rendering deferred to Chunk 13
+
+**Entry gate** *(modernization audit 2026-07-20; packet:
+`design/thread-model-decision-packet.md`)*:
+
+1. **Thread model — NETWORK I/O ONLY.** The former wording bundled "network
+   I/O **or rendering**", which cannot be discharged here: `threading-model.md`
+   §3.6 already assigns the render thread to **Chunk 13**, Q-6 makes the spawn
+   a function of the backend's declared `wants_render_thread`, and Q-10 scopes
+   the backend choice to "before Chunk 13". The render half now lives in Chunk
+   13's entry gate. The NetIO half closes **by citation**: §3.5 states verbatim
+   *"Chunks 8/10/11/12 — Model B unchanged. No new threads."* and §3.7 defers
+   `T_NetIO` to §7.4's two triggers, **both unfired**. Record the decision or
+   cite the default. Scope if it is ever taken: **22 waivers, all in
+   networking**, and the cut line is **transport-vs-delta**, not
+   subsystem-vs-subsystem.
+2. **This chunk's obligations are NOT in `src/client/`** — they are spread
+   across **nine** existing subsystems (server, save, sound, input, platform,
+   cmd_cvar, networking, abi, host). A `/plan-implementation client` run scoped
+   to the client directory finds almost none of them.
+3. **Fix the launcher's null-dependency bypass in the same wave** as the
+   sound/input link edges. `launcher/main.cpp:90` is
+   `xash::Host host; return host.Main(args);`, and `Host::Main` builds init
+   params with "dep pointers intentionally left null (standalone path)" — the
+   fully-wired path is exercised by one test file, not the shipped binary.
+   Adding CMake link edges on top of that yields a graph-only wiring.
+4. **Ratify cvar storage ownership before wiring the client DLL's cvar
+   surface**, or a *third* cvar registry gets written — a game DLL currently
+   cannot read a single engine cvar.
+5. When client work first opens the delta pipeline, execute the `snapshot_*` →
+   `delta_frame_*` rename (**identifiers only** — field widths, ordering and
+   codec arithmetic are HB-2 fenced).
+6. Server must implement `ITrustOracle`; it is `nullptr` in every production
+   path today, so the `stuffcmd` trust gate is permanently disabled.
 
 ______________________________________________________________________
 
@@ -282,6 +350,43 @@ ______________________________________________________________________
 **Complexity note**: The renderer ABI is fully internal — `ref_api.h` can be replaced with any shape — but GoldSrc visual output (BSP lightmaps, studio model rendering, water warp) must match. **Vulkan vs. GL vs. multi-backend decision needed before this chunk starts.**\
 **ABI surfaces touched**: none frozen — internal\
 **Deliverable**: GL stub renders world geometry of a HL map; null renderer passes through client frame loop
+
+**Entry gate** *(modernization audit 2026-07-20; packet:
+`design/renderer-backend-decision-packet.md`)*:
+
+1. **The backend decision lives here, and so does the render-thread
+   decision** — Q-6 already makes the `T_Render` spawn a function of the
+   backend's declared `RendererCaps::wants_render_thread` (false for GL, true
+   for Vulkan), and Q-10 already scopes backend policy to "before Chunk 13".
+   The Chunk-12 entry previously claimed the render half; that is corrected.
+2. **imagelib is this chunk's supplier and has NO in-tree consumer at all** —
+   `decode()` and all four save paths have zero production callers, so its
+   **compressed-format passthrough contract has never been exercised**.
+   Validate it against the chosen backend's real format support. This is a
+   forward obligation, **not dead code**.
+3. **Wire `ImageDecoder` into `content::InitParams`** and add the
+   content→imagelib link. The marker is **stale-tagged `TODO(Chunk 7)`** in
+   `src/content/CMakeLists.txt` though this chunk owns it — a stale tag is
+   worse than an untagged TODO, because it hides behind a discharged chunk
+   number and is filtered out by any gate scoped to open chunks.
+4. **Land imagelib's key-column dispatch conversion BEFORE linking it here.**
+   Today the blast radius is 9 sites inside one target with test-only linkage;
+   once the renderer is a second caller it only grows.
+5. **The backend selector is the first new dispatch site built after this
+   audit.** It must be born as a keyed `constexpr` table compared once with
+   `ci_equal` — not a per-backend `handles()` virtual, not a function-local
+   pointer array — or it becomes the fifth incompatible shape.
+6. Become the production implementer of `content::IModelPostProcess`; do
+   **not** add a second post-load hook.
+7. **If `T_Render` is adopted**: the cmd_cvar retrofit (all four parts, not
+   just a mutex) and the 8 plain/mixed stats structs become hard
+   preconditions, and HB-5 must be **built** rather than briefed. Sequence
+   them ahead of renderer work, not alongside it.
+8. `RenderFrame` is HB-5's cited P-2 reference implementation and is **zero
+   code**. Either build it to the shape already specified in
+   `threading-model.md` §6.3, or stop citing it as a reference.
+9. **Conditional on the backend naming mobile a primary target**: imagelib's
+   `PixelFormat` set has **no ETC2/ASTC entries**. Do not add speculatively.
 
 ______________________________________________________________________
 
@@ -589,14 +694,22 @@ ______________________________________________________________________
   Chunk 7 hook. **Needs design brief** (cross-subsystem: core/platform/host).
 
 - **HB-5 — One shared P-2 published-snapshot idiom** *(DOOR, P-2)* —
-  map_loader's immutable `WorldData` is the zero-machinery reference Safe-RO
-  surface; content's model cache needs a snapshot swap; server needs
-  snapshot publication for G-1/G-3; networking already publishes counters
-  (not state). Define one snapshot/double-buffer idiom the others adopt.
-  *Docs*: `boundaries/{map_loader,content,server,networking}-boundary.md`.
-  *Tags*: P-2, G-1/G-3; Chunk 13 `RenderFrame` is the reference
-  implementation per `extension-goals.md` §4. **Needs design brief**
-  (cross-subsystem, defines a shared contract).
+  ✅ **BRIEF DELIVERED 2026-07-20** (`design/published-snapshot-brief.md`,
+  modernization audit lens L1). **Analysis half DISCHARGED; primitive half
+  GATED on the Chunk-12 thread-model decision** — it is no longer an open
+  build item. Verdict: **no shared primitive is warranted today.** The tree
+  has exactly ONE cross-thread structured publisher (sound's channel
+  handshake) and it has zero production consumers; there are two production
+  thread spawns tree-wide, both in `src/sound/topology.cpp`.
+  **Three of this entry's own former references were wrong** and are
+  corrected in the brief: map_loader's `WorldData` swap is Main-only (its own
+  sentence says so — a finding claiming otherwise was refuted); server's
+  `snapshot_*` family is the **wire entity-delta pipeline**, not P-2, and two
+  packs mis-read it as evidence *because of this entry's wording*; and Chunk
+  13's `RenderFrame` "reference implementation" is **zero code**. What ships
+  instead is a three-term vocabulary rule (`publish` / `snapshot` /
+  `delta_frame`) plus eight shape constraints binding on whoever eventually
+  builds it. *Tags*: P-2, G-1/G-3.
 
 - **HB-6 — Name the "one introspection layer" (P-4) channels** *(DOOR, P-4)* —
   core is the substrate (logs, `Clock::stats`, `error_code_name`); memory
@@ -605,7 +718,20 @@ ______________________________________________________________________
   Enumerate them as a single typed introspection layer (feeds G-1/G-3/G-4)
   so no frontend grows a private backdoor (the P-4 door rule). *Docs*:
   `boundaries/core-boundary.md` + each subsystem boundary. *Tags*: P-4,
-  G-1/G-3/G-4. **Needs design brief** (cross-subsystem surface definition).
+  G-1/G-3/G-4.
+  ✅ **BRIEF DELIVERED 2026-07-20** (`design/introspection-channels-brief.md`,
+  lens L3). **Has a buildable first slice with an in-tree consumer**: the
+  `diagnostics_dump` aggregator, overdue since `debug-stats-design.md` §6.4's
+  ≥3-stats-structs trigger (the tree has 14). Two corrections this entry
+  needs: (a) **`EntityView` is NOT a channel** — it is a private-header,
+  zero-cost Q-20 accessor over a *live* edict, unreachable from any frontend
+  and not a snapshot; (b) §6.2's positional `diagnostics_dump(CmdCvarContext &,
+  MemorySubsystem &, ...)` is **unbuildable**, not merely unscalable — `host`
+  does not link sound/input/content/imagelib, so it forces four new link edges
+  into the composition root for a debug command, while a channel-span form
+  forces zero. The brief also finds the real G-3 blocker is not "9 plain
+  structs" but **6 accessors returning a live reference into plain memory**,
+  three of which are deletable outright.
 
 - **HB-7 — Shared aligned-allocation door** *(DOOR, P-7/G-5)* — memory H-1
   (lift the `alignof(T) ≤ 8` ceiling on `pool_new`) simultaneously serves
@@ -614,8 +740,23 @@ ______________________________________________________________________
   all three in one brief rather than solving H-1 in isolation. *Docs*:
   `modernization-opportunities/memory-modernization.md`,
   `boundaries/memory-boundary.md`. *Tags*: P-7, G-5, Q-2; Arena-time.
-  **Needs design brief** (touches the allocation seam feeding G-5 + ABI-shaped
-  `IAllocatorBackend`).
+  ✅ **BRIEF DELIVERED 2026-07-20** (`design/allocation-seam-brief.md`, lens
+  L6). **STAYS OPEN AND UN-BUILT — and the brief corrects this entry's own
+  premise.** The alignment lift is **not** a G-5 precondition: all three
+  shortlisted runtimes bridge to `mem_alloc`/`mem_free` today at ≤8-byte
+  alignment. AngelScript's gap is **per-VM attribution** (a global,
+  context-less hook needing a TLS-routing shim), not alignment — so HB-7 must
+  not sit on the critical path of the G-5 runtime pick or its spike. A
+  Phase-1 finding proposing the lift as *work* was refuted by the
+  gold-plating critic (self-declared speculative consumer; all 11 `pool_new`
+  sites are under-aligned). The brief records the **additive two-path shape**
+  — never grow the shared 8-byte `AllocHeader`; add
+  `mem_alloc_aligned`/`mem_free_aligned` as a paired path, because
+  `mem_free`'s fixed `ptr - 1` cannot disambiguate — and names **HB-5's
+  cacheline-padded double buffer** as a more concrete future requirer than
+  G-5. Separately: the one real allocation defect found is **adoption, not
+  shape** — content, imagelib and map_loader each create and destroy a pool
+  with zero allocations routed through it.
 
 ### Housekeeping (bounded, no brief)
 
