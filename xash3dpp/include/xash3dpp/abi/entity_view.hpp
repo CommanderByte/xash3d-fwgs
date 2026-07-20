@@ -171,11 +171,17 @@ private:
 
 } // namespace xash::abi
 
-// --- transitional compat shims (removed once server/world migrate) ----------
-// Pre-cleanup, EntityView + the Vec3 helpers lived in xash::server and the
-// server/world TUs spell them unqualified. These re-exports keep those callers
-// compiling while they are migrated to ut::/abi:: spellings; delete this block
-// when the migration is complete.
+// --- server-vocabulary aliases (deliberate, not transitional) ---------------
+// EntityView and the Vec3 helpers are the server subsystem's core entity/vector
+// vocabulary, spelled unqualified across ~20 server TUs. Their canonical homes
+// are xash::abi (EntityView) and xash::utilities (Vec3 + helpers) — that is
+// where they are DEFINED and what the world layer and any future client use.
+// These are namespace-alias re-exports for the server's convenience only; they
+// create NO dependency (this header pulls in nothing from xash::server) and no
+// coupling, so the abi/utilities homes stay authoritative. World was migrated
+// off them (2026-07-20) and qualifies ut::/abi:: directly; the equivalent
+// server migration is deferred as low-value churn (much of it, e.g.
+// physics.cpp, is rewritten in Chunk 11).
 namespace xash::server {
 using ::xash::abi::EntityView;
 using ::xash::utilities::store_vec3;
