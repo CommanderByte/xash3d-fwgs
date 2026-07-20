@@ -1,5 +1,17 @@
 # Save Boundary Spec (Chunk 8)
 
+> **Refreshed 2026-07-20 (as-built).** Chunk 8 is **Complete** — save/load/
+> changelevel round-trip live end-to-end, gated by a REAL retail 32-bit
+> `hl.dll` save→load witness on `c0a0` (`tests/server/lifecycle/
+> test_hl_smoke.cpp`, S8.7 milestone). `status_table.py` reports **13 TUs**
+> in `src/save/`, tests ✅. The four primitives (`SaveGameState`/
+> `LoadGameState`/`LoadAdjacentEnts`/`ClearSaveDir`) + `SV_GetSaveComment`
+> ship behind `ILevelChangeExecutor`, exactly as scoped below. The
+> pre-implementation spec is retained verbatim as the design record; this
+> banner, the **Open questions** status lines, and a Quirks addendum below
+> reconcile it against the shipped tree. Nothing in the original spec is
+> deleted; superseded items are marked inline.
+
 > Draft assembled 2026-07-19 from A1 recon fragments V8.1 (seam
 > re-verification), V8.2 (byte-level format recon), V8.3 (xash3dpp seam
 > inventory) against `engine/server/sv_save.c` (2,492/2,493 lines, HEAD
@@ -175,6 +187,27 @@ The four primitives + `SV_GetSaveComment` sit **behind**
   from the edict arena before invoking `pfnSave` (both FENTTABLE_PLAYER
   tagging and validity screening depend on it); `EntityTable::init()`
   leaves `pent` null, matching the read side.
+- **S8.7 ABI-window projection quirk** (as-built, sv_save.c:1667-1668/
+  1851-1852, `server/lifecycle/save_bridge.cpp` `dispatch_restore`): the
+  per-entity `SAVERESTOREDATA` window handed to `pfnRestore` preserves the
+  legacy convention exactly — `pBaseData` is the WHOLE data-region base
+  (constant across the restore loop), `pCurrentData = pBaseData +
+  row.location`, `size` is a write-cursor quirk set to `row.location` (**not**
+  the entity's byte length), and `bufferSize` is the region-wide capacity
+  (also constant, not the single entity's window size). The bridge recovers
+  `pBaseData` by subtracting `row.location` off the loader's
+  already-bounds-checked `entity_data` window, then re-validates the
+  recovered window against the owning `SaveBuffer`'s region before handing it
+  to the DLL — reject-gracefully on a mismatch, not a legacy behaviour.
+- **S8.7 `szCurrentMapName` sink threading** (as-built, eiface.h:345):
+  populated on every restore call from a per-connection current-map string —
+  the `LoadGameState` path's own level on a full restore, but the
+  **ADJACENT** level's name (not the departing level's) during a landmark
+  transition, per the `LoadAdjacentEnts` :1941-1965 trace. A 2026-07-19
+  watchdog gate caught this field never being populated on any restore path
+  (BLOCKER) plus a window-convention drift (WARNING) pre-commit; both fixed
+  before S8.7 landed — ledger entry 27 of
+  `docs/audits/2026-07-chunk8-10-campaign.md`.
 
 ### Format-level quirks (compat-relevant)
 
@@ -331,6 +364,14 @@ retrofitting later (cf. the networking source-folder-layout "lesson
 learned" precedent). The side-block *content* design does not block
 scaffolding.
 
+**Status (as-built, 2026-07-20)**: ✅ shipped skip-logic-only, exactly as
+scoped — the `.HLX` reserved namespace + self-describing
+`HlxSideBlockHeader` (magic/version/size) + the foreign-block round-trip
+test (`tests/save/test_sav_container.cpp` `test_hlx_door`) landed at S8.5
+(`912534df`). No producer ships (door-keep, as decided); the
+extension-tolerance property is proven by the test, not exercised by any
+real save.
+
 ### SAV-OQ-2 — IFieldSink adoption
 
 **Question**: does the rewrite introduce an `IFieldSink`-shaped seam for the
@@ -357,6 +398,14 @@ the game-DLL's field-value encoding.
 one); the debug-dump/MCP *consumer* is not blocking (door-keep, no consumer
 scheduled per extension-goals §6).
 
+**Status (as-built, 2026-07-20)**: ✅ landed — the writer split behind
+`IFieldSink` (S8.1, `e38aa558`) and the load path structured as pure parse
+helpers (`next_field_record`/`read_descriptor_block`, S8.1-S8.4) shipped
+across the whole codec; `SV_GetSaveComment`'s standalone hand-parse
+(`save_comment.hpp`, S8.5 `912534df`) independently reuses the same parse
+helpers with no game-DLL dependency, confirming the seam works as
+specified. The debug-dump/MCP consumer remains door-keep only, unbuilt.
+
 ### SAV-OQ-3 — FIELD_FUNCTION reverse symbol lookup (platform capability)
 
 **Question**: `COM_FunctionFromName_SR` (symbol→ordinal) and
@@ -382,6 +431,12 @@ resolution; only the Chunk 8 body implementing `FIELD_FUNCTION` support
 needs the platform-vs-save ownership question settled, and it can be
 decided after scaffolding once `platform/`'s dynlib surface is checked for
 an existing reverse-lookup primitive.
+
+**Status (as-built, 2026-07-20)**: ✅ landed — the platform reverse-symbol
+primitive (`name_for_symbol`/`enumerate_exports`, platform spike
+`cce2ac5b`) plus save's `FIELD_FUNCTION` glue (the `TYPEDESCRIPTION` walk +
+per-DLL ordinal cache, S8.7 `90455c98`/`d3cc4d1e`) both shipped, exactly per
+the platform/save split recommended above.
 
 ## Uncertainties (carried from A1 fragments, not resolved by assembly)
 

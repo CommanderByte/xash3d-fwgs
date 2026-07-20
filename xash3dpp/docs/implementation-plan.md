@@ -1,6 +1,6 @@
 # xash3dpp — Implementation Status and Work Plan
 
-*Generated: 2026-05-15 — Updated: 2026-07-06*
+*Generated: 2026-05-15 — Updated: 2026-07-20*
 
 > Status-table labels: **Complete / Partial / Skeleton** (structural, as
 > reported by `xash3dpp/tools/status_table.py --check`); chunk headings use
@@ -34,7 +34,7 @@ ______________________________________________________________________
 | input | 0 | ✗ | ✗ | **Skeleton** |
 | physics | 0 | ✗ | ✗ | **Skeleton** |
 | renderer | 0 | ✗ | ✗ | **Skeleton** |
-| save | 0 | ✗ | ✗ | **Skeleton** |
+| save | 13 | ✓ | ✓ | **Complete** (Chunk 8 — save/restore ACHIEVED 2026-07-20: `.sav`/`.HL1-3` codec + save-directory + `SV_GetSaveComment` + landmark-transition machinery, wired behind `ILevelChangeExecutor`; real-`hl.dll` save→load round trip on `c0a0` witnessed; SAV-OQ-1/2/3 landed) |
 | sound | 0 | ✗ | ✗ | **Skeleton** |
 | ui | 0 | ✗ | ✗ | **Skeleton** |
 | world | 0 | ✗ | ✗ | **Skeleton** |
@@ -210,15 +210,17 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### Chunk 8 — save/restore
+### Chunk 8 — save/restore ✅ DONE *(save/load/changelevel live 2026-07-20; real-hl.dll round-trip witness)*
 
 **Subsystems**: `save`\
 **Depends on**: server (Chunk 6), filesystem, map_loader\
-**Recon/Boundary**: partial — `legacy-survey/deep-dive-server-save-boundary.md` maps the server↔save seam (Chunk 6 keeps the `SV_ChangeLevel` orchestration + `pSaveData`/`svc_restore` seams and stubs the four save primitives `SaveGameState`/`LoadGameState`/`LoadAdjacentEnts`/`ClearSaveDir`; Chunk 8 owns serialization only, per `server-boundary.md` satellites). Format-internals recon still needed at Chunk 8 start.\
+**Recon/Boundary**: `boundaries/save-boundary.md` (refreshed 2026-07-20, as-built) + `legacy-survey/deep-dive-server-save-boundary.md` (format-internals recon, format tag 0x71 append). Server keeps the `SV_ChangeLevel` orchestration + `pSaveData`/`svc_restore` seams behind `ILevelChangeExecutor`; Chunk 8 owns serialization + the four save primitives.\
 **Legacy reference**: `engine/server/sv_save.c` (format tag 0x71, ~2 500 lines)\
 **Complexity note**: Binary format assumes exact `entvars_t` field ordering — any field added to server edict layout must be mirrored here; the field-map serialiser is fiddly but well-bounded.\
 **ABI surfaces touched**: none frozen externally, but save files from the legacy engine must remain loadable.\
-**Deliverable**: Round-trip save/load of a minimal game state; reject-gracefully on version mismatch
+**Deliverable**: **achieved** — round-trip save/load of a minimal game state, reject-gracefully on version mismatch/corrupt input, verified end-to-end against a REAL retail 32-bit `hl.dll` (save→load on `c0a0`, `tests/server/lifecycle/test_hl_smoke.cpp`).\
+**What shipped**: the four primitives (`SaveGameState`/`LoadGameState`/`LoadAdjacentEnts`/`ClearSaveDir`) + `SV_GetSaveComment` landed behind `ILevelChangeExecutor` (`server/lifecycle/save_bridge.cpp`'s `exec_load_game`/`exec_change_level`) — the `.sav` container + `.HL1` (level state) + `.HL2` (client state) + `.HL3` (entity patch) codec, the token-table/field-record framing (`IFieldSink`, SAV-OQ-2), the `.HLX` extension door (SAV-OQ-1, skip-logic only, no producer), save-directory management (aging, comments, latest-save lookup), the landmark-transition machinery (`LoadAdjacentEnts`/`CreateEntityTransitionList`, global-entity merge, `EntityInSolid` pruning), and the `FIELD_FUNCTION` symbol↔ordinal glue over the platform reverse-lookup primitive (SAV-OQ-3). 13 session slices (S8.1-S8.8); 8 legacy-parity gate cycles caught 12 divergences + 1 blocker pre-commit (ledger `docs/audits/2026-07-chunk8-10-campaign.md`).\
+**Deferred (recorded, tagged `chunk11`/`chunk12`)**: the physint veto/override hooks (`SV_AllowSaveGame`, `pfnCreateEntitiesInRestoreList` — no physics-interface negotiation exists before Chunk 11); the `pfnSaveGlobalState`/`pfnRestoreGlobalState` global-state blob producer (container_codec.hpp's `ISaveGlobalState` seam exists, wired to `nullptr` — no game DLL exports it here, Chunk 11); the `saveshot` client-side preview-image hook (`Cbuf_AddTextf("saveshot ...")`, client-renderer-owned, Chunk 12); `SV_InactivateClients`/`SV_FinalMessage` changelevel teardown steps (client-machinery, S9/Chunk 12); the global-merge repoint target (`SV_FindGlobalEntity`'s global-entity registry, Chunk 12); and the dead-player/intermission save-veto gate (`IsValidSave`'s live-player dead/health screening, client-connection-owned, Chunk 12).
 
 ______________________________________________________________________
 

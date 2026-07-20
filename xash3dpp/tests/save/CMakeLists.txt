@@ -19,3 +19,9 @@ xash3dpp_add_test(test_sav_container LIBS xash3dpp_save xash3dpp_filesystem)
 # xash3dpp — save tests (Chunk 8, slice S8.6: landmark-transition machinery
 # — LoadAdjacentEnts + CreateEntityTransitionList + EntityInSolid + decal hook)
 xash3dpp_add_test(test_adjacent_transfer LIBS xash3dpp_save)
+
+# xash3dpp — save tests (Chunk 8, slice S8.8: fixture tiers)
+# env-gated real-retail-save loader (XASH3DPP_LEGACY_SAVE_DIR; SKIP-green when unset/empty)
+xash3dpp_add_test(test_legacy_fixtures LIBS xash3dpp_save xash3dpp_filesystem)
+# x64/x86 byte-identity harness (hex-pinned MD5 golden over a canonical fixture save)
+xash3dpp_add_test(test_byte_identity LIBS xash3dpp_save)
