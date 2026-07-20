@@ -132,7 +132,7 @@ ______________________________________________________________________
   hits. Neither client nor server attaches an observer. Server already gets
   equivalent load-begin/load-end visibility through
   `ILevelChangeExecutor`'s return values (the seam it does implement,
-  `server.hpp:98`), which may be why the "server observes" half of the
+  `server.hpp:103`), which may be why the "server observes" half of the
   original design was never wired. Separately, and this is the more
   consequential half: `docs/boundaries/server-boundary.md:153` lists an
   "IMapLoaderObserver impl — map_loader FSM" row in Server's Interface
@@ -307,7 +307,7 @@ doc-hygiene in `map_loader-threading.md`, none a code change.
 
 - **File(s)**: `xash3dpp/include/xash3dpp/map_loader/map_loader.hpp:73`
   (`exec_load_game`), `:76` (`exec_change_level`); cross-reference
-  `xash3dpp/src/server/server.cpp:171-186` where Server (the sole production
+  `xash3dpp/src/server/server.cpp:173-188` where Server (the sole production
   `ILevelChangeExecutor` implementer) already delegates both to
   `save_exec_load_game`/`save_exec_change_level` in `save_bridge.cpp`.
 - **Current pattern**: The interface doc comments still read "(Chunk 8 save

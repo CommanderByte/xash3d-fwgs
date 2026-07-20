@@ -22,6 +22,9 @@ constructed. Concretely, it provides:
   that they are being called from the correct thread.
 - **Legacy main-thread helper** — the inline `assert_main_thread()` utility
   used by the platform layer while it still predates the full thread-role API.
+- **Legacy random stream** — an instance-owned `LegacyRandom` implementation
+  of `COM_RandomLong` / `COM_RandomFloat`, with the sole production instance
+  owned by `EngineContext` and verified against compiled legacy C.
 
 `xash3dpp_core` is deliberately narrow. It does **not** own: OS I/O, file
 operations, crash signal handling, memory pools, cvar/command state, or any
@@ -29,9 +32,9 @@ game logic. Those live in the layers above it.
 
 ## Design goals
 
-- **Zero-init, no lifecycle** — all APIs are free functions. There is no
-  `init()` or `shutdown()` — `log()` and `thread_role` are safe to call from
-  `main()` line one.
+- **No subsystem lifecycle** — core has no global `init()` or `shutdown()`.
+  Free-function diagnostics work from `main()` line one; stateful primitives
+  such as `Clock` and `LegacyRandom` are ordinary owner-constructed values.
 - **No heap allocation on the hot path** — `logf()` formats into a fixed stack
   buffer; the callback receives a `string_view` slice of that same buffer.
 - **Noexcept everywhere** — no exceptions; no RTTI. Builds with `/EHs-c-` and
@@ -67,6 +70,7 @@ logging. The rewrite separates concerns:
 | `Con_Reportf` | `core::log(LogLevel::Warning, ...)` |
 | `Sys_Error` | `XASH_FATAL(false, msg)` then `platform::crash::abort()` |
 | `ASSERT()` | `XASH_ASSERT(expr)` |
+| `COM_RandomLong` / `COM_RandomFloat` | `core::LegacyRandom` behind canonical host callbacks |
 
 Thread role tracking has no direct legacy equivalent — the old engine relied
 on single-threaded assumptions. `ThreadRole` exists to allow the rewrite to
@@ -76,8 +80,8 @@ cross-thread invariant violations early.
 ## Architecture at a glance
 
 **D-1 split** (see core-boundary §As-built reconciliation): the `core::`
-*namespace* spans two build targets. `xash3dpp_core` compiles only
-`error.cpp` + `clock.cpp`; the hosted diagnostics tier — `log.cpp` and
+*namespace* spans two build targets. `xash3dpp_core` compiles
+`error.cpp`, `clock.cpp`, and `legacy_random.cpp`; the hosted diagnostics tier — `log.cpp` and
 `thread_role.cpp` — compiles into **`xash3dpp_platform`**, keeping the link
 graph one-way (core → platform, no cycle):
 
@@ -90,7 +94,7 @@ graph one-way (core → platform, no cycle):
                         │         <xash3dpp/core/assert.hpp>
                         │         <xash3dpp/core/thread_role.hpp>
           ┌─────────────▼────────────────────────────────┐
-          │  xash3dpp_core (error.cpp, clock.cpp)        │
+          │  xash3dpp_core (error/clock/legacy_random)   │
           │  • assert.hpp (header-only macros)           │
           └─────────────┬────────────────────────────────┘
                         │ PRIVATE one-way link: core → platform

@@ -343,6 +343,15 @@ silently zeroes known-broken HL1/Q1 files (`snd_wav.c:347-370`);
 `Sound_GetApproxWavePlayLen`'s `filesize - 128` is an acknowledged
 GoldSrc-inherited magic number (`snd_utils.c:102-103`).
 
+**Canonical RNG injection (Chunk 11):** `SoundInitParams` carries the narrow
+random-long callback into `RoomDsp`. The DSP-local LCG is gone; a null callback
+returns the requested lower bound and creates no fallback stream. A spy test
+proves `dsp_profile` uses the injected callback, while the existing topology
+guard keeps that command unavailable during decoder operation. This proves
+ownership and routing only. Legacy-equivalent sound/pmove draw scheduling needs
+the production client/audio topology and a captured schedule in Chunk 12.
+<!-- verify: grep-count(1664525, xash3dpp/src/sound/**/*.cpp) == 0 -->
+
 ______________________________________________________________________
 
 ## Satellite components

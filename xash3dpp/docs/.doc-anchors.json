@@ -42,14 +42,14 @@
    "target": "engine/client/cl_frame.c"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|0": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|1": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -229,6 +229,15 @@
    ],
    "target": "engine/ref_api.h"
   },
+  "xash3dpp/docs/boundaries/core-boundary.md|engine/common/common.c|0": {
+   "line": 54,
+   "snapshot": [
+    "static int idum = 0;",
+    "",
+    "#define MAX_RANDOM_RANGE\t0x7FFFFFFFUL"
+   ],
+   "target": "engine/common/common.c"
+  },
   "xash3dpp/docs/boundaries/filesystem-boundary.md|file.hpp|0": {
    "line": 39,
    "snapshot": [
@@ -297,6 +306,15 @@
     "// Enable NVIDIA High Performance Graphics while using Integrated Graphics."
    ],
    "target": "game_launch/game.cpp"
+  },
+  "xash3dpp/docs/boundaries/physics-boundary.md|engine/common/common.c|0": {
+   "line": 54,
+   "snapshot": [
+    "static int idum = 0;",
+    "",
+    "#define MAX_RANDOM_RANGE\t0x7FFFFFFFUL"
+   ],
+   "target": "engine/common/common.c"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|engine/common/pm_trace.c|0": {
    "line": 743,
@@ -413,7 +431,7 @@
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/boundaries/server-boundary.md|engine_table.cpp|1": {
-   "line": 63,
+   "line": 73,
    "snapshot": [
     "std::byte s_fatpvs[k_fat_vis_bytes];",
     "std::byte s_fatphs[k_fat_vis_bytes];"
@@ -914,7 +932,7 @@
    "target": "xash3dpp/src/utilities/build.cpp"
   },
   "xash3dpp/docs/boundaries/world-boundary.md|clip.cpp|0": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -923,7 +941,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/boundaries/world-boundary.md|clip.cpp|1": {
-   "line": 242,
+   "line": 219,
    "snapshot": [
     "Vec3 offset = sel->offset;",
     "ut::Matrix3x4 matrix = ut::Matrix3x4::identity();",
@@ -932,7 +950,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|0": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -941,7 +959,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|1": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -1033,14 +1051,14 @@
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|0": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|1": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -1049,7 +1067,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|2": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -1073,8 +1091,17 @@
    ],
    "target": "engine/common/common.c"
   },
+  "xash3dpp/docs/implementation-plan.md|engine/common/common.c|1": {
+   "line": 54,
+   "snapshot": [
+    "static int idum = 0;",
+    "",
+    "#define MAX_RANDOM_RANGE\t0x7FFFFFFFUL"
+   ],
+   "target": "engine/common/common.c"
+  },
   "xash3dpp/docs/implementation-plan.md|engine_table.cpp|0": {
-   "line": 75,
+   "line": 62,
    "snapshot": [
     "}"
    ],
@@ -2900,7 +2927,7 @@
    "target": "public/swaplib.h"
   },
   "xash3dpp/docs/legacy-survey/overview.md|clip.cpp|0": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -3216,7 +3243,7 @@
    "target": "xash3dpp/src/cmd_cvar/cvar_ops.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/cmd_cvar-modernization.md|dsp.cpp|0": {
-   "line": 74,
+   "line": 60,
    "snapshot": [
     "// compliance-allow(thread-assert): the \u00a74.3 cvar-equivalent setters below run",
     "// on whichever thread owns the channel array \u2014 T_AudioDecoder while the",
@@ -3234,7 +3261,7 @@
    "target": "engine/common/cvar.c"
   },
   "xash3dpp/docs/modernization-opportunities/cmd_cvar-modernization.md|engine_bridge.hpp|0": {
-   "line": 117,
+   "line": 126,
    "snapshot": [
     "// pfnSetGroupMask mirror (svs.groupmask/groupop); also pushed into",
     "// move_env/links when present.",
@@ -3327,7 +3354,7 @@
    "target": "xash3dpp/include/xash3dpp/cmd_cvar/stats.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/cmd_cvar-modernization.md|include/xash3dpp/host/engine_context.hpp|0": {
-   "line": 45,
+   "line": 52,
    "snapshot": [
     "// compat_policy: provided by get_compat_policy() (link-time selection).",
     "cmd_cvar::ITrustOracle  *trust_oracle  = nullptr; // @lifetime: caller (must outlive EngineContext)",
@@ -3336,7 +3363,7 @@
    "target": "xash3dpp/include/xash3dpp/host/engine_context.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/cmd_cvar-modernization.md|include/xash3dpp/host/engine_context.hpp|1": {
-   "line": 43,
+   "line": 50,
    "snapshot": [
     "// trust_oracle:  provided by the host at init; replaced by Server at",
     "//                Chunk 6 (server \u2014 implementation-plan numbering).",
@@ -3381,7 +3408,7 @@
    "target": "xash3dpp/include/xash3dpp/private/cmd_cvar/context_impl.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/cmd_cvar-modernization.md|include/xash3dpp/server/server.hpp|0": {
-   "line": 84,
+   "line": 89,
    "snapshot": [
     "// TODO(chunk6-S9): ITrustOracle seam (cmd_cvar D2), host feature flags +"
    ],
@@ -3420,7 +3447,7 @@
    "target": "xash3dpp/include/xash3dpp/private/cmd_cvar/context_impl.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/cmd_cvar-modernization.md|server.hpp|0": {
-   "line": 84,
+   "line": 89,
    "snapshot": [
     "// TODO(chunk6-S9): ITrustOracle seam (cmd_cvar D2), host feature flags +"
    ],
@@ -4902,14 +4929,14 @@
    "target": "xash3dpp/src/abi/engine_funcs.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/host-modernization.md|engine_context.hpp|0": {
-   "line": 79,
+   "line": 86,
    "snapshot": [
     "struct EngineContext {"
    ],
    "target": "xash3dpp/include/xash3dpp/host/engine_context.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/host-modernization.md|engine_context.hpp|1": {
-   "line": 46,
+   "line": 53,
    "snapshot": [
     "cmd_cvar::ITrustOracle  *trust_oracle  = nullptr; // @lifetime: caller (must outlive EngineContext)",
     "cmd_cvar::ICompatPolicy *compat_policy = nullptr; // @lifetime: caller (must outlive EngineContext)"
@@ -4917,7 +4944,7 @@
    "target": "xash3dpp/include/xash3dpp/host/engine_context.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/host-modernization.md|engine_context_accessor.cpp|0": {
-   "line": 25,
+   "line": 26,
    "snapshot": [
     "std::atomic<EngineContext *> g_engine_ctx { nullptr }; // compliance-allow(di-global-ref): Q-2 documented singleton exception (OQ-10)"
    ],
@@ -5028,7 +5055,7 @@
    "target": "xash3dpp/include/xash3dpp/map_loader/map_loader.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/host-modernization.md|server.hpp|0": {
-   "line": 137,
+   "line": 142,
    "snapshot": [
     "void frame( double host_frametime ) noexcept;"
    ],
@@ -5065,7 +5092,7 @@
    "target": "xash3dpp/include/xash3dpp/map_loader/map_loader.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/host-modernization.md|xash3dpp/include/xash3dpp/server/server.hpp|0": {
-   "line": 137,
+   "line": 142,
    "snapshot": [
     "void frame( double host_frametime ) noexcept;"
    ],
@@ -5594,7 +5621,7 @@
    "target": "xash3dpp/src/host/host.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/launcher-modernization.md|include/xash3dpp/host/engine_context.hpp|0": {
-   "line": 79,
+   "line": 86,
    "snapshot": [
     "struct EngineContext {",
     "// COPY_MOVE (QJ): the engine context is pinned \u2014 neither copyable nor",
@@ -5766,7 +5793,7 @@
    "target": "xash3dpp/include/xash3dpp/map_loader/map_loader.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/map_loader-modernization.md|server.hpp|0": {
-   "line": 98,
+   "line": 103,
    "snapshot": [
     "class Server final : public ::xash::ILevelChangeExecutor"
    ],
@@ -5821,7 +5848,7 @@
    "target": "xash3dpp/src/map_loader/map_loader.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/map_loader-modernization.md|xash3dpp/src/server/server.cpp|0": {
-   "line": 171,
+   "line": 173,
    "snapshot": [
     "bool Server::exec_load_game( std::string_view save_name ) noexcept",
     "{",
@@ -5844,7 +5871,7 @@
    "target": "xash3dpp/src/filesystem/file.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/memory-modernization.md|game_host.cpp|0": {
-   "line": 217,
+   "line": 219,
    "snapshot": [
     "// Mod_Init allocates svgame.pmove once; freed in unload_progs)."
    ],
@@ -6632,7 +6659,7 @@
    "target": "xash3dpp/src/server/lifecycle/save_bridge.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|abi/engine_table.cpp|0": {
-   "line": 61,
+   "line": 71,
    "snapshot": [
     "inline constexpr std::size_t k_fat_vis_bytes = ( 32767 + 7 ) / 8;",
     "",
@@ -6691,7 +6718,7 @@
    "target": "xash3dpp/src/server/clients/snapshot.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|0": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6700,21 +6727,21 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|1": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|2": {
-   "line": 228,
+   "line": 205,
    "snapshot": [
     "!vector_is_null( view.angles() );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|3": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6723,7 +6750,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|4": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6732,7 +6759,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|5": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6741,7 +6768,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|6": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6750,7 +6777,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|7": {
-   "line": 219,
+   "line": 196,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -6787,7 +6814,7 @@
    "target": "engine/server/sv_game.c"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|engine_table.cpp|0": {
-   "line": 2389,
+   "line": 2381,
    "snapshot": [
     "t.pfnCRC32_ProcessByte              = pfn_crc32_process_byte;",
     "t.pfnCRC32_Final                    = pfn_crc32_final;"
@@ -6802,15 +6829,22 @@
    ],
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|game/engine_table.cpp|0": {
+   "line": 240,
+   "snapshot": [
+    "if ( ::xash::utilities::strcmp( v->name, name ) == 0 )"
+   ],
+   "target": "xash3dpp/src/server/game/engine_table.cpp"
+  },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|game_host.cpp|0": {
-   "line": 311,
+   "line": 313,
    "snapshot": [
     "rt.game.unload(); // COM_FreeLibrary"
    ],
    "target": "xash3dpp/src/server/lifecycle/game_host.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|game_host.cpp|1": {
-   "line": 366,
+   "line": 368,
    "snapshot": [
     "if ( ed == nullptr || EntityView( ed ).freed() )"
    ],
@@ -6847,7 +6881,7 @@
    "target": "xash3dpp/include/xash3dpp/private/server/edict_arena.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|include/xash3dpp/private/server/engine_bridge.hpp|0": {
-   "line": 96,
+   "line": 100,
    "snapshot": [
     "// INVARIANT: every mirrored scalar below must be re-stamped wherever its"
    ],
@@ -6972,14 +7006,14 @@
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|pmove.cpp|1": {
-   "line": 152,
+   "line": 151,
    "snapshot": [
     "pe->model = pe->studiomodel = nullptr;"
    ],
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|pmove.cpp|2": {
-   "line": 132,
+   "line": 133,
    "snapshot": [
     "// client \u2014 lag-comp GetTrueOrigin is P5 (un-interpolated here).",
     "if ( fbit( ed->v.flags, abi::k_fl_fakeclient ))",
@@ -7018,7 +7052,7 @@
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/CMakeLists.txt|0": {
-   "line": 68,
+   "line": 67,
    "snapshot": [
     "PUBLIC  xash3dpp_networking    # S7 \u2014 DeltaTables (Delta_Init per spawn)",
     "PUBLIC  xash3dpp_cmd_cvar      # S7 \u2014 state mirrors, FCVAR_EXTDLL dance",
@@ -7114,7 +7148,7 @@
    "target": "xash3dpp/src/server/game/engine_table.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/game/engine_table.cpp|1": {
-   "line": 59,
+   "line": 69,
    "snapshot": [
     "// legacy MAX_MAP_LEAFS (common/bspfile.h, bsp30) \u2014 sizes the file-static",
     "// fat-visibility buffers exactly like sv_game.c:31-32.",
@@ -7148,7 +7182,7 @@
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/physics/pmove.cpp|0": {
-   "line": 526,
+   "line": 545,
    "snapshot": [
     "clent->v.maxs[2] = hb.maxs.z;",
     "for ( int i = 0; i < 3; ++i )",
@@ -7171,6 +7205,20 @@
     "if( !dst || !size ) return dst;"
    ],
    "target": "xash3dpp/src/utilities/string.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/world/hulls.cpp|0": {
+   "line": 122,
+   "snapshot": [
+    "[[nodiscard]] float cvar_or_default( ::xash::cmd_cvar::CmdCvarContext *cvars,"
+   ],
+   "target": "xash3dpp/src/world/hulls.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/world/hulls.cpp|1": {
+   "line": 122,
+   "snapshot": [
+    "[[nodiscard]] float cvar_or_default( ::xash::cmd_cvar::CmdCvarContext *cvars,"
+   ],
+   "target": "xash3dpp/src/world/hulls.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|sv_game.c|0": {
    "line": 1046,
@@ -7204,7 +7252,7 @@
    "target": "xash3dpp/include/xash3dpp/utilities/string.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/clip.cpp|0": {
-   "line": 245,
+   "line": 222,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -7225,6 +7273,41 @@
     "[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,"
    ],
    "target": "xash3dpp/src/world/links.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|xash3dpp/src/server/physics/pmove.cpp|0": {
+   "line": 52,
+   "snapshot": [
+    "}"
+   ],
+   "target": "xash3dpp/src/server/physics/pmove.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|xash3dpp/src/server/physics/pmove.cpp|1": {
+   "line": 151,
+   "snapshot": [
+    "pe->model = pe->studiomodel = nullptr;"
+   ],
+   "target": "xash3dpp/src/server/physics/pmove.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|xash3dpp/src/world/clip.cpp|0": {
+   "line": 205,
+   "snapshot": [
+    "!vector_is_null( view.angles() );"
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|xash3dpp/src/world/clip.cpp|1": {
+   "line": 222,
+   "snapshot": [
+    "if ( rotated )"
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|xash3dpp/src/world/clip.cpp|2": {
+   "line": 222,
+   "snapshot": [
+    "if ( rotated )"
+   ],
+   "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/sound-modernization.md|audio_command.hpp|0": {
    "line": 106,
@@ -7423,14 +7506,14 @@
    "target": "xash3dpp/include/xash3dpp/sound/sound.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/sound-modernization.md|sound.hpp|1": {
-   "line": 350,
+   "line": 355,
    "snapshot": [
     "[[nodiscard]] std::unique_ptr<Sound> create_sound( const SoundInitParams &params );"
    ],
    "target": "xash3dpp/include/xash3dpp/sound/sound.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/sound-modernization.md|sound.hpp|2": {
-   "line": 169,
+   "line": 55,
    "snapshot": [
     "{"
    ],
@@ -7469,7 +7552,7 @@
    "target": "xash3dpp/tests/sound/test_sound_codec.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/sound-modernization.md|tests/sound/test_sound_witness.cpp|0": {
-   "line": 626,
+   "line": 623,
    "snapshot": [
     "CHECK_EQ( hash, k_expected_pcm_hash );"
    ],
@@ -7656,7 +7739,7 @@
    "target": "xash3dpp/src/sound/dsp.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/sound-modernization.md|xash3dpp/src/sound/dsp.cpp|1": {
-   "line": 734,
+   "line": 720,
    "snapshot": [
     "",
     "for( auto &s : testbuffer )"

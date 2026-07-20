@@ -23,6 +23,9 @@
 // the studio hitbox hulls fall back to the bbox here (Chunk 7 / OQ-2).
 //
 // Threading: main-thread only (server-boundary OQ-9).
+// @thread-safety: the kernel owns no state; production calls are Main-only
+// because the injected resolver mutates caches and cvars are read live.
+// stats exempt: stateless deterministic kernel; role owners observe results.
 
 #include <xash3dpp/abi/pm_defs.hpp>
 #include <xash3dpp/map_loader/world.hpp> // HullBoundsTable

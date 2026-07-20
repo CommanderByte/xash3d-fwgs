@@ -1,8 +1,9 @@
 # Physics and Pmove
 
-> **Defined in**: `private/server/physics.hpp`, `pmove.hpp`, `pm_trace.hpp` /
-> `src/server/physics/*.cpp`\
-> **Namespace**: `xash::server`
+> **Defined in**: server harness under `private/server/{physics,pmove}.hpp` /
+> `src/server/physics/*.cpp`; shared trace API in `physics/pm_trace.hpp` /
+> `src/physics/pm_trace.cpp`\
+> **Namespaces**: `xash::server` (role owner), `xash::physics` (shared kernel)
 
 ## Overview
 
@@ -80,7 +81,9 @@ off the stack), runs the game's `PM_Move`, and copies the mutated state back.
 - `sv_setup_pmove(rt, cl, ucmd, physinfo)` (`SV_SetupPMove`) — copy the client
   edict's movement state into `rt.pmove`, then gather physents (solids),
   moveents (ladders), and visents from the areanode tree within a 256-unit cube
-  around the player. **Pre**: `rt.pmove` allocated.
+  around the player. Each successful append also snapshots its model index into
+  the aligned role-owned sidecar; only each list's `num*` prefix is valid.
+  **Pre**: `rt.pmove` allocated.
 - `sv_finish_pmove(rt, cl)` (`SV_FinishPMove`) — copy the mutated state back:
   position/velocity/water/duck, `onground` → `FL_ONGROUND` + groundentity, the
   show-1/3-pitch body angles, and the usehull hull resize.
@@ -100,7 +103,8 @@ ______________________________________________________________________
 
 ## The `PM_*` trace family
 
-**Header**: `pm_trace.hpp` · **Source**: `physics/pm_trace.cpp`
+**Header**: `xash3dpp/physics/pm_trace.hpp` · **Source**:
+`src/physics/pm_trace.cpp` · **Target**: `xash3dpp_physics`
 
 The physent-list analogue of the world composition
 ([world-interaction.md](./world-interaction.md)): it reuses the **same**
@@ -109,7 +113,8 @@ from `clip.cpp`, but sources its hulls from the gathered `physents[]`
 (usehull-indexed player bounds) rather than the areanode edict store, and merges
 the nearest fraction across the list, recording the winning physent index in
 `pmtrace_t::ent`. `PmTraceEnv` mirrors `MoveEnv`, sourced from the physent list
-(world + resolver + arena + player-hull table + pusher-ext toggle).
+(world + resolver + aligned model-index sidecars + player-hull table +
+pusher-ext toggle). It has no arena or server-private dependency.
 
 The family: `pm_player_trace_ext` (the main hull sweep), `pm_test_player_position`
 (point-in-solid), `pm_trace_model` (single-entity BSP sweep forcing usehull 2),
@@ -129,10 +134,10 @@ two usehull trace mutators all self-assert `ThreadRole::Main`. The single
 `rt.pmove` working set, the physent gather buffers, and the `pushed[256]` stack
 are single-thread scratch — safe because the whole frame runs on Main. The
 `PM_*` callbacks the DLL invokes inherit the Main context transitively (they run
-inside the asserted `sv_run_cmd`). One module static lives here: `s_pm_rng` (the
-pmove `RandomLong/Float` xorshift state) plus `init_client_move.cpp`'s
-`Info_ValueForKey` static buffer — both Race-static-buf shapes contained by
-OQ-9. See
+inside the asserted `sv_run_cmd`). The pmove callback uses the canonical
+`EngineContext`-owned random stream; server physics owns no RNG static. The
+remaining `init_client_move.cpp` `Info_ValueForKey` static buffer is a
+Race-static-buf shape contained by OQ-9. See
 [docs/threading-analysis/server-threading.md](../../threading-analysis/server-threading.md).
 
 ## Error handling

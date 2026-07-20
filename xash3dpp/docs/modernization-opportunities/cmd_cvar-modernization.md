@@ -262,7 +262,7 @@ the symbol — and none does.
 - **File(s)**: `src/cmd_cvar/compat_goldsrc.cpp:102-106` (definition);
   `src/cmd_cvar/compat_null.cpp:27-31` (null-policy counterpart);
   `include/xash3dpp/private/cmd_cvar/compat_policy.hpp:27-45` (declares only
-  `struct ICompatPolicy`, no free function); `include/xash3dpp/host/engine_context.hpp:45-47`
+  `struct ICompatPolicy`, no free function); `include/xash3dpp/host/engine_context.hpp:52-54`
   (the injection point that is never given a non-null value)
 
 - **Current pattern**: `grep -rn get_compat_policy xash3dpp/` returns
@@ -398,9 +398,9 @@ What is false is the boundary doc's characterization of it as an existing
 G-1 asset.
 
 - **File(s)**: `include/xash3dpp/cmd_cvar/observers.hpp:63-71`
-  (`struct ITrustOracle`); `include/xash3dpp/host/engine_context.hpp:43-46`
+  (`struct ITrustOracle`); `include/xash3dpp/host/engine_context.hpp:50-53`
   (injection point, defaults to `nullptr`); `src/cmd_cvar/cmd_dispatch.cpp:198`
-  (the one production use — correctly null-guarded); `include/xash3dpp/server/server.hpp:84`
+  (the one production use — correctly null-guarded); `include/xash3dpp/server/server.hpp:89`
   (a stale `TODO(chunk6-S9)` naming this obligation against chunk numbers
   that have since shipped)
 
@@ -416,7 +416,7 @@ G-1 asset.
 
 - **Suggested replacement**: Not a cmd_cvar code change — the interface,
   injection, and dispatch guard need nothing. Two doc actions: (1) replace
-  `server.hpp:84`'s stale `TODO(chunk6-S9)` with a live chunk number now
+  `server.hpp:89`'s stale `TODO(chunk6-S9)` with a live chunk number now
   that the boundary doc's implementation obligation is understood as a
   Server-side gap, not a cmd_cvar gap; (2) soften `cmd_cvar-boundary.md`'s
   Extension-axes framing from "already exists" to "injection point and
@@ -477,7 +477,7 @@ frozen ABI; it is a half-built seam with a live behavioural gap.
   because writing extended fields through a 5-field `cvar_t*` would be
   out-of-bounds UB), but legacy semantics require the DLL's struct to be
   the *live* storage (game code reads `pCvar->value` directly off its own
-  static — `engine_bridge.hpp:117-119`). Three options, ranked:
+  static — `engine_bridge.hpp:126-128`). Three options, ranked:
   (a) **lookup fall-through only** — S effort, one file, closes the read
   gap, leaves two stores, no `cvarlist`/serverinfo/collision-check parity;
   (b) **indirect storage** — give the registry node an optional
@@ -1176,7 +1176,7 @@ From cross-cutting lens L8, recommendation L8-R4.
   real instance of this problem with zero `cmd_cvar` changes: sound reads
   all 17 of its cvars on Main, packs them into a `MixConfigSnapshot` POD,
   and pushes it across the MPSC `AudioCommand` queue
-  (`dsp.cpp:74-88`; applied decoder-side at `audio_command.cpp:263-275`).
+  (`dsp.cpp:60-74`; applied decoder-side at `audio_command.cpp:263-275`).
 
 - **Boundary-safe**: Documentation only; the retrofit itself has no named
   consumer today (see Open questions) and must not be built speculatively.

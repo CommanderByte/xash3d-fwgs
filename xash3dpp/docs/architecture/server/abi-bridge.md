@@ -213,8 +213,10 @@ would race under concurrent entry:
   frozen slot contract only requires the returned pointer to survive the call;
   a second concurrent caller would clobber the first's result. **Do not retain
   the pointer across another ABI call** (the legacy contract, unchanged).
-- **`s_rng_state`** — the `COM_RandomLong/Float` xorshift state (a tracked
-  RNG-unification stub).
+- **Canonical RNG callback** — enginefuncs and pmove hold the literal same
+  no-capture function addresses. They reach the sole `EngineContext`-owned
+  `core::LegacyRandom`; this bridge owns no random state. Calls made before
+  context publication return their lower bound without drawing.
 
 See [threading-and-invariants.md](./threading-and-invariants.md) and
 [docs/threading-analysis/server-threading.md](../../threading-analysis/server-threading.md).

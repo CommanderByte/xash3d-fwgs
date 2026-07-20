@@ -329,7 +329,7 @@ adversarially refuted. Recorded so neither is re-discovered at full cost.
   existing P-7 dual-`operator delete` idiom) — never a growth of the shared
   `AllocHeader`, since all 11 real `pool_new<T>` sites in the tree
   (`cmd_cvar/context.cpp:26`; 7 filesystem backends; `file.cpp:341`;
-  `save_buffer.cpp:245`; `game_host.cpp:217`) depend on the fixed offset
+  `save_buffer.cpp:245`; `game_host.cpp:219`) depend on the fixed offset
   unconditionally. This shape constraint is already recorded at
   `docs/architecture/memory/typed-helpers.md:30-35` for the operator-delete
   half; the header/back-offset half is not yet written down there. A separate

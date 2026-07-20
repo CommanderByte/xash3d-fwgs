@@ -80,7 +80,7 @@ ______________________________________________________________________
   "dep pointers intentionally left null (standalone path)"
   (`host.cpp:312,321`). `EngineContext` is a real, pinned context root with
   all four copy/move ops deleted and declaration-order init/reverse-order
-  shutdown (`include/xash3dpp/host/engine_context.hpp:79-109`), but the
+  shutdown (`include/xash3dpp/host/engine_context.hpp:86-116`), but the
   shipped `.exe` never instantiates one. The only production TU that builds a
   fully-wired `EngineContext` (with `IPlatformSockets` injected) is a test —
   `tests/host/test_engine_context_networking.cpp` — not the binary; even

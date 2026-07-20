@@ -96,8 +96,8 @@ synchronize. **The model cache is the crux.**
 
 **Non-hazards worth recording** (negative data points):
 
-- **No RNG** anywhere in content — clean determinism (unlike server's
-  `s_rng_state`).
+- **No RNG** anywhere in content — clean determinism. The process stream is
+  owned by `EngineContext`, not by content or server.
 - **No static return buffers** — the ABI edge (`studio_extradata`) returns a
   pointer *into the owned model bytes*, not a per-call static scratch, so the
   server/abi *Race-static-buf* class does **not** appear here.

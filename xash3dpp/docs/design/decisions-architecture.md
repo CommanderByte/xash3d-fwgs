@@ -951,8 +951,8 @@ document for extension posture. Concretely:
   door-rule pass may perturb — map_loader (Q-18 trace/PVS/CRC kernel),
   content (studio bone math), networking (wire bit-codec, delta field
   widths, LZSS, OOB packet magic), server (rotated-brush ULP behaviour at
-  `clip.cpp:245-281`, the `if ( rotated )` block carrying the in-code
-  `TODO(Q-18)` — the anchor read `clip.cpp:219` until 2026-07-20, which is
+  `clip.cpp:222-258`, the `if ( rotated )` block carrying the in-code
+  `TODO(Q-18)` — the anchor read `clip.cpp:196` until 2026-07-20, which is
   an unrelated `hull_for_entity` call and fenced nothing), utilities
   (double-precision studio math). Byte-exact
   parity beats every other rule in these files — FMA, reassociation, and
@@ -1094,6 +1094,12 @@ and a boundary-spec/governance unit — and those had silently diverged
 `src/physics` empty while 4030 lines of physics live under `src/server/`).
 This entry names the axes and fixes placement so the divergence stops being
 invisible.
+
+**Applied by Chunk 11 (2026-07-20):** the measured shared trace TU moved to
+`src/physics/pm_trace.cpp` and is now the `xash3dpp_physics` target; server
+retains its role-owned gather, ABI adapters, and world simulation and links
+physics downward. The shared TU carries the required role marker and has no
+server-private include or edict-store reach.
 
 **Three axes, kept separate.** *Layer* = dependency depth, expressed by the
 CMake target graph (acyclic; nothing links upward) — the only axis with

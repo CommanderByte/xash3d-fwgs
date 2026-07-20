@@ -19,20 +19,20 @@ ______________________________________________________________________
 | utilities | 10 | ✓ | ✓ | **Complete** |
 | memory | 1 | ✓ | ✓ | **Complete** |
 | filesystem | 10 | ✓ | ✓ | **Complete** |
-| platform | 14 | ✓ | ✓ | **Complete** (incl. os_socket + IPlatformSockets) |
-| core | 4 | ✓ | ✓ | **Complete** |
+| platform | 16 | ✓ | ✓ | **Complete** (incl. os_socket + IPlatformSockets) |
+| core | 5 | ✓ | ✓ | **Complete** |
 | cmd_cvar | 11 | ✓ | ✓ | **Complete** |
 | host | 3 | ✓ | ✓ | **Complete** (Chunk 3 ✅; EngineContext owns networking; frame pump — Clock::tick + Server::frame — wired 2026-07-19) |
 | abi | 1 | ✓ | ✗ | **Partial** (`Host_Error` shim + accessor only) |
 | map_loader | 10 | ✓ | ✓ | **Complete** (BSP v29/30/BSP2/30ext → immutable WorldData; PVS + trace kernel, Q-18 golden-gated; FSM loads worlds; PHS module per Q-19) |
 | launcher | 1 | ✗ | ✗ | **Partial** (thin argv bootstrap, no tests) |
 | networking | 24 | ✓ | ✓ | **Complete** (Layers 0–4 incl. delta encoder + satellites, wired into EngineContext; DNS/bz2 deferred) |
-| server | 30 | ✓ | ✓ | **Complete** (Chunk 6 — dedicated-server milestone ACHIEVED 2026-07-05: real 32-bit `hl.dll` loads + `c0a0` spawns + one map frame runs clean; OQ-8 milestone-trimmed backlog tracked in the deferred inventory) |
+| server | 26 | ✓ | ✓ | **Complete** (Chunk 6 — dedicated-server milestone ACHIEVED 2026-07-05: real 32-bit `hl.dll` loads + `c0a0` spawns + one map frame runs clean; OQ-8 milestone-trimmed backlog tracked in the deferred inventory) |
 | client | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
 | content | 13 | ✓ | ✓ | **Complete** (model cache + 3 loaders + 7 image codecs + studio **bone solver** [OQ-5 ✅ bit-exact vs Q-18 goldens] + pose pfns + layout tripwire; the `SV_ClipMoveToEntity` studio hitbox trace-loop remains gated on the hl.dll smoke — see Chunk 7. HB-10 reconciliation 2026-07-19) |
 | demo | 0 | ✗ | ✗ | **Skeleton** |
 | input | 9 | ✓ | ✓ | **Complete** (Chunk 10, mock-source stop-line) |
-| physics | 0 | ✗ | ✗ | **Skeleton** |
+| physics | 1 | ✓ | ✓ | **Complete** (Chunk 11 — shared trace/RNG extraction + synthetic role witness ACHIEVED 2026-07-20) |
 | renderer | 0 | ✗ | ✗ | **Skeleton** |
 | save | 13 | ✓ | ✓ | **Complete** (Chunk 8 — save/restore ACHIEVED 2026-07-20: `.sav`/`.HL1-3` codec + save-directory + `SV_GetSaveComment` + landmark-transition machinery, wired behind `ILevelChangeExecutor`; real-`hl.dll` save→load round trip on `c0a0` witnessed; SAV-OQ-1/2/3 landed) |
 | sound | 10 | ✓ | ✓ | **Complete** (Chunk 9, null/sink device stop-line) |
@@ -43,7 +43,7 @@ ______________________________________________________________________
 
 ## Dependency Graph Summary
 
-The legacy DAG flows: **launcher → host → (cmd_cvar + networking + filesystem) → server ↔ client → plugins (renderer, filesystem)**. The entire foundation tier is complete: `utilities`, `memory`, `filesystem`, `platform`, `core`, `cmd_cvar`, `host`/`engine_context` — **Chunks 1 and 3 are done**. Networking (**Chunk 2, done**; Chunk 4 was a renumbering duplicate — see its tombstone) shipped as a standalone library (address/MessageBuf, transport, wire codecs, netchan, GoldSrc protocol driver, master list, **delta encoder**) and was wired into `EngineContext` on 2026-07-03. `map_loader` (**Chunk 5, done 2026-07-04**) ships BSP v29/30/BSP2/30ext loading, the full PVS query surface, and the Q-18-gated trace kernel with the edict-free trace API Chunk 6 needs. Next is the server path (Chunk 6 — recon complete: `boundaries/server-boundary.md` + six `legacy-survey/deep-dive-server-*.md`), which is significantly more isolated than the client path because it only needs the Game DLL ABI; client adds sound, input, content, rendering, and UI on top.
+The built graph remains acyclic and points downward from role owners into shared kernels. The foundation tier (`utilities`, `memory`, `filesystem`, `platform`, `core`, `cmd_cvar`, and `host`) and networking are complete; `map_loader` supplies BSP/PVS/clip primitives, `world` supplies role-neutral spatial/model composition, and Chunk 11 adds `server → physics` for the shared player-move trace target. `physics` exposes `map_loader` and `utilities` publicly while keeping `world`, `content`, `cmd_cvar`, and `core` as implementation dependencies. The production client is still the missing second role: Chunk 12 will consume the same physics seam alongside sound, input, content, renderer, and UI.
 
 ______________________________________________________________________
 
@@ -155,7 +155,14 @@ ______________________________________________________________________
 
 **S8/S9 completion sequence** *(decided 2026-07-05, after the parallel-agent landing)*: S8/S9 landed their independent bulk but deferred the interdependent pieces. Remaining Chunk-6 order — **(1)** S9 snapshot/delta pipeline (frames ring `SV_UPDATE_BACKUP`, baselines, `AddToFullPack`/`SetupVisibility`, `entity_state_t` delta) — biggest gap, unblocks the send; **(2)** the S8↔S9 seam splice — wire `Host_ServerFrame`'s client/net steps + the ~11 marked `S8-seam` stubs + the `clc_move`/usercmd parse path; **(3)** the pmove bridge *last* (`sv_pmove.c` 1014 L + port `engine/common/pm_trace.c` 889 L + `pm_surface.c` 382 L + vendor `playermove_t`/`physent_t` from `pm_shared/pm_defs.h`). **The pmove bridge is NOT blocked on Chunk 11**: `PM_Move` is the game DLL's `NEW_DLL_FUNCTIONS` export (mods statically link `pm_shared`; repo-root `pm_shared/` is headers only), and the trace family is engine code composing over the Chunk-5 kernel. Chunk 11 owns only the client-prediction path (`cl_pmove.c`) + the both-paths determinism test; pmove *parity validation* ticks at S15/Chunk 11 (needs a real `PM_Move`). The shared `pm_trace`/`pm_surface` family likely lands in the `physics` subsystem (reused by Chunk 11's client path), not `src/server/` — settle at implementation time. **Snapshot-pipeline progress (step 1)**: 1a scaffold ✅ (`ae286fb1`) → 1b `SV_CreateBaseline` fill + instanced baselines ✅ (`aec40d29`) → 2 `SV_WriteEntitiesToClient` gather + `packet_entities` ring + `SV_EmitPacketEntities` delta-merge + per-client frames ring ✅ (`f43900e3`) → 3 `SV_WriteClientdataToMessage` + `SV_SendClientDatagram` datagram body (svc_time + clientdata/weapondata delta + entities) ✅ → 3b signon buffer (`sv.signon`, `MAX_INIT_MSG`) + the `SV_CreateBaseline` signon-write half (`svc_spawnbaseline` + per-edict baseline deltas + instanced list) ✅ → 4 `SV_EmitEvents` + `SV_EmitPings` datagram-riders — complete `SV_WriteEntitiesToClient`'s per-frame body (svc_event queue drain + packet_index resolution + args delta; svc_pings from the 2s-cached `SV_GetPlayerStats`/`SV_CalcPing` over the frame ring) ✅. **Snapshot/delta pipeline substantially complete.** Deferred to the **S8↔S9 seam splice** (each lacks its producer/destination until then): the event *producer* (`pfnPlaybackEvent`/`SV_PlaybackEventFull` fills `cl.events`), `SV_UpdateToReliableMessages`'s reliable fan-out (`sv.reliable_datagram` → per-client `netchan.message`), and the Netchan transmit + choke/rate send-gate. All wire encoding rides the existing networking `DeltaTables`. **Seam-splice progress (step 2)**: the networking foundation is decided — the host owns the single `NetworkContext` + its UDP sockets (`EngineContext` declares `networking` ahead of `server`); the server holds a non-owning `rt.net` handle and pulls its server socket each frame (the "host-routes" model — *not* a fresh register decision, it follows Q-2/Q-4 + the committed `IOobSink` seam). The messaging seam is a functional bidirectional netchan loop as of `41bc9d2f`: **A** ✅ (`d3b3f8b9`) `ServerInitParams.net` DI + `read_packets` connectionless ingress routing OOB → `handle_connectionless`, replies via a `NetworkContext`-backed `IOobSink`, wired into `host_server_frame`; **B** ✅ (`b7c4f192`) per-client `Netchan` + `Netchan_Setup` at connect / `Netchan_Clear` at drop, backed by new `NetworkContext::protocol_driver()`/`fragment_pool()` accessors; **C** ✅ (`1421fd91`) in-session demux (`Netchan_Process` + `SV_ExecuteClientMessage` clc loop + `SV_ParseClientMove` usercmd decode filling lastcmd/packet_loss/ping) — also fixed two latent bugs (connect wiping `cl.frames`; missing `usercmd_t` in the fixture `delta.lst`); **D** ✅ (`a7943b8e`) `SV_SendClientMessages` send-gate + `send_client_datagram`→`transmit_bits`→`send_packet`, wired into `host_server_frame`; **E** ✅ (`41bc9d2f`) `SV_UpdateToReliableMessages` reliable broadcast fan-out. **F** ✅ (`a2ab0011`) the event producer (`pfnPlaybackEvent`/`SV_PlaybackEventFull` fills `cl.events` — unreliable queue `FEV_UPDATE` slot-merge + `FEV_RELIABLE` `svc_event_reliable` staging into `cl.reliable` via `write_delta_event`; a new non-owning `EngineBridge::delta` carries the tables; the recipient PHS cull + groupinfo filter ride the same `S8-seam` visibility gate as `SV_Multicast`), consumed by the existing `emit_events`. **The entire S8↔S9 messaging + event seam is now complete** — a bidirectional netchan loop plus the closed event producer→consumer path. Remaining Chunk-6 work before the frame loop is fully fleshed: the **pmove bridge** (`SV_RunCmd`, ordered last). Deferred seams inside the landed slices are marked `XASH3DPP-STUB(chunk6-S9)` / `XASH3DPP-STUB(S8-seam)`: command checksum, freeze/pause + `SV_RunCmd` (pmove), `SV_CalcClientTime` unlag, `host_limitlocal`/`sv_failuretime` send-gates, `FCL_RESEND_USERINFO`/`MOVEVARS` resends, the unreliable `sv.datagram` per-client append, the recipient PHS/groupinfo cull (`SV_CheckClientVisiblity`, shared with `SV_Multicast`), and fragment reassembly.
 
-**pmove-bridge decomposition (step 3, the last frame-loop piece)** *(planned 2026-07-05, recon from `deep-dive-server-physics.md` §4/§9 + `pm_shared/pm_defs.h` + `common/pmove.h`)*: ~2285 legacy lines (`sv_pmove.c` 1015 + `engine/common/pm_trace.c` 889 + `pm_surface.c` 382) + two frozen ABI structs. Slices: **P1** ✅ *(2026-07-05)* — vendor the pmove ABI into `include/xash3dpp/abi/pm_defs.hpp`: `pmplane_t` (16 B: `vec3 normal`+`float dist`), `pmtrace_t` (68 B: allsolid/startsolid/inopen/inwater/fraction/endpos/plane/ent/deltavelocity/hitgroup — `common/pmove.h:26-47`), `physent_t` (`pm_defs.h:37-77`), `playermove_t` (`pm_defs.h:79-215`: state block + `physents[600]`/`moveents[64]`/`visents[600]` + `usercmd_t cmd` + `pmtrace_t touchindex[600]` + `char physinfo[256]` + `movevars_t*` + `player_mins/maxs[4]` + ~30 fn-pointers). Caps: `MAX_PHYSENTS 600`/`MAX_MOVEENTS 64`/`MAX_CLIP_PLANES 5`/`MAX_PHYSINFO_STRING 256`. `movevars_t` already vendored (`pm_movevars.hpp`). Layout `static_assert`s per the `pm_movevars.hpp`/`event_state.hpp` pattern; opaque engine types (`model_s`/`hull_s`/`msurface_s`/`trace_t`) forward-declared for the fn-pointer slots (the DLL calls through them, so signatures must stay ABI-exact). **Gate: abi-watchdog CLEAR** — `tests/server/abi/test_pmove_layout.cpp` includes the real `pm_defs.h` in a sealed namespace and X-macro-pins every field offset **and** member size vs the vendored structs (both pointer widths); `model_s`/`hull_s`/`msurface_s` tag-fwd-declared, `trace_t` kept opaque (it is an anon-struct typedef with no tag). **P2** ✅ *(2026-07-05, `physics/pmove.cpp`)* — `SV_SetupPMove`/`SV_FinishPMove` (`sv_pmove.c:521-664`) + physent gather (`SV_AddLinksToPmove`/`AddLaddersToPmove`/`CopyEdictToPhysEnt` :42-322) over the S6 areanodes; the `usehull=FL_DUCKING?1:0`, multiplayer `onground=-1`, `pmove->time=timebase*1000` ms, `waterjumptime↔teleport_time` quirks (§8 #25-26). `rt.pmove` = pool-owned `playermove_t` (allocated in `load_progs`); `ServerClient.timebase` + `k_dead_dead` added; the visents-before-skip / physents-last gather ordering preserved. Lag-comp (`SV_GetTrueOrigin`) and the `pe->model`/studio-hitbox handle binding are the P5 / P3 / Chunk-7 seams (marked `pmove-P3` / `chunk7/OQ-2`). Gates: reviewer SHIP, legacy-parity-auditor PARITY-CONFIRMED (41/41). **P3a** ✅ *(2026-07-05, `physics/pm_trace.cpp`)* — the `PM_*` trace/point-contents family (`pm_trace.c` groups a/b/d): `PM_PlayerTraceExt`, `PM_TestPlayerPosition`, `PM_TraceModel`, `PM_TraceLine`/`Ex`, `PM_PointContents`/`TruePointContents`/`PointContentsPmove`, `PM_HullForBsp`, `PM_StuckTouch` — composed over the **existing edict-free map_loader kernel** (`recursive_hull_check`/`hull_point_contents`/`world_hull`/`hull_for_bsp`/`BoxHull`) and the S6 rotated-brush transforms (`world_transform_aabb`/`transform_positive_plane`), sourced from the gathered physent list (usehull-indexed player bounds) via a `PmTraceEnv`. Each physent's brush submodel is resolved through the arena + `IModelResolver` (`pe->info`→edict→`modelindex`), retiring the P2 `pe->model` binding TODO — no opaque engine handle is stashed. **Placement decision settled**: built in `src/server/physics/` (alongside `physics.cpp`/`movevars.cpp`), structured so Chunk 11's client path can extract it; no empty `physics` subsystem scaffolded. Vendored the `PM_*` trace flags (`k_pm_world_only`/`glass_ignore`/`custom_ignore`/`studio_ignore`/`traceline_*`) into `pm_defs.hpp`. **Group (c)** — the surface/texture trace family (`PM_TraceSurface`/`PM_TraceTexture`/`PM_RecursiveSurfCheck`) — is **deferred to Chunk 7** (needs `mfacebevel_t` facet bevels + miptex original buffers `WorldData` does not carry until the content pipeline; same dependency class as the studio hitbox hulls) and stubbed at the P3b fn-ptr table. Studio hitbox hulls fall back to the bbox (Chunk 7 / OQ-2); SOLID_CUSTOM is the S8 physics-interface sweep seam (no-hit for the milestone). Tests cross-check `pm_player_trace_ext` against the raw kernel primitive (oracle) + deterministic single-box physent scenarios + hand-derived hull-0 point-contents. Gates: reviewer + parity spot-check. **P3b** ✅ *(2026-07-05, `physics/init_client_move.cpp`)* — `SV_InitClientMove`: installs the ~30-entry PM_* callback table into `rt.pmove` via context-free pfn shims that reach the installed `EngineBridge` (added `playermove_t* pmove` + `const HullBoundsTable* player_bounds` to the bridge), sets `server`/`movevars`/hull-bounds table, and runs the DLL's `pfnPM_Init` (a `DLL_FUNCTIONS` export, null-guarded); wired from `load_progs` right after the pmove allocation. **Wired to real impls**: the trace family (`PM_PlayerTrace`/`Ex`, `PM_TestPlayerPosition`/`Ex`, `PM_TraceLine`/`Ex`, `PM_TraceModel` via the legacy `(pmtrace_t*)trace` pun), point contents (`PM_PointContents`/`TruePointContents`), `PM_StuckTouch`, the utilities (`Info_ValueForKey`, `Con_*`, `Sys_FloatTime`→`platform::get_time`, `RandomLong`/`Float` xorshift), and `PM_PlaybackEventFull`→the S9 `playback_event_full` (forced `FEV_NOTHOST`). **Marked stubs** (safe defaults, each naming its owner): `PM_Particle`/`PM_PlaySound` (S9 / Chunk 9 sound), `PM_GetModelType`/`Bounds` + `PM_TraceTexture`/`PM_TraceSurface` (Chunk 7 — model handles / group-c miptex), `PM_HullForBsp`/`PM_HullPointContents` (opaque-hull round-trip, off the `pm_shared PM_PlayerMove` path), `COM_*`/`memfgets` (Chunk 7 material files; a null load degrades a real `pfnPM_Init` to default texture types). Test drives the full round-trip (install → bridge → context-free `PM_PointContents` → water). Gate: abi-watchdog + reviewer. **P3 complete — the pmove callback surface the game DLL binds against is up.** **P4a** ✅ *(2026-07-05, `physics/run_cmd.cpp`)* — `SV_RunCmd` core (`sv_pmove.c:887-1014`): the speed-hack clock (dormant until the S9 `SV_CheckCmdTimes` arms `cl.ignorecmdtime`), the `msec>50` split-recurse (second half impulse-zeroed), then the chain `pfnCmdStart → PM_CheckMovingGround → viewangle latch → pfnPlayerPreThink → SV_PlayerRunThink → SetupPMove → pfnPM_Move → FinishPMove → touch dispatch (deltavelocity → PM_ConvertTrace → SV_Impact) → pfnPlayerPostThink → pfnCmdEnd`. Composes the sv_phys helpers `SV_UpdateBaseVelocity` + `SV_Impact` (moved out of `physics.cpp`'s anonymous namespace and exposed via `physics.hpp`); `SV_PlayerRunThink`/`PM_CheckMovingGround`/`PM_ConvertTrace` are ported locally. Placed in a dedicated pmove-bridge TU (raw `edict->v.` access sanctioned, Q-20). Added the `cl.ignorecmdtime`/`cmdtime`/warn fields to `ServerClient`. **NB**: the legacy `state <= cs_zombie` guard is spelled out semantically (our `ClientState` enum orders `Zombie` after `Spawned`). Tested directly against the fake DLL (new `pfnPM_Move`/`pfnCmdStart`/etc. probes): chain order + seed passthrough + FinishPMove copyback, `msec>50` split, touch dispatch (velocity save/restore), zombie skip. Gates: reviewer + parity spot-check. **P4b** ✅ *(2026-07-05)* — wired `sv_run_cmd` into its two call paths. **(1)** `pfnRunPlayerMove` (the fakeclient/bot mover, `sv_game.c:3823`, `engine_table.cpp`): resolve client → reject non-fakeclients → synthesize timebase + `usercmd_t` → seed → `sv_run_cmd` → `lastcmd`. Needs the full runtime, so `EngineBridge` gained a null-guarded `ServerRuntime *runtime` back-pointer (wired in `load_progs`; only full-orchestration slots use it). `sv.current_client` save/restore skipped (untracked; PM callbacks resolve their edict directly). **(2)** `SV_ParseClientMove` (real-client path, `sv_client.c:3305`, `client_state.cpp`): the freeze/pause zeroing + viewangle latch + `SV_EstablishTimeBase` + the fresh-cmd `sv_run_cmd` loop (seed = netchan `incoming_sequence − i`) now run; file-local `establish_timebase`/`player_is_frozen` helpers added. EntityView-scope, so it uses `EntityView` (new `set_v_angle`) — no raw `->v.`. `CL_IsInGame()` is true on dedicated, so the pause gate reduces to `paused || SV_PlayerIsFrozen` (listen-server = OQ-4 hook). Vendored `k_fl_frozen` (`FL_FROZEN`=1<<12). **Deferred (marked)**: the `net_drop` dropped-packet replay (`XASH3DPP-STUB(S8-seam)` — `net_drop = netchan.dropped − (numcmds−1)` needs the netchan.dropped mirror, so `net_drop` is pinned to 0 = the no-loss path, incl. the `numcmds==0` lastcmd-replay edge); the studio animtime clamp (`XASH3DPP-STUB(chunk7)`, needs the model cache). Tests: `test_run_player_move_fakeclient` (installed `pfnRunPlayerMove` → chain + timebase synthesis + copyback) + `test_run_player_move_rejects_real_client`; the `test_net_io` clc_move path exercises the real-client parse seam. Gates: reviewer SHIP; legacy-parity-auditor PARITY-CONFIRMED 22/22 (incl. a bit-identical proof of the ping-adjust double→float narrowing). **P4 complete — SV_RunCmd drives both the bot and real-client paths; the pmove-bridge frame-loop side is closed.** **P5 (defer)** — lag-comp (`SV_SetupMoveInterpolant`/`Restore`, §4), stubbed for the milestone; pmove *parity* ticks at S15/Chunk 11. Current pmove stubs: `client_state.cpp:604`, `game_host.cpp:205/344`, `engine_table.cpp:75`.
+**pmove-bridge decomposition (step 3, the last frame-loop piece)** *(planned 2026-07-05, recon from `deep-dive-server-physics.md` §4/§9 + `pm_shared/pm_defs.h` + `common/pmove.h`)*: ~2285 legacy lines (`sv_pmove.c` 1015 + `engine/common/pm_trace.c` 889 + `pm_surface.c` 382) + two frozen ABI structs. Slices: **P1** ✅ *(2026-07-05)* — vendor the pmove ABI into `include/xash3dpp/abi/pm_defs.hpp`: `pmplane_t` (16 B: `vec3 normal`+`float dist`), `pmtrace_t` (68 B: allsolid/startsolid/inopen/inwater/fraction/endpos/plane/ent/deltavelocity/hitgroup — `common/pmove.h:26-47`), `physent_t` (`pm_defs.h:37-77`), `playermove_t` (`pm_defs.h:79-215`: state block + `physents[600]`/`moveents[64]`/`visents[600]` + `usercmd_t cmd` + `pmtrace_t touchindex[600]` + `char physinfo[256]` + `movevars_t*` + `player_mins/maxs[4]` + ~30 fn-pointers). Caps: `MAX_PHYSENTS 600`/`MAX_MOVEENTS 64`/`MAX_CLIP_PLANES 5`/`MAX_PHYSINFO_STRING 256`. `movevars_t` already vendored (`pm_movevars.hpp`). Layout `static_assert`s per the `pm_movevars.hpp`/`event_state.hpp` pattern; opaque engine types (`model_s`/`hull_s`/`msurface_s`/`trace_t`) forward-declared for the fn-pointer slots (the DLL calls through them, so signatures must stay ABI-exact). **Gate: abi-watchdog CLEAR** — `tests/server/abi/test_pmove_layout.cpp` includes the real `pm_defs.h` in a sealed namespace and X-macro-pins every field offset **and** member size vs the vendored structs (both pointer widths); `model_s`/`hull_s`/`msurface_s` tag-fwd-declared, `trace_t` kept opaque (it is an anon-struct typedef with no tag). **P2** ✅ *(2026-07-05, `physics/pmove.cpp`)* — `SV_SetupPMove`/`SV_FinishPMove` (`sv_pmove.c:521-664`) + physent gather (`SV_AddLinksToPmove`/`AddLaddersToPmove`/`CopyEdictToPhysEnt` :42-322) over the S6 areanodes; the `usehull=FL_DUCKING?1:0`, multiplayer `onground=-1`, `pmove->time=timebase*1000` ms, `waterjumptime↔teleport_time` quirks (§8 #25-26). `rt.pmove` = pool-owned `playermove_t` (allocated in `load_progs`); `ServerClient.timebase` + `k_dead_dead` added; the visents-before-skip / physents-last gather ordering preserved. Lag-comp (`SV_GetTrueOrigin`) and the `pe->model`/studio-hitbox handle binding are the P5 / P3 / Chunk-7 seams (marked `pmove-P3` / `chunk7/OQ-2`). Gates: reviewer SHIP, legacy-parity-auditor PARITY-CONFIRMED (41/41). **P3a** ✅ *(2026-07-05, `physics/pm_trace.cpp`)* — the `PM_*` trace/point-contents family (`pm_trace.c` groups a/b/d): `PM_PlayerTraceExt`, `PM_TestPlayerPosition`, `PM_TraceModel`, `PM_TraceLine`/`Ex`, `PM_PointContents`/`TruePointContents`/`PointContentsPmove`, `PM_HullForBsp`, `PM_StuckTouch` — composed over the **existing edict-free map_loader kernel** (`recursive_hull_check`/`hull_point_contents`/`world_hull`/`hull_for_bsp`/`BoxHull`) and the S6 rotated-brush transforms (`world_transform_aabb`/`transform_positive_plane`), sourced from the gathered physent list (usehull-indexed player bounds) via a `PmTraceEnv`. Each physent's brush submodel is resolved through the arena + `IModelResolver` (`pe->info`→edict→`modelindex`), retiring the P2 `pe->model` binding TODO — no opaque engine handle is stashed. **Placement decision settled**: built in `src/server/physics/` (alongside `physics.cpp`/`movevars.cpp`), structured so Chunk 11's client path can extract it; no empty `physics` subsystem scaffolded. Vendored the `PM_*` trace flags (`k_pm_world_only`/`glass_ignore`/`custom_ignore`/`studio_ignore`/`traceline_*`) into `pm_defs.hpp`. **Group (c)** — the surface/texture trace family (`PM_TraceSurface`/`PM_TraceTexture`/`PM_RecursiveSurfCheck`) — is **deferred to Chunk 7** (needs `mfacebevel_t` facet bevels + miptex original buffers `WorldData` does not carry until the content pipeline; same dependency class as the studio hitbox hulls) and stubbed at the P3b fn-ptr table. Studio hitbox hulls fall back to the bbox (Chunk 7 / OQ-2); SOLID_CUSTOM is the S8 physics-interface sweep seam (no-hit for the milestone). Tests cross-check `pm_player_trace_ext` against the raw kernel primitive (oracle) + deterministic single-box physent scenarios + hand-derived hull-0 point-contents. Gates: reviewer + parity spot-check. **P3b** ✅ *(2026-07-05, `physics/init_client_move.cpp`)* — `SV_InitClientMove`: installs the ~30-entry PM_* callback table into `rt.pmove` via context-free pfn shims that reach the installed `EngineBridge` (added `playermove_t* pmove` + `const HullBoundsTable* player_bounds` to the bridge), sets `server`/`movevars`/hull-bounds table, and runs the DLL's `pfnPM_Init` (a `DLL_FUNCTIONS` export, null-guarded); wired from `load_progs` right after the pmove allocation. **Wired to real impls**: the trace family (`PM_PlayerTrace`/`Ex`, `PM_TestPlayerPosition`/`Ex`, `PM_TraceLine`/`Ex`, `PM_TraceModel` via the legacy `(pmtrace_t*)trace` pun), point contents (`PM_PointContents`/`TruePointContents`), `PM_StuckTouch`, the utilities (`Info_ValueForKey`, `Con_*`, `Sys_FloatTime`→`platform::get_time`, `RandomLong`/`Float` xorshift), and `PM_PlaybackEventFull`→the S9 `playback_event_full` (forced `FEV_NOTHOST`). **Marked stubs** (safe defaults, each naming its owner): `PM_Particle`/`PM_PlaySound` (S9 / Chunk 9 sound), `PM_GetModelType`/`Bounds` + `PM_TraceTexture`/`PM_TraceSurface` (Chunk 7 — model handles / group-c miptex), `PM_HullForBsp`/`PM_HullPointContents` (opaque-hull round-trip, off the `pm_shared PM_PlayerMove` path), `COM_*`/`memfgets` (Chunk 7 material files; a null load degrades a real `pfnPM_Init` to default texture types). Test drives the full round-trip (install → bridge → context-free `PM_PointContents` → water). Gate: abi-watchdog + reviewer. **P3 complete — the pmove callback surface the game DLL binds against is up.** **P4a** ✅ *(2026-07-05, `physics/run_cmd.cpp`)* — `SV_RunCmd` core (`sv_pmove.c:887-1014`): the speed-hack clock (dormant until the S9 `SV_CheckCmdTimes` arms `cl.ignorecmdtime`), the `msec>50` split-recurse (second half impulse-zeroed), then the chain `pfnCmdStart → PM_CheckMovingGround → viewangle latch → pfnPlayerPreThink → SV_PlayerRunThink → SetupPMove → pfnPM_Move → FinishPMove → touch dispatch (deltavelocity → PM_ConvertTrace → SV_Impact) → pfnPlayerPostThink → pfnCmdEnd`. Composes the sv_phys helpers `SV_UpdateBaseVelocity` + `SV_Impact` (moved out of `physics.cpp`'s anonymous namespace and exposed via `physics.hpp`); `SV_PlayerRunThink`/`PM_CheckMovingGround`/`PM_ConvertTrace` are ported locally. Placed in a dedicated pmove-bridge TU (raw `edict->v.` access sanctioned, Q-20). Added the `cl.ignorecmdtime`/`cmdtime`/warn fields to `ServerClient`. **NB**: the legacy `state <= cs_zombie` guard is spelled out semantically (our `ClientState` enum orders `Zombie` after `Spawned`). Tested directly against the fake DLL (new `pfnPM_Move`/`pfnCmdStart`/etc. probes): chain order + seed passthrough + FinishPMove copyback, `msec>50` split, touch dispatch (velocity save/restore), zombie skip. Gates: reviewer + parity spot-check. **P4b** ✅ *(2026-07-05)* — wired `sv_run_cmd` into its two call paths. **(1)** `pfnRunPlayerMove` (the fakeclient/bot mover, `sv_game.c:3823`, `engine_table.cpp`): resolve client → reject non-fakeclients → synthesize timebase + `usercmd_t` → seed → `sv_run_cmd` → `lastcmd`. Needs the full runtime, so `EngineBridge` gained a null-guarded `ServerRuntime *runtime` back-pointer (wired in `load_progs`; only full-orchestration slots use it). `sv.current_client` save/restore skipped (untracked; PM callbacks resolve their edict directly). **(2)** `SV_ParseClientMove` (real-client path, `sv_client.c:3305`, `client_state.cpp`): the freeze/pause zeroing + viewangle latch + `SV_EstablishTimeBase` + the fresh-cmd `sv_run_cmd` loop (seed = netchan `incoming_sequence − i`) now run; file-local `establish_timebase`/`player_is_frozen` helpers added. EntityView-scope, so it uses `EntityView` (new `set_v_angle`) — no raw `->v.`. `CL_IsInGame()` is true on dedicated, so the pause gate reduces to `paused || SV_PlayerIsFrozen` (listen-server = OQ-4 hook). Vendored `k_fl_frozen` (`FL_FROZEN`=1<<12). **Deferred (marked)**: the `net_drop` dropped-packet replay (`XASH3DPP-STUB(S8-seam)` — `net_drop = netchan.dropped − (numcmds−1)` needs the netchan.dropped mirror, so `net_drop` is pinned to 0 = the no-loss path, incl. the `numcmds==0` lastcmd-replay edge); the studio animtime clamp (`XASH3DPP-STUB(chunk7)`, needs the model cache). Tests: `test_run_player_move_fakeclient` (installed `pfnRunPlayerMove` → chain + timebase synthesis + copyback) + `test_run_player_move_rejects_real_client`; the `test_net_io` clc_move path exercises the real-client parse seam. Gates: reviewer SHIP; legacy-parity-auditor PARITY-CONFIRMED 22/22 (incl. a bit-identical proof of the ping-adjust double→float narrowing). **P4 complete — SV_RunCmd drives both the bot and real-client paths; the pmove-bridge frame-loop side is closed.** **P5 (defer)** — lag-comp (`SV_SetupMoveInterpolant`/`Restore`, §4), stubbed for the milestone; pmove *parity* ticks at S15/Chunk 11. Current pmove stubs: `client_state.cpp:604`, `game_host.cpp:205/344`, `engine_table.cpp:62`.
+
+> **Chunk 11 supersession (2026-07-20):** the P3a history above describes its
+> original server placement and arena-based model lookup. The trace TU now lives
+> in `xash3dpp_physics`, hot-list model identity comes from aligned gather-time
+> sidecars, and the role adapter alone resolves `PM_TraceModel`. P3b's two
+> xorshifts now point at the one `EngineContext`-owned, legacy-oracle-verified
+> stream. The historical delivery sequence remains otherwise unchanged.
 
 ______________________________________________________________________
 
@@ -249,15 +256,15 @@ ______________________________________________________________________
 **Deferred (recorded, tagged `chunk12`)**: SDL event pump + window binding (grab/warp/cursor/text-input reach a real window at the window chunk per Q-23); touch/OSK rendering; `makehelp` body.
 ______________________________________________________________________
 
-### Chunk 11 — physics (pm_shared)
+### Chunk 11 — physics (pm_shared) ✅ DONE *(shared extraction milestone — ACHIEVED 2026-07-20)*
 
 **Subsystems**: `physics`\
 **Depends on**: map_loader (Chunk 5), world/content/cmd_cvar/core; the final edge is `server → physics`, never `physics → server`\
 **Recon/Boundary**: ✅ boundary spec `docs/boundaries/physics-boundary.md` written 2026-07-20 and contract reconciled 2026-07-20; supporting inputs `design/pm-determinism-decision.md` (Q-18), `legacy-survey/deep-dive-trace-pvs.md`, and `legacy-survey/deep-dive-server-physics.md`. The server-side pmove bridge (`sv_pmove.c`) moved to Chunk 6 per `server-boundary.md`. This chunk extracts its already-written shared trace kernel, restores the one legacy RNG stream, and supplies a pre-client role-shaped witness. The production client gather/prediction path remains Chunk 12.\
-**Legacy reference**: `pm_shared/pm_move.c`, `pm_shared/pm_trace.c`, `engine/client/dll_int/cl_pmove.c`\
+**Legacy reference**: `pm_shared/pm_move.c`, `engine/common/pm_trace.c`, `engine/common/common.c:54-153`, `engine/client/dll_int/cl_pmove.c`\
 **Complexity note**: Client prediction and server authority must produce bit-identical results — determinism is the hardest constraint; float/fixed choice from Chunk 5 is locked in here.\
 **ABI surfaces touched**: `pm_shared/` — **FROZEN** (shared client ↔ server)\
-**Deliverable**: the shared pmove trace/RNG seam is server-independent and a synthetic server/client-role regression witness produces an identical deterministic projection. End-to-end `PM_Move` parity waits for Chunk 12's real client path.
+**Deliverable**: **achieved** — the shared pmove trace/RNG seam is server-independent and a synthetic server/client-role regression witness produces an identical deterministic projection. End-to-end `PM_Move` parity waits for Chunk 12's real client path.
 
 **Entry gate** *(modernization audit 2026-07-20)*:
 
@@ -265,51 +272,27 @@ ______________________________________________________________________
    the shared-deterministic role, the one-int gather severance, the parity
    fence, threading posture, and the full Q-21 axis table.
 2. ✅ **HB-2 fence anchor corrected.** The unrelated former
-   `clip.cpp:219` citation is retained only as history;
+   `clip.cpp:196` citation is retained only as history;
    `decisions-architecture.md:949-960` now names the real `if (rotated)` block
-   at **`clip.cpp:245-281`** (marked `TODO(Q-18)` in-code).
-3. **Reuse one shared RNG instance — do not copy the placeholder a third
-   time.** Legacy wires the *literal same* `COM_RandomLong`/`COM_RandomFloat`
-   pointer into both the engfuncs slot and the pmove slot on both paths,
-   drawing from one process-wide generator; there is **no such thing as
-   "independent streams"** in GoldSrc. The tree currently has **three**
-   separately-seeded, algorithmically-different stand-ins (HB-12's own
-   inventory lists only two — the third is in `sound/dsp.cpp`). **Locked
-   implementation:** a `core::LegacyRandom` value is owned by `EngineContext`;
-   canonical no-capture callbacks reach it through the existing
-   `current_engine_context()` exception and are injected into consumers. A
-   compiled C oracle whose algorithm block is byte-checked against
-   `engine/common/common.c:54-153` is the source of every numeric golden.
-4. **Sever the pmove trace layer's one edict-store reach — mechanical, not a
-   decision.** *(Corrected 2026-07-20 after a per-TU read; the earlier framing
-   below was a false trichotomy — see `boundaries/physics-boundary.md` §3.)*
-   The shared kernel `pm_trace.cpp` has **exactly one** role-owned reach in 800
-   lines: `physent_modelindex` at `pm_trace.cpp:96` resolves `pe->info → edict
-   → v.modelindex` through `env.arena->edict_num(...)`. **All the shared code
-   wants from the server is one `int`** (a model index), which it hands to the
-   neutral `IModelResolver`. It is not "the edict store" in any deep sense.
-   The fix is legacy-precedented and mechanical: legacy's `SV_CopyEdictToPhysEnt`
-   resolves the model *at gather time*; our OQ-2 (2026-07-19) chose to re-resolve
-   at trace time, which is what dragged the store into the shared code. Restore
-   the gather-time shape in **neutral** form — each role's gather fills a
-   non-ABI sidecar `int` model index (server from `edict→modelindex`, client from
-   `cl_entity→modelindex`) — and the `arena` field leaves `PmTraceEnv`. **No
-   virtual call in the trace loop, no reopening Q-20, no touching the byte-exact
-   arithmetic.** Caveat: the client half of the gather is Chunk 12 code and does
-   not exist yet, so "the client can fill the same int" is reasoned from legacy,
-   not verified against our tree — confirm when that gather is written.
-   `PM_TraceModel` is the deliberate exception at the role boundary: legacy
-   receives an arbitrary valid `physent_t *` and reads its model pointer, while
-   this rewrite keeps that opaque pointer null. The server ABI adapter therefore
-   resolves `pe->info` through its arena and passes one explicit model index to
-   the shared single-model kernel; the arena never enters `PmTraceEnv`. The
-   measured split is in `src/physics/CMakeLists.txt`: the shared surface is
-   `pm_trace.cpp` alone (800 lines, 0 `ServerRuntime` refs); `init_client_move.cpp`
-   (495, 2) and `movevars.cpp` (105, 2) are server producers/harness, not shared
-   code; `physics.cpp` (1808, **39**, `SV_Physics` world-sim), `pmove.cpp` (541,
-   7, the gather) and `run_cmd.cpp` (281, 3) are server-only. Legacy splits it
-   the same way: `engine/common/pm_trace.c` shared, versus the server-only
-   `engine/server/sv_phys.c` and `sv_pmove.c`.
+   at **`clip.cpp:222-258`** (marked `TODO(Q-18)` in-code).
+3. ✅ **One canonical legacy RNG stream is owned and oracle-gated.**
+   `EngineContext` owns the sole production `core::LegacyRandom`; identical
+   enginefuncs and pmove callback addresses reach it through
+   `current_engine_context()`. The independent server xorshifts and DSP LCG are
+   gone. A compiled C oracle is byte-checked against
+   `engine/common/common.c:54-153` before its outputs are used, and differential
+   tests cover raw draws, seed/range boundaries, rejection advancement, equal
+   and reversed ranges, and float bits on both architectures. Sound tests claim
+   callback injection and removal of its private stream only, not a legacy
+   cross-subsystem draw schedule.
+4. ✅ **The shared trace target has no edict-store reach.** Each successful
+   server gather append snapshots an aligned model index for `physents`,
+   `visents`, or `moveents`; paired spans use only their valid `num*` prefixes.
+   `PmTraceEnv` contains no `EdictArena`. `PM_TraceModel` remains the deliberate
+   role-adapter exception: the server validates `pe->info`, resolves through its
+   arena, and passes one explicit model index into physics, preserving copied
+   and valid non-list physents while invalid identifiers remain no-hit. Chunk 12
+   owes the analogous client gather and adapter.
 5. ✅ **`ServerRuntime &` narrowing is out of scope.** Chunk 11 adds the
    sidecar beside the existing sequential `pmove_t`; it does not refactor the
    surrounding server orchestration corridor.
@@ -326,12 +309,11 @@ ______________________________________________________________________
    points remain Main-only because they read live cvars and call the mutable,
    lazy studio resolver. Off-main use requires immutable resolver/cvar
    snapshots and is not part of this chunk.
-9. Note that `src/physics/` is still an **empty placeholder** — the
-   `pm_shared` work lives in `src/server/physics/`, and item 4's mechanical
-   gather severance must land before the target can exist. *(This item also named
-   `src/world/`; that one was resolved on 2026-07-20 — the world code was
-   already decoupled and is now the `xash3dpp_world` target with its own
-   boundary spec, so `physics` is the last misleading skeleton of the two.)*
+9. ✅ **`xash3dpp_physics` is the one-TU shared target.** Server owns the
+   role-specific gather and links physics privately. Physics exposes only
+   `map_loader` and `utilities`; its world/content/cmd_cvar/core edges are
+   private, its public header is self-contained, and standalone role-parity
+   tests do not link server. <!-- verify: census(physics, src_tu_count) == 1 -->
 
 **Explicit exclusions:** the generic subsystem scaffold, production client
 gather/prediction, movevars transport/receiver work, server/client long-command
@@ -339,6 +321,16 @@ splitting, Q-18 rotated-matrix arithmetic, lag compensation/P5,
 `SOLID_CUSTOM`/physics-interface overrides, `SV_Physics`, unrelated pmove
 callback stubs, and broad `ServerRuntime` narrowing. These remain in their
 recorded owner chunks; the Chunk 11 witness must not claim them.
+
+**As-built closeout:** the extracted target, aligned sidecars, explicit-index
+`PM_TraceModel`, canonical RNG callbacks, sound injection, exact legacy C
+oracle, shared predicate helpers, compile-only public-header consumer, and
+server-free synthetic role witness are all built and tested on x64 and x86.
+The witness compares a deterministic projection with first-divergence raw-bit,
+callback, entity/model, trace-input, and RNG-position diagnostics. Chunk 12
+explicitly retains production client gather/prediction, movevars reception,
+retail client-DLL integration, command splitting, client-side trace-model
+resolution, and captured sound scheduling parity.
 
 ______________________________________________________________________
 
@@ -580,9 +572,7 @@ them by *what unblocks them* so each future chunk picks up its inheritance:
   `ServerExecute`/`CmdArgs/Argv/Argc`/`AddServerCommand`), the filesystem file
   ops (`pfnLoadFileForMe`/`FreeFile`/`CompareFileTime`/`GetFileSize`), the
   `sv_move.c` locomotion family (`SV_MoveToOrigin`/`CheckBottom`/`WalkMove`/
-  `MoveToss` — explicitly deferred at S8), the `COM_RandomLong`/`Float` idtech-RNG
-  parity port (two xorshift stubs to unify — `engine_table.cpp` + `init_client_move.cpp`),
-  `SV_PortalCSG` trace elongation, and the OQ-7 HLMODS compat nudge
+  `MoveToss` — explicitly deferred at S8), `SV_PortalCSG` trace elongation, and the OQ-7 HLMODS compat nudge
   (routes to a future server `ICompatPolicy`, Q-12).
 - **P5 pmove lag-compensation** *(deferred by plan)* — `SV_SetupMoveInterpolant`/
   `SV_RestoreMoveInterpolant` are no-ops in `run_cmd.cpp`; pmove *parity* ticks
@@ -722,7 +712,7 @@ ______________________________________________________________________
   five subsystems independently flagged the same prohibition: map_loader
   (Q-18 trace/PVS/CRC kernel), content (studio bone math), networking (wire
   bit-codec + delta widths + LZSS + OOB magic), server (rotated-brush ULP
-  `clip.cpp:219`), utilities (double-precision studio math). Record the union
+  `clip.cpp:196`), utilities (double-precision studio math). Record the union
   once (a `decisions-architecture.md` note or an `extension-goals.md`-style
   invariant list) so no future modernization pass (FMA/reassoc/`std::ranges`
   rewrite) silently perturbs a golden-gated kernel. *Docs*:
@@ -865,11 +855,9 @@ ______________________________________________________________________
   Chunk 7/8 (server), console-UI chunk (cmd_cvar autocomplete). **No brief**
   (inventory of already-tracked deferrals).
 
-- **HB-12 — One shared deterministic RNG** *(HOUSE)* — multiple RNG stubs
-  await unification: server `s_rng_state`/`s_pm_rng`, plus the
-  `COM_RandomLong`/`Float` xorshift stubs in `engine_table.cpp` +
-  `init_client_move.cpp` (see the Chunk 6 deferred inventory above). Unify
-  into one idtech-parity RNG stream. *Docs*: `boundaries/server-boundary.md`,
-  the deferred-stub inventory above. *Tags*: determinism (parity — the shared
-  stream must reproduce idtech bytes). **No design brief** (parity port, but
-  the byte-exact requirement ties it to HB-2's invariant set).
+- **HB-12 — One shared deterministic RNG** *(HOUSE, ✅ closed Chunk 11)* —
+  the former server xorshifts and sound LCG now route through one
+  `EngineContext`-owned `core::LegacyRandom`. Its C oracle body is byte-checked
+  against legacy before differential tests trust the outputs. Sound scheduling
+  parity remains a Chunk 12 integration handoff, not part of this closed
+  algorithm/ownership item.

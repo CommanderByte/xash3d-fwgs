@@ -125,7 +125,7 @@ item.
   `if (s.map_loader) ...` (`:240`), `if (s.server) ...` (`:250`) — and all
   four pointers (`cmd_cvar`, `clock`, `map_loader`, `server`) are null in the
   shipped binary, so the frame loop the whole rewrite exists to run is a
-  no-op every tick. `EngineContext` (`engine_context.hpp:79`), the one type
+  no-op every tick. `EngineContext` (`engine_context.hpp:86`), the one type
   that wires host to `filesystem`/`cmd_cvar`/`clock`/`networking`/
   `map_loader`/`server`, is constructed nowhere in `src/` — only in one test
   file.
@@ -213,7 +213,7 @@ so the heading stays but the entry itself lives at its corrected tier).
   <xash3dpp/cmd_cvar/context.hpp>`) and `:89` (`cmd_cvar::CmdCvarContext
   cmd_cvar;` embedded by value in the public `EngineContext` struct); also
   `EngineContextInitParams::trust_oracle`/`compat_policy`
-  (`engine_context.hpp:46-47`) are `cmd_cvar::ITrustOracle`/`ICompatPolicy`
+  (`engine_context.hpp:53-54`) are `cmd_cvar::ITrustOracle`/`ICompatPolicy`
   pointers in the same public header.
 
 - **Current pattern**: `engine_context.hpp` is a **public** header
@@ -250,7 +250,7 @@ so the heading stays but the entry itself lives at its corrected tier).
 
 - **File(s)**: `xash3dpp/docs/boundaries/host-boundary.md:339-344` and
   `:355-357`; `xash3dpp/include/xash3dpp/map_loader/map_loader.hpp:139`;
-  `xash3dpp/include/xash3dpp/server/server.hpp:137`;
+  `xash3dpp/include/xash3dpp/server/server.hpp:142`;
   `xash3dpp/src/host/host.cpp:229,237,240,250`.
 
 - **Current pattern**: `host-boundary.md:339-344` states "Each per-frame
@@ -261,7 +261,7 @@ so the heading stays but the entry itself lives at its corrected tier).
   flag is set, every subsequent per-frame entry point sees it and bails
   early". As-built, `MapLoader::run_frame_step()` is declared
   `void ... noexcept` (`map_loader.hpp:139`) and `Server::frame(double)` is
-  declared `void ... noexcept` (`server.hpp:137`); `host.cpp` calls both as
+  declared `void ... noexcept` (`server.hpp:142`); `host.cpp` calls both as
   bare statements (`:240`, `:250`) with nothing to short-circuit on. A grep
   for `frame_abort` across `src/`/`include/` returns only
   `host.cpp:51-53,215-222,290-302` and `abi/engine_funcs.cpp:73` — no
@@ -561,7 +561,7 @@ Recorded so nobody re-derives these:
   this as "the single documented exception to the 'no global accessor'
   rule", carries decision refs to `decisions-architecture.md` §3 Q-2 and
   `host-boundary.md` OQ-10, and the definition
-  (`engine_context_accessor.cpp:25`) carries
+  (`engine_context_accessor.cpp:26`) carries
   `compliance-allow(di-global-ref): Q-2 documented singleton exception
   (OQ-10)`. Exactly one production caller exists
   (`abi/engine_funcs.cpp:69`, the `Host_Error` path) — blast radius 1,

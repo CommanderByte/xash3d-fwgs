@@ -208,16 +208,14 @@ ______________________________________________________________________
 
 ## Medium-priority opportunities
 
-### M-1: Two unwaived candidate-BLOCKER mutable statics, and a third that should move into `RoomDsp`
+### M-1: Two unwaived candidate-BLOCKER mutable statics; DSP RNG ownership closed
 
 - **File(s)**: `xash3dpp/src/sound/vox.cpp:57-58` (`g_vox_period_word`,
-  `g_vox_comma_word`); `xash3dpp/src/sound/dsp.cpp:39-48`
-  (`random_long`'s function-local seed); `xash3dpp/src/sound/dsp.cpp:734-735`
-  (a caller of it); `xash3dpp/docs/boundaries/sound-boundary.md:372`
+  `g_vox_comma_word`); `xash3dpp/docs/boundaries/sound-boundary.md:372`
   (the doc's P-3 row).
 
 - **Current pattern**: `sound-boundary.md`'s P-3 row asserts flatly that
-  "the campaign added none" [no file-scope mutable state]; three were
+  "the campaign added none" [no file-scope mutable state]; two were
   added during S9.x. `compliance_scan --subsystem sound` reports
   `vox.cpp:57` and `:58` as candidate-BLOCKERs (`mutable-global`) on
   every run — neither carries a `compliance-allow(mutable-global)`
@@ -228,12 +226,10 @@ ______________________________________________________________________
 - **Suggested replacement**: add the missing
   `compliance-allow(mutable-global)` machine-readable markers to
   `vox.cpp:57-58` pointing at the existing rationale — the prose is
-  already correct, only the token is missing. Separately, move
-  `random_long`'s seed (`dsp.cpp:39`) out of the function-local `static`
-  and into `RoomDsp` as a member, since `RoomDsp` already owns the DSP
-  arithmetic state this RNG feeds (see H-12/L-4 for the parity status of
-  the RNG itself, which is a separate question from where its seed
-  lives). Correct `sound-boundary.md:372`'s P-3 row to name the three
+  already correct, only the token is missing. Chunk 11 separately removed
+  DSP's function-local RNG state and injected the canonical random-long
+  callback; a missing callback is inert and creates no fallback stream.
+  Correct `sound-boundary.md:372`'s P-3 row to name the remaining two
   additions and their waiver status instead of claiming zero.
 
 - **Boundary-safe**: Yes — annotation and doc changes plus a
@@ -313,7 +309,7 @@ ______________________________________________________________________
   `FilesystemAudioLoader` (:435), `SfxRegistry` (:438-439), the `Sound`
   object itself inside `create_sound`, and one unwaived
   unique-ptr-nonpimpl warning on `create_sound`'s return type
-  (`sound.hpp:350`). Sound already created its pool via
+  (`sound.hpp:355`). Sound already created its pool via
   `create_pool("sound")` (:399-403) before any of these five
   allocations, so the pool the P-7 idiom needs already exists at the
   point each object is constructed.
@@ -505,33 +501,15 @@ ______________________________________________________________________
   `sound/sound.hpp` or `sound/device.hpp` currently gets a transitive
   link to `xash3dpp_memory` it never asked for.
 
-### L-4: `dsp.cpp`'s `random_long` is a third, untracked RNG stand-in — add it to HB-12's inventory
+### L-4: DSP's third RNG stand-in — ✅ closed Chunk 11
 
-- **File(s)**: `xash3dpp/src/sound/dsp.cpp:39-48`.
-
-- **Current pattern**: a function-local-static LCG
-  (`state = state * 1664525u + 1013904223u`), explicitly documented in
-  the surrounding comment as "NOT load-bearing for parity... exists only
-  so the (dead) branch structure compiles". `HB-12` ("one shared
-  deterministic RNG; byte-exact constrained") currently tracks only two
-  duplicate xorshift32 stand-ins in `server/abi/engine_table.cpp` and
-  `server/physics/init_client_move.cpp`; this third, algorithmically
-  different stand-in is invisible to that inventory.
-
-- **Suggested replacement**: no sound code change proposed here. Add
-  `dsp.cpp:39-48` to HB-12's tracked inventory in
-  `implementation-plan.md`, or explicitly, in writing, scope it OUT with
-  a stated reason (e.g. "VOX/DSP profiling test noise does not need
-  `COM_RandomLong` bit-exact parity") — but record the decision rather
-  than leaving it silently absent, since HB-12's own text currently
-  implies its inventory is complete.
-
-- **Boundary-safe**: N/A — doc/backlog-tracking note, not a code change.
-
-- **Rationale**: the comment already says this RNG's output does not
-  need to be parity-exact; the only defect is that HB-12's own
-  bookkeeping does not know sound has a third stand-in at all, which
-  risks HB-12 landing a "two-generator" fix that misses a third.
+- **As built:** `RoomDsp` receives a narrow random-long callback through
+  `SoundInitParams`; its former function-local LCG is gone and a null callback
+  returns the lower bound without creating a fallback stream.
+- **Proof boundary:** a spy proves `dsp_profile` routes draws through the
+  injected function and remains unavailable while the audio topology runs.
+  This closes ownership/injection only; legacy-equivalent sound/pmove draw
+  scheduling awaits production client integration and a captured schedule.
 
 ### L-5: `SoundStats` fact-base correction — 5 atomic fields, not 1 (no code action)
 
@@ -605,7 +583,7 @@ ______________________________________________________________________
   in the BRIEF's five-subsystem HB-2 list (map_loader/content/networking/
   server/utilities). Its own project-level parity contract — the S9.8
   byte-identical-PCM console-scripted witness
-  (`tests/sound/test_sound_witness.cpp:626`) — is not one of the audit's
+  (`tests/sound/test_sound_witness.cpp:623`) — is not one of the audit's
   two fences, but every item in this report that touches the mix/DSP
   arithmetic path (H-3, M-2) was checked against it and found
   arithmetic-preserving (same bodies, same values, no reassociation).
@@ -648,7 +626,7 @@ ______________________________________________________________________
   `Content::model_infos`) onto the pool's `std::span`-out-param shape.**
   The tree-wide L3 lens records this explicitly as a shape constraint:
   row types owning `std::string` (`ChannelInfo::sentence_name`,
-  `sound.hpp:169`) structurally cannot ride a span, and the correct
+  `sound.hpp:55`) structurally cannot ride a span, and the correct
   sanctioned shape for that class is a cold-path-only `std::vector`
   return, never called on a frame budget or from a debug thread
   expecting no allocation. Recorded here so a future HB-5/HB-6

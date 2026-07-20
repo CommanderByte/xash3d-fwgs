@@ -66,14 +66,11 @@ inherits the caller's Main context.
 All shared mutable state is **Safe-by-contract** — correct precisely because the
 OQ-9 single-thread rule holds; none would be safe under concurrent entry:
 
-> *Confirmed 2026-07-06:* every symbol below still exists as described —
-> `g_bridge` (`engine_table.cpp:54`, now carrying the explicit
-> `compliance-allow(mutable-global, di-global-ref)` Q-20 carve-out annotation),
-> the `s_value[256]` ABI return buffer (`init_client_move.cpp:235`), and the two
-> RNG statics `s_rng_state` (`engine_table.cpp:1545`) / `s_pm_rng`
-> (`init_client_move.cpp:280`, both `// XASH3DPP-STUB(chunk6)` idtech-RNG-parity
-> follow-ups). The Race-static-buf-made-safe-by-single-thread analysis is
-> unchanged as-built.
+> *Reconciled 2026-07-20:* `g_bridge` retains its explicit
+> `compliance-allow(mutable-global, di-global-ref)` Q-20 carve-out, and the ABI
+> static return buffers remain Safe-by-contract. Chunk 11 removed both former
+> RNG statics; the identical enginefuncs/pmove callbacks now draw from the sole
+> `EngineContext`-owned `LegacyRandom` on Main.
 
 - **`ServerRuntime rt`** (the `sv`/`svs`/`svgame` aggregate) — heap-owned by the
   `Server` object (one per process), reached only through Main-thread entry
@@ -91,11 +88,10 @@ OQ-9 single-thread rule holds; none would be safe under concurrent entry:
   pfn slots that return a static `""`. Classic *Race-static-buf* shape, made
   safe only by the single-thread contract (a second concurrent caller would
   clobber the first's result before it is consumed).
-- **`s_rng_state`** (`engine_table.cpp`) and **`s_pm_rng`**
-  (`init_client_move.cpp`) — the two xorshift RNG states behind
-  `COM_RandomLong`/`Float` and the pmove `RandomLong`/`Float`. Mutated per call;
-  Main-thread-only. (These are also the tracked RNG-unification stubs — one
-  shared idtech stream is the eventual port.)
+- **Canonical random stream** (`EngineContext::random`) — enginefuncs and
+  pmove use identical no-capture callback addresses. The instance is mutated
+  per draw and remains Main-thread-only in production; no server RNG global
+  remains.
 
 ## Hazards
 
@@ -107,7 +103,7 @@ does not itself synchronize):
 |--------|------|-------|-------|
 | ABI static return buffers (`s_value`, `s_empty`, static `""`) | `engine_table.cpp`, `init_client_move.cpp` | Race-static-buf (contained by OQ-9) | Safe only because all ABI slots run on Main. Off-thread entry would corrupt in-flight results. |
 | `g_bridge` | `engine_table.cpp` | Race-shared (contained by OQ-9) | Install/detach-only during operation; process-global, so it also assumes a single live server. |
-| `s_rng_state`, `s_pm_rng` | `engine_table.cpp`, `init_client_move.cpp` | Race-shared (contained by OQ-9) | Per-call mutation; Main-thread-only. |
+| canonical `EngineContext` random stream | host-owned; server callbacks in `engine_table.cpp` / `init_client_move.cpp` | Safe-by-contract | Per-call mutation; production calls are Main-only and one process stream is intentional. |
 
 ## Required caller contracts
 

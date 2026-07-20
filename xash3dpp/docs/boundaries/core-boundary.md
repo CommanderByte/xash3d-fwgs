@@ -3,8 +3,9 @@
 **Status**: Chunk 3+ (S3 hardening, 6B wave)  
 **Decision ref**: `docs/design/decisions-architecture.md` Q-1..Q-4, Q-7, Q-22, QN
 
-> Refreshed 2026-07-06 (as-built pass). Reconciled against `src/core/**`
-> (`clock.cpp`, `error.cpp`, `log.cpp`, `thread_role.cpp`) and the public
+> Refreshed 2026-07-06 (as-built pass), then reconciled for Chunk 11 on
+> 2026-07-20. Reconciled against `src/core/**` (`clock.cpp`, `error.cpp`,
+> `legacy_random.cpp`, `log.cpp`, `thread_role.cpp`) and the public
 > headers. `compliance_scan.py core` is **clean** (0 blocker/warning/note),
 > `stub_scan.py core` is **clean** (0 TODO markers), and `status_table.py`
 > reports core **Complete**. The main drift since the last revision is the
@@ -24,6 +25,8 @@ The core subsystem provides cross-cutting, engine-wide primitives that are usabl
 3. **Thread role registry** (`thread_role.hpp`): per-thread role tracking and assertions (main-thread-only subsystem entry guards)
 4. **Error codes** (`error.hpp`): Chunk-2 vocabulary enum (Q-5)
 5. **Frame timing** (`clock.hpp`): monotonic clock service over legacy host.c (realtime/frametime state, FPS gating, cvar integration)
+6. **Legacy random stream** (`legacy_random.hpp`): instance-owned,
+   bit-compatible `COM_RandomLong` / `COM_RandomFloat` state and operations
 
 Core is deliberately minimal and does NOT depend on:
 
@@ -38,8 +41,9 @@ retained; superseded statements are flagged inline.
 
 ### Diagnostics-tier target split (D-1)
 
-`src/core/CMakeLists.txt` builds `xash3dpp_core` from **only** `error.cpp` +
-`clock.cpp`. The **diagnostics tier** — `log.cpp` and `thread_role.cpp`, i.e.
+`src/core/CMakeLists.txt` builds `xash3dpp_core` from `error.cpp`, `clock.cpp`,
+and `legacy_random.cpp`. The **diagnostics tier** — `log.cpp` and
+`thread_role.cpp`, i.e.
 the implementations behind `log.hpp` / `assert.hpp` / `thread_role.hpp` /
 `private/core/assert_main.hpp` — is **compiled into `xash3dpp_platform`**
 (D-1 dependency hardening, 2026-07-06). The headers keep their
@@ -50,12 +54,23 @@ the default log sink is `platform::console::write`, so hosting those two TUs
 in platform makes the base layer self-contained.
 
 > **Superseded 2026-07-06:** the *ABI* section's "Core is internal to
-> `xash3dpp_core.a`" is now imprecise. `clock`/`error` live in
+> `xash3dpp_core.a`" is now imprecise. `clock`/`error`/`legacy_random` live in
 > `xash3dpp_core.a`; `log`/`thread_role` live in `xash3dpp_platform.a`.
 > Neither exports an ABI-stable symbol — the split is purely a build-graph
 > detail — but the vocabulary (`xash::core`) and header paths are unchanged.
 > Layering remains one-way: **core → platform** (`xash3dpp_core PRIVATE`
 > links `xash3dpp_platform`).
+
+### Legacy RNG (Chunk 11)
+
+`LegacyRandom` owns `idum`, `iy`, and the 32-entry shuffle table per instance;
+there is no file-scope RNG state. `EngineContext` owns the sole production
+instance and publishes canonical no-capture callbacks to the server pmove and
+enginefuncs surfaces. Core itself does not depend on host. A separately compiled
+C test oracle contains the exact legacy routine block and a verifier compares
+that body byte-for-byte with `engine/common/common.c:54-153` before differential
+goldens are trusted. Tests cover the legacy seed normalization, rejection draw
+consumption, integer range quirks, and float bit patterns on x64 and x86.
 
 ### Core ↔ platform thread-primitive split (carry-in)
 
@@ -113,11 +128,13 @@ Core is **internal to xash3dpp_core.a** — no ABI-stable exports (Chunk 3+). Lo
 
 ## Interface
 
-**Public headers**: `include/xash3dpp/core/{log,assert,error,thread_role,clock}.hpp`
+**Public headers**: `include/xash3dpp/core/{log,assert,error,thread_role,clock,legacy_random}.hpp`
 
 **Private detail**: `include/xash3dpp/private/core/assert_main.hpp` (legacy main-thread check for platform code — an independent mechanism, NOT a wrapper over `assert_thread_role`; corrected 2026-07-20)
 
-**No boundary-crossing pointers**: all APIs are free functions or inline value types.
+**No owned boundary pointers**: APIs are free functions, value types, or
+instance-owned services. `LegacyRandom` optionally receives a non-owning testable
+wall-seconds function pointer; it owns all mutable algorithm state.
 
 ## Dependencies
 
@@ -126,6 +143,7 @@ Core is **internal to xash3dpp_core.a** — no ABI-stable exports (Chunk 3+). Lo
 - Every subsystem: log/assert/error  
 - Server, map_loader, networking, platform, filesystem, host, cmd_cvar, utilities: thread_role asserts
 - Host, server: Clock
+- Host, server callback surfaces: LegacyRandom (the production value is owned by EngineContext)
 
 **Outbound** (core depends on):
 
@@ -142,6 +160,7 @@ Core is **internal to xash3dpp_core.a** — no ABI-stable exports (Chunk 3+). Lo
 | `g_log_callback` (log.cpp) | core | process | std::atomic relaxed; single write from main before workers spawn |
 | Clock timing atomics | Clock::Impl | Clock instance | std::atomic; reads from Chunk 10 renderer, writes from main |
 | Thread-local `tls_role` (thread_role.cpp) | thread-local per thread | thread | no synchronization needed (thread-local) |
+| `LegacyRandom::{idum_,iy_,iv_}` | `LegacyRandom` instance | owning instance | unsynchronised by design; sole production instance is Main-only |
 
 ## Quirks
 
@@ -150,6 +169,11 @@ Core is **internal to xash3dpp_core.a** — no ABI-stable exports (Chunk 3+). Lo
 2. **Clock::init/shutdown/set_frame_rate_gate assert ThreadRole::Main**: main-thread-only engine machinery. The scheduler (Chunk 10) may tick from other threads in future, but frame acceptance currently runs on main. See frame-budget discussion in clock.hpp.
 
 3. **cmd_cvar forward-declared in clock.hpp but included in clock.cpp**: respects layer boundary (core < cmd_cvar). The pointer-member pattern avoids circular include. Clock stores a non-owning reference handed in by EngineContext at init time — lifetime is engine-context-owned (outlives Clock).
+
+4. **LegacyRandom lazy seeding is observable legacy behavior**: a zero seed
+   consults the injected/default wall-seconds function only when the first draw
+   occurs. Equal integer ranges still consume a draw; unpublished host callbacks
+   return the lower bound without reaching this object.
 
 ## Constant classification (Q-O)
 

@@ -390,19 +390,18 @@ ______________________________________________________________________
 
 ## As-built reconciliation (2026-07-06)
 
-The shipped subsystem is **`xash3dpp_server`, one CMake target, 30 TUs** across
-five source slices (plus the public `Server` facade). The legacy triple
+The shipped subsystem is **`xash3dpp_server`, one CMake target, 26 TUs** across
+four source slices (plus the public `Server` facade). The legacy triple
 (`sv`/`svs`/`svgame`) folded into a single heap-owned `ServerRuntime`
 aggregate reached only through Main-thread entry points — the Q-2 no-globals
 rule held, with one documented carve-out (`g_bridge`, below).
 
 | Slice (`src/server/…`) | TUs | Shipped responsibility |
 |------------------------|-----|------------------------|
-| `abi/` | 4 | `engine_table.cpp` (the 159-slot `enginefuncs_t` shims + `g_bridge`), `edict_arena.cpp` (Q-20 store), `game_dll.cpp` (GiveFnptrsToDll / GetEntityAPI2 negotiation), `string_pool.cpp` (`string_t` arena) |
-| `lifecycle/` | 6 | `game_host.cpp` (spawn/activate/deactivate orchestration + `Host_ServerFrame`), `spawn.cpp`, `entity_parse.cpp`, `precache.cpp`, `model_resolver.cpp`, `world_hooks.cpp` |
+| `game/` | 4 | `engine_table.cpp` (the 159-slot `enginefuncs_t` shims + `g_bridge`), `edict_arena.cpp` (Q-20 store), `game_dll.cpp` (GiveFnptrsToDll / GetEntityAPI2 negotiation), `string_pool.cpp` (`string_t` arena) |
+| `lifecycle/` | 8 | `game_host.cpp` (spawn/activate/deactivate orchestration + `Host_ServerFrame`), spawn/precache/model/world hooks, lightstyles, and the save bridge |
 | `clients/` | 8 | `client_state.cpp`, `net_io.cpp`, `messages.cpp`, `snapshot.cpp` (the delta/PVS/PHS snapshot pipeline), `info_string.cpp`, `query.cpp` (A2S/legacy), `filter.cpp` (bans), `log.cpp` |
-| `physics/` | 6 | `physics.cpp` (MOVETYPE dispatch/pushers), `pmove.cpp` + `init_client_move.cpp` + `pm_trace.cpp` + `run_cmd.cpp` (the pmove bridge + ~30 `playermove_t` callbacks), `movevars.cpp` |
-| `world/` | 5 | `clip.cpp` (trace composition), `links.cpp` (areanodes), `hulls.cpp`, `contents.cpp`, `light.cpp` |
+| `physics/` | 5 | `physics.cpp` (MOVETYPE dispatch/pushers), `pmove.cpp` + `init_client_move.cpp` + `run_cmd.cpp` (role-owned pmove gather/harness and callbacks), `movevars.cpp`; shared `pm_trace.cpp` is now in `xash3dpp_physics` |
 
 **Reconciled against the spec:**
 
@@ -449,8 +448,8 @@ rule held, with one documented carve-out (`g_bridge`, below).
 - **OQ-8 milestone trims:** honoured. Voice fan-out, HLTV datagram, bandwidth
   testpacket, NAT punch, and the full A2S responder set carry
   `// XASH3DPP-STUB(chunk6)` markers; `query.cpp` ships the info-reply skeleton.
-  The two RNG statics (`s_rng_state` / `s_pm_rng`) are explicit
-  `XASH3DPP-STUB(chunk6)` idtech-RNG-parity follow-ups (see Threading).
+  Chunk 11 removed both former RNG statics: enginefuncs and pmove now receive
+  identical canonical callbacks backed by the one `EngineContext` stream.
 - **`strnicmp` / `string_view` over-read:** **ABSENT** (see the note under
   Extension axes). All server string comparisons are over NUL-terminated
   C-strings — the `Info_ValueForKey` static-buffer key parser
@@ -462,7 +461,7 @@ end: `studio_pose_for_entity` gating + `studio_player_blend`
 (`world/hulls.cpp`), the per-hitbox merge loop (`world/clip.cpp`), the
 `IModelResolver::studio_hulls` provider with the legacy pooled 16-entry
 `StudioHullCache` (`model_resolver.{hpp,cpp}`, cleared on level change), and
-the pmove mirror (`physics/pm_trace.cpp`). Adjudicated legacy quirks
+  the pmove mirror (`src/physics/pm_trace.cpp`, now in `xash3dpp_physics`). Adjudicated legacy quirks
 (faithful-for-defined-inputs, matching the info-string precedent):
 
 - **CS shield skip compaction**: legacy skips WRITING hull slot 21
@@ -506,10 +505,11 @@ due when client prediction lands; the detail is in
 - **Role:** server-authoritative — the authority over world state (entities,
   physics dispatch, snapshots). It owns no cross-role parity obligation of its
   own, **but it is the authority half of the shared-deterministic player-move
-  pair**: it runs the shared `pm_trace` kernel (today under `src/server/physics/`)
+  pair**: it runs the shared `pm_trace` kernel from `xash3dpp_physics`
   and its result is the truth the Chunk-12 client predicts against.
 - **Counterpart:** client prediction (Chunk 12) over the same neutral physent
-  snapshot; the neutral seam is `SV_CopyEdictToPhysEnt` producing `physent_t[]`.
+  snapshot; the neutral seam is the frozen `physent_t[]` plus aligned
+  role-owned model-index sidecars.
 - **Parity fence:** the shared kernel's determinism (see physics-boundary); the
   rotated-brush ULP block is HB-2 in `world/clip.cpp`.
 
@@ -541,7 +541,7 @@ door-keep verdicts in the whole rewrite.
 | **G-3** dedicated debug thread | **Yes — door OPEN, needs P-2** | Off-Main reads of published server snapshots (entity dumps, perf counters). `ServerStats` counters are already `std::atomic` (any-thread read). Live entity/world reads must go through a **published P-2 snapshot**, never a live `EngineBridge`/`ServerRuntime` ref (Main-mutable for its whole lifetime — threading Safe-by-contract rows). The snapshot double-buffer is the bring-up work; a new `ThreadRole` value + the cvar `shared_mutex` retrofit are the shared cost G-3 triggers. |
 | **P-1** main-thread inbox | **Yes — door, host-owned drain (wired 2026-07-19)** | The server has no inbox of its own; `Host::RunFrame` drives `Server::frame(frametime)` each gated tick (wired by the consolidation audit — the Chunk-6 `TODO` in `host.cpp` is gone), which enters the `Host_ServerFrame` equivalent `host_server_frame` (`physics/physics.cpp`, via `server.cpp`). *An earlier revision of this row claimed the pump was already wired and placed the drain in `lifecycle/game_host.cpp` — both corrected.* G-1/G-3 mutations land in the (future) host inbox and execute on Main inside the frame. Server owes nothing beyond staying Main-only-mutating. |
 | **P-2** published-snapshot reads | Partial — **door identified** | The snapshot pipeline (`clients/snapshot.cpp`) already builds per-client `entity_state_t` frames, but those are the **wire** snapshots (delta-compressed, consumed by netchan). A G-1/G-3 introspection snapshot (typed entity/cvar/world dump) is a *new* published surface — the P-2 bring-up work, not yet built. `EntityView` is the value type it publishes. |
-| **P-3** context-first, no new file-scope state | **✅ met, one documented exception** | `ServerRuntime` is heap-owned, not static; the module statics the spec flagged (`g_userid`, ban lists, rcon buffer) live inside the runtime. The headline file-scope mutable global is `g_bridge` — the deliberate ABI-slot carve-out (the 159 C slots have no userdata parameter), annotated `compliance-allow` (`engine_table.cpp:57`). *This row said "the **one**" until 2026-07-20; it is not.* Also file-scope and mutable: the two ~4 KB fat-visibility buffers `s_fatpvs` / `s_fatphs` (`engine_table.cpp:63-64`), sized like `sv_game.c:31-32`, filled by `pfn_set_fat_pvs`/`pfn_set_fat_pas` and handed to the game DLL — they carry **no** `compliance-allow`, unlike `g_bridge`. The two RNG statics are tracked `XASH3DPP-STUB` follow-ups. <!-- verify: grep-count(^std::byte s_fat(pvs\|phs), xash3dpp/src/server/game/engine_table.cpp) == 2 --> |
+| **P-3** context-first, no new file-scope state | **✅ met, one documented exception** | `ServerRuntime` is heap-owned, not static; the module statics the spec flagged (`g_userid`, ban lists, rcon buffer) live inside the runtime. The headline file-scope mutable global is `g_bridge` — the deliberate ABI-slot carve-out (the 159 C slots have no userdata parameter), annotated `compliance-allow` (`engine_table.cpp:57`). Also file-scope and mutable: the two ~4 KB fat-visibility buffers `s_fatpvs` / `s_fatphs` (`engine_table.cpp:73-74`), sized like `sv_game.c:31-32`, filled by `pfn_set_fat_pvs`/`pfn_set_fat_pas` and handed to the game DLL. Chunk 11 removed the former server RNG statics; the stream is an `EngineContext` value. <!-- verify: grep-count(^std::byte s_fat(pvs\|phs), xash3dpp/src/server/game/engine_table.cpp) == 2 --> |
 | **P-4** typed introspection | **✅ door OPEN** | `EntityView` is the shipped typed read surface (the north star names it directly) — no `extern edict_t*` array poke in engine-internal code, no raw `->v.` offset access outside the confined areas. This is the one G-1/G-3/G-4 query layer. |
 | **G-4** expanded in-game debugging | Consumer via P-4 | Entity/perf overlays consume `EntityView` + `ServerStats` — the same one query layer the P-4 row guards; the P-2 introspection snapshot is the shared bring-up work G-4 rides on. |
 | **G-5** scripting runtime | Nothing owed now | §G-5's script surface v0 names cmd_cvar/filesystem/core affordances, not server ones; a tooling VM's entity reads go through the same P-2/P-4 snapshot surface as G-1. Parity precedence caps everything: byte-exact sim behaviour wins over any binding convenience. |

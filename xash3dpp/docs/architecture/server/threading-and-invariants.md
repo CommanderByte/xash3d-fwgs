@@ -62,7 +62,7 @@ OQ-9 were broken:
 | `ServerRuntime rt` | (aggregate) | Safe-by-contract | Heap-owned by the one `Server`; reached only through Main-thread entry points |
 | `g_bridge` | `abi/engine_table.cpp` | Race-shared (contained) | Install/detach only during operation; process-global ⇒ also assumes a single live server. The one sanctioned engine-state singleton: the ~30 context-free pfn shims have fixed ABI signatures with no userdata slot, so they reach engine state through this file-scope pointer (Q-20 ABI-slot carve-out). Adjudicated at its definition with a `compliance-allow(mutable-global, di-global-ref)` marker |
 | ABI static return buffers (`s_value`, `s_empty`, static `""`) | `engine_table.cpp`, `init_client_move.cpp` | Race-static-buf (contained) | Frozen slot contract; a second concurrent caller would clobber the in-flight result |
-| `s_rng_state`, `s_pm_rng` | `engine_table.cpp`, `init_client_move.cpp` | Race-shared (contained) | Per-call xorshift mutation; the tracked RNG-unification stubs |
+| canonical random callbacks | `engine_table.cpp`, `init_client_move.cpp` | Main-only by production contract | Both surfaces hold identical addresses and draw from the `EngineContext`-owned `LegacyRandom`; server owns no RNG static |
 
 ### Required caller contracts
 
@@ -90,8 +90,8 @@ zero-cost `EntityView` facade, never via `->v.` directly. Raw `edict->v.` access
 is **confined** to three sites, enforced by a compliance-scan rule:
 
 - `src/server/game/` — the ABI shim (the store itself + the accessor seam);
-- the **pmove bridge** (`physics/pmove.cpp`, `pm_trace.cpp`,
-  `init_client_move.cpp`, `run_cmd.cpp`) — the state copy is field-for-field with
+- the **pmove bridge** (`physics/pmove.cpp`, `init_client_move.cpp`,
+  `run_cmd.cpp`) — the state copy is field-for-field with
   legacy, so it reads raw;
 - the Chunk 8 save serializer (future).
 

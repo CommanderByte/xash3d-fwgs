@@ -5,6 +5,7 @@
 | Header | Namespace | Key symbols |
 |--------|-----------|-------------|
 | `server/server.hpp` | `xash::server` | `Server`, `ServerInitParams`, `ServerStats` |
+| `physics/pm_trace.hpp` | `xash::physics` | `PmTraceEnv`, aligned sidecar/view types, and the shared `pm_*` trace family consumed by server |
 
 `Server` derives from `::xash::ILevelChangeExecutor` (`map_loader`), so its
 `exec_load_level` / `exec_load_game` / `exec_change_level` overrides are the
@@ -22,13 +23,12 @@ public entry the MapLoader FSM drives.
 | `private/server/lifecycle.hpp` | `ServerRuntime` (the sv/svs/svgame aggregate), `ServerConfig`, `LevelState`, `PersistentState`, `PushedEnt`, `ServerState`; `load_progs`/`unload_progs`/`deactivate_server`/`spawn_server`/`activate_server`/`setup_clients`/`spawn_entities`/`parse_edict`/`load_from_file` |
 | `private/server/precache.hpp` | `PrecacheTables` — the four 1-based model/sound/event/generic index registries; `PrecacheKind`, `PrecacheCaps` |
 | `private/server/model_resolver.hpp` | `ModelResolver` — production `IModelResolver`: precache index → brush submodel |
-| `private/server/world_links.hpp` | `WorldLinks`, `AreaNode`, `LinkEnv`, `IWorldLinkHooks`, `GroupOp`; intrusive link helpers, `edict_from_area` |
-| `private/server/world_trace.hpp` | `MoveEnv`, `SvTrace`, `SvHull`, `BrushModel`, `IModelResolver`, `IClipHooks`; `move`/`move_no_ents`/`clip_move_to_entity`/`hull_for_entity`/`point_contents`/`brush_trigger_intersects` |
+| `world/links.hpp` | `WorldLinks`, `AreaNode`, `LinkEnv`, `IWorldLinkHooks`, `GroupOp`; shared intrusive link helpers, `edict_from_area` |
+| `world/trace.hpp` | `MoveEnv`, `SvTrace`, `SvHull`, `BrushModel`, `IModelResolver`, `IClipHooks`; shared move/clip/hull/contents surface and exact trace predicates |
 | `private/server/world_hooks.hpp` | `GameWorldHooks` — lifecycle-owned `IWorldLinkHooks`: `set_abs_box` / `dispatch_touch` / `brush_trigger_intersects` |
 | `private/server/lightstyles.hpp` | `LightStyles`, `LightStyle`; `light_for_entity` |
 | `private/server/physics.hpp` | `sv_physics`, `sv_run_game_frame`, `host_server_frame`, `sv_update_movevars`, `sv_prep_world_frame`, `sv_is_simulating`, `sv_impact`, `update_base_velocity` |
 | `private/server/pmove.hpp` | `sv_setup_pmove`, `sv_finish_pmove`, `sv_init_client_move`, `sv_run_cmd`, `pm_clear_phys_ents` |
-| `private/server/pm_trace.hpp` | `PmTraceEnv`, `PmIgnore`; the `pm_player_trace_ext` / `pm_test_player_position` / `pm_trace_model` / `pm_trace_line{,_ex}` / `pm_point_contents*` / `pm_stuck_touch` family |
 | `private/server/clients.hpp` | `ClientMachinery`, `ServerClient`, `ClientState`, `UserMessageRegistry`/`UserMessage`/`MessageState`, `BanFilters`/`IdBan`/`IpBan`, `ServerLog`, `ServerFragmentSizer`, `IOobSink`; the connection + messaging + filter + log + query free functions |
 | `private/server/snapshot.hpp` | `SnapshotState`, `ClientFrame`, `InstancedBaseline`; the baseline / gather / delta / send free functions |
 | `private/server/info_string.hpp` | Info-string helpers (`info_value_for_key` / `info_set_value_for_key` / `info_remove_key` / `info_remove_prefixed_keys` / `info_is_valid`) — server-scoped until the utilities `Info_` consolidation |
@@ -38,26 +38,25 @@ public entry the MapLoader FSM drives.
 | File | Responsibility |
 |------|---------------|
 | `server.cpp` | `Server` pimpl: `init`/`shutdown`, `active`/`initialized`/`stats`, the `ILevelChangeExecutor` overrides (`exec_load_level` runs spawn→parse→activate; load-game/change-level are Chunk 8 stubs), `frame` |
-| `abi/game_dll.cpp` | `GameDll` — dynlib load + `GiveFnptrsToDll`/`GetEntityAPI2`/`GetNewDLLFunctions` handshake, `LINK_ENTITY` dispatch, `query_hull_bounds` |
-| `abi/engine_table.cpp` | The 159-slot `enginefuncs_t` population, `EngineBridge` install/access, `alloc_private_data`, `reset_external_cvars`, `COM_RandomLong/Float` RNG (`s_rng_state`) |
-| `abi/edict_arena.cpp` | `EdictArena` — alloc/free/init edicts, private-data blocks, the reuse-quarantine + serialnumber + stale-field-scrub rules, index/offset arithmetic |
-| `abi/string_pool.cpp` | `StringPool` — dual-arena alloc/make/get, escape processing, dedup, wrap-on-overflow |
+| `game/game_dll.cpp` | `GameDll` — dynlib load + `GiveFnptrsToDll`/`GetEntityAPI2`/`GetNewDLLFunctions` handshake, `LINK_ENTITY` dispatch, `query_hull_bounds` |
+| `game/engine_table.cpp` | The 159-slot `enginefuncs_t` population, `EngineBridge` install/access, `alloc_private_data`, `reset_external_cvars`; random slots use the canonical host callbacks |
+| `game/edict_arena.cpp` | `EdictArena` — alloc/free/init edicts, private-data blocks, the reuse-quarantine + serialnumber + stale-field-scrub rules, index/offset arithmetic |
+| `game/string_pool.cpp` | `StringPool` — dual-arena alloc/make/get, escape processing, dedup, wrap-on-overflow |
 | `lifecycle/game_host.cpp` | `load_progs` / `unload_progs` — the full DLL load/unload orchestration; `deactivate_server`, `set_server_state`, `setup_clients` |
 | `lifecycle/spawn.cpp` | `spawn_server` / `activate_server` — per-level reset, world load, submodel precache, world-bridge install, settle frames |
 | `lifecycle/entity_parse.cpp` | `parse_edict` / `load_from_file` / `spawn_entities` — the `{ … }` entity-string parse quirks |
 | `lifecycle/precache.cpp` | `PrecacheTables` — the four index registries + late-precache notification |
 | `lifecycle/model_resolver.cpp` | `ModelResolver` — lazy brush-submodel identity from precache name + `WorldData` |
 | `lifecycle/world_hooks.cpp` | `GameWorldHooks` — routes `pfnSetAbsBox` / `pfnTouch` / trigger refinement to the game DLL + trace kernel |
-| `world/links.cpp` | `WorldLinks` — areanode tree build, `link_edict` / `unlink_edict`, touch-link walk, leaf finding |
-| `world/clip.cpp` | `move` / `move_no_ents` / `clip_move_to_entity`, rotated-brush transforms, the clip filter chain + fraction-compose quirk |
-| `world/contents.cpp` | `true_point_contents` / `point_contents` / `rank_for_contents`, `brush_trigger_intersects` |
-| `world/hulls.cpp` | `hull_for_bsp_entity` / `hull_for_entity` — Quake-vs-HL hull selection + origin offset |
-| `world/light.cpp` | `LightStyles` (reset/set/run_frame) + `light_for_entity` (the unlit-map 255 stub) |
+| `../world/links.cpp` | `WorldLinks` — areanode tree build, `link_edict` / `unlink_edict`, touch-link walk, leaf finding (`xash3dpp_world`) |
+| `../world/clip.cpp` | shared `move` / `move_no_ents` / `clip_move_to_entity`, rotated-brush transforms, filters, and exact trace predicates |
+| `../world/contents.cpp` | shared `true_point_contents` / `point_contents` / `rank_for_contents`, `brush_trigger_intersects` |
+| `../world/hulls.cpp` | shared hull selection and studio-hull composition |
 | `physics/physics.cpp` | `sv_physics`, `sv_run_game_frame`, `host_server_frame`, `sv_prep_world_frame`, `sv_is_simulating`, `sv_impact`, `update_base_velocity`, the movetype dispatch + pusher stack |
 | `physics/movevars.cpp` | `sv_update_movevars` — mirror the `sv_*` physics cvars into `rt.movevars` |
 | `physics/pmove.cpp` | `sv_setup_pmove` / `sv_finish_pmove` / `pm_clear_phys_ents` — the entvars↔`playermove_t` state bridge + physent gather |
-| `physics/pm_trace.cpp` | The `PM_*` trace family over the map_loader kernel (physent-sourced hulls) |
-| `physics/init_client_move.cpp` | `sv_init_client_move` — allocate `rt.pmove`, install the ~30-entry `PM_*` callback table, call `pfnPM_Init`; the pmove `RandomLong/Float` RNG (`s_pm_rng`) + `Info_ValueForKey` static buffer |
+| `../physics/pm_trace.cpp` | The shared-deterministic `PM_*` trace family in `xash3dpp_physics`, over paired physent/model-index spans |
+| `physics/init_client_move.cpp` | `sv_init_client_move` — allocate `rt.pmove`, install the ~30-entry `PM_*` callback table, call `pfnPM_Init`; random slots use the canonical host callbacks |
 | `physics/run_cmd.cpp` | `sv_run_cmd` — the full `CmdStart → PM_Move → CmdEnd` per-usercmd chain (drives both real-client and `pfnRunPlayerMove` bot paths); P5 lag-comp interpolant is a no-op |
 | `clients/client_state.cpp` | The connection state machine, `execute_client_message` / `SV_ParseClientMove`, `drop_client`, `check_timeouts`, `fake_connect`, `userinfo_changed`, challenge compute/check |
 | `clients/snapshot.cpp` | `SnapshotState` alloc/reset/shutdown, `create_baselines`, the visible-entity gather + delta emit, per-client datagram + send driver |
@@ -92,7 +91,7 @@ public entry the MapLoader FSM drives.
 | `MoveEnv` | struct | `private/server/world_trace.hpp` | Per-call trace environment (world, resolver, area root, hooks) |
 | `SvTrace` | struct | `private/server/world_trace.hpp` | Engine-internal `trace_t` (kernel result + hit entity + hitgroup) |
 | `LightStyles` | class | `private/server/lightstyles.hpp` | The 256-style animation table |
-| `PmTraceEnv` | struct | `private/server/pm_trace.hpp` | Per-call pmove-trace environment (physent-sourced) |
+| `PmTraceEnv` | struct | `physics/pm_trace.hpp` | Shared per-call pmove-trace environment, with no server arena |
 | `ClientMachinery` | struct | `private/server/clients.hpp` | `svs.clients` + user-message registry + multicast + filters + log |
 | `ServerClient` | struct | `private/server/clients.hpp` | One `sv_client_t` slot |
 | `ClientState` | enum class | `private/server/clients.hpp` | `Free`/`Connected`/`Spawning`/`Spawned`/`Zombie` |
@@ -104,16 +103,14 @@ public entry the MapLoader FSM drives.
 
 | Symbol | File | Role |
 |--------|------|------|
-| `g_bridge` | `abi/engine_table.cpp` | The `EngineBridge*` the 159 context-free slots reach; the one deliberate global (install/detach only) |
-| `s_rng_state` | `abi/engine_table.cpp` | `COM_RandomLong/Float` xorshift state (RNG-unification stub) |
-| `s_pm_rng` | `physics/init_client_move.cpp` | The pmove `RandomLong/Float` xorshift state (RNG-unification stub) |
-| ABI static return buffers | `abi/engine_table.cpp`, `physics/init_client_move.cpp` | `s_value[256]`/`s_empty`/static `""` returned by the pfn slots (frozen slot contract) |
+| `g_bridge` | `game/engine_table.cpp` | The `EngineBridge*` the 159 context-free slots reach; the deliberate ABI global (install/detach only) |
+| ABI static return buffers | `game/engine_table.cpp`, `physics/init_client_move.cpp` | `s_value[256]`/`s_empty`/static `""` returned by the pfn slots (frozen slot contract) |
 
 ## CMake targets
 
 | Target | Type | Public deps | Private deps |
 |--------|------|-------------|--------------|
-| `xash3dpp_server` | STATIC | `xash3dpp_utilities`, `xash3dpp_memory`, `xash3dpp_map_loader`, `xash3dpp_networking`, `xash3dpp_cmd_cvar`, `xash3dpp_filesystem` | `xash3dpp_core`, `xash3dpp_platform` |
+| `xash3dpp_server` | STATIC | `xash3dpp_utilities`, `xash3dpp_memory`, `xash3dpp_map_loader`, `xash3dpp_world`, `xash3dpp_networking`, `xash3dpp_cmd_cvar`, `xash3dpp_filesystem`, `xash3dpp_content` | `xash3dpp_save`, `xash3dpp_core`, `xash3dpp_physics`, `xash3dpp_platform` |
 
 The target requires C++23 (`target_compile_features(xash3dpp_server PUBLIC
 cxx_std_23)`). The networking/cmd_cvar/filesystem deps are `PUBLIC` because the
