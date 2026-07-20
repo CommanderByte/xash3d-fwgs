@@ -3,7 +3,7 @@
 // Decision ref: decisions-architecture.md Q-20 (EDICT_STORE) — the
 // ABI-exact edict array is the single store; ENGINE-INTERNAL server code
 // reads/writes entvars through this facade, never via `->v.` directly.
-// Raw access is confined to src/server/abi/, the pmove bridge, and the
+// Raw access is confined to src/server/game/, the pmove bridge, and the
 // Chunk 8 save serializer (compliance rule lands at sweep).
 //
 // Accessors are value-semantic (copies, not references into the store)

@@ -896,7 +896,7 @@ deliberate stale-field reuse). Engine-internal code addresses entities by
 index/ref through **inline typed accessors that compile to direct array
 access** (zero runtime cost, no divergence possible). Raw
 `entvars_t`/`edict_t` access is confined to the owners of the memory
-contract: the ABI shim (`src/abi/` + `src/server/abi/`), the pmove bridge,
+contract: the ABI shim (`src/abi/` + `src/server/game/`), the pmove bridge,
 and the Chunk 8 save serializer. Enforcement: a compliance-scan rule (no
 `->v.` outside the allowed set) added when the server scaffold lands.
 Handleization or a new ABI format is a post-parity, load-time
@@ -950,8 +950,8 @@ document for extension posture. Concretely:
   door-rule pass may perturb — map_loader (Q-18 trace/PVS/CRC kernel),
   content (studio bone math), networking (wire bit-codec, delta field
   widths, LZSS, OOB packet magic), server (rotated-brush ULP behaviour at
-  `clip.cpp:237-273`, the `if ( rotated )` block carrying the in-code
-  `TODO(Q-18)` — the anchor read `clip.cpp:211` until 2026-07-20, which is
+  `clip.cpp:242-278`, the `if ( rotated )` block carrying the in-code
+  `TODO(Q-18)` — the anchor read `clip.cpp:216` until 2026-07-20, which is
   an unrelated `hull_for_entity` call and fenced nothing), utilities
   (double-precision studio math). Byte-exact
   parity beats every other rule in these files — FMA, reassociation, and

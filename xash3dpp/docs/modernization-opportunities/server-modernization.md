@@ -12,7 +12,7 @@
 > Low-priority items (two dedup targets, one `std::ranges` opportunity, one
 > stale-doc note), while refreshing the three pre-existing Low items in
 > place. The HB-2 rotated-brush anchor is corrected below: the fenced block
-> is `clip.cpp:237-273`, not `clip.cpp:211` as an earlier pass (and
+> is `clip.cpp:242-278`, not `clip.cpp:216` as an earlier pass (and
 > `decisions-architecture.md:946-954`, not owned by this report) recorded.
 > C++ standard in use: C++**23** (`xash3dpp/src/server/CMakeLists.txt`,
 > `target_compile_features(xash3dpp_server PUBLIC cxx_std_23)`; the tree-wide
@@ -53,7 +53,7 @@ raw casts over engine structs, C string handling, sentinel error returns —
 either designed out (Q-2, Q-20) or **deliberately preserved** where the frozen
 ABI demands them. That last clause is the crux of this report: unlike a
 utilities or filesystem sweep, a large fraction of the "C-shaped" code in
-`src/server/abi/` (and the pmove bridge) is **load-bearing by contract**, not
+`src/server/game/` (and the pmove bridge) is **load-bearing by contract**, not
 technical debt. The two categories must be kept apart, so this doc leads with
 the prohibition and an explicit "deliberately C-shaped" inventory before the
 tiered-opportunity tail.
@@ -150,7 +150,7 @@ not "discover" and regress them:
   `<cstdarg>` `va_list` handoff is mandated by the frozen `...` signature; the
   modern move (format then hand off a bounded buffer) is already the shape —
   the varargs entry cannot be removed.
-- **`abi/engine_table.cpp:59-62` `s_fatpvs` / `s_fatphs`.** 4096-byte
+- **`abi/engine_table.cpp:61-64` `s_fatpvs` / `s_fatphs`.** 4096-byte
   file-scope working buffers backing `pfnSetFatPVS`/`pfnSetFatPAS`, whose
   contract is "pointer to engine-owned storage valid until the next call"
   (`engine/server/sv_game.c:31-32`). Correct as file-scope state for the v1
@@ -159,7 +159,7 @@ not "discover" and regress them:
 - **The two RNG statics (`s_rng_state` / `s_pm_rng`).** Marked
   `XASH3DPP-STUB(chunk6)` — the tracked idtech `COM_RandomLong`/`Float`
   parity port. Both are installed at frozen `enginefuncs_t`/`physint.h` slots
-  (`t.pfnRandomLong`/`t.pfnRandomFloat` at `engine_table.cpp:2387-2388`;
+  (`t.pfnRandomLong`/`t.pfnRandomFloat` at `engine_table.cpp:2389-2390`;
   `pm.RandomLong`/`pm.RandomFloat` at `init_client_move.cpp:439-440`), so a
   dedup of their bodies touches frozen-ABI *implementation* only — see L-3.
   When ported, the single shared stream stays Main-thread-only (threading
@@ -199,9 +199,9 @@ ______________________________________________________________________
 ### H-1: `Server`/`EdictArena`/`StringPool`/`PrecacheTables` have no working teardown path
 
 - **File(s)**: `include/xash3dpp/private/server/edict_arena.hpp:36-51`,
-  `src/server/abi/edict_arena.cpp:56-68`,
+  `src/server/game/edict_arena.cpp:56-68`,
   `include/xash3dpp/private/server/string_pool.hpp:41-55`,
-  `src/server/abi/string_pool.cpp:51-58`; the actual fix site is
+  `src/server/game/string_pool.cpp:51-58`; the actual fix site is
   `src/server/server.cpp` (`Server::~Server`) / the pimpl `Impl`.
 - **Current pattern**: `EdictArena`, `StringPool`, and `PrecacheTables` all use
   a two-phase `init(PoolHandle,...)` / `shutdown()` lifecycle with owning raw
@@ -210,7 +210,7 @@ ______________________________________________________________________
   ~PrecacheTables'` returns nothing). The boundary spec's claim that these are
   "Q-22 RAII classes" is false. Correctness today depends entirely on every
   code path reaching `unload_progs`, which is the only caller of
-  `::xash::memory::destroy_pool(rt.game_pool)` (`game_host.cpp:309`).
+  `::xash::memory::destroy_pool(rt.game_pool)` (`game_host.cpp:311`).
 - **Suggested replacement**: The originally-proposed fix (add member
   destructors that call `shutdown()`) is a **non-sequitur**: `PoolHandle` has
   a trivial destructor, so member destruction order is irrelevant to whether
@@ -237,8 +237,8 @@ ______________________________________________________________________
 ### H-2: `EngineBridge::sv_time` is declared, read four times, and written nowhere in production
 
 - **File(s)**: `include/xash3dpp/private/server/engine_bridge.hpp:96`;
-  read at `src/server/abi/engine_table.cpp:100, 711, 1097, 2245`; the only
-  assignment anywhere in the tree is `tests/server/abi/test_engine_table.cpp:145`.
+  read at `src/server/game/engine_table.cpp:100, 711, 1097, 2245`; the only
+  assignment anywhere in the tree is `tests/server/abi/test_engine_table.cpp:146`.
   Companion dead fields: `novis` (`engine_table.cpp:1872, :1894`, read never
   written), `autoaim_threshold` (`:1013`, read never written), `group_mask`/
   `group_op` (`:2033-2034`, written never read — the live copies are
@@ -248,8 +248,8 @@ ______________________________________________________________________
   (`edict_arena.cpp:77-78`: `e->free && (e->freetime < k_reuse_relax_window
   || (sv_time - e->freetime) > k_reuse_grace)`, vs.
   `engine/server/sv_game.c:1051`). Internal callers drive it with the real
-  clock, `rt.level.time` (`entity_parse.cpp:63,279`, `physics.cpp:95`,
-  `game_host.cpp:364`, `spawn.cpp:132`); the ABI path drives it with
+  clock, `rt.level.time` (`entity_parse.cpp:63,279`, `physics.cpp:97`,
+  `game_host.cpp:366`, `spawn.cpp:134`); the ABI path drives it with
   `g_bridge->sv_time`, which is frozen at `0.0`. The two clocks disagree in
   both directions: an edict freed through `pfnRemoveEntity` gets
   `freetime = 0.0f`, which is always `< 2.0f`, so it is recycled by the very
@@ -283,27 +283,27 @@ ______________________________________________________________________
 
 ### H-3: 16 definitions of the same handful of world/physics micro-predicates under 4 competing names
 
-- **File(s)**: `src/server/world/clip.cpp:30` (`vector_is_null`),
+- **File(s)**: `src/server/world/clip.cpp:35` (`vector_is_null`),
   `:36` (`bounds_intersect`), `:43` (`check_angles`); `world/contents.cpp:25,30`;
-  `world/links.cpp:39`; `world/hulls.cpp:114`; `physics/pm_trace.cpp:65,73`;
-  `physics/physics.cpp:65` (`is_null`); `physics/run_cmd.cpp:48`
-  (`vec_is_null`); `physics/pmove.cpp:57` (`vec3_is_null`) — a fourth name for
+  `world/links.cpp:45`; `world/hulls.cpp:119`; `physics/pm_trace.cpp:65,73`;
+  `physics/physics.cpp:67` (`is_null`); `physics/run_cmd.cpp:45`
+  (`vec_is_null`); `physics/pmove.cpp:52` (`vec3_is_null`) — a fourth name for
   the same predicate the original 2026-07-06 sweep missed.
 - **Current pattern**: `vector_is_null`-equivalent logic is defined 7 times
-  under 4 names; `bounds_intersect` is defined 4 times (one, in `pmove.cpp:68`,
+  under 4 names; `bounds_intersect` is defined 4 times (one, in `pmove.cpp:21`,
   is a loop-shaped variant over `abi::vec3_t`); `check_angles` twice; `fbit`
   once more beyond its canonical home. A mechanical grep over `src/server`
   puts the real blast radius at ~69 call sites (not the ~87 the first pass
   estimated). Three of these predicates — `vector_is_null`, `bounds_intersect`,
-  `check_angles` — are the gating checks at `clip.cpp:220` and `:228-229` that
+  `check_angles` — are the gating checks at `clip.cpp:225` and `:228-229` that
   decide whether the HB-2-fenced `if (rotated)` rotated-brush transform at
-  `clip.cpp:237-273` runs.
+  `clip.cpp:242-278` runs.
 - **Suggested replacement**: Delete 9 of the 16 definitions in two groups.
   Group A (Vec3-typed, pure move): promote `vector_is_null(const Vec3&)`,
   `bounds_intersect(const Vec3&,...)`, and `check_angles(float)` into
   `private/server/world_trace.hpp` (which already documents them) as `inline`
   free functions; delete the copies at `clip.cpp:30/36/43`,
-  `contents.cpp:25/30`, `links.cpp:39`, `hulls.cpp:114`, `pm_trace.cpp:65/73`;
+  `contents.cpp:25/30`, `links.cpp:45`, `hulls.cpp:119`, `pm_trace.cpp:65/73`;
   rename the `is_null`/`vec_is_null`/`vec3_is_null` call sites to the single
   canonical name. Group B: promote `fbit` into `private/server/physics.hpp`
   the same way. **Constraint, not optional**: the Group A bodies gate entry
@@ -316,7 +316,7 @@ ______________________________________________________________________
 - **Boundary-safe**: Yes, with the verbatim-copy constraint above. None of the
   nine deleted bodies performs float accumulation or reordering; the fenced
   kernel is the `if (rotated)` transform math itself
-  (`clip.cpp:237-273`, in-code `TODO(Q-18)`), not the boolean gates that
+  (`clip.cpp:242-278`, in-code `TODO(Q-18)`), not the boolean gates that
   decide whether it runs.
 - **Rationale**: The largest pure-duplication cluster found in this
   subsystem — one canonical definition per predicate instead of up to seven,
@@ -326,7 +326,7 @@ ______________________________________________________________________
 
 ### H-4: Main-thread pinning in server mixes by-design and incidental causes under one rationale
 
-- **File(s)**: `src/server/abi/engine_table.cpp:55`,
+- **File(s)**: `src/server/game/engine_table.cpp:55`,
   `src/server/clients/query.cpp:48`, `src/server/clients/filter.cpp:41`,
   `src/server/clients/log.cpp:25`. Documentation-only; the fix lands in
   `docs/threading-analysis/server-threading.md`, not this file.
@@ -365,7 +365,7 @@ ______________________________________________________________________
 
 ### M-1: Narrow the pure leaf-adapter `ServerRuntime&` signatures; correct the "orchestrator" census
 
-- **File(s)**: `src/server/physics/pmove.cpp:524-531` (`pm_clear_phys_ents`),
+- **File(s)**: `src/server/physics/pmove.cpp:526-533` (`pm_clear_phys_ents`),
   `src/server/clients/snapshot.cpp:482-514` (`snapshot_reset`, `calc_ping`,
   `829/855/1079` `emit_pings`/`should_update_ping`/
   `update_to_reliable_messages`), `src/server/physics/physics.cpp:248/273/149`
@@ -394,7 +394,7 @@ ______________________________________________________________________
   frozen `pm_shared` work, so it is a scheduling collision to avoid, not a
   correctness question. Leave the physics.cpp orchestrator-adjacent adapters
   (`sv_move`, `pt_contents`) alone.
-- **Boundary-safe**: Yes. None of the 30 leaves sits in the `clip.cpp:237-273`
+- **Boundary-safe**: Yes. None of the 30 leaves sits in the `clip.cpp:242-278`
   ULP kernel; behaviour-preserving by construction since only the parameter
   type narrows, not the body.
 - **Rationale**: `[EXT:P-5]` (narrowest-state signatures) — makes read/write
@@ -407,7 +407,7 @@ ______________________________________________________________________
 
 ### M-2: `s_fatpvs`/`s_fatphs` are 8&nbsp;KB of undocumented file-scope mutable state
 
-- **File(s)**: `src/server/abi/engine_table.cpp:59-62` (declaration),
+- **File(s)**: `src/server/game/engine_table.cpp:59-62` (declaration),
   `:1865-1866` (fill sites); `docs/architecture/server/index.md:103-110`
   (Module-statics table, currently omits both).
 - **Current pattern**: `s_fatpvs`/`s_fatphs` are 4096-byte file-scope mutable
@@ -425,7 +425,7 @@ ______________________________________________________________________
   exactly mirroring `sv_game.c:31-32`. Do not move them for the v1 ABI. The
   fix is annotation and documentation only: add
   `compliance-allow(mutable-global)` with the slot-contract rationale at
-  `engine_table.cpp:61-62`, and add both rows to
+  `engine_table.cpp:63-64`, and add both rows to
   `docs/architecture/server/index.md`'s Module-statics table.
 - **Boundary-safe**: Yes. Directly backs a frozen-ABI return-buffer contract;
   the proposal is annotation/doc-only and leaves the buffers untouched.
@@ -437,7 +437,7 @@ ______________________________________________________________________
 
 ### M-3: CMakeLists PUBLIC-links three dependencies server's public header does not need
 
-- **File(s)**: `src/server/CMakeLists.txt:66-71`,
+- **File(s)**: `src/server/CMakeLists.txt:68-73`,
   `include/xash3dpp/server/server.hpp:17-27`.
 - **Current pattern**: `server.hpp`, the subsystem's only public header,
   includes exactly one cross-subsystem xash3dpp header
@@ -468,13 +468,13 @@ ______________________________________________________________________
 
 - **File(s)**: `src/server/clients/snapshot.cpp:438` (`num_client_entities`
   write), `:441`, `:444` (the two `mem_calloc` calls), `:462` (failure
-  return); caller at `src/server/lifecycle/spawn.cpp:203`.
+  return); caller at `src/server/lifecycle/spawn.cpp:205`.
 - **Current pattern**: `snapshot_alloc_ring` writes
   `rt.snapshot.num_client_entities = static_cast<int>(count)` at `:438`,
   **before** the two `mem_calloc` calls at `:441`/`:444`, and returns
   `ok=false` at `:462` on failure without calling `free_rings`. This is
   reachable: the only production caller,
-  `(void)snapshot_alloc_ring(rt)` at `spawn.cpp:203`, discards the boolean
+  `(void)snapshot_alloc_ring(rt)` at `spawn.cpp:205`, discards the boolean
   result entirely, so nothing stops the server proceeding into
   `find_best_baseline` (`snapshot.cpp:124,134`), which reads
   `num_client_entities` as a modulus and then dereferences
@@ -535,7 +535,7 @@ ______________________________________________________________________
   `SOLID_CUSTOM` clip provider. Record this as door-debt in
   `server-boundary.md`'s Q-21 Extension-axes table with the Chunk-11 owner
   named, rather than leaving it silently unreferenced. The guard sites sit
-  structurally distant from the actual HB-2 fenced block (`clip.cpp:237-273`)
+  structurally distant from the actual HB-2 fenced block (`clip.cpp:242-278`)
   — the caution that they might interact with the ULP transform is prudent
   to check once Chunk 11 wires them, but nothing in the current dead code
   touches it.
@@ -567,7 +567,7 @@ ______________________________________________________________________
 
 ### L-2: `physics.cpp` `switch` MOVETYPE dispatch → table — leave as-is
 
-- **File(s)**: `physics/physics.cpp:1530` — the 13-case MOVETYPE_* dispatch
+- **File(s)**: `physics/physics.cpp:1532` — the 13-case MOVETYPE_* dispatch
   switch, mirroring legacy `SV_Physics_Entity` exactly.
 - **Modernization**: a `constexpr` dispatch table keyed by MOVETYPE would DRY
   the switch, but each arm carries a distinct stub/behaviour note and the
@@ -575,11 +575,11 @@ ______________________________________________________________________
   **Verdict unchanged: leave as switch** until those stubs land. Recorded
   only so a reader does not table-ify prematurely. The companion
   `switch(solid)`/`switch(waterlevel)` sites (`physics.cpp:683,1132,1143`,
-  `pmove.cpp:150`) carry the same leave-verdict for the same reason.
+  `pmove.cpp:152`) carry the same leave-verdict for the same reason.
 
 ### L-3: fold the RNG-unification stub into one shared stream (HB-12)
 
-- **File(s)**: `abi/engine_table.cpp:1554-1583` (`s_rng_state`, installed at
+- **File(s)**: `abi/engine_table.cpp:1556-1585` (`s_rng_state`, installed at
   `t.pfnRandomLong`/`t.pfnRandomFloat`, `:2387-2388`),
   `physics/init_client_move.cpp:278-303` (`s_pm_rng`, installed at
   `pm.RandomLong`/`pm.RandomFloat`, `:439-440`). Line numbers shifted from
@@ -608,9 +608,9 @@ ______________________________________________________________________
 
 ### L-4: `copy_cstr` in `pmove.cpp` re-implements `xash::utilities::strncpy`
 
-- **File(s)**: `physics/pmove.cpp:81-91` (`copy_cstr`),
+- **File(s)**: `physics/pmove.cpp:83-93` (`copy_cstr`),
   `src/utilities/string.cpp:31-41` / `include/xash3dpp/utilities/string.hpp:
-  27-28` (`ut::strncpy`), 4 call sites including `pmove.cpp:130-137`.
+  27-28` (`ut::strncpy`), 4 call sites including `pmove.cpp:132-139`.
 - **Modernization**: `copy_cstr` and `ut::strncpy` are byte-identical in
   semantics — both no-op on a zero cap, both tolerate a null `src`, both
   always NUL-terminate, both stop at `size - 1`. The only difference is the
@@ -727,9 +727,9 @@ ______________________________________________________________________
   A bounds-check-and-log above the cap is allowed; changing behaviour below it
   is not.
 - **Do not touch the rotated-brush / trace math for tidiness (Q-18).** The
-  HB-2-fenced kernel is the `if (rotated)` block at `world/clip.cpp:237-273`
+  HB-2-fenced kernel is the `if (rotated)` block at `world/clip.cpp:242-278`
   (in-code `TODO(Q-18)` noting the rotated-brush transform is ULP-inexact vs.
-  legacy) — **not** `clip.cpp:211` as the 2026-07-06 pass and
+  legacy) — **not** `clip.cpp:216` as the 2026-07-06 pass and
   `decisions-architecture.md:946-954` (owned elsewhere) record; that anchor
   has drifted. The fix there is toward *more* exactness, not a
   `std::ranges`/FMA rewrite. The trace/contents/hull kernels join the
@@ -753,10 +753,10 @@ ______________________________________________________________________
 The `string_view`→C-string `strnicmp`/`strncmp` over-read pattern
 (utilities M-4 / filesystem M-7 / cmd_cvar M-5) is **absent** in server. Every
 bounded/length compare here is over **NUL-terminated C-strings**, matching the
-prior abi-phase note that `src/server/abi/**` `strcmp`/`strncpy` are C-string
+prior abi-phase note that `src/server/game/**` `strcmp`/`strncpy` are C-string
 slot bodies, not `string_view.data()` over-reads. Verified sites:
 
-- `abi/engine_table.cpp:227` — `strcmp(v->name, name)` over NUL-terminated
+- `abi/engine_table.cpp:73` — `strcmp(v->name, name)` over NUL-terminated
   cvar names (ABI slot body).
 - `clients/info_string.cpp` — `Info_ValueForKey` compares `strcmp(key, pkey)`
   where `pkey` is a `read_field`-produced NUL-terminated `char[128]`; the key

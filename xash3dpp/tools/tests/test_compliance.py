@@ -488,8 +488,8 @@ class EntvarsConfinement(unittest.TestCase):
         exclusion must accept both -- with `[\\/]` (only a slash) it silently
         excluded nothing and the rule reported 254 false violations."""
         rx = re.compile(_rule("entvars-confinement").exclude_path_re)
-        for p in (r"C:\git\x\xash3dpp\src\server\abi\edict_arena.cpp",
-                  "/home/x/xash3dpp/src/server/abi/edict_arena.cpp",
+        for p in (r"C:\git\x\xash3dpp\src\server\game\edict_arena.cpp",
+                  "/home/x/xash3dpp/src/server/game/edict_arena.cpp",
                   r"C:\x\xash3dpp\src\save\level_state_writer.cpp",
                   "/x/xash3dpp/src/server/physics/pmove.cpp",
                   r"C:\x\xash3dpp\src\server\lifecycle\save_bridge.cpp"):

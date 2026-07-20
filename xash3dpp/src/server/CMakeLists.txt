@@ -5,13 +5,15 @@
 #
 # ABI note: enginefuncs_t (159 slots) and entvars_t layout are FROZEN.
 # Q-20: the ABI-exact edict array is the single store behind a zero-cost
-# accessor seam; raw entvars_t access is confined to abi/ + the pmove
+# accessor seam; raw entvars_t access is confined to game/ + the pmove
 # bridge (+ the Chunk 8 save serializer).
 #
 # Subfolder plan (decided at scaffold time — see server-boundary.md):
-#   abi/      — game-DLL ABI shim: DLL loader, GiveFnptrsToDll handshake,
-#               enginefuncs_t population, DLL_FUNCTIONS resolution (S6);
-#               EdictArena + string pool + typed accessor seam (S4, Q-20)
+#   game/     — the sv_game.c bridge (renamed from abi/ 2026-07-20 to stop it
+#               reading as a peer of the top-level xash3dpp_abi shim): DLL
+#               loader, GiveFnptrsToDll handshake, enginefuncs_t population,
+#               DLL_FUNCTIONS resolution (S6); EdictArena + string pool +
+#               typed accessor seam (S4, Q-20)
 #   (world/   — PROMOTED 2026-07-20 to the xash3dpp_world target: it had zero
 #               ServerRuntime coupling and Chunk 12's client prediction is a
 #               second consumer.  Server keeps only the server-side binding:
@@ -22,10 +24,10 @@
 
 add_library(xash3dpp_server STATIC
     server.cpp
-    abi/edict_arena.cpp
-    abi/string_pool.cpp
-    abi/game_dll.cpp
-    abi/engine_table.cpp
+    game/edict_arena.cpp
+    game/string_pool.cpp
+    game/game_dll.cpp
+    game/engine_table.cpp
     lifecycle/precache.cpp
     lifecycle/game_host.cpp
     lifecycle/model_resolver.cpp

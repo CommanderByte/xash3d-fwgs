@@ -9,7 +9,7 @@ File: `engine/server/sv_game.c` (5367 lines). Supporting: `engine/eiface.h`,
 `engine/physint.h`.
 
 > **Refreshed 2026-07-06 (as-built cross-ref).** This is the highest-ABI-risk
-> recon and it shipped as-built in `src/server/abi/`: `engine_table.cpp` is the
+> recon and it shipped as-built in `src/server/game/`: `engine_table.cpp` is the
 > ONE TU projecting engine types onto the frozen 159-slot `enginefuncs_t`
 > (reached through the single `g_bridge` singleton — the deliberate Q-20
 > userdata-less-C-slot carve-out); `game_dll.cpp` is the GiveFnptrsToDll /

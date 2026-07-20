@@ -36,7 +36,7 @@ The `abi` module does exactly two things:
 
 It does **not** implement engine logic, own entities, allocate, or maintain any
 mutable state. The `enginefuncs_t` / `DLL_FUNCTIONS` slot *implementations* live
-in `server` (`src/server/abi/engine_table.cpp`), not here.
+in `server` (`src/server/game/engine_table.cpp`), not here.
 
 ## ABI (what is frozen and why)
 
@@ -172,7 +172,7 @@ this pass records three as-built facts and one drift.
   `GAME_EXPORT` symbol — `Host_Error`. The server/client chunks add the rest of
   the direct-export family here later (the file is the designated home). No
   `enginefuncs_t`/`DLL_FUNCTIONS` *slot bodies* live in `abi`; those are in
-  `server` (`src/server/abi/engine_table.cpp`), which is where the
+  `server` (`src/server/game/engine_table.cpp`), which is where the
   `strnicmp`-style comparisons actually run (see cross-subsystem note below).
 - **Static-return-buffer thread contract (frozen-ABI).** Many frozen
   `enginefuncs_t` slots hand the game DLL back a `const char*` / `float*` that
@@ -190,7 +190,7 @@ The `string_view → C-string` over-read pattern tracked in utilities (M-4),
 filesystem (M-7), and cmd_cvar (M-5) is **absent** in `abi` proper: the one shim
 (`engine_funcs.cpp`) does only `va_list` formatting through `core::log_va` and
 performs **no** string comparison at all (0 sites). The `strcmp`/`strncpy` calls
-that *do* appear under `src/server/abi/**` belong to the **server** subsystem's
+that *do* appear under `src/server/game/**` belong to the **server** subsystem's
 slot implementations and use `utilities::strcmp` on NUL-terminated C-strings
 (not a bounded `string_view` over-read) — they are out of scope for this spec.
 Net: `abi` is a **negative data point** for that sweep.

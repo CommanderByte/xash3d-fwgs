@@ -1098,7 +1098,7 @@ Recorded so a future audit does not re-derive these at full cost.
 - **A `builtin_bone_solver()` function-local-singleton accessor with
   defaulted `IBoneSolver &` parameters, to remove the 3 stack
   `BuiltinBoneSolver solver;` declarations at `engine_table.cpp:1426,1510`
-  and `model_resolver.cpp:167`.** The facts are real (one production impl,
+  and `model_resolver.cpp:169`.** The facts are real (one production impl,
   a 4-line forwarder to free `setup_bones`; all 3 call sites do
   stack-construct the object immediately before use) but the proposal does
   not survive its own cited precedent: imagelib's `tga_codec()`-style

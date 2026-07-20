@@ -427,7 +427,7 @@ ______________________________________________________________________
 - **File(s)**: `include/xash3dpp/networking/networking.hpp:58`
   (`IMasterListConfig *master_list_config = nullptr;` in
   `NetworkInitParams`); `include/xash3dpp/private/networking/context_impl.hpp:26`
-  (stored in the live `NetworkContext::Impl`); `src/server/physics/physics.cpp:1801`
+  (stored in the live `NetworkContext::Impl`); `src/server/physics/physics.cpp:1803`
   (heartbeat call site, currently tagged `XASH3DPP-STUB(chunk6-S9)`);
   `xash3dpp/docs/implementation-plan.md:188` (`create_master_list_client`
   listed under DEFERRED-with-owner, owner Q-22 memory-integration).
@@ -438,11 +438,11 @@ ______________________________________________________________________
   surface, and `implementation-plan.md:188` already names an owner. What is
   actually missing is a production **implementation** of
   `IMasterListConfig`, not a caller of the type — a materially weaker gap
-  than "zero production callers" implies. Separately, `physics.cpp:1801`'s
+  than "zero production callers" implies. Separately, `physics.cpp:1803`'s
   stale `chunk6-S9` marker means the mechanical marker scan cannot see this
   as live work.
 - **Suggested replacement**: Not a code change — a scheduling and marker
-  correction. (1) Retag `src/server/physics/physics.cpp:1801` from
+  correction. (1) Retag `src/server/physics/physics.cpp:1803` from
   `XASH3DPP-STUB(chunk6-S9)` to a live chunk tag: the heartbeat is
   server-side per `server-boundary.md:150/152`, so it belongs with
   dedicated-server wiring, not with the Chunk-12 client. (2) Add a single

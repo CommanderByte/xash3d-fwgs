@@ -8,7 +8,7 @@
 // later slice (precache/lifecycle S7, sv_move/sv_phys/save S8, messaging/
 // clients/delta/events S9, studio Chunk 7) is an XASH3DPP-STUB(chunk6)
 // no-op returning the legacy-safe default.  Raw `->v.` access is
-// permitted here (Q-20: src/server/abi/ is inside the seam).
+// permitted here (Q-20: src/server/game/ is inside the seam).
 //
 // This file is the ONE translation unit that projects engine types onto
 // the frozen ABI (SvTrace → TraceResult, Vec3 → float[3]).

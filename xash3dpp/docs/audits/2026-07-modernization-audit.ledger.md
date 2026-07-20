@@ -71,7 +71,7 @@ raised in their own right.
 - **[L10-forward-fit-obligations-register]** OBL-11-4 — HB-2 FENCED. Rotated-brush ULP parity ticks with pmove parity. The real anchor is the `if (rotated)` block at clip.cpp:237-273 (in-code TODO(Q-18)); decisions-architecture.md:946-954 still says clip.cpp:211 and has DRIFTED. Correct the anchor before parity work runs through it.
   - evidence: xash3dpp/src/server/world/clip.cpp:237-273 and :251; xash3dpp/docs/design/decisions-architecture.md:946-954
 - **[L10-forward-fit-obligations-register]** OBL-11-5 — The client-side pmove RandomLong/RandomFloat install must reuse HB-12's ONE shared generator instance, not copy the per-TU xorshift placeholder a third/fourth time. Legacy wires the literal same COM_RandomLong/COM_RandomFloat pointer into both the engfuncs slot and the pmove slot on BOTH paths — there is no independent stream in GoldSrc, and the 'two independent streams must stay independent' premise recorded in one amendment round is refuted by the legacy source.
-  - evidence: engine/server/sv_pmove.c:478-479; engine/client/dll_int/cl_pmove.c:769; engine/common/common.c:54-118 (ran1, idum + NTAB=32 shuffle); xash3dpp/src/server/physics/init_client_move.cpp:278-303,439-440; xash3dpp/src/server/abi/engine_table.cpp:1554-1583
+  - evidence: engine/server/sv_pmove.c:478-479; engine/client/dll_int/cl_pmove.c:769; engine/common/common.c:54-118 (ran1, idum + NTAB=32 shuffle); xash3dpp/src/server/physics/init_client_move.cpp:278-303,439-440; xash3dpp/src/server/game/engine_table.cpp:1554-1583
 - **[L10-forward-fit-obligations-register]** OBL-11-6 — Record the ALREADY-RATIFIED threading contract in the new spec: single global pmove_t, players processed sequentially, and the rider that no new global physics state may be introduced. This is transcription, not a decision.
   - evidence: xash3dpp/docs/design/threading-model.md:438-448 §8.2
 - **[L10-forward-fit-obligations-register]** OBL-11-7 — PhysicsContext must take the sim clock from the runtime it is constructed against, never as a copied scalar refreshed by a caller. EngineBridge::sv_time is the worked example of what the copy costs.
@@ -118,11 +118,11 @@ raised in their own right.
 - **[L4-state-shape-g2]** Precondition: the cvar storage-ownership decision (L4-R2) must be ratified BEFORE the client DLL's cvar surface is wired, or a third registry gets written. FCVAR_CLIENTDLL already exists in cmd_cvar's flag enum, which is how close this is.
   - evidence: xash3dpp/src/cmd_cvar/cvar_ops.cpp:88-89 (owner_flags derived from FCVAR_EXTDLL|FCVAR_CLIENTDLL|FCVAR_GAMEUIDLL|FCVAR_REFDLL); xash3dpp/include/xash3dpp/private/server/engine_bridge.hpp:120
 - **[L4-state-shape-g2]** The stated thread-model precondition should be answered with the L4 finding in hand: the tree's context-free reach is already confined to two files, so a thread model that keeps the ABI shim main-pinned costs almost nothing structurally. The expensive part is not P-3 — it is the cvar registry and the 21-function physics corridor.
-  - evidence: grep for `g_bridge|engine_bridge()` across xash3dpp/src returns exactly src/server/abi/engine_table.cpp and src/server/physics/init_client_move.cpp
+  - evidence: grep for `g_bridge|engine_bridge()` across xash3dpp/src returns exactly src/server/game/engine_table.cpp and src/server/physics/init_client_move.cpp
 - **[L10-forward-fit-obligations-register]** OBL-12-1 — Record the T_NetIO decision, or cite threading-model.md §3.5/§3.7 as the standing default (Model B unchanged; T_NetIO deferred to the two unfired §7.4 triggers). The render half of the current bundled precondition must be reassigned to Chunk 13, where Q-6/Q-10 already put the backend choice it depends on.
   - evidence: xash3dpp/docs/implementation-plan.md:270; threading-model.md:165-167 §3.5, :173-177 §3.7, §7.4; decisions-architecture.md:389-390 (Q-6), :507-508 (Q-10)
 - **[L10-forward-fit-obligations-register]** OBL-12-2 — Ratify the cvar storage-ownership decision BEFORE wiring the client DLL's cvar surface, or a THIRD cvar registry gets written. FCVAR_CLIENTDLL already exists in the flag enum. Today a game DLL cannot read a single engine cvar; four `TODO(chunk6-S7): fall through to the engine cvar registry` markers mark the gap.
-  - evidence: xash3dpp/src/server/abi/engine_table.cpp:1199,1212,1223,1799; xash3dpp/src/cmd_cvar/cvar_ops.cpp:88-89; include/xash3dpp/private/server/engine_bridge.hpp:120
+  - evidence: xash3dpp/src/server/game/engine_table.cpp:1199,1212,1223,1799; xash3dpp/src/cmd_cvar/cvar_ops.cpp:88-89; include/xash3dpp/private/server/engine_bridge.hpp:120
 - **[L10-forward-fit-obligations-register]** OBL-12-3 — Sound's deferred list, all tagged chunk12: the soundfade curve (S_UpdateSoundFade port) so MixConfigSnapshot::gate.soundfade_gain gets a real producer instead of constant 1.0; the MixGateSnapshot producer (host.status / cls.key_dest / cl.paused / cl.background / CL_IsInGame / Host_IsSinglePlayerGame) — every gate is false today and the focus mute is live but permanently dormant; pitch_mult (sys_timescale); ambient channels + S_ClearBuffer; the sfx handle-0 `*default` reservation (precache wiring); soundlist/music bodies.
   - evidence: xash3dpp/src/sound/sound.cpp:314,320; include/xash3dpp/private/sound/audio_command.hpp:170; private/sound/mixer.hpp:302; tests/sound/test_sound_topology.cpp:191; implementation-plan.md Chunk 9 Deferred line
 - **[L10-forward-fit-obligations-register]** OBL-12-4 — Host frame-loop wiring: Client::init() (non-dedicated only), Client::shutdown(), Client::RunFrame(), Platform::PollEvents(), and the `client::Client client;` member in EngineContext after `server` in declaration order.
@@ -148,7 +148,7 @@ raised in their own right.
 - **[L10-forward-fit-obligations-register]** OBL-12-14 — ABI vendored-ahead surfaces owe their client-side wiring: event_state_t is vendored with the comment that 'the client (Chunk 12) reuses the same layout for its own event ring'; sound_api_t / sound_interface_t / channel_t / rawchan_t are layout-pinned by test but have ZERO production consumers, with HUD_GetSoundInterface negotiation explicitly deferred.
   - evidence: xash3dpp/include/xash3dpp/abi/event_state.hpp:7; include/xash3dpp/abi/sound_api.hpp (whole file, commit 72293dc7); tests/sound/test_sound_api_layout.cpp; sound-boundary.md:64-73
 - **[L10-forward-fit-obligations-register]** OBL-12-15 — Reproduce the FIELD_FUNCTION name-mangling passes and fold CL_DisableVisibility() into fullvis (pfn_set_fat_pvs).
-  - evidence: xash3dpp/src/server/abi/engine_table.cpp:1440,1869,1893
+  - evidence: xash3dpp/src/server/game/engine_table.cpp:1440,1869,1893
 - **[L10-forward-fit-obligations-register]** OBL-12-16 — Refine calc_fps()'s client branch with gl_vsync / demo-playback checks; it currently assumes gl_vsync==0.
   - evidence: xash3dpp/src/core/clock.cpp:143
 - **[L10-forward-fit-obligations-register]** OBL-12-17 — When client work first opens the delta pipeline, execute the snapshot_* → delta_frame_* rename per the L1 vocabulary rule (165 of 308 tree-wide `snapshot` tokens are in server and are wire entity-delta, not P-2). IDENTIFIERS ONLY — field widths, ordering and codec arithmetic are HB-2 fenced.
@@ -168,7 +168,7 @@ raised in their own right.
 ### HB-12 — 1
 
 - **[L11-subtraction]** Replace both xorshift32 stubs with one shared generator matching engine/common/common.c:54-117 (int idum + NTAB=32 shuffle, COM_SetRandomSeed semantics). Until then the two 25-line copies stay independently seeded; consolidating them into a server-private XorShift32 is optional churn, not the fix.
-  - evidence: xash3dpp/src/server/abi/engine_table.cpp:1554-1583; xash3dpp/src/server/physics/init_client_move.cpp:278-303
+  - evidence: xash3dpp/src/server/game/engine_table.cpp:1554-1583; xash3dpp/src/server/physics/init_client_move.cpp:278-303
 
 ### Chunk 13 (renderer) — 5
 
@@ -269,7 +269,7 @@ raised in their own right.
 ### unowned — LIVE DEFECT (also Chunk-11 gate item 11-G2) — 1
 
 - **[L10-forward-fit-obligations-register]** OBL-X-11 — Four EngineBridge mirrored scalars are read in production and written nowhere. sv_time is the serious one: it drives EdictArena's legacy slot-reuse grace, is frozen at 0.0, and so silently corrupts the 0.5s reuse grace on EVERY game-DLL entity create/free. novis and autoaim_threshold are read but never wired from sv_novis / sv_aim. group_mask/group_op are written but never read (the live copies are move_env->group_mask and links->set_group_op) and should be deleted. No existing gate can see this class — it carries no stub marker, which is how it survived Chunk 6B, a consolidation audit, a close-out audit and 35 modernization packs.
-  - evidence: xash3dpp/include/xash3dpp/private/server/engine_bridge.hpp:96; reads at src/server/abi/engine_table.cpp:100,711,1097,2245; only assignment is tests/server/abi/test_engine_table.cpp:145; group_mask/group_op written at engine_table.cpp:2033-2034
+  - evidence: xash3dpp/include/xash3dpp/private/server/engine_bridge.hpp:96; reads at src/server/game/engine_table.cpp:100,711,1097,2245; only assignment is tests/server/abi/test_engine_table.cpp:145; group_mask/group_op written at engine_table.cpp:2033-2034
 
 ### Any chunk adopting an off-main option — 1
 

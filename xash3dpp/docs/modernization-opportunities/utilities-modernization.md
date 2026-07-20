@@ -404,14 +404,14 @@ ______________________________________________________________________
   count as an extension separator); `spawn.cpp`'s local copy scans the whole
   string with no path-separator awareness. The in-code comment already
   acknowledges the divergence and argues it is inert because the one call site
-  (`spawn.cpp:310`, on `rt.level.name`, a bare map name with no directory
+  (`spawn.cpp:312`, on `rt.level.name`, a bare map name with no directory
   component) never exercises it — but that argument lives in a comment, not in
   a shared implementation, so nothing prevents the next caller of this local
   copy from being a path with a directory component.
 
 - **Suggested replacement**: Delete the local `strip_extension` and call
   `xash::utilities::strip_extension( rt.level.name )` at the existing call
-  site (`spawn.cpp:310`); it is `noexcept` with the same `char *` signature,
+  site (`spawn.cpp:312`); it is `noexcept` with the same `char *` signature,
   so the substitution is direct. This removes the divergent behaviour rather
   than continuing to reason about why it happens not to matter today.
 

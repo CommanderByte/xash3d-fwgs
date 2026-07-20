@@ -62,7 +62,7 @@ given.
 
 ## 3. Invariants and Quirks
 
-- **HB-2 fenced.** `clip.cpp:237-273` — the `if ( rotated )` block, marked
+- **HB-2 fenced.** `clip.cpp:242-278` — the `if ( rotated )` block, marked
   `TODO(Q-18)` in code — is the rotated-brush ULP kernel. It is byte-exact
   no-touch: no FMA, no reassociation, no `std::ranges` rewrite. The 2026-07-20
   promotion was a pure file move; its entire diff was one include path.

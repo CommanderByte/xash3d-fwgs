@@ -89,7 +89,7 @@ projection). Engine-**internal** server code reads/writes entvars through the
 zero-cost `EntityView` facade, never via `->v.` directly. Raw `edict->v.` access
 is **confined** to three sites, enforced by a compliance-scan rule:
 
-- `src/server/abi/` — the ABI shim (the store itself + the accessor seam);
+- `src/server/game/` — the ABI shim (the store itself + the accessor seam);
 - the **pmove bridge** (`physics/pmove.cpp`, `pm_trace.cpp`,
   `init_client_move.cpp`, `run_cmd.cpp`) — the state copy is field-for-field with
   legacy, so it reads raw;

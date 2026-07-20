@@ -2,7 +2,7 @@
 
 > **Defined in**: `private/server/engine_bridge.hpp`, `edict_arena.hpp`,
 > `string_pool.hpp`, `game_dll.hpp`, `entity_view.hpp` /
-> `src/server/abi/*.cpp`\
+> `src/server/game/*.cpp`\
 > **Namespace**: `xash::server`
 
 ## Overview

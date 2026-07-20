@@ -153,7 +153,7 @@ ______________________________________________________________________
 
 | Legacy construct | Where it lives now | Notes |
 |------------------|--------------------|-------|
-| `GiveFnptrsToDll(enginefuncs_t*, globalvars_t*)` push | vendored `enginefuncs_t`/`globalvars_t` decls (`eiface.hpp`) + server load path | Layouts frozen in `abi`; the *fill/negotiation* is a **server** concern (`src/server/abi/engine_table.cpp`, `deep-dive-server-game-dll-bridge.md`) |
+| `GiveFnptrsToDll(enginefuncs_t*, globalvars_t*)` push | vendored `enginefuncs_t`/`globalvars_t` decls (`eiface.hpp`) + server load path | Layouts frozen in `abi`; the *fill/negotiation* is a **server** concern (`src/server/game/engine_table.cpp`, `deep-dive-server-game-dll-bridge.md`) |
 | `GetEntityAPI` / `GetEntityAPI2(DLL_FUNCTIONS*, int*)` pull | vendored `DLL_FUNCTIONS` decl (`eiface.hpp`) + server | 50-slot table, `static_assert`ed; version-negotiation logic lives in server |
 | `GetNewDLLFunctions(NEW_DLL_FUNCTIONS*, int*)` | vendored `NEW_DLL_FUNCTIONS` decl (`eiface.hpp`) | 5-slot table, `static_assert`ed; warn-only version mismatch preserved server-side |
 | `INTERFACE_VERSION` (140), slot counts 159/50/5 | `static_assert`s in `eiface.hpp` + `k_interface_version` | Frozen (eiface.h:22/286); pinned by `tests/server/abi/test_*_layout.cpp` on 32/64-bit |

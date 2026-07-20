@@ -80,11 +80,11 @@ state; `pm_trace.cpp` carries **zero** direct `ServerRuntime` references.
 
 ## 3. Invariants and Quirks
 
-- **The neutral seam, and its single leak.** `PmTraceEnv` (`pm_trace.hpp:52`)
+- **The neutral seam, and its single leak.** `PmTraceEnv` (`pm_trace.hpp:53`)
   has six fields; five are role-neutral (`world`, `models`, `player_bounds`,
   `pusher_ext`, `cvars`). The sixth — `arena` (`EdictArena *`, the server edict
   store) — is the **only** role-owned reach in all 800 lines, used in exactly
-  one place: `physent_modelindex` at `pm_trace.cpp:94`, which resolves
+  one place: `physent_modelindex` at `pm_trace.cpp:96`, which resolves
   `pe->info → edict → v.modelindex`. **All the shared kernel wants from the
   server is one `int`** (a model index), which it then feeds to the neutral
   `models` resolver.
@@ -100,7 +100,7 @@ state; `pm_trace.cpp` carries **zero** direct `ServerRuntime` references.
   the trace loop, no reopening Q-20, no touching the byte-exact arithmetic.
 - **Parity fence is determinism, not one ULP block here.** The ULP-exact
   rotated-brush kernel this code reaches is HB-2 fenced at
-  `world/clip.cpp:237-273`, reached indirectly via the map_loader trace. The
+  `world/clip.cpp:242-278`, reached indirectly via the map_loader trace. The
   *live* divergence risk in the movement path is the **RNG**:
   `init_client_move.cpp` installs a non-parity xorshift in the pmove RNG slots
   (`XASH3DPP-STUB`) where legacy wires the single shared `COM_RandomLong` —
@@ -161,7 +161,7 @@ form.)*
   the kernel a role-neutral `PmTraceEnv`. The kernel is role-blind — **except
   the one `arena` leak in §3, which is the whole of the remaining debt.**
 - **Parity fence:** determinism. The ULP-exact block is HB-2 at
-  `world/clip.cpp:237-273` (reached indirectly); the open divergence risk is
+  `world/clip.cpp:242-278` (reached indirectly); the open divergence risk is
   the RNG stub (gate item 3); `movevars_t` is a shared input both sides must
   agree on bit-for-bit.
 - **Annotation:** when the target is created, `pm_trace.cpp` (and any TU that

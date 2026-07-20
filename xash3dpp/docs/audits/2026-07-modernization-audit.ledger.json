@@ -564,7 +564,7 @@
   {
    "lens": "L4-state-shape-g2",
    "headline": "The engine internals ARE context-carrying and the context-free reach is confined to two files — G-2's P-3 door is genuinely open. What is broken is the ABI shim's mirrored-scalar layer: 4 of 11 `EngineBridge` scalars are never written in production, and one of them (`sv_time`, frozen at 0.0) silently corrupts the legacy edict-slot reuse grace on every game-DLL entity create/free. Separately, the second cvar registry means a game DLL cannot read a single engine cvar — and cmd_cvar already ships the unification API with zero production callers.",
-   "rerun_trigger": "Re-run L4 when ANY of the following becomes true — each invalidates a load-bearing measurement in this report, and none is time-based:\n\n1. **A `g_bridge`-class global appears outside `src/server/abi/engine_table.cpp` or `src/server/physics/init_client_move.cpp`.** The \"context-free reach is confined to two files\" claim is the foundation of the whole G-2 door assessment. Mechanical check: `grep -rl \"g_bridge\\|engine_bridge()\" xash3dpp/src` must return exactly those two paths.\n2. **A field is added to `EngineBridge`, or any bridge-shaped struct gains a mirrored scalar.** The 21-pointer / 11-scalar census and the writer/reader audit both go stale, and this is precisely where four dead fields already hid.\n3. **A third cvar registration path appears** — most likely when Chunk 12 wires the client DLL (`FCVAR_CLIENTDLL` is already in cmd_cvar's enum). Check: any `cvar_t *` chain outside `cmd_cvar`'s registry and `EngineBridge::external_cvars`.\n4. **The `ServerRuntime &` definition count moves by more than ±10 from 121, or a second god-aggregate appears** (any subsystem where a single `<Type> &` param exceeds ~40 definition sites — today only server does). Re-run `<scratchpad>/p5.py <AggName>` to re-derive the histogram; do not trust the old numbers.\n5. **The ABI-v2 design brief is opened.** This lens's ranked open/ajar/shut list is its input, and rows L4-R3 (doc corrections) and L4-R6 (context-parametric slot bodies) are preconditions rather than follow-ups.\n6. **Chunk 11's physics boundary spec is created.** It will decide the fate of the 21-function corridor and the `PhysicsContext` clock, both of which this report scoped but did not resolve.",
+   "rerun_trigger": "Re-run L4 when ANY of the following becomes true — each invalidates a load-bearing measurement in this report, and none is time-based:\n\n1. **A `g_bridge`-class global appears outside `src/server/game/engine_table.cpp` or `src/server/physics/init_client_move.cpp`.** The \"context-free reach is confined to two files\" claim is the foundation of the whole G-2 door assessment. Mechanical check: `grep -rl \"g_bridge\\|engine_bridge()\" xash3dpp/src` must return exactly those two paths.\n2. **A field is added to `EngineBridge`, or any bridge-shaped struct gains a mirrored scalar.** The 21-pointer / 11-scalar census and the writer/reader audit both go stale, and this is precisely where four dead fields already hid.\n3. **A third cvar registration path appears** — most likely when Chunk 12 wires the client DLL (`FCVAR_CLIENTDLL` is already in cmd_cvar's enum). Check: any `cvar_t *` chain outside `cmd_cvar`'s registry and `EngineBridge::external_cvars`.\n4. **The `ServerRuntime &` definition count moves by more than ±10 from 121, or a second god-aggregate appears** (any subsystem where a single `<Type> &` param exceeds ~40 definition sites — today only server does). Re-run `<scratchpad>/p5.py <AggName>` to re-derive the histogram; do not trust the old numbers.\n5. **The ABI-v2 design brief is opened.** This lens's ranked open/ajar/shut list is its input, and rows L4-R3 (doc corrections) and L4-R6 (context-parametric slot bodies) are preconditions rather than follow-ups.\n6. **Chunk 11's physics boundary spec is created.** It will decide the fate of the 21-function corridor and the `PhysicsContext` clock, both of which this report scoped but did not resolve.",
    "recommendations": [
     {
      "local_id": "L4-R1",
@@ -645,7 +645,7 @@
     {
      "local_id": "L4-R6",
      "title": "Make the ABI slot bodies take `EngineBridge &` and reduce `g_bridge` to a one-line v1 adapter",
-     "what": "In src/server/abi/engine_table.cpp, give each slot implementation an `EngineBridge &b` first parameter and replace the 175 `g_bridge->` derefs with `b.`; the frozen capture-less slot installed in the table becomes a one-line adapter (`int pfn_precache_model(const char *s) { return precache_model(*g_bridge, s); }`). Same treatment for the two `engine_bridge()` call sites in physics/init_client_move.cpp:75, :252, :317. No slot shape, name, calling convention or table entry changes.",
+     "what": "In src/server/game/engine_table.cpp, give each slot implementation an `EngineBridge &b` first parameter and replace the 175 `g_bridge->` derefs with `b.`; the frozen capture-less slot installed in the table becomes a one-line adapter (`int pfn_precache_model(const char *s) { return precache_model(*g_bridge, s); }`). Same treatment for the two `engine_bridge()` call sites in physics/init_client_move.cpp:75, :252, :317. No slot shape, name, calling convention or table entry changes.",
      "why": "This is the concrete meaning of server-boundary.md:518's claim that 'v2 slots carry a context handle to it instead of reaching the global'. Today that is aspiration; after this it is mechanical — a v2 flavour installs the same bodies with a real context handle and the v1 adapters keep the global. The change is confined to two files because, as this lens established, `g_bridge`/`engine_bridge()` appear nowhere else in xash3dpp/src. It also removes the last barrier to more than one ServerRuntime existing, without committing to multi-instance as a goal.",
      "effort": "M",
      "promotes_to": "chunk-precondition",
@@ -703,7 +703,7 @@
     {
      "chunk": "12 client",
      "obligation": "The stated thread-model precondition should be answered with the L4 finding in hand: the tree's context-free reach is already confined to two files, so a thread model that keeps the ABI shim main-pinned costs almost nothing structurally. The expensive part is not P-3 — it is the cvar registry and the 21-function physics corridor.",
-     "evidence": "grep for `g_bridge|engine_bridge()` across xash3dpp/src returns exactly src/server/abi/engine_table.cpp and src/server/physics/init_client_move.cpp"
+     "evidence": "grep for `g_bridge|engine_bridge()` across xash3dpp/src returns exactly src/server/game/engine_table.cpp and src/server/physics/init_client_move.cpp"
     },
     {
      "chunk": "ABI-v2 brief (unscheduled, extension-goals.md §5)",
@@ -987,7 +987,7 @@
     {
      "chunk": "HB-12",
      "obligation": "Replace both xorshift32 stubs with one shared generator matching engine/common/common.c:54-117 (int idum + NTAB=32 shuffle, COM_SetRandomSeed semantics). Until then the two 25-line copies stay independently seeded; consolidating them into a server-private XorShift32 is optional churn, not the fix.",
-     "evidence": "xash3dpp/src/server/abi/engine_table.cpp:1554-1583; xash3dpp/src/server/physics/init_client_move.cpp:278-303"
+     "evidence": "xash3dpp/src/server/game/engine_table.cpp:1554-1583; xash3dpp/src/server/physics/init_client_move.cpp:278-303"
     }
    ],
    "open_decisions": [
@@ -1805,7 +1805,7 @@
     {
      "chunk": "11 physics",
      "obligation": "OBL-11-5 — The client-side pmove RandomLong/RandomFloat install must reuse HB-12's ONE shared generator instance, not copy the per-TU xorshift placeholder a third/fourth time. Legacy wires the literal same COM_RandomLong/COM_RandomFloat pointer into both the engfuncs slot and the pmove slot on BOTH paths — there is no independent stream in GoldSrc, and the 'two independent streams must stay independent' premise recorded in one amendment round is refuted by the legacy source.",
-     "evidence": "engine/server/sv_pmove.c:478-479; engine/client/dll_int/cl_pmove.c:769; engine/common/common.c:54-118 (ran1, idum + NTAB=32 shuffle); xash3dpp/src/server/physics/init_client_move.cpp:278-303,439-440; xash3dpp/src/server/abi/engine_table.cpp:1554-1583"
+     "evidence": "engine/server/sv_pmove.c:478-479; engine/client/dll_int/cl_pmove.c:769; engine/common/common.c:54-118 (ran1, idum + NTAB=32 shuffle); xash3dpp/src/server/physics/init_client_move.cpp:278-303,439-440; xash3dpp/src/server/game/engine_table.cpp:1554-1583"
     },
     {
      "chunk": "11 physics",
@@ -1845,7 +1845,7 @@
     {
      "chunk": "12 client",
      "obligation": "OBL-12-2 — Ratify the cvar storage-ownership decision BEFORE wiring the client DLL's cvar surface, or a THIRD cvar registry gets written. FCVAR_CLIENTDLL already exists in the flag enum. Today a game DLL cannot read a single engine cvar; four `TODO(chunk6-S7): fall through to the engine cvar registry` markers mark the gap.",
-     "evidence": "xash3dpp/src/server/abi/engine_table.cpp:1199,1212,1223,1799; xash3dpp/src/cmd_cvar/cvar_ops.cpp:88-89; include/xash3dpp/private/server/engine_bridge.hpp:120"
+     "evidence": "xash3dpp/src/server/game/engine_table.cpp:1199,1212,1223,1799; xash3dpp/src/cmd_cvar/cvar_ops.cpp:88-89; include/xash3dpp/private/server/engine_bridge.hpp:120"
     },
     {
      "chunk": "12 client",
@@ -1910,7 +1910,7 @@
     {
      "chunk": "12 client",
      "obligation": "OBL-12-15 — Reproduce the FIELD_FUNCTION name-mangling passes and fold CL_DisableVisibility() into fullvis (pfn_set_fat_pvs).",
-     "evidence": "xash3dpp/src/server/abi/engine_table.cpp:1440,1869,1893"
+     "evidence": "xash3dpp/src/server/game/engine_table.cpp:1440,1869,1893"
     },
     {
      "chunk": "12 client",
@@ -2070,7 +2070,7 @@
     {
      "chunk": "unowned — LIVE DEFECT (also Chunk-11 gate item 11-G2)",
      "obligation": "OBL-X-11 — Four EngineBridge mirrored scalars are read in production and written nowhere. sv_time is the serious one: it drives EdictArena's legacy slot-reuse grace, is frozen at 0.0, and so silently corrupts the 0.5s reuse grace on EVERY game-DLL entity create/free. novis and autoaim_threshold are read but never wired from sv_novis / sv_aim. group_mask/group_op are written but never read (the live copies are move_env->group_mask and links->set_group_op) and should be deleted. No existing gate can see this class — it carries no stub marker, which is how it survived Chunk 6B, a consolidation audit, a close-out audit and 35 modernization packs.",
-     "evidence": "xash3dpp/include/xash3dpp/private/server/engine_bridge.hpp:96; reads at src/server/abi/engine_table.cpp:100,711,1097,2245; only assignment is tests/server/abi/test_engine_table.cpp:145; group_mask/group_op written at engine_table.cpp:2033-2034"
+     "evidence": "xash3dpp/include/xash3dpp/private/server/engine_bridge.hpp:96; reads at src/server/game/engine_table.cpp:100,711,1097,2245; only assignment is tests/server/abi/test_engine_table.cpp:145; group_mask/group_op written at engine_table.cpp:2033-2034"
     }
    ],
    "open_decisions": [

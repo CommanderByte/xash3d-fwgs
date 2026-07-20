@@ -270,7 +270,7 @@ and 63 shape constraints**, each with evidence and an owner.
 | 4 | follow-up | `server-boundary.md` P-3 / P-5 / P-8 rows | Med | CONFIRMED | fix-doc | Three overclaims corrected against re-derived census numbers; P-1/P-4/G-3 re-checked TRUE and left alone. |
 | 5 | follow-up | `IMapLoaderObserver` impl claim | Med | CONFIRMED | fix-doc | Nothing under `src/server/` implements it; recorded as an unowned door. |
 | 6 | follow-up | `assert_main_thread` "thin wrapper" | Med | CONFIRMED | fix-doc | False in six docs plus a shipped header comment that also cited the wrong path. |
-| 7 | follow-up | HB-2 fence anchor `clip.cpp:211` | Med | CONFIRMED | fix-doc | Real kernel is `clip.cpp:237-273`; Chunk 11 entry-gate item 2. |
+| 7 | follow-up | HB-2 fence anchor `clip.cpp:216` | Med | CONFIRMED | fix-doc | Real kernel is `clip.cpp:242-278`; Chunk 11 entry-gate item 2. |
 | 8 | follow-up | `ITrustOracle` "gate permanently open" | Med | **REFUTED (inverted)** | fix-doc | The gate fails CLOSED. Behaviour divergence, not a security hole. |
 | 9 | follow-up | "16 of 30 verbs" | Low | AMENDED | fix-doc | The alternation holds 26 verbs, not 30. |
 | 10 | follow-up | "~58 obligations / 24 open decisions" | Low | AMENDED | fix-doc | The corpus holds 100 and 30; the lower figures counted only L10's register. |

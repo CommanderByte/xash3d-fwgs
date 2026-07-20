@@ -42,14 +42,14 @@
    "target": "engine/client/cl_frame.c"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|0": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/audits/2026-07-modernization-audit.md|clip.cpp|1": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -299,21 +299,21 @@
    "target": "game_launch/game.cpp"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|pm_trace.cpp|0": {
-   "line": 94,
+   "line": 96,
    "snapshot": [
     "abi::edict_t *ed = env.arena->edict_num( static_cast<std::size_t>( pe->info ));"
    ],
    "target": "xash3dpp/src/server/physics/pm_trace.cpp"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|pm_trace.hpp|0": {
-   "line": 52,
+   "line": 53,
    "snapshot": [
     "struct PmTraceEnv"
    ],
    "target": "xash3dpp/include/xash3dpp/private/server/pm_trace.hpp"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|world/clip.cpp|0": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -322,7 +322,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/boundaries/physics-boundary.md|world/clip.cpp|1": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -397,14 +397,14 @@
    "target": "engine/server/server.h"
   },
   "xash3dpp/docs/boundaries/server-boundary.md|engine_table.cpp|0": {
-   "line": 55,
+   "line": 57,
    "snapshot": [
     "EngineBridge * g_bridge = nullptr; // compliance-allow(mutable-global, di-global-ref): engine_table ABI-slot carve-out (Q-20) \u2014 the game DLL's ~30 context-free pfn shims have fixed ABI signatures with no userdata slot, so they reach engine state through this one file-scope singleton; set once at bridge install, main-thread-only thereafter"
    ],
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/boundaries/server-boundary.md|engine_table.cpp|1": {
-   "line": 61,
+   "line": 63,
    "snapshot": [
     "std::byte s_fatpvs[k_fat_vis_bytes];",
     "std::byte s_fatphs[k_fat_vis_bytes];"
@@ -905,7 +905,7 @@
    "target": "xash3dpp/src/utilities/build.cpp"
   },
   "xash3dpp/docs/boundaries/world-boundary.md|clip.cpp|0": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -914,7 +914,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|0": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -923,7 +923,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/design/decisions-architecture.md|clip.cpp|1": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -1015,14 +1015,14 @@
    "target": "xash3dpp/include/xash3dpp/core/thread_role.hpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|0": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|1": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -1031,7 +1031,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|clip.cpp|2": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -1047,7 +1047,7 @@
    "target": "common/pmove.h"
   },
   "xash3dpp/docs/implementation-plan.md|engine_table.cpp|0": {
-   "line": 1577,
+   "line": 75,
    "snapshot": [
     "}"
    ],
@@ -1061,7 +1061,7 @@
    "target": "xash3dpp/src/launcher/main.cpp"
   },
   "xash3dpp/docs/implementation-plan.md|physics.cpp|0": {
-   "line": 1542,
+   "line": 473,
    "snapshot": [
     "break;"
    ],
@@ -1086,7 +1086,7 @@
    "target": "pm_shared/pm_defs.h"
   },
   "xash3dpp/docs/implementation-plan.md|pm_trace.cpp|0": {
-   "line": 94,
+   "line": 96,
    "snapshot": [
     "abi::edict_t *ed = env.arena->edict_num( static_cast<std::size_t>( pe->info ));"
    ],
@@ -2873,7 +2873,7 @@
    "target": "public/swaplib.h"
   },
   "xash3dpp/docs/legacy-survey/overview.md|clip.cpp|0": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -4099,7 +4099,7 @@
    "target": "xash3dpp/src/content/model/model_cache.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/content-modernization.md|model_resolver.cpp|0": {
-   "line": 167,
+   "line": 169,
    "snapshot": [
     "ct::BuiltinBoneSolver solver;"
    ],
@@ -5817,7 +5817,7 @@
    "target": "xash3dpp/src/filesystem/file.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/memory-modernization.md|game_host.cpp|0": {
-   "line": 215,
+   "line": 217,
    "snapshot": [
     "// Mod_Init allocates svgame.pmove once; freed in unload_progs)."
    ],
@@ -6053,7 +6053,7 @@
    "target": "xash3dpp/src/networking/netchan.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/networking-modernization.md|physics.cpp|0": {
-   "line": 1801,
+   "line": 1803,
    "snapshot": [
     "send_client_messages( rt );"
    ],
@@ -6129,14 +6129,14 @@
    "target": "xash3dpp/src/server/clients/snapshot.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/networking-modernization.md|src/server/physics/physics.cpp|0": {
-   "line": 1801,
+   "line": 1803,
    "snapshot": [
     "send_client_messages( rt );"
    ],
    "target": "xash3dpp/src/server/physics/physics.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/networking-modernization.md|src/server/physics/physics.cpp|1": {
-   "line": 1801,
+   "line": 1803,
    "snapshot": [
     "send_client_messages( rt );"
    ],
@@ -6605,7 +6605,7 @@
    "target": "xash3dpp/src/server/lifecycle/save_bridge.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|abi/engine_table.cpp|0": {
-   "line": 59,
+   "line": 61,
    "snapshot": [
     "inline constexpr std::size_t k_fat_vis_bytes = ( 32767 + 7 ) / 8;",
     "",
@@ -6614,7 +6614,7 @@
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|abi/engine_table.cpp|1": {
-   "line": 1554,
+   "line": 1556,
    "snapshot": [
     "// --- random (engine-local; COM_RandomLong parity is a tracked follow-up) ----",
     "",
@@ -6623,7 +6623,7 @@
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|abi/engine_table.cpp|2": {
-   "line": 227,
+   "line": 73,
    "snapshot": [
     "{"
    ],
@@ -6664,7 +6664,7 @@
    "target": "xash3dpp/src/server/clients/snapshot.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|0": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6673,21 +6673,21 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|1": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|2": {
-   "line": 220,
+   "line": 225,
    "snapshot": [
     "!vector_is_null( view.angles() );"
    ],
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|3": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6696,7 +6696,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|4": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6705,7 +6705,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|5": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6714,7 +6714,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|6": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -6723,7 +6723,7 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|clip.cpp|7": {
-   "line": 211,
+   "line": 216,
    "snapshot": [
     "sel = hull_for_entity( env, ent, mins, maxs, box_storage );"
    ],
@@ -6760,7 +6760,7 @@
    "target": "engine/server/sv_game.c"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|engine_table.cpp|0": {
-   "line": 2387,
+   "line": 2389,
    "snapshot": [
     "t.pfnCRC32_ProcessByte              = pfn_crc32_process_byte;",
     "t.pfnCRC32_Final                    = pfn_crc32_final;"
@@ -6768,7 +6768,7 @@
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|engine_table.cpp|1": {
-   "line": 61,
+   "line": 63,
    "snapshot": [
     "std::byte s_fatpvs[k_fat_vis_bytes];",
     "std::byte s_fatphs[k_fat_vis_bytes];"
@@ -6776,21 +6776,21 @@
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|game_host.cpp|0": {
-   "line": 309,
+   "line": 311,
    "snapshot": [
     "rt.game.unload(); // COM_FreeLibrary"
    ],
    "target": "xash3dpp/src/server/lifecycle/game_host.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|game_host.cpp|1": {
-   "line": 364,
+   "line": 366,
    "snapshot": [
     "if ( ed == nullptr || EntityView( ed ).freed() )"
    ],
    "target": "xash3dpp/src/server/lifecycle/game_host.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|hulls.cpp|0": {
-   "line": 114,
+   "line": 119,
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept"
    ],
@@ -6862,7 +6862,7 @@
    "target": "xash3dpp/src/server/lifecycle/save_bridge.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|links.cpp|0": {
-   "line": 39,
+   "line": 45,
    "snapshot": [
     "[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,"
    ],
@@ -6876,7 +6876,7 @@
    "target": "xash3dpp/include/xash3dpp/map_loader/map_loader.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|physics.cpp|0": {
-   "line": 95,
+   "line": 97,
    "snapshot": [
     "rt.arena.free_edict( ent, rt.level.time );"
    ],
@@ -6901,28 +6901,28 @@
    "target": "xash3dpp/src/server/physics/movevars.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|physics/physics.cpp|0": {
-   "line": 65,
+   "line": 67,
    "snapshot": [
     "[[nodiscard]] bool is_null( const Vec3 &v ) noexcept"
    ],
    "target": "xash3dpp/src/server/physics/physics.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|physics/physics.cpp|1": {
-   "line": 1530,
+   "line": 1532,
    "snapshot": [
     "link_edict( rt, ent, true ); // force retouch even for stationary"
    ],
    "target": "xash3dpp/src/server/physics/physics.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|physics/pmove.cpp|0": {
-   "line": 57,
+   "line": 52,
    "snapshot": [
     "}"
    ],
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|physics/pmove.cpp|1": {
-   "line": 81,
+   "line": 83,
    "snapshot": [
     "}",
     "",
@@ -6931,28 +6931,28 @@
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|physics/run_cmd.cpp|0": {
-   "line": 48,
+   "line": 45,
    "snapshot": [
     "{"
    ],
    "target": "xash3dpp/src/server/physics/run_cmd.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|pmove.cpp|0": {
-   "line": 68,
+   "line": 21,
    "snapshot": [
     ""
    ],
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|pmove.cpp|1": {
-   "line": 150,
+   "line": 152,
    "snapshot": [
     "pe->model = pe->studiomodel = nullptr;"
    ],
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|pmove.cpp|2": {
-   "line": 130,
+   "line": 132,
    "snapshot": [
     "// client \u2014 lag-comp GetTrueOrigin is P5 (un-interpolated here).",
     "if ( fbit( ed->v.flags, abi::k_fl_fakeclient ))",
@@ -6977,21 +6977,21 @@
    "target": "xash3dpp/include/xash3dpp/private/server/snapshot.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|spawn.cpp|0": {
-   "line": 132,
+   "line": 134,
    "snapshot": [
     "rt.arena.free_edict( ent, rt.level.time );"
    ],
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|spawn.cpp|1": {
-   "line": 203,
+   "line": 205,
    "snapshot": [
     "return snapshot_alloc_ring( rt );"
    ],
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/CMakeLists.txt|0": {
-   "line": 66,
+   "line": 68,
    "snapshot": [
     "PUBLIC  xash3dpp_networking    # S7 \u2014 DeltaTables (Delta_Init per spawn)",
     "PUBLIC  xash3dpp_cmd_cvar      # S7 \u2014 state mirrors, FCVAR_EXTDLL dance",
@@ -7070,6 +7070,40 @@
    ],
    "target": "xash3dpp/src/server/clients/snapshot.cpp"
   },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/game/edict_arena.cpp|0": {
+   "line": 56,
+   "snapshot": [
+    "{",
+    "::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );",
+    ""
+   ],
+   "target": "xash3dpp/src/server/game/edict_arena.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/game/engine_table.cpp|0": {
+   "line": 55,
+   "snapshot": [
+    "namespace {"
+   ],
+   "target": "xash3dpp/src/server/game/engine_table.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/game/engine_table.cpp|1": {
+   "line": 59,
+   "snapshot": [
+    "// legacy MAX_MAP_LEAFS (common/bspfile.h, bsp30) \u2014 sizes the file-static",
+    "// fat-visibility buffers exactly like sv_game.c:31-32.",
+    "inline constexpr std::size_t k_fat_vis_bytes = ( 32767 + 7 ) / 8;"
+   ],
+   "target": "xash3dpp/src/server/game/engine_table.cpp"
+  },
+  "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/game/string_pool.cpp|0": {
+   "line": 51,
+   "snapshot": [
+    "void StringPool::shutdown()",
+    "{",
+    "::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );"
+   ],
+   "target": "xash3dpp/src/server/game/string_pool.cpp"
+  },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/lifecycle/precache.cpp|0": {
    "line": 55,
    "snapshot": [
@@ -7080,14 +7114,14 @@
    "target": "xash3dpp/src/server/lifecycle/precache.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/lifecycle/spawn.cpp|0": {
-   "line": 203,
+   "line": 205,
    "snapshot": [
     "return snapshot_alloc_ring( rt );"
    ],
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/physics/pmove.cpp|0": {
-   "line": 524,
+   "line": 526,
    "snapshot": [
     "clent->v.maxs[2] = hb.maxs.z;",
     "for ( int i = 0; i < 3; ++i )",
@@ -7096,7 +7130,7 @@
    "target": "xash3dpp/src/server/physics/pmove.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|src/server/world/clip.cpp|0": {
-   "line": 30,
+   "line": 35,
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const Vec3 &v ) noexcept"
    ],
@@ -7129,7 +7163,7 @@
    "target": "engine/server/sv_game.c"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|tests/server/abi/test_engine_table.cpp|0": {
-   "line": 145,
+   "line": 146,
    "snapshot": [
     "bridge.sv_time     = 1.0;"
    ],
@@ -7143,7 +7177,7 @@
    "target": "xash3dpp/include/xash3dpp/utilities/string.hpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/clip.cpp|0": {
-   "line": 237,
+   "line": 242,
    "snapshot": [
     "if ( rotated )",
     "{",
@@ -7152,14 +7186,14 @@
    "target": "xash3dpp/src/world/clip.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/hulls.cpp|0": {
-   "line": 114,
+   "line": 119,
    "snapshot": [
     "[[nodiscard]] bool vector_is_null( const ::xash::utilities::Vec3 &v ) noexcept"
    ],
    "target": "xash3dpp/src/world/hulls.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/server-modernization.md|world/links.cpp|0": {
-   "line": 39,
+   "line": 45,
    "snapshot": [
     "[[nodiscard]] bool bounds_intersect( const Vec3 &min1, const Vec3 &max1,"
    ],
@@ -7811,14 +7845,14 @@
    "target": "xash3dpp/src/server/lifecycle/precache.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/utilities-modernization.md|spawn.cpp|0": {
-   "line": 310,
+   "line": 312,
    "snapshot": [
     "rt.globals.maxClients = rt.persistent.maxclients;"
    ],
    "target": "xash3dpp/src/server/lifecycle/spawn.cpp"
   },
   "xash3dpp/docs/modernization-opportunities/utilities-modernization.md|spawn.cpp|1": {
-   "line": 310,
+   "line": 312,
    "snapshot": [
     "rt.globals.maxClients = rt.persistent.maxclients;"
    ],
@@ -7878,7 +7912,7 @@
    "target": "xash3dpp/src/server/abi/engine_table.cpp"
   },
   "xash3dpp/docs/threading-analysis/server-threading.md|engine_table.cpp|1": {
-   "line": 1543,
+   "line": 1545,
    "snapshot": [
     "void pfn_crc32_process_byte( abi::CRC32_t *pulCRC, unsigned char ch )"
    ],

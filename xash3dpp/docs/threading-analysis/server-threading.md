@@ -70,7 +70,7 @@ OQ-9 single-thread rule holds; none would be safe under concurrent entry:
 > `g_bridge` (`engine_table.cpp:54`, now carrying the explicit
 > `compliance-allow(mutable-global, di-global-ref)` Q-20 carve-out annotation),
 > the `s_value[256]` ABI return buffer (`init_client_move.cpp:235`), and the two
-> RNG statics `s_rng_state` (`engine_table.cpp:1543`) / `s_pm_rng`
+> RNG statics `s_rng_state` (`engine_table.cpp:1545`) / `s_pm_rng`
 > (`init_client_move.cpp:280`, both `// XASH3DPP-STUB(chunk6)` idtech-RNG-parity
 > follow-ups). The Race-static-buf-made-safe-by-single-thread analysis is
 > unchanged as-built.
