@@ -15,8 +15,9 @@
 
 **The shared-deterministic player-movement trace kernel** — the collision and
 contents queries that the movement integrator (`PM_Move`, which lives in the
-game DLL across the frozen ABI) calls back into, and which **server authority
-and client prediction must run identically**.
+game DLL across the frozen ABI) calls back into. Chunk 11 proves the neutral
+seam with two synthetic role-shaped fixtures; Chunk 12 supplies the real client
+prediction caller that must then run identically with server authority.
 
 Concretely, one file: `pm_trace.cpp` — `pm_player_trace_ext`,
 `pm_test_player_position`, `pm_trace_model`, `pm_trace_line[_ex]`, and the
@@ -38,7 +39,10 @@ word and are deliberately elsewhere, both server-boundary's:
   (`CL_*`) is Chunk 12. The gather is role-specific by definition and stays
   with its role. See §Role & parity.
 
-`movevars.cpp` is a shared *input* producer, not shared code — see §3.
+`movevars.cpp` is a shared *input* producer, not shared code — see §3. Also out
+of Chunk 11: `ServerRuntime` narrowing, Q-18 arithmetic changes, lag
+compensation/P5, physics-interface overrides, `SV_Physics`, movevars transport,
+and unrelated pmove callback stubs.
 
 ## 2. Exposed surface (Interface)
 
@@ -61,9 +65,11 @@ calls, not the mover.
 ## 2a. Dependencies
 
 `map_loader` (the edict-free trace kernel — `world_hull`, `hull_for_bsp`,
-`TraceResult`, `WorldData`), `content` (studio hulls/bytes via `IModelResolver`),
-`utilities` (`Vec3`, matrix math), `cmd_cvar` (the live `r_studiocache` read at
-trace time) — all PUBLIC, each appears in the signatures. `core` is PRIVATE.
+`TraceResult`, `WorldData`) and `utilities` (`Vec3`, matrix math) are PUBLIC.
+`world` (the `IModelResolver` implementation surface), `content` (studio
+hulls/bytes), `cmd_cvar` (the live `r_studiocache` read), and `core` (thread
+assertion) are PRIVATE. The public header forward-declares `IModelResolver` and
+never exposes `BrushModel` or `StudioHullPose` by value.
 
 None of these depends on the server, so a `physics` target sits **below** the
 server in the stack, linked by it (and, at Chunk 12, by the client) — the same
@@ -73,9 +79,10 @@ shape `world` has.
 
 ## 2b. Owned state
 
-**None.** Every entry point is a pure function of `const PmTraceEnv &` +
-`playermove_t &` (caller-owned) + the ray geometry. No file-scope mutable
-state; `pm_trace.cpp` carries **zero** direct `ServerRuntime` references.
+**None.** Every entry point operates on injected context + caller-owned buffers;
+some mutate the caller's `playermove_t` temporarily and the production model
+resolver lazily fills caches. No file-scope mutable state; `pm_trace.cpp`
+carries **zero** direct `ServerRuntime` references.
 <!-- verify: grep-count(ServerRuntime, xash3dpp/src/server/physics/pm_trace.cpp) == 0 -->
 
 ## 3. Invariants and Quirks
@@ -98,6 +105,14 @@ state; `pm_trace.cpp` carries **zero** direct `ServerRuntime` references.
   from `edict→modelindex`, client from `cl_entity→modelindex`), so the kernel
   reads the int and the `arena` field leaves `PmTraceEnv`. No virtual call in
   the trace loop, no reopening Q-20, no touching the byte-exact arithmetic.
+- **`PM_TraceModel` resolves at the role adapter.** Legacy
+  `engine/common/pm_trace.c:743-788` ignores `physent_t::info` and dereferences
+  the supplied `pe->model`; this rewrite deliberately keeps that opaque ABI
+  pointer null. The server callback therefore validates `pe->info`, resolves
+  the model through the server arena, and passes one explicit integer to
+  `pm_trace_model`. This preserves copied/non-list valid physents without
+  putting `EdictArena` in the shared kernel. Chunk 12 supplies the analogous
+  client adapter.
 - **Parity fence is determinism, not one ULP block here.** The ULP-exact
   rotated-brush kernel this code reaches is HB-2 fenced at
   `world/clip.cpp:245-281`, reached indirectly via the map_loader trace. The
@@ -117,12 +132,14 @@ state; `pm_trace.cpp` carries **zero** direct `ServerRuntime` references.
 
 ## 6. Threading
 
-Main-thread only today, inherited from the server (server-boundary OQ-9).
-Nothing here is thread-affine: the kernel is a pure function over an injected
-context and caller buffers. Chunk 12 client prediction runs it on its own
-`PmTraceEnv` over its own `physent_t[]` snapshot — a second caller, not a lock.
-The single-`pmove_t`, players-sequential contract is the *harness's* (server /
-client), not this kernel's.
+Main-thread only today, enforced at the production trace entry points. The
+kernel owns no state, but its injected production dependencies are not an
+immutable snapshot: `r_studiocache` is read live and `IModelResolver` lazily
+loads studio bytes and mutates its pose cache. Chunk 12 prediction remains on
+Main and uses its own `PmTraceEnv`/physent snapshot. Off-main use requires an
+immutable cvar/resolver snapshot and exclusive caller buffers; that is a later
+design event, not an assertion removal. The single-`pmove_t`,
+players-sequential contract belongs to each role harness.
 
 ## 9. As-built reconciliation (2026-07-20)
 
@@ -135,8 +152,8 @@ client), not this kernel's.
   the reads on 2026-07-20 found the reach is a single site wanting a single
   model index, severable at the gather in the legacy-precedented way above.
 - The `physics` target is created when that severance lands. Dependencies will
-  be `world`, `map_loader`, `content`, `utilities`, `cmd_cvar` PUBLIC, `core`
-  PRIVATE.
+  be `map_loader` and `utilities` PUBLIC; `world`, `content`, `cmd_cvar`, and
+  `core` PRIVATE.
 - **Client-side caveat.** "The client gather can fill the same neutral int" is
   reasoned from legacy (`CL_CopyEntityToPhysEnt`), not from our code — the
   client half is Chunk 12 and does not exist yet. It is the one part of the
@@ -149,17 +166,16 @@ client-only subsystem this collapses to one line — "Role: server-authoritative
 no cross-role parity obligation." Physics is the case that exercises the full
 form.)*
 
-- **Role:** **shared-deterministic.** Both server authority (`SV_RunCmd`,
-  `src/server/physics/run_cmd.cpp`) and client prediction (`CL_RunCmd`, Chunk
-  12) run this trace kernel over the same neutral snapshot; their results are
-  **compared every frame**, so a divergence is a prediction error (visible
-  rubber-banding), not merely a bug.
+- **Role:** **shared-deterministic.** Server authority (`SV_RunCmd`,
+  `src/server/physics/run_cmd.cpp`) is live. Chunk 11 supplies a synthetic
+  client-role fixture over an independent neutral snapshot; Chunk 12 adds the
+  real `CL_RunCmd` caller and the eventual per-command comparison.
 - **Counterpart path:** client prediction, `src/client/` (Chunk 12, not yet
   written). Server path is live today.
 - **Neutral seam:** each role gathers its own entities into `physent_t[]`
   (server `SV_CopyEdictToPhysEnt`; client `CL_CopyEntityToPhysEnt`) and hands
-  the kernel a role-neutral `PmTraceEnv`. The kernel is role-blind — **except
-  the one `arena` leak in §3, which is the whole of the remaining debt.**
+  the kernel a role-neutral `PmTraceEnv` plus aligned, non-ABI model-index
+  sidecars. The single-model ABI callback resolves at its role adapter (§3).
 - **Parity fence:** determinism. The ULP-exact block is HB-2 at
   `world/clip.cpp:245-281` (reached indirectly); the open divergence risk is
   the RNG stub (gate item 3); `movevars_t` is a shared input both sides must
@@ -174,16 +190,16 @@ Evaluated against `docs/design/extension-goals.md`.
 
 | Goal / primitive | Applies? | Required seam or door — door-keep verdict |
 |------------------|----------|-------------------------------------------|
-| **G-1** in-engine MCP service | Consumer via P-4 | Trace/contents queries are pure functions of an injected context; a service can run them off a published snapshot. Nothing owed. |
+| **G-1** in-engine MCP service | Consumer via P-4 | Trace/contents queries can run off a deliberately published immutable context; the live production resolver is not that snapshot. |
 | **G-2** Game ABI v2 | Indirect | The mover is game-DLL ABI (`pm_shared`, frozen); a v2 flavour swaps behind that boundary, not here. |
-| **G-3** dedicated debug thread | **Door open — needs a caller-owned context** | Nothing here is thread-affine; a reader thread needs its own `PmTraceEnv` + physent snapshot. Same shape as world G-3. |
+| **G-3** dedicated debug thread | **Door recorded, not open today** | A reader needs its own physent buffers plus immutable cvar/model snapshots. The live resolver mutates caches, so current entry points stay Main-only. |
 | **G-4** expanded in-game debugging | Consumer via P-4 | Movement/trace visualisation consumes the same entry points. Nothing owed. |
 | **G-5** scripting runtime | Nothing owed now | Script movement queries go through P-2/P-4; determinism + parity precedence cap everything. |
 | **P-1** main-thread inbox | Not applicable | Called, does not pump. |
-| **P-2** published-snapshot reads | **Open by construction** | Every entry point is a pure function of the neutral env + caller buffers. |
+| **P-2** published-snapshot reads | **Shape reserved** | Caller buffers are neutral, but live cvar/resolver dependencies must be snapshotted before off-main use. |
 | **P-3** context-first, no new file-scope state | **✅ met — zero owned state** | No file-scope mutable state, no `ServerRuntime`. |
-| **P-4** typed introspection | Conforms | Physent field access is through the neutral `physent_t`; edict fields are not reached — save the one `arena` leak (§3), which the gather severance closes. |
-| **P-5** narrowest-state signatures | **Debt — the one `arena` leak** | The kernel takes `PmTraceEnv`, not a runtime — but `PmTraceEnv.arena` is the server store. The gather-time-modelindex fix (§3) removes it; until then this is the recorded door-debt. |
+| **P-4** typed introspection | Conforms after severance | Hot-list model identity is an aligned typed sidecar; the role-owned `PM_TraceModel` adapter resolves its single explicit model index. |
+| **P-5** narrowest-state signatures | **Debt closes at extraction** | The kernel takes `PmTraceEnv`, paired views, and an explicit single-model index—never `ServerRuntime` or `EdictArena`. Broad server signature narrowing is out of scope. |
 | **P-6** services are satellites | Yes — held | Sits below the server; links toward no service. |
 | **P-7** pool-owned RAII lifecycle | N/A | Owns no allocations; operates on caller buffers and frozen ABI PODs. |
 | **P-8** annotation discipline | Inherited | Counts re-derive from `census physics` once the target exists; do not hand-count from the server row. |

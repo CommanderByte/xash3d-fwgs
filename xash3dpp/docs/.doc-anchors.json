@@ -298,6 +298,15 @@
    ],
    "target": "game_launch/game.cpp"
   },
+  "xash3dpp/docs/boundaries/physics-boundary.md|engine/common/pm_trace.c|0": {
+   "line": 743,
+   "snapshot": [
+    "float PM_TraceModel( playermove_t *pmove, physent_t *pe, float *start, float *end, trace_t *trace )",
+    "{",
+    "int\told_usehull;"
+   ],
+   "target": "engine/common/pm_trace.c"
+  },
   "xash3dpp/docs/boundaries/physics-boundary.md|pm_trace.cpp|0": {
    "line": 96,
    "snapshot": [
@@ -1054,6 +1063,15 @@
     "vec3_t normal;"
    ],
    "target": "common/pmove.h"
+  },
+  "xash3dpp/docs/implementation-plan.md|engine/common/common.c|0": {
+   "line": 54,
+   "snapshot": [
+    "static int idum = 0;",
+    "",
+    "#define MAX_RANDOM_RANGE\t0x7FFFFFFFUL"
+   ],
+   "target": "engine/common/common.c"
   },
   "xash3dpp/docs/implementation-plan.md|engine_table.cpp|0": {
    "line": 75,

@@ -252,12 +252,12 @@ ______________________________________________________________________
 ### Chunk 11 — physics (pm_shared)
 
 **Subsystems**: `physics`\
-**Depends on**: map_loader (Chunk 5), server (Chunk 6 — edict query interface)\
-**Recon/Boundary**: ✅ boundary spec `docs/boundaries/physics-boundary.md` written 2026-07-20; supporting inputs `design/pm-determinism-decision.md` (Q-18), `legacy-survey/deep-dive-trace-pvs.md`, and `legacy-survey/deep-dive-server-physics.md`. Note: the server-side pmove bridge (`sv_pmove.c`) moved to Chunk 6 per `server-boundary.md` — this chunk covers the client-prediction path and the both-paths determinism test.\
+**Depends on**: map_loader (Chunk 5), world/content/cmd_cvar/core; the final edge is `server → physics`, never `physics → server`\
+**Recon/Boundary**: ✅ boundary spec `docs/boundaries/physics-boundary.md` written 2026-07-20 and contract reconciled 2026-07-20; supporting inputs `design/pm-determinism-decision.md` (Q-18), `legacy-survey/deep-dive-trace-pvs.md`, and `legacy-survey/deep-dive-server-physics.md`. The server-side pmove bridge (`sv_pmove.c`) moved to Chunk 6 per `server-boundary.md`. This chunk extracts its already-written shared trace kernel, restores the one legacy RNG stream, and supplies a pre-client role-shaped witness. The production client gather/prediction path remains Chunk 12.\
 **Legacy reference**: `pm_shared/pm_move.c`, `pm_shared/pm_trace.c`, `engine/client/dll_int/cl_pmove.c`\
 **Complexity note**: Client prediction and server authority must produce bit-identical results — determinism is the hardest constraint; float/fixed choice from Chunk 5 is locked in here.\
 **ABI surfaces touched**: `pm_shared/` — **FROZEN** (shared client ↔ server)\
-**Deliverable**: `PM_Move` runs identically on both paths; determinism regression test passes
+**Deliverable**: the shared pmove trace/RNG seam is server-independent and a synthetic server/client-role regression witness produces an identical deterministic projection. End-to-end `PM_Move` parity waits for Chunk 12's real client path.
 
 **Entry gate** *(modernization audit 2026-07-20)*:
 
@@ -274,7 +274,12 @@ ______________________________________________________________________
    drawing from one process-wide generator; there is **no such thing as
    "independent streams"** in GoldSrc. The tree currently has **three**
    separately-seeded, algorithmically-different stand-ins (HB-12's own
-   inventory lists only two — the third is in `sound/dsp.cpp`).
+   inventory lists only two — the third is in `sound/dsp.cpp`). **Locked
+   implementation:** a `core::LegacyRandom` value is owned by `EngineContext`;
+   canonical no-capture callbacks reach it through the existing
+   `current_engine_context()` exception and are injected into consumers. A
+   compiled C oracle whose algorithm block is byte-checked against
+   `engine/common/common.c:54-153` is the source of every numeric golden.
 4. **Sever the pmove trace layer's one edict-store reach — mechanical, not a
    decision.** *(Corrected 2026-07-20 after a per-TU read; the earlier framing
    below was a false trichotomy — see `boundaries/physics-boundary.md` §3.)*
@@ -287,12 +292,17 @@ ______________________________________________________________________
    resolves the model *at gather time*; our OQ-2 (2026-07-19) chose to re-resolve
    at trace time, which is what dragged the store into the shared code. Restore
    the gather-time shape in **neutral** form — each role's gather fills a
-   per-physent `int` model index (server from `edict→modelindex`, client from
+   non-ABI sidecar `int` model index (server from `edict→modelindex`, client from
    `cl_entity→modelindex`) — and the `arena` field leaves `PmTraceEnv`. **No
    virtual call in the trace loop, no reopening Q-20, no touching the byte-exact
    arithmetic.** Caveat: the client half of the gather is Chunk 12 code and does
    not exist yet, so "the client can fill the same int" is reasoned from legacy,
-   not verified against our tree — confirm when that gather is written. The
+   not verified against our tree — confirm when that gather is written.
+   `PM_TraceModel` is the deliberate exception at the role boundary: legacy
+   receives an arbitrary valid `physent_t *` and reads its model pointer, while
+   this rewrite keeps that opaque pointer null. The server ABI adapter therefore
+   resolves `pe->info` through its arena and passes one explicit model index to
+   the shared single-model kernel; the arena never enters `PmTraceEnv`. The
    measured split is in `src/physics/CMakeLists.txt`: the shared surface is
    `pm_trace.cpp` alone (800 lines, 0 `ServerRuntime` refs); `init_client_move.cpp`
    (495, 2) and `movevars.cpp` (105, 2) are server producers/harness, not shared
@@ -300,25 +310,35 @@ ______________________________________________________________________
    7, the gather) and `run_cmd.cpp` (281, 3) are server-only. Legacy splits it
    the same way: `engine/common/pm_trace.c` shared, versus the server-only
    `engine/server/sv_phys.c` and `sv_pmove.c`.
-5. **Decide explicitly whether narrowing the `ServerRuntime &` corridor in
-   `src/server/physics/` is in or out of scope.** Narrowing signatures and
-   porting parity math in the same wave is the collision to avoid. Either
-   answer is fine; no answer is not.
-6. **State where the consolidated world/physics micro-predicates live** before
-   any new physics TU is written, or the duplication regrows: 16 definitions
-   under 4 competing names today, 3 of which gate the fenced block.
+5. ✅ **`ServerRuntime &` narrowing is out of scope.** Chunk 11 adds the
+   sidecar beside the existing sequential `pmove_t`; it does not refactor the
+   surrounding server orchestration corridor.
+6. ✅ **The shared Vec3 trace predicates live in `world/trace.hpp`.** The
+   byte-identical `vector_is_null`, strict `bounds_intersect`, and
+   `check_angles` forms are reused by world and physics. Lower-tier map-loader
+   and ABI-array variants stay local where sharing would invert a dependency or
+   change representation.
 7. The four `switch(movetype)` sites are **parity-shaped by choice** and are
    the slot the deferred `physFuncs` override hooks fit into. Explicitly **not**
    to be table-ified — this was proposed once and correctly refused.
-8. Record the already-ratified threading contract (single global `pmove_t`,
-   players sequential, no new global physics state). Transcription, not a
-   decision.
+8. ✅ **Threading contract recorded:** one production `pmove_t`, players run
+   sequentially, and physics owns no global state. The production trace entry
+   points remain Main-only because they read live cvars and call the mutable,
+   lazy studio resolver. Off-main use requires immutable resolver/cvar
+   snapshots and is not part of this chunk.
 9. Note that `src/physics/` is still an **empty placeholder** — the
    `pm_shared` work lives in `src/server/physics/`, and item 4's mechanical
    gather severance must land before the target can exist. *(This item also named
    `src/world/`; that one was resolved on 2026-07-20 — the world code was
    already decoupled and is now the `xash3dpp_world` target with its own
    boundary spec, so `physics` is the last misleading skeleton of the two.)*
+
+**Explicit exclusions:** the generic subsystem scaffold, production client
+gather/prediction, movevars transport/receiver work, server/client long-command
+splitting, Q-18 rotated-matrix arithmetic, lag compensation/P5,
+`SOLID_CUSTOM`/physics-interface overrides, `SV_Physics`, unrelated pmove
+callback stubs, and broad `ServerRuntime` narrowing. These remain in their
+recorded owner chunks; the Chunk 11 witness must not claim them.
 
 ______________________________________________________________________
 
