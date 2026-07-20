@@ -128,7 +128,7 @@ rewrite's compat boundary is:
   (R9.3), the mouth amplitude running-average and data-dependent stride
   (`i += 80 + (data & 0x1F)` — R9.3). These must reproduce legacy output
   sample-for-sample for identical input.
-- **Frozen ABI:** `CL_SOUND_INTERFACE_VERSION = 1`, the 5+7 function-table
+- **Frozen ABI:** `CL_SOUND_INTERFACE_VERSION = 1`, the 5+8 function-table
   shapes, `channel_t`/`rawchan_t` layouts including reserved padding.
 - **Not frozen:** the internal threading topology (T_Main-only in legacy →
   T_Main/T_AudioDecoder/T_AudioCallback split in xash3dpp), soundlib's

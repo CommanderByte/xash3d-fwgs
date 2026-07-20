@@ -516,4 +516,59 @@ inline constexpr std::size_t save_container_name_field = 260; // FORMAT field wi
 inline constexpr std::size_t save_container_name_field = XASH_LIMIT_SAVE_CONTAINER_NAME_FIELD;
 #endif
 
+// sound subsystem
+// Legacy reference: engine/client/sound.h (mixer limits) + common/com_model.h
+// (NUM_AMBIENTS).  The channel counts are ABI-frozen: MAX_CHANNELS sizes
+// snd_globals_t.channels[] (sound_api.h), which the client/game DLL walks —
+// raising them is an ABI-compatibility change, not a tunable budget.
+#ifndef XASH_LIMIT_SOUND_NUM_AMBIENT_CHANNELS
+inline constexpr std::size_t sound_num_ambient_channels = 4; // NUM_AMBIENTS (common/com_model.h:39)
+#else
+inline constexpr std::size_t sound_num_ambient_channels = XASH_LIMIT_SOUND_NUM_AMBIENT_CHANNELS;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_NUM_DYNAMIC_CHANNELS
+inline constexpr std::size_t sound_num_dynamic_channels = 60; // dynamic portion of MAX_DYNAMIC_CHANNELS = 60 + NUM_AMBIENTS (engine/client/sound.h:44)
+#else
+inline constexpr std::size_t sound_num_dynamic_channels = XASH_LIMIT_SOUND_NUM_DYNAMIC_CHANNELS;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_NUM_STATIC_CHANNELS
+inline constexpr std::size_t sound_num_static_channels = 256; // static-channel headroom (engine/client/sound.h:45, "Scourge Of Armagon has too many static sounds")
+#else
+inline constexpr std::size_t sound_num_static_channels = XASH_LIMIT_SOUND_NUM_STATIC_CHANNELS;
+#endif
+
+// MAX_CHANNELS = 256 + MAX_DYNAMIC_CHANNELS = 256 + (60 + NUM_AMBIENTS) = 320
+// (engine/client/sound.h:44-45).  Composed from the sub-constants above so the
+// 4 + 60 + 256 breakdown stays self-consistent; ABI-frozen at 320.
+inline constexpr std::size_t sound_max_channels =
+    sound_num_static_channels + sound_num_dynamic_channels + sound_num_ambient_channels;
+
+#ifndef XASH_LIMIT_SOUND_MAX_RAW_CHANNELS
+inline constexpr std::size_t sound_max_raw_channels = 48; // MAX_RAW_CHANNELS (engine/client/sound.h:46)
+#else
+inline constexpr std::size_t sound_max_raw_channels = XASH_LIMIT_SOUND_MAX_RAW_CHANNELS;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_MAX_RAW_SAMPLES
+inline constexpr std::size_t sound_max_raw_samples = 16384; // MAX_RAW_SAMPLES (engine/client/sound.h:47)
+#else
+inline constexpr std::size_t sound_max_raw_samples = XASH_LIMIT_SOUND_MAX_RAW_SAMPLES;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_PAINTBUFFER_SIZE
+inline constexpr std::size_t sound_paintbuffer_size = 1024; // PAINTBUFFER_SIZE (engine/client/sound.h:31)
+#else
+inline constexpr std::size_t sound_paintbuffer_size = XASH_LIMIT_SOUND_PAINTBUFFER_SIZE;
+#endif
+
+// SOUND_DMA_SPEED = SOUND_44k = 44100 (engine/client/sound.h:27,29): the
+// GoldSrc hardware playback rate; the SPSC ring / DeviceSpec default (SND-OQ-5).
+#ifndef XASH_LIMIT_SOUND_DMA_SPEED
+inline constexpr std::uint32_t sound_dma_speed = 44100;
+#else
+inline constexpr std::uint32_t sound_dma_speed = XASH_LIMIT_SOUND_DMA_SPEED;
+#endif
+
 } // namespace xash::limits
