@@ -16,6 +16,9 @@
 # driving the S9.2-S9.5 components + the cmd_cvar census + a Filesystem-
 # backed IAudioLoader.
 
+# Slice S9.7b ("thread topology"): the POD audio command stream + the SND-OQ-3
+# admission policy (audio_command.cpp) and the T_Main -> MPSC -> T_AudioDecoder
+# -> SPSC ring -> T_AudioCallback topology itself (topology.cpp).
 add_library(xash3dpp_sound STATIC
     sound.cpp
     device.cpp
@@ -25,6 +28,8 @@ add_library(xash3dpp_sound STATIC
     dsp.cpp
     registry.cpp
     channel_alloc.cpp
+    audio_command.cpp
+    topology.cpp
 )
 
 target_include_directories(xash3dpp_sound
@@ -51,6 +56,13 @@ target_link_libraries(xash3dpp_sound
     # forward-declared-pointer-only public surface as cmd_cvar above).
     PRIVATE xash3dpp_filesystem
     # platform: get_time (the dsp_profile command's Platform_DoubleTime,
-    # s_dsp.c:902/906); S9.7b's spawn_thread rides the same edge.
+    # s_dsp.c:902/906) + spawn_thread (S9.7b's T_AudioDecoder / T_AudioCallback).
     PRIVATE xash3dpp_platform
 )
+
+# S9.7b spawns real threads (platform::spawn_thread wraps std::thread): the
+# GCC/Clang targets need -pthread, and xash3dpp_core/platform link it PRIVATE so
+# nothing propagates here.  Invisible on MSVC (Win32 threads need no library) —
+# same omission the core queue-family tests hit (S9.7a review F8).
+find_package(Threads REQUIRED)
+target_link_libraries(xash3dpp_sound PUBLIC Threads::Threads)

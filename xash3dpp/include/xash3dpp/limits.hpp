@@ -614,6 +614,136 @@ inline constexpr std::size_t sound_max_sfx = 8192; // MAX_SFX (s_load.c:24)
 inline constexpr std::size_t sound_max_sfx = XASH_LIMIT_SOUND_MAX_SFX;
 #endif
 
+// Thread topology (Chunk 9, slice S9.7b) — the ratified
+// T_Main -> MPSC -> T_AudioDecoder -> SPSC ring -> T_AudioCallback chain
+// (threading-model.md §3.4/§5.1/§5.2; sound-boundary.md §Threading).  Legacy
+// has no analogue: the whole tree ran on T_Main behind the
+// SNDDMA_BeginPainting/Submit lock, so every constant here is a rewrite budget,
+// not a ported limit.
+//
+// POWER-OF-TWO RULE: MpscQueue/SpscRing round their physical slot array up to a
+// power of two regardless, and both gate admission on EXACT logical occupancy —
+// a power-of-two logical capacity therefore keeps the gate exact AND wastes no
+// physical slots.  Capacity + reserve is likewise kept a power of two.
+#ifndef XASH_LIMIT_SOUND_COMMAND_QUEUE_CAPACITY
+inline constexpr std::size_t sound_command_queue_capacity = 128; // normal-class (START / frame-update) admission ceiling
+#else
+inline constexpr std::size_t sound_command_queue_capacity = XASH_LIMIT_SOUND_COMMAND_QUEUE_CAPACITY;
+#endif
+
+// SND-OQ-3 fast lane: headroom reachable ONLY by push_reserved_class, so a
+// STOP/CHANGE/flush command can never be dropped by a START-saturated queue.
+#ifndef XASH_LIMIT_SOUND_COMMAND_QUEUE_RESERVE
+inline constexpr std::size_t sound_command_queue_reserve = 128;
+#else
+inline constexpr std::size_t sound_command_queue_reserve = XASH_LIMIT_SOUND_COMMAND_QUEUE_RESERVE;
+#endif
+
+// sfx_t::name[64] (s_load.c:158) == abi::k_max_qpath — the fixed buffer that
+// keeps AudioCommand trivially copyable (a std::string would not be POD).
+#ifndef XASH_LIMIT_SOUND_COMMAND_NAME_MAX
+inline constexpr std::size_t sound_command_name_max = 64;
+#else
+inline constexpr std::size_t sound_command_name_max = XASH_LIMIT_SOUND_COMMAND_NAME_MAX;
+#endif
+
+// SND-OQ-3 producer-block bound: how many yield iterations T_Main spends
+// waiting for normal-region space before a START is GENUINELY dropped (and
+// counted in SoundStats::dropped_sounds).  Bounded so a wedged decoder can
+// never hang the frame loop.
+#ifndef XASH_LIMIT_SOUND_COMMAND_PUSH_SPIN_MAX
+inline constexpr std::size_t sound_command_push_spin_max = 2048;
+#else
+inline constexpr std::size_t sound_command_push_spin_max = XASH_LIMIT_SOUND_COMMAND_PUSH_SPIN_MAX;
+#endif
+
+// PCM ring depth in interleaved-stereo FRAMES (SND-OQ-5: payload is int16, two
+// samples per frame).  8192 frames ~= 186 ms at sound_dma_speed — comfortably
+// above threading-model §5.2's "approximately 100 ms" sizing guidance.
+#ifndef XASH_LIMIT_SOUND_PCM_RING_FRAMES
+inline constexpr std::size_t sound_pcm_ring_frames = 8192;
+#else
+inline constexpr std::size_t sound_pcm_ring_frames = XASH_LIMIT_SOUND_PCM_RING_FRAMES;
+#endif
+
+// Ring element count: one stereo frame is two int16 samples.  Derived (like
+// sound_max_channels) so the frame/sample relationship stays self-consistent.
+inline constexpr std::size_t sound_pcm_ring_samples = 2 * sound_pcm_ring_frames;
+
+// Frames the decoder paints per step, and frames the device pump pulls per
+// callback.  Both are power-of-two sub-multiples of the ring.
+#ifndef XASH_LIMIT_SOUND_DECODER_BLOCK_FRAMES
+inline constexpr std::size_t sound_decoder_block_frames = 512;
+#else
+inline constexpr std::size_t sound_decoder_block_frames = XASH_LIMIT_SOUND_DECODER_BLOCK_FRAMES;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_DEVICE_PUMP_FRAMES
+inline constexpr std::size_t sound_device_pump_frames = 512;
+#else
+inline constexpr std::size_t sound_device_pump_frames = XASH_LIMIT_SOUND_DEVICE_PUMP_FRAMES;
+#endif
+
+// Yield iterations the decoder spins before PARKING when there is nothing to
+// do.  Standard spin-then-park backoff: a command submitted from T_Main is
+// picked up in microseconds instead of waiting out a whole sleep quantum
+// (Windows' minimum sleep is ~1-15 ms depending on the timer resolution), while
+// a genuinely idle decoder still gives its core back.
+#ifndef XASH_LIMIT_SOUND_DECODER_IDLE_SPIN_MAX
+inline constexpr std::size_t sound_decoder_idle_spin_max = 64;
+#else
+inline constexpr std::size_t sound_decoder_idle_spin_max = XASH_LIMIT_SOUND_DECODER_IDLE_SPIN_MAX;
+#endif
+
+// Decoder park interval once the spin budget above is exhausted.  Milliseconds — platform::sleep()'s unit (the engine's Platform_Sleep
+// seam; std::this_thread::sleep_for is deliberately avoided so no engine TU has
+// to pull in <chrono>, whose MSVC implementation trips C4530 under /EHs-c-).
+#ifndef XASH_LIMIT_SOUND_DECODER_IDLE_SLEEP_MS
+inline constexpr std::uint32_t sound_decoder_idle_sleep_ms = 1;
+#else
+inline constexpr std::uint32_t sound_decoder_idle_sleep_ms = XASH_LIMIT_SOUND_DECODER_IDLE_SLEEP_MS;
+#endif
+
+// SND-OQ-2 epoch-ack wait bound (yield iterations) — a flush never blocks
+// T_Main forever even if the decoder thread is wedged.
+#ifndef XASH_LIMIT_SOUND_FLUSH_SPIN_MAX
+inline constexpr std::size_t sound_flush_spin_max = 1u << 22;
+#else
+inline constexpr std::size_t sound_flush_spin_max = XASH_LIMIT_SOUND_FLUSH_SPIN_MAX;
+#endif
+
+// External-callback quiesce bound (yield iterations): how long stop() spins
+// waiting for an in-flight RingFillSource::fill() to return before it destroys
+// the ring.  Only ever non-trivial when internal_pump == false (a real backend
+// driving fill() from an OS callback thread, which stop() cannot join) — with
+// the internal pump the join already guarantees the counter is zero.  Sized
+// like the flush bound: a callback that never returns is a dead audio stack,
+// and spinning forever would turn that into a hung shutdown.
+#ifndef XASH_LIMIT_SOUND_CALLBACK_QUIESCE_SPIN_MAX
+inline constexpr std::size_t sound_callback_quiesce_spin_max = 1u << 22;
+#else
+inline constexpr std::size_t sound_callback_quiesce_spin_max = XASH_LIMIT_SOUND_CALLBACK_QUIESCE_SPIN_MAX;
+#endif
+
+// P-4 channel-snapshot handshake bound (yield iterations): how long T_Main
+// waits for the decoder to publish a fresh Sound::channels_snapshot() before
+// falling back to the last published one.  Much smaller than the flush bound —
+// this is a cold introspection path, not a correctness fence.
+#ifndef XASH_LIMIT_SOUND_SNAPSHOT_SPIN_MAX
+inline constexpr std::size_t sound_snapshot_spin_max = 1u << 16;
+#else
+inline constexpr std::size_t sound_snapshot_spin_max = XASH_LIMIT_SOUND_SNAPSHOT_SPIN_MAX;
+#endif
+
+// SND-OQ-1 reverse channel: relaxed-atomic mouth-amplitude slots the decoder
+// publishes main-ward (T_AudioDecoder -> T_Main), drained into IMouthSink on
+// T_Main.  One slot per live voice/stream entity; entnum hashes into the table.
+#ifndef XASH_LIMIT_SOUND_MOUTH_SLOTS
+inline constexpr std::size_t sound_mouth_slots = 64;
+#else
+inline constexpr std::size_t sound_mouth_slots = XASH_LIMIT_SOUND_MOUTH_SLOTS;
+#endif
+
 // input subsystem
 // Legacy reference: engine/client/input/in_keys.c:37-43 (keys[265] — ~255
 // real keys + 9 international slots) and in_touch.c's touch_button_t fixed

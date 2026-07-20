@@ -6,19 +6,21 @@
 // 0x40000000 mix-clock reset. Legacy C engine is REFERENCE-ONLY.
 //
 // @thread-safety: the Mixer is confined to the T_AudioDecoder mix worker (amended
-// threading-model §3.4 — mixer = T_AudioDecoder-owned). The role is annotated but
-// NOT asserted at runtime this slice:
-//   compliance-allow(thread-assert): mixer confined to T_AudioDecoder — the
-//   decoder thread is not spawned until S9.7b, and the paint runs synchronously
-//   on T_Main from every test and the S9.7 pfnS_PaintChannels main-pumped
-//   fallback (boundary §External ABI: "must be able to run the whole paint
-//   synchronously on T_Main"). Asserting AudioDecoder now would fire on T_Main;
-//   the assert lands with the decoder-thread split (S9.7b). Follows the
-//   networking-boundary precedent (src/networking/context.cpp:81 — "role
-//   unasserted until the NetIO thread is split out").
+// threading-model §3.4 — mixer = T_AudioDecoder-owned). As of S9.7b that role is
+// ENFORCED, not merely annotated: paint_channels() asserts ThreadRole::AudioDecoder
+// (the S9.3 compliance-allow(thread-assert) exemption is retired — a real decoder
+// thread now exists, so the "asserting would fire on T_Main" rationale is gone).
+//
+// Consequence for callers: ANY thread that drives the paint must have registered
+// ThreadRole::AudioDecoder. That includes a synchronous/main-pumped paint (the
+// boundary's pfnS_PaintChannels fallback, §External ABI) — such a driver must run
+// on a thread registered as AudioDecoder rather than on T_Main proper. The mix
+// kernels and the free-function primitives below stay assert-free: they are the
+// hot path, and the role is established once at the paint entry.
 
 #include <xash3dpp/private/sound/mixer.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
 
 #include <algorithm>
@@ -439,6 +441,9 @@ int Mixer::mix_raw_channels( int end, const MixGateSnapshot &gate ) noexcept
 std::span<const std::int16_t> Mixer::paint_channels( int endtime, const MixGateSnapshot &gate,
                                                      float master_volume, double pitch_mult )
 {
+    // S9.7b: the paint pipeline is T_AudioDecoder-owned (threading-model §3.4).
+    ::xash::core::assert_thread_role( ::xash::core::ThreadRole::AudioDecoder );
+
     const int start = painted_time_;
     const int total = endtime - start; // full range painted this call
 

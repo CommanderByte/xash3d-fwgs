@@ -25,7 +25,7 @@ xash3dpp_add_test(test_sound_codec LIBS xash3dpp_sound)
 # Mixer kernels + paint pipeline (slice S9.3): per-kernel bit-exact vectors for
 # all 12 variants, dispatch-table selection matrix, CLIP16 guard band, loop-wrap
 # out_count edge math, mini paint-pipeline + gate matrix, the 0x40000000 reset.
-xash3dpp_add_test(test_sound_mixer LIBS xash3dpp_sound)
+xash3dpp_add_test(test_sound_mixer LIBS xash3dpp_sound xash3dpp_core)
 
 # VOX sentence word-sequencer (slice S9.4): every embedded XASH_ENGINE_TESTS
 # case from s_vox.c ported, plus grammar edge cases, the FreeWord zeroing pin,
@@ -39,7 +39,7 @@ xash3dpp_add_test(test_sound_vox LIBS xash3dpp_sound)
 # integer-math vectors (AMod/Reverb/Delay/StereoDelay), a full RoomFX block
 # through the S9.3 paint pipeline with a known preset (byte-pinned), ClearState
 # semantics, and the room-selection matrix (waterlevel/room_type/off cases).
-xash3dpp_add_test(test_sound_dsp LIBS xash3dpp_sound xash3dpp_memory)
+xash3dpp_add_test(test_sound_dsp LIBS xash3dpp_sound xash3dpp_memory xash3dpp_core)
 
 # Entry surface (slice S9.6): channel allocation (SND_PickDynamicChannel/
 # PickStaticChannel channel-steal order + every early-out), S_AlterChannel
@@ -49,3 +49,17 @@ xash3dpp_add_test(test_sound_dsp LIBS xash3dpp_sound xash3dpp_memory)
 # (start/stop/register/channels_snapshot + a command dispatched through a
 # real CmdCvarContext proving the user-data plumbing).
 xash3dpp_add_test(test_sound_entry LIBS xash3dpp_sound xash3dpp_cmd_cvar xash3dpp_core)
+
+# Thread topology (slice S9.7b): the POD AudioCommand shape + the SND-OQ-3
+# admission policy (STOP survives a START-saturated queue, asserted directly),
+# the command round-trip to audible channel state, the T_AudioCallback underrun
+# path (silence + the always-on counter), a deterministic decoder drive across
+# the real MPSC/SPSC pair, the SND-OQ-2 stop-and-free race in a hard loop,
+# 32 clean start/stop cycles, the shutdown order, and a threaded soak through
+# the real Sound entry surface with debug asserts live.
+#
+# std::thread in the test itself needs -pthread on GCC/Clang (invisible on
+# MSVC); xash3dpp_sound links Threads::Threads PUBLIC, but the test names it
+# explicitly per the tests/core/CMakeLists.txt precedent.
+find_package(Threads REQUIRED)
+xash3dpp_add_test(test_sound_topology LIBS xash3dpp_sound xash3dpp_core Threads::Threads)

@@ -37,10 +37,15 @@
 //    call) is not modelled: no S_BeginRegistration/S_EndRegistration
 //    equivalent exists this slice.
 //
-// @thread-safety: SfxRegistry is confined to T_Main (S_RegisterSound/
-// S_FindName/S_LoadSound are all T_Main-only call sites in legacy — the
-// mix/decoder thread never touches the sfx table). Not asserted here; the
-// owning Sound::* entry points assert ThreadRole::Main (sound.cpp).
+// @thread-safety: SfxRegistry has NO internal synchronisation. It is OWNED by
+// T_Main (S_RegisterSound/S_FindName/S_LoadSound are all T_Main-only call sites
+// in legacy), and the one off-Main reader — T_AudioDecoder resolving a VOX word
+// at word-advance time — goes through sound.cpp's LockedSfxResolver, which
+// serializes every access on Sound::Impl::registry_mutex_. That mutex must NOT
+// be held across a decode: use the lookup()/cached()/install() split below
+// (CONC-9). The role is not asserted here (the decoder legitimately reaches the
+// locked adapter); the owning Sound::* entry points assert ThreadRole::Main
+// (sound.cpp).
 
 #include <xash3dpp/abi/sound_api.hpp>
 #include <xash3dpp/limits.hpp>
@@ -129,8 +134,26 @@ private:
 // One registered sound (sfx_t equivalent).
 struct SfxSlot
 {
-    std::string               name;  // sfx_t::name (COM_FixSlashes'd, as registered)
-    std::optional<AudioData>  cache; // sfx_t::cache — LAZY: nullopt until first load_sfx() call
+    std::string name; // sfx_t::name (COM_FixSlashes'd, as registered)
+
+    // sfx_t::cache — LAZY: nullopt until the first load_sfx()/install() call.
+    //
+    // ADDRESS-STABILITY INVARIANT (the whole S9.7b borrow design rests on it):
+    //   an `AudioData` address, once handed out by load_sfx()/resolve()/
+    //   install(), stays valid until the SfxRegistry itself is destroyed.
+    // Two facts make that true, by construction rather than by timing:
+    //   (a) the constructor does slots_.reserve( limits::sound_max_sfx ) and
+    //       find_name() REFUSES to grow past that (MAX_SFX, s_load.c:187-188),
+    //       so the slot vector never reallocates and `&slots_[i]` — hence
+    //       `&*slots_[i].cache` — never moves;
+    //   (b) nothing ever destroys a cache entry while the registry lives:
+    //       release() is a documented no-op and install() never overwrites an
+    //       existing entry (see both below).
+    // This is precisely what makes it safe to put a borrowed
+    // `const AudioData *` into a queued AudioCommand::source (audio_command.hpp)
+    // and into MixChannel::source while T_AudioDecoder owns the channel array:
+    // the pointee cannot be freed or relocated out from under either.
+    std::optional<AudioData> cache;
 };
 
 // ---------------------------------------------------------------------------
@@ -183,6 +206,52 @@ public:
     // resolves per-word instead).
     [[nodiscard]] const AudioData *load_sfx( SfxHandle handle ) noexcept;
 
+    // -----------------------------------------------------------------------
+    // The load_sfx()/resolve() decode path, SPLIT so a caller holding an
+    // EXTERNAL mutex (Sound::Impl::registry_mutex_) never holds it across the
+    // loader's blocking file I/O + decode (gate finding CONC-9: T_Main stalling
+    // the High-priority decoder on the same mutex shows up as ring underruns).
+    //
+    // Protocol — lock / unlock / lock:
+    //   1. LOCKED:   lookup()/cached() — resolve the handle, observe whether a
+    //                cache entry already exists, and take the loader pointer.
+    //   2. UNLOCKED: run loader->load(name).  Nothing registry-owned is touched.
+    //   3. LOCKED:   install() — a DOUBLE-CHECKED install: if someone else won
+    //                the race meanwhile, our decode is discarded and the
+    //                winner's pointer is returned.
+    // Step 3 cannot violate the address-stability invariant (SfxSlot::cache):
+    // the loser's AudioData is destroyed before it was ever handed out, and the
+    // winner's entry is never replaced.
+    // -----------------------------------------------------------------------
+
+    // The already-decoded audio for `handle`, or nullptr if it has not been
+    // decoded yet.  Never decodes.
+    [[nodiscard]] const AudioData *cached( SfxHandle handle ) const noexcept;
+
+    // The injected loader (immutable for this registry's lifetime; nullable).
+    [[nodiscard]] IAudioLoader *loader() const noexcept { return loader_; }
+
+    // Install a decode result for `handle` and return the STABLE address of
+    // whatever this slot ends up holding.  `decoded == nullopt` installs the
+    // S_CreateDefaultSound fallback (s_load.c:129), exactly like load_sfx().
+    // If the slot was filled while the caller was decoding unlocked, `decoded`
+    // is discarded and the incumbent is returned (double-checked install).
+    // nullptr only for an invalid/out-of-range handle or k_sentence_handle.
+    [[nodiscard]] const AudioData *install( SfxHandle handle, std::optional<AudioData> decoded ) noexcept;
+
+    // Phase-1 result of the split resolve() path above.
+    struct ResolveLookup
+    {
+        SfxHandle        handle   = k_invalid_sound_handle;
+        bool             in_cache = false;   // FL_VOXWORD_IN_CACHE (was it ALREADY decoded?)
+        const AudioData *cached   = nullptr; // non-null == nothing left to do
+        IAudioLoader    *loader   = nullptr; // what phase 2 must call, unlocked
+        std::string      name;               // the slot's stored (COM_FixSlashes'd) name
+    };
+
+    // resolve()'s phase 1: S_FindName + the in_cache observation, no decode.
+    [[nodiscard]] ResolveLookup lookup( std::string_view path ) noexcept;
+
     [[nodiscard]] std::size_t count() const noexcept { return slots_.size(); }
 
     // ImmediateSentenceSlot access (vox.hpp) — the s_sentenceImmediateName
@@ -192,7 +261,20 @@ public:
     // IVoxAudioResolver (vox.hpp) — resolve()/release() share this SAME
     // table+loader (VOX_LoadSound/VOX_FreeWord call the identical
     // S_FindName/S_LoadSound/FS_FreeSound the plain S_StartSound path uses).
+    //
+    // resolve() is the ALL-IN-ONE (lookup + decode + install) form, for callers
+    // that hold no lock.  A caller that DOES hold one (sound.cpp's
+    // LockedSfxResolver) must use the lookup()/install() split above instead so
+    // the decode happens unlocked — see the CONC-9 note there.
     [[nodiscard]] const AudioData *resolve( std::string_view path, bool &in_cache ) noexcept override;
+
+    // IVoxAudioResolver::release — a DELIBERATE NO-OP.  See registry.cpp for
+    // the full rationale (gate findings F-1/F-2/CONC-1): decoded audio is
+    // RETAINED for the registry's lifetime, because its address is borrowed by
+    // MixChannel::source, by bound VOX words and by in-flight
+    // AudioCommand::source pointers on the MPSC — all of them off T_Main.
+    // The seam is kept intact (VoxSystem still calls it) so the call site
+    // stays honest about ownership; only the destruction is gone.
     void release( const AudioData *data ) noexcept override;
 
 private:

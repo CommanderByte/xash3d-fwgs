@@ -419,6 +419,35 @@ ______________________________________________________________________
   whether serialized channel names re-truncate to 15 chars (audit F-7,
   owner recorded in the campaign deferred list).
 
+### Adjudicated topology deviations (S9.7b gate, 2026-07-20)
+
+- **Decoded audio is retained for the registry's lifetime**: legacy
+  `VOX_FreeWord` calls `FS_FreeSound( word->sfx->cache )` (s_vox.c:185-186)
+  to bound memory; `SfxRegistry::release()` is a deliberate no-op. The
+  four-dimension gate confirmed (parity F-1/F-2, concurrency CONC-1) that
+  freeing a cache entry from T_AudioDecoder during word retirement destroys
+  audio still borrowed by other live channels AND by `AudioCommand::source`
+  pointers in flight on the queue — a cross-thread use-after-free the epoch
+  fence does not cover, because the fence orders commands rather than
+  protecting buffers. Retention makes the address-stability invariant
+  unconditional (`slots_.reserve(sound_max_sfx)` + the MAX_SFX refusal
+  mirror legacy's fixed `s_knownSfx[MAX_SFX]`, so the slot vector never
+  reallocates and nothing destroys an entry while the registry lives).
+  Cost: bounded by MAX_SFX distinct sounds, which is exactly the capacity
+  the registry is already sized for. Reclaiming it would require
+  refcounting every borrow or a per-block re-resolve under the mutex on the
+  decoder hot path — both worse trades than the retention.
+- **`dsp_profile` is refused while the topology runs**: the command mutates
+  decoder-owned delay lines from T_Main. Legacy has no thread to race
+  (s_dsp.c:250 registers it unconditionally), so this is a rewrite-only
+  restriction on a debug stress tool, not a behavioural parity question.
+- **Master volume partially wired**: `s_volume` and the `snd_mute_losefocus`
+  focus gate are applied per legacy `S_GetMasterVolume`'s term order; the
+  soundfade term is NOT (no `S_UpdateSoundFade` exists yet) and the
+  `MixGateSnapshot` producer has no source for `host.status`/`cls.key_dest`/
+  `cl.paused`/`cl.background`, so the focus branch is live but dormant.
+  Both are marked in code and owned by the client chunk.
+
 ## Threading
 
 ### Ratified topology (§3.4) and SND-OQ-1 resolved shape
@@ -464,16 +493,65 @@ crossing shapes:
 | `s_sentenceImmediateName` (`s_load.c:33`) | Race-shared (single-slot, documented collision hazard even in legacy) | T_Main | T_Main (unless VOX registration also crosses) | See Quirks — a live P-3 door concern, not just a threading note |
 | `clgame.soundFuncs` (SoundAPI table) | Safe-RO post-init / Race-lazy-init during init window | T_Main | T_Main only | Cold-path client-DLL bootstrap; audio pipeline threads never touch it |
 
+### As-built topology (S9.7b, 2026-07-20)
+
+The target posture above is no longer aspirational — sound is the first
+multi-threaded subsystem in the tree. As built:
+
+| Piece | Detail |
+|---|---|
+| Command stream | `core::MpscQueue<AudioCommand, 128, 128>` — 128 normal + 128 reserved (SND-OQ-3). Strictly FIFO; the reserve relaxes ADMISSION, never order |
+| Decoder thread | `xash-audio-decoder`, `ThreadRole::AudioDecoder`, priority High, spawned via `platform::spawn_thread`. Drains the queue, applies commands, paints one block, writes the ring |
+| PCM ring | `core::SpscRing<int16_t, 16384>` — interleaved stereo device-format frames, no float stage anywhere between the mix kernels and the device (SND-OQ-5) |
+| Callback | `RingFillSource::fill()` on `ThreadRole::AudioCallback`. Wait-free: no lock, no allocation, no logging. Empty ring ⇒ zero-fill + the always-on underrun counter (§5.2 exception) |
+| Pump | An internal pump thread owns the callback role today; a real OS callback thread substitutes at the device chunk (`TopologyParams::internal_pump`) |
+
+Every hazard row in the table above whose "xash3dpp thread" column names
+T_AudioDecoder is now **realised and enforced**, not planned: the
+paintbuffer/roombuffer scratch, the soundtime reconstruction statics,
+`paintedtime`, the channel array, and the s_dsp delay-line state are all
+decoder-owned, and the mutation entry points cross the MPSC.
+
+One shared-mutable remains, deliberately: **`SfxRegistry`** is T_Main-owned
+but reachable from T_AudioDecoder through `LockedSfxResolver` (a mutex) for
+VOX word-advance resolution, which happens inside the paint and cannot be
+hoisted without defeating S9.6's lazy-resolution fix. Plain-channel source
+resolution IS hoisted to T_Main and ships as a borrowed pointer.
+T_AudioCallback never touches the registry. Decode runs OUTSIDE the mutex
+(lock → observe → unlock → decode → re-lock → double-checked install) so
+T_Main cannot stall the High-priority decoder behind file I/O.
+
 ### Assert/annotation duty
 
 Per P-8, every type confined to T_AudioDecoder or T_AudioCallback carries an
 `@thread-safety` annotation naming its owning role, following the
-networking-boundary precedent (`compliance-allow(thread-assert)` with an
-inline rationale where the role split is not yet enforced at runtime). The
-mix worker's scratch buffers, the soundlib decode-scratch struct, and the
-DSP delay-line state are the primary annotation targets once ported —
-none of this exists as xash3dpp code yet (0 TUs per the A0 fact base), so
-this section states the target posture for the port, not a retrofit.
+networking-boundary precedent. The mixer's `compliance-allow(thread-assert)`
+exemption is **retired**: `Mixer::paint_channels()` asserts
+`ThreadRole::AudioDecoder` for real. The as-built assert map:
+
+| Site | Asserted role |
+|---|---|
+| Every `Sound::*` public entry; `AudioTopology::start/stop/submit/flush/channel_snapshot`; `MouthSlots::drain` | `Main` |
+| `AudioTopology::decoder_step()`, `Mixer::paint_channels()`, `MouthSlots::set_mouth_open()` | `AudioDecoder` |
+| `RingFillSource::fill()` | `AudioCallback` |
+| Mix kernels, resample primitives, `apply_command` | none — hot path, reached only through an asserting site |
+
+`VoxSystem` and `RoomDsp` keep a `compliance-allow(thread-assert)` for a
+reason worth stating precisely: their real invariant is confinement to
+*whichever thread owns the channel array*, which is T_AudioDecoder with the
+topology running and T_Main without it. That role is CONDITIONAL, so no
+single per-call assert can express it — enforcement lives at the entry
+points that know the mode. The one genuine hole this exposed was
+`RoomDsp::profile()` reached from the T_Main `dsp_profile` console command
+while the decoder paints through the same delay lines; it is now refused
+while the topology runs.
+
+**Consequence for the §External ABI main-pumped fallback**: because the
+paint asserts `AudioDecoder`, an ABI-v1 client override driving
+`pfnS_PaintChannels` synchronously must run on a thread REGISTERED as
+`AudioDecoder`. The role is a declaration of what the thread is doing, not a
+requirement that it be the spawned decoder — but the constraint is real and
+binds the future shim (and S9.8's witness).
 
 ______________________________________________________________________
 
@@ -482,8 +560,8 @@ ______________________________________________________________________
 | ID | Question | Recommended shape | Blocks classification |
 |---|---|---|---|
 | **SND-OQ-1** | Provider contract for cross-thread listener/entity/gate data | **Resolved** (ratified, not open): providers read ONLY on T_Main; POD snapshots (`ListenerSnapshot`, `MixGateSnapshot`, `RegistrationSnapshot`) ship via the command stream; `IEntitySpatialProvider`/`IMouthSink` are the two provider/sink interfaces (R9.5). Recorded here for completeness — implementation must conform, not re-litigate. | **blocks-scaffold** — the `Sound` class's public entry points and the audio command struct shapes cannot be scaffolded until these POD layouts are finalized |
-| **SND-OQ-2** | Quiesce/drain + wavdata epoch + shutdown order | Legacy `S_Shutdown` order: `pfnS_Shutdown` dispatch → `S_StopAllSounds` → `S_FreeRawChannels` → `S_FreeSounds` (s_main.c:2060+). Under the MPSC/SPSC topology, shutdown must additionally: (a) stop accepting new audio commands on the MPSC, (b) drain in-flight decode work on T_AudioDecoder, (c) signal T_AudioCallback to stop pulling from the SPSC ring, (d) only then tear down soundlib's decode-scratch and `wavdata_t` cache — an ordering not present in legacy at all (single-threaded). Also decide whether `wavdata_t` cache entries need an epoch/generation counter so a decode-in-flight against a freed sfx can be detected rather than racing. Also covers the `s_stub`-omits-`Activate` asymmetry noted in External ABI contracts — decide whether the null backend should gain a no-op `Activate` for topology symmetry. | non-blocking for scaffold; **blocks** first real shutdown-path implementation |
-| **SND-OQ-3** | Queue-full policy for the audio MPSC | Legacy has no queue (synchronous calls) so there is no precedent. A dropped `SND_STOP` is audible (the sound keeps playing when the caller expected it stopped) — worse than a dropped `SND_START` (silently missing one sound effect). Recommended shape: bounded MPSC with drop-oldest-non-STOP policy, or a small reserved-capacity fast lane for STOP/CHANGE commands so they can never be dropped by a full queue of START commands. Needs a design decision, not just an implementation default. | **blocks-scaffold** — the command enum/priority shape affects the MPSC's item type |
+| **SND-OQ-2** | Quiesce/drain + wavdata epoch + shutdown order | ✅ **RESOLVED 2026-07-20 (S9.7b)** — see the decision register row for the ratified text. Fence: `AudioTopology::flush()` submits a reserved-lane `FlushEpoch`; the decoder acks on POP, and MPSC FIFO order makes the ack proof that every earlier command was applied. `flush()` is `[[nodiscard]] bool` — `false` means NOT quiesced. Ownership: `AudioData` is T_Main/`SfxRegistry`-owned, borrowed by the decoder; cache entries are retained for the registry lifetime (see the entry-surface deviations) so a borrow can never dangle. Shutdown: stop accepting → device deactivate + detach → wait out any in-flight callback → join pump → join decoder (final drain) → destroy ring/queue. The `s_stub`-omits-`Activate` sub-item is discharged: `NullDevice::set_active` is a no-op, so the topology drives every backend symmetrically. | resolved |
+| **SND-OQ-3** | Queue-full policy for the audio MPSC | ✅ **DECIDED 2026-07-19 (B3), AMENDED 2026-07-20 (S9.7b)** — reserved-capacity fast lane: STOP/CHANGE, `AlterChannel`, `StopAllSounds`, `FlushEpoch` and the per-frame control message can never be refused by a START-full queue. START overflow spins bounded, then drops and counts it in `SoundStats::dropped_sounds`. The original "blocks ... asserted in debug" wording is withdrawn — an assert on producer saturation turns a stalled decoder into an abort and makes the guarantee untestable; an unbounded block would stall the frame. Legacy has no queue (synchronous calls), so nothing here is a parity question. | resolved |
 | **SND-OQ-4** | Music streaming: fence `s_stream` out vs. codec vends `IAudioStream` | R9.2's evidence: soundlib already has two parallel per-format v-tables — `loadwavfmt_t` (1 fn, one-shot decode) and `streamfmt_t` (5 fns: open/read/seek/tell/close) — the stream table is strictly wider, confirming streaming is architecturally distinct from one-shot load in legacy already. Two shapes to choose between: (a) fence `s_stream.c`'s background-track logic out of the `Sound` class entirely as its own small satellite (parallels the mp3/ogg Q-11 split), with the codec-vended `stream_t` staying soundlib's concern; or (b) formalize an `IAudioStream` interface at the `Sound`/soundlib boundary that every decoder (WAV/mp3/ogg/opus) implements uniformly, replacing the `streamfmt_t` v-table. (b) is more P-4/P-5-conformant (typed interface vs. raw fn-pointer table) but is new design, not a straight port. | **blocks-scaffold** — determines whether `Sound` links against soundlib's stream v-table directly or against a new interface |
 | **SND-OQ-5** | Ring payload int16 — byte-identical rationale | The legacy DMA ring buffer is always 16-bit stereo (`sound.h:29-31`: `SOUND_DMA_SPEED=44100`, hardcoded 2-channel/16-bit output — R9.1 Owned state). The SPSC ring's payload type should stay `int16_t` (interleaved stereo) to keep `S_TransferPaintBuffer`'s reinterpret-as-flat-int-stream logic and `CLIP16`'s clamp semantics unchanged — a float or wider intermediate type in the ring would require a second clamp/convert stage that risks non-bit-exact output vs. legacy. Recommendation: ring payload = `int16_t[2]` (interleaved), matching `S_WriteLinearBlastStereo16`'s existing output shape exactly; do not introduce a float mixing stage in the ring itself (the mix kernels already produce clamped int32 accumulator values before the final `CLIP16` narrow). | **blocks-scaffold** — the SPSC ring's item type and the mix kernel output contract are the same decision |
 | **SND-OQ-6** (DSP off-by-one) | `idsp_room == 29` reproduce-vs-clamp | **Resolved 2026-07-20 (S9.5):** reproduce-with-defined-behaviour — both preset tables padded to a 30th, all-zero sentinel row (index 29); see Quirks section above for the full rationale (behaviourally identical to preset 0 "off") and the decisions-architecture.md §3a entry. | closed — DSP port correctness sign-off unblocked |

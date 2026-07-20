@@ -39,13 +39,30 @@
 // pinned equivalence. Decision recorded in decisions-architecture.md §3a.
 //
 // @thread-safety: mirrors the Mixer/VoxSystem posture (mixer.hpp/vox.hpp) —
-// RoomDsp is designed to be confined to T_AudioDecoder (the mix worker) via
-// the IRoomDsp::process() call site (Mixer::paint_channels). The cvar-
-// equivalent setters are the S9.6 wiring point for real cvar change
-// callbacks, mirroring how ListenerSnapshot/MixGateSnapshot cross today
-// (SND-OQ-1) — not enforced here. compliance-allow(thread-assert): no
-// decoder thread exists until S9.7b; every test drives this synchronously,
-// same rationale as mixer.cpp/vox.hpp.
+// RoomDsp is confined to whichever thread OWNS THE CHANNEL ARRAY: it holds the
+// delay lines process() mutates in place from Mixer::paint_channels(), and the
+// cvar-equivalent setters retune those same lines. That owner is
+// T_AudioDecoder while the S9.7b topology runs and T_Main when it does not.
+//
+// compliance-allow(thread-assert): the role is CONDITIONAL (see above), so no
+// single per-call assert can state it — AudioDecoder would fire on every
+// legitimate topology-off call and Main on every threaded one. It is enforced
+// at the entry points that know the mode: every RoomDsp call in the tree is
+// reached either through apply_command() (audio_command.cpp: set_waterlevel /
+// the §4.3 setters / clear_state), whose two callers assert Main
+// (Sound::*, sound.cpp) or AudioDecoder (AudioTopology::decoder_step(),
+// topology.cpp), or through Mixer::paint_channels(), which itself asserts
+// AudioDecoder. A redundant per-call assert underneath those gates would buy
+// nothing and could not encode the mode.
+// (The S9.5 rationale — "no decoder thread exists until S9.7b" — EXPIRED with
+// this slice and has been replaced by the above.)
+//
+// ONE EXCEPTION, and it is gated rather than papered over: profile()
+// (SX_Profiling_f) is reachable from a T_Main console command, which is NOT
+// the channel-array owner while the topology runs. Sound::cmd_dsp_profile_f
+// therefore REFUSES the command whenever topology_running() (parity F-3 /
+// concurrency CONC-2 — profile() rewrites every delay line and would race the
+// decoder painting through the same object). See sound.cpp.
 
 #include <xash3dpp/private/sound/mixer.hpp> // IRoomDsp, portable_samplepair_t (via mix_kernels.hpp)
 

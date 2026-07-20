@@ -49,11 +49,32 @@ namespace xash::sound {
 struct SoundStats
 {
     // ---- Tier 1 — always-on ---------------------------------------------
-    std::atomic<std::uint64_t> mix_blocks      { 0 }; // paint blocks completed
-    std::atomic<std::uint64_t> underruns       { 0 }; // ring underruns (§5.2 always-on)
-    std::atomic<std::uint32_t> active_channels { 0 }; // channels mixed last block
-    std::atomic<std::uint32_t> dropped_sounds  { 0 }; // start requests dropped (queue full / no channel)
-    std::atomic<std::int32_t>  dsp_room        { 0 }; // current DSP room index (idsp_room)
+    std::atomic<std::uint64_t> mix_blocks { 0 }; // paint blocks completed
+    std::atomic<std::uint64_t> underruns  { 0 }; // ring underruns (§5.2 always-on)
+
+    // Channels holding a non-null source (i.e. OCCUPIED) at the end of the last
+    // paint — NOT "channels that contributed audio". A channel that is occupied
+    // but inaudible (zero volumes, gated off, finished-this-block) is counted
+    // here; the mix-side kernels publish no separate figure (conformance F5:
+    // the comment used to claim "channels mixed last block", which is not what
+    // the decoder_step() loop measures).
+    std::atomic<std::uint32_t> active_channels { 0 };
+
+    // START requests that never became audible channels. TWO causes feed this
+    // counter, and ONLY these two — both are genuinely-lost SOUNDS:
+    //   (1) SND-OQ-3 queue drop: a normal-class StartSound that outlasted the
+    //       bounded producer block (Sound::Impl::dispatch, sound.cpp). Refused
+    //       CONTROL messages (AlterChannel/StopAllSounds/FrameUpdate/
+    //       FlushEpoch) are NEVER counted here — see parity F-4.
+    //   (2) no free channel: SND_PickDynamicChannel/pick_static_channel found
+    //       nothing to evict, which is legacy's own `dropped sound "%s"`
+    //       diagnostic (s_main.c:662-666, apply_start in audio_command.cpp).
+    // Legacy has no counter at all — only cause (2)'s console message — so this
+    // is a rewrite-side aggregate of "starts the player did not hear"; cause (1)
+    // is rewrite-only (legacy is synchronous and cannot drop a start).
+    std::atomic<std::uint32_t> dropped_sounds { 0 };
+
+    std::atomic<std::int32_t> dsp_room { 0 }; // current DSP room index (idsp_room)
 
 #if XASH_STATS
     // ---- Tier 2 — bookkeeping (profiling builds) ------------------------
@@ -94,6 +115,13 @@ struct SoundInitParams
     // registration (a headless/test load can still call start_sound() etc.
     // directly).
     ::xash::cmd_cvar::CmdCvarContext *cmd_cvar = nullptr; // @lifetime: caller (outlives Sound)
+
+    // S9.7b thread topology (threading-model §3.4).  false (default) keeps the
+    // whole pipeline SINGLE-THREADED on T_Main — byte-for-byte the S9.6
+    // behaviour, which is what the deterministic witness and every existing
+    // test rely on.  true spawns T_AudioDecoder + T_AudioCallback at init();
+    // start_topology()/stop_topology() do the same thing later.
+    bool threaded = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -126,9 +154,12 @@ struct ChannelInfo
 // Sound — the audio engine (pimpl).
 //
 // @thread-safety: init/shutdown and every public entry run on ThreadRole::Main
-// and assert it (T_Main; QN).  The device drives the mix off its own real-time
-// thread once running (S9.2+).  The sole any-thread surface is stats(): the
-// SoundStats Tier-1 counters are std::atomic and readable from any thread.
+// and assert it (T_Main; QN).  Once start_topology() has run (S9.7b) those
+// entries ENQUEUE a POD AudioCommand onto the MPSC instead of mutating channel
+// state directly: the mix-side state (channel array, VOX bindings, DSP delay
+// lines, mix clock) is owned by T_AudioDecoder, and T_AudioCallback consumes
+// the PCM ring.  The sole any-thread surface is stats(): the SoundStats Tier-1
+// counters are std::atomic and readable from any thread.
 // ---------------------------------------------------------------------------
 class Sound
 {
@@ -206,6 +237,45 @@ public:
     // currently-occupied channel (dynamic + static; raw channels are always
     // empty this slice — see ChannelClass::Raw).
     [[nodiscard]] std::vector<ChannelInfo> channels_snapshot() const;
+
+    // -----------------------------------------------------------------------
+    // Thread topology (Chunk 9, slice S9.7b). Main-thread only.
+    //
+    // The ratified chain is T_Main -> MPSC -> T_AudioDecoder -> SPSC ring ->
+    // T_AudioCallback (threading-model §3.4). While it is NOT running, every
+    // entry above mutates channel state inline on T_Main exactly as it did in
+    // S9.6 — the same apply_command() body runs either way, so the two modes
+    // cannot diverge.
+    // -----------------------------------------------------------------------
+
+    // Spawn the decoder + device-callback threads and hand the device the PCM
+    // ring as its pull source. No-op (success) if already running.
+    [[nodiscard]] Result<void> start_topology() noexcept;
+
+    // SND-OQ-2 shutdown order: stop accepting commands -> detach the device ->
+    // join the callback pump -> join the decoder -> tear down ring/scratch.
+    // No-op if not running. Idempotent.
+    void stop_topology() noexcept;
+
+    [[nodiscard]] bool topology_running() const noexcept;
+
+    // SND-OQ-2 quiesce fence. Blocks (bounded) until the decoder has applied
+    // every command submitted so far. Pair it with a stop: after
+    // stop_sound()/stop_all_sounds() followed by a flush() that RETURNED TRUE,
+    // the decoder provably cannot touch that sound's decoded audio again, so
+    // T_Main may free or replace it — a decode-in-flight against freed data is
+    // impossible by construction (FIFO ordering + the decoder's own program
+    // order), not by timing. Non-destructive: unrelated channels keep playing.
+    //
+    // RETURN VALUE IS THE LICENCE, AND IT MUST BE CHECKED (concurrency CONC-3):
+    //   true  — the decoder's epoch ack was OBSERVED (or there is no decoder to
+    //           fence against, i.e. the topology is not running: no borrower
+    //           exists, so prior audio is quiesced trivially).
+    //   false — the fence did NOT complete: the FlushEpoch was refused by the
+    //           queue, or the bounded spin expired without an ack. Prior audio
+    //           must NOT be treated as quiesced; a borrowed AudioData may still
+    //           be reachable from a live channel or an in-flight command.
+    [[nodiscard]] bool flush() noexcept;
 
 private:
     // Console command handlers (cmd_add's CommandCtxFn — campaign B5). `user`

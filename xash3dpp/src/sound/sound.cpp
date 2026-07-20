@@ -13,11 +13,13 @@
 
 #include <xash3dpp/sound/sound.hpp>
 
+#include <xash3dpp/private/sound/audio_command.hpp>
 #include <xash3dpp/private/sound/channel_alloc.hpp>
 #include <xash3dpp/private/sound/dsp.hpp>
 #include <xash3dpp/private/sound/mixer.hpp>
 #include <xash3dpp/private/sound/owned_state.hpp>
 #include <xash3dpp/private/sound/registry.hpp>
+#include <xash3dpp/private/sound/topology.hpp>
 #include <xash3dpp/private/sound/vox.hpp>
 #include <xash3dpp/sound/constants.hpp>
 
@@ -33,10 +35,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <span>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace xash::sound {
 
@@ -51,12 +55,16 @@ constexpr std::string_view k_log_tag = "sound";
     return v >= lo ? ( v < hi ? v : hi ) : lo;
 }
 
-// SilenceFillSource — the placeholder pull target Sound registers on its device.
-// Nothing drives Mixer::paint_channels() as the device's fill source yet
-// (deferred past S9.6 — see the uncertainty list). Zero-fills the request.
+// SilenceFillSource — the pull target Sound registers on its device while the
+// S9.7b thread topology is NOT running. Nothing paints in that mode (exactly
+// the S9.6 behaviour), so the device gets silence. Once start_topology() runs,
+// the topology swaps in its RingFillSource (topology.hpp).
 //
 // @thread-safety: fill() runs on T_AudioCallback (real-time): no alloc, no
 // lock, no block — a plain memset-shaped zero-fill (threading-model §Forbidden).
+// The role is NOT asserted here (unlike RingFillSource): with the topology off
+// this object is also what a synchronous SinkDevice::pump() call on T_Main
+// reaches, which is the S9.8 deterministic-witness shape.
 class SilenceFillSource final : public IAudioFillSource
 {
 public:
@@ -65,6 +73,77 @@ public:
         for( std::int16_t &s : out )
             s = 0;
     }
+};
+
+// LockedSfxResolver — the ONE seam through which T_AudioDecoder reaches the
+// (T_Main-owned) SfxRegistry: VOX word resolution happens at word-ADVANCE time
+// inside the paint (VoxSystem::next_word -> load_word -> resolve), so it cannot
+// be hoisted to T_Main the way S_LoadSound's plain-channel decode was.
+//
+// A plain std::mutex is the right tool here and NOT a threading-model
+// violation: T_AudioDecoder is a background worker, not the real-time thread —
+// the §Forbidden-audio-callback-patterns rule (no lock / no alloc / no I/O)
+// binds T_AudioCallback only, and T_AudioCallback never touches this. A decoder
+// stall shows up exactly where the design says it should: as a ring underrun on
+// the always-on counter.
+//
+// @thread-safety: any thread. Every SfxRegistry access in this file goes
+// through the same mutex, so registry mutation on T_Main and word resolution on
+// T_AudioDecoder are serialized.
+class LockedSfxResolver final : public IVoxAudioResolver
+{
+public:
+    LockedSfxResolver( SfxRegistry *&registry, std::mutex &mutex ) noexcept
+        : registry_( &registry ), mutex_( &mutex )
+    {
+    }
+
+    // CONC-9: the mutex is held for the two SHORT table phases only, never
+    // across the loader's blocking file I/O + decode. Holding it across the
+    // decode inverted priority against the High-priority decoder that needs the
+    // same mutex inside its paint; the audible symptom was ring underruns.
+    [[nodiscard]] const AudioData *resolve( std::string_view path, bool &in_cache ) noexcept override
+    {
+        SfxRegistry::ResolveLookup lu;
+        {
+            const std::lock_guard<std::mutex> lock( *mutex_ );
+            if( *registry_ == nullptr )
+            {
+                in_cache = false;
+                return nullptr;
+            }
+            lu = ( *registry_ )->lookup( path );
+        }
+
+        in_cache = lu.in_cache;
+        if( lu.handle == k_invalid_sound_handle )
+            return nullptr; // !word->sfx (s_vox.c:150-151)
+        if( lu.cached != nullptr )
+            return lu.cached; // "see if still in memory" (s_load.c:110-111)
+
+        // UNLOCKED: S_LoadSound's decode (s_vox.c:153).
+        std::optional<AudioData> decoded =
+            lu.loader != nullptr ? lu.loader->load( lu.name ) : std::nullopt;
+
+        const std::lock_guard<std::mutex> lock( *mutex_ );
+        if( *registry_ == nullptr )
+            return nullptr; // registry torn down while we decoded (shutdown joins first, so unreachable in practice)
+        return ( *registry_ )->install( lu.handle, std::move( decoded ) ); // double-checked
+    }
+
+    void release( const AudioData *data ) noexcept override
+    {
+        // Retained by design — SfxRegistry::release() is a documented no-op
+        // (F-1/F-2/CONC-1). The seam is kept so the VOX call site's ownership
+        // statement stays honest; see registry.cpp.
+        const std::lock_guard<std::mutex> lock( *mutex_ );
+        if( *registry_ != nullptr )
+            ( *registry_ )->release( data );
+    }
+
+private:
+    SfxRegistry **registry_; // @lifetime: points at Sound::Impl's own member
+    std::mutex   *mutex_;    // @lifetime: Sound::Impl's own member
 };
 
 // register_cvar — the CVAR_DEFINE-equivalent field-by-field setup +
@@ -133,7 +212,49 @@ struct Sound::Impl
     std::unique_ptr<RoomDsp>      room_dsp_;
 
     ListenerSnapshot listener_ {};       // update_frame()'s published snapshot (SND-OQ-1)
-    int              total_channels_ = 0; // snd.total_channels — the static-range high-water mark
+
+    // ------------------------------------------------------------------
+    // S9.7b additions — the command stream + thread topology.
+    // ------------------------------------------------------------------
+
+    // The channel-mutation context. Owned by whichever thread owns the channel
+    // array: T_AudioDecoder while the topology runs, T_Main otherwise — NEVER
+    // both. `total_channels` inside it is snd.total_channels (the static-range
+    // high-water mark; was Impl::total_channels_ in S9.6).
+    ChannelApplyContext apply_ctx_ {};
+
+    // Serializes SfxRegistry access between T_Main and T_AudioDecoder's VOX
+    // word resolution — see LockedSfxResolver above.
+    std::mutex        registry_mutex_;
+    SfxRegistry      *registry_raw_ = nullptr; // what the resolver adapter reads
+    LockedSfxResolver vox_resolver_ { registry_raw_, registry_mutex_ };
+
+    std::unique_ptr<AudioTopology> topology_;
+
+    [[nodiscard]] bool threaded() const noexcept { return topology_ && topology_->running(); }
+
+    // Route one command to whichever side owns the channel array. The SAME
+    // apply_command() body runs in both modes (audio_command.cpp), which is
+    // what makes the threaded and single-threaded paths identical.
+    void dispatch( const AudioCommand &cmd ) noexcept
+    {
+        if( threaded() )
+        {
+            bool dropped = false;
+            if( !topology_->submit( cmd, &dropped ) && dropped &&
+                cmd.type == AudioCommandType::StartSound )
+            {
+                // SND-OQ-3 genuine drop of an actual SOUND.  Only StartSound
+                // counts (parity F-4): AlterChannel/StopAllSounds/FrameUpdate/
+                // FlushEpoch are CONTROL messages — a refused control message is
+                // a pipeline fault, not a sound the player failed to hear, and
+                // conflating the two would make the Tier-1 counter unreadable.
+                stats_.dropped_sounds.fetch_add( 1, std::memory_order_relaxed );
+            }
+            return;
+        }
+        apply_command( apply_ctx_, cmd );
+    }
 
     // cmd_cvar wiring (nullable — a headless/test load skips registration).
     ::xash::cmd_cvar::CmdCvarContext *cmd_cvar_ = nullptr;
@@ -148,22 +269,56 @@ struct Sound::Impl
             room_left, room_rvblp, room_refl, room_size, room_dlylp, room_feedback, room_delay;
     } cv_;
 
-    // Reset every channel (S_FreeChannel per occupied slot) and the
-    // total_channels_ high-water mark back to MAX_DYNAMIC_CHANNELS — the
-    // shared core of S_StopAllSounds AND the teardown half of S_Shutdown.
-    void free_all_channels() noexcept
+    // Poll the §4.3 per-frame cvar set into the POD the decoder applies. Reads
+    // cvars on T_Main only (SND-OQ-1); the values cross as a snapshot.
+    [[nodiscard]] MixConfigSnapshot poll_mix_config() const noexcept
     {
-        for( MixChannel &ch : mixer_.channels() )
-        {
-            if( ch.source == nullptr )
-                continue;
-            free_channel( ch, &vox_ );
-        }
-        for( MixChannel &ch : mixer_.channels() )
-            ch = MixChannel{}; // full-array wipe (s_main.c:1483's memset)
+        MixConfigSnapshot cfg {};
+        if( cmd_cvar_ == nullptr )
+            return cfg; // cvars_polled stays false — decoder leaves config alone
 
-        total_channels_ = static_cast<int>( ::xash::limits::sound_num_ambient_channels +
-                                            ::xash::limits::sound_num_dynamic_channels );
+        auto &ctx           = *cmd_cvar_;
+        cfg.cvars_polled    = true;
+        cfg.lerping         = ctx.cvar_variable_value( "s_lerping" ) != 0.0f;
+        cfg.room_off        = ctx.cvar_variable_value( "room_off" ) != 0.0f;
+        // dsp_coeff_table: RAW cvar float, unmodified (dsp.hpp dual-coercion note).
+        cfg.dsp_coeff_table = ctx.cvar_variable_value( "dsp_coeff_table" );
+        cfg.room_type       = ctx.cvar_variable_value( "room_type" );
+        cfg.waterroom_type  = ctx.cvar_variable_value( "waterroom_type" );
+        cfg.hisound         = static_cast<int>( ctx.cvar_variable_value( "room_hires" ) );
+        cfg.room_mod        = ctx.cvar_variable_value( "room_mod" );
+        cfg.room_lp         = ctx.cvar_variable_value( "room_lp" );
+        cfg.room_rvblp      = ctx.cvar_variable_value( "room_rvblp" );
+        cfg.room_refl       = ctx.cvar_variable_value( "room_refl" );
+        cfg.room_dlylp      = ctx.cvar_variable_value( "room_dlylp" );
+        cfg.room_feedback   = ctx.cvar_variable_value( "room_feedback" );
+        cfg.room_size       = ctx.cvar_variable_value( "room_size" );
+        cfg.room_delay      = ctx.cvar_variable_value( "room_delay" );
+        cfg.room_left       = ctx.cvar_variable_value( "room_left" );
+
+        // ------------------------------------------------------------------
+        // S_GetMasterVolume (s_main.c:115-135) — the paint gain.  APPLIED
+        // HERE: the `volume` cvar and the snd_mute_losefocus focus gate.  The
+        // derivation itself lives in master_volume_from() (audio_command.hpp),
+        // term by term in legacy's float order, so it is unit-testable.
+        //
+        // XASH3DPP-STUB(chunk12): the soundfade term is NOT applied — its input
+        // (soundfade.percent, produced by S_UpdateSoundFade, s_main.c:220-256)
+        // has no implementation in this tree.  See master_volume_from()'s
+        // `soundfade_scale` parameter, which is therefore left at its 1.0f
+        // default rather than invented here.
+        //
+        // XASH3DPP-STUB(chunk12): MixGateSnapshot has NO producer either —
+        // nothing in the tree supplies host.status/cls.key_dest/cl.paused/
+        // cl.background/CL_IsInGame()/Host_IsSinglePlayerGame().  cfg.gate stays
+        // default-constructed (every gate false), so the focus-mute branch below
+        // is live but dormant: it starts working the moment a client-side
+        // producer fills the gate POD, with no further change here.
+        // ------------------------------------------------------------------
+        cfg.master_volume = master_volume_from( ctx.cvar_variable_value( "volume" ), cfg.gate.lost_focus,
+                                                ctx.cvar_variable_value( "snd_mute_losefocus" ) );
+
+        return cfg;
     }
 };
 
@@ -261,7 +416,15 @@ Result<void> Sound::init( const SoundInitParams &params )
 
     if( params.filesystem != nullptr )
         impl_->audio_loader_ = std::make_unique<FilesystemAudioLoader>( *params.filesystem );
-    impl_->registry_ = std::make_unique<SfxRegistry>( impl_->audio_loader_.get() );
+    impl_->registry_     = std::make_unique<SfxRegistry>( impl_->audio_loader_.get() );
+    impl_->registry_raw_ = impl_->registry_.get(); // what LockedSfxResolver reads
+
+    // S9.7b: the single channel-mutation context both modes drive.
+    impl_->apply_ctx_.mixer        = &impl_->mixer_;
+    impl_->apply_ctx_.vox          = &impl_->vox_;
+    impl_->apply_ctx_.room_dsp     = impl_->room_dsp_.get();
+    impl_->apply_ctx_.stats        = &impl_->stats_;
+    impl_->apply_ctx_.vox_resolver = &impl_->vox_resolver_;
 
     impl_->cmd_cvar_ = params.cmd_cvar;
 
@@ -337,11 +500,92 @@ Result<void> Sound::init( const SoundInitParams &params )
     }
 
     // S_Init calls S_StopAllSounds(true) before returning (s_main.c:2029) —
-    // establishes total_channels_'s starting value.
-    impl_->free_all_channels();
+    // establishes total_channels's starting value.
+    free_all_channels( impl_->apply_ctx_ );
+
+    // S9.7b: the topology object always exists (so start/stop are cheap), but
+    // stays STOPPED unless asked for — a stopped topology is byte-for-byte the
+    // S9.6 single-threaded pipeline.
+    TopologyParams tp {};
+    tp.ctx           = &impl_->apply_ctx_;
+    tp.stats         = &impl_->stats_;
+    tp.device        = impl_->device_;
+    tp.internal_pump = true; // no device in the tree drives its own callback yet
+    // compliance-allow(make-unique-outside-pimpl, unique-ptr-nonpimpl):
+    // AudioTopology is built with
+    // std::make_unique outside a pimpl Impl, against Q-22 rule 4 (conformance
+    // F3).  Deliberate: the object is a thin owner of two fixed-storage
+    // lock-free primitives (AudioCommandQueue + PcmRing, see topology.hpp) plus
+    // two JoinHandles, and neither it nor they touch an allocator after
+    // construction — so pool allocation buys nothing.  The pool's rules also do
+    // not fit: no over-aligned-storage guarantee for the cache-line-padded
+    // atomics it transitively contains, and the sound pool is destroyed at
+    // shutdown AFTER this object must already be gone (SND-OQ-2 orders the
+    // topology teardown first).  It is not a pimpl and is never handed out.
+    impl_->topology_ = std::make_unique<AudioTopology>( tp );
 
     impl_->initialized_ = true;
+
+    if( params.threaded && !start_topology().has_value() )
+    {
+        xash::core::log( xash::core::LogLevel::Error, k_log_tag, "audio topology start failed" );
+        shutdown();
+        return std::unexpected( SoundError::DeviceUnavailable );
+    }
+
     return {};
+}
+
+// ---------------------------------------------------------------------------
+// Thread topology (S9.7b)
+// ---------------------------------------------------------------------------
+
+Result<void> Sound::start_topology() noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+    if( !impl_->initialized_ || !impl_->topology_ )
+        return std::unexpected( SoundError::NotInitialized );
+    if( impl_->topology_->running() )
+        return {};
+
+    if( !impl_->topology_->start() )
+        return std::unexpected( SoundError::DeviceUnavailable );
+
+    // Re-publish the current T_Main-side configuration so the freshly-started
+    // decoder is not running on default-constructed gates until the next frame.
+    AudioCommand cmd {};
+    cmd.type       = AudioCommandType::FrameUpdate;
+    cmd.listener   = impl_->listener_;
+    cmd.mix_config = impl_->poll_mix_config();
+    impl_->dispatch( cmd );
+    return {};
+}
+
+void Sound::stop_topology() noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+    if( !impl_->topology_ )
+        return;
+    impl_->topology_->stop();
+
+    // Back to the S9.6 pull target: nothing paints while the topology is
+    // stopped, so the device gets silence.
+    if( impl_->device_ != nullptr && impl_->initialized_ )
+        impl_->device_->set_fill_source( &impl_->silence_ );
+}
+
+bool Sound::topology_running() const noexcept
+{
+    return impl_ && impl_->topology_ && impl_->topology_->running();
+}
+
+bool Sound::flush() noexcept
+{
+    xash::core::assert_thread_role( xash::core::ThreadRole::Main );
+    // No topology object at all == no decoder == no borrower: quiesced by
+    // construction, so the licence is granted (matching AudioTopology::flush()'s
+    // own not-running case).
+    return impl_->topology_ == nullptr || impl_->topology_->flush();
 }
 
 void Sound::shutdown()
@@ -349,6 +593,14 @@ void Sound::shutdown()
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
     if( !impl_->initialized_ )
         return;
+
+    // SND-OQ-2 step 1: the topology goes down FIRST. stop() stops accepting
+    // commands, detaches the device, joins T_AudioCallback then T_AudioDecoder
+    // — so by the time the registry (and every AudioData it owns) is destroyed
+    // below, no other thread exists that could be holding a reference. This is
+    // ordering by JOIN, the strongest form of the epoch guarantee.
+    stop_topology();
+    impl_->topology_.reset();
 
     // S_Shutdown's command teardown (s_main.c:2046-2058) — 12 of the 13
     // registered commands are removed; "play2" is a PRESERVED leaked
@@ -374,9 +626,11 @@ void Sound::shutdown()
     // S_StopAllSounds(false) + S_FreeSounds' internals (s_main.c:2063-2065) —
     // tear down every channel/VOX binding before the pool (backing RoomDsp's
     // delay lines) is destroyed below.
-    impl_->free_all_channels();
+    free_all_channels( impl_->apply_ctx_ );
 
+    impl_->apply_ctx_ = ChannelApplyContext{};
     impl_->room_dsp_.reset();   // frees pool-backed PoolIntBuffer members — MUST run before destroy_pool
+    impl_->registry_raw_ = nullptr;
     impl_->registry_.reset();   // heap-owned AudioData caches; no pool dependency
     impl_->audio_loader_.reset();
 
@@ -420,6 +674,7 @@ const DeviceCaps &Sound::caps() const noexcept { return impl_->caps_; }
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
     if( !impl_->initialized_ || !impl_->registry_ )
         return k_invalid_sound_handle;
+    const std::lock_guard<std::mutex> lock( impl_->registry_mutex_ );
     return impl_->registry_->register_sound( name ); // S_RegisterSound (s_load.c:312-336)
 }
 
@@ -432,117 +687,100 @@ void Sound::start_sound( std::optional<Vec3> pos, int ent, int chan, ::xash::abi
 
     Impl &impl = *impl_;
 
-    const SfxSlot *sfx = impl.registry_->get( handle );
-    if( sfx == nullptr )
-        return; // !sfx (s_main.c:635-636)
+    // ------------------------------------------------------------------
+    // T_Main half (S9.7b): everything that needs the registry, the providers
+    // or the listener pose. The result is a POD AudioCommand; the channel-side
+    // half (alter prologue -> pick -> init -> bind -> spatialize -> audibility
+    // drop) is apply_start() in audio_command.cpp, which runs verbatim on
+    // whichever thread owns the channel array.
+    // ------------------------------------------------------------------
+    AudioCommand cmd {};
+    cmd.type = AudioCommandType::StartSound;
+
+    // Set when the sfx still needs decoding — the decode itself runs BELOW,
+    // with registry_mutex_ RELEASED (CONC-9).
+    SfxHandle   decode_handle = k_invalid_sound_handle;
+    std::string decode_name;
+    IAudioLoader *decode_loader = nullptr;
+
+    {
+        const std::lock_guard<std::mutex> lock( impl.registry_mutex_ );
+        const SfxSlot                    *sfx = impl.registry_->get( handle );
+        if( sfx == nullptr )
+            return; // !sfx (s_main.c:635-636)
+        set_command_name( cmd, sfx->name );
+        cmd.sfx_is_sentence = test_sound_char( sfx->name, '!' ); // s_main.c:692
+
+        if( !cmd.sfx_is_sentence )
+        {
+            // S_LoadSound(sfx) (s_main.c:707) — hoisted to T_Main because the
+            // registry is T_Main-owned. SfxRegistry reserves slots_ to
+            // sound_max_sfx at construction and never destroys a cache entry
+            // (SfxSlot::cache's address-stability invariant), so the returned
+            // AudioData address is valid for the registry's whole lifetime —
+            // which is what makes it safe to put on the command queue.
+            cmd.source = impl.registry_->cached( handle );
+            if( cmd.source == nullptr )
+            {
+                decode_handle = handle;
+                decode_name   = sfx->name;
+                decode_loader = impl.registry_->loader();
+            }
+        }
+    }
+
+    if( decode_handle != k_invalid_sound_handle )
+    {
+        // UNLOCKED decode (CONC-9): blocking file I/O + codec work must never
+        // run under registry_mutex_ — the High-priority decoder needs that same
+        // mutex inside its paint, and the inversion surfaces as ring underruns.
+        std::optional<AudioData> decoded =
+            decode_loader != nullptr ? decode_loader->load( decode_name ) : std::nullopt;
+
+        const std::lock_guard<std::mutex> lock( impl.registry_mutex_ );
+        // Double-checked install: if the decoder resolved the same sfx while we
+        // were decoding, ours is discarded and we use the winner's (stable)
+        // pointer. Either way the address never changes afterwards.
+        cmd.source = impl.registry_->install( decode_handle, std::move( decoded ) );
+    }
 
     const int vol = static_cast<int>( bound_float( 0.0f, fvol * 255.0f, 255.0f ) ); // s_main.c:638
     if( pitch <= 1 )
         pitch = k_pitch_norm_flag; // "Invasion issues" (s_main.c:639)
 
-    if( ( flags & ( k_snd_stop | k_snd_change_vol | k_snd_change_pitch ) ) != 0 )
-    {
-        if( alter_channel( impl.mixer_.channels(), impl.total_channels_, ent, chan, handle, sfx->name, vol, pitch,
-                           flags, &impl.vox_ ) )
-            return; // s_main.c:643-644
-        if( ( flags & k_snd_stop ) != 0 )
-            return; // s_main.c:646
-        // fall through — start the sound (s_main.c:647-648)
-    }
+    cmd.sfx_handle = handle;
+    cmd.entnum     = ent;
+    cmd.entchannel = chan;
+    cmd.vol        = vol;
+    cmd.pitch      = pitch;
+    cmd.flags      = flags;
+    cmd.dist_mult  = attn / k_sound_clip_distance; // s_main.c:683
 
     // NULL pos -> refState.vieworg (s_main.c:651). This port has no separate
     // refState surface; ListenerSnapshot::origin (the SAME S_UpdateFrame
     // publish point legacy's refState.vieworg update shares a source with) is
     // the closest available approximation — see the S9.6 uncertainty list.
-    const Vec3 use_pos = pos.value_or( impl.listener_.origin );
+    cmd.origin   = pos.value_or( impl.listener_.origin );
+    cmd.listener = impl.listener_;
 
-    if( chan == k_chan_stream )
-        flags |= k_snd_stop_looping; // s_main.c:653-654
-
-    int  target_index = -1;
-    bool ignore        = false;
-
-    if( chan == k_chan_static )
+    // SND-OQ-1: the ONLY provider read. spatialize_needs_provider() reproduces
+    // SND_Spatialize's own early-outs (s_main.c:568-586) so we make exactly the
+    // calls legacy would, and only the RESULT crosses to the mix side.
+    const std::uint32_t chan_flags_for_spatialize =
+        ( ent == 0 ) ? ::xash::abi::k_fl_chan_static_sound : 0u; // s_main.c:674-675
+    if( spatialize_needs_provider( ent, impl.listener_.entnum, chan_flags_for_spatialize ) )
     {
-        target_index = pick_static_channel( impl.mixer_.channels(), impl.total_channels_, use_pos, handle );
-    }
-    else
-    {
-        const DynamicPickResult r = pick_dynamic_channel( impl.mixer_.channels(), impl.listener_.entnum, ent, chan,
-                                                          handle, &impl.vox_, &impl.vox_ );
-        target_index               = r.index;
-        ignore                      = r.ignore;
-    }
-
-    if( target_index < 0 )
-    {
-        if( !ignore )
-            ::xash::core::logf( ::xash::core::LogLevel::Error, k_log_tag, "dropped sound \"%s\"",
-                                sfx->name.c_str() ); // s_main.c:662-666
-        return;
+        // IN/OUT (F-8, cl_frame.c:1387-1392): pre-fill with the origin the
+        // channel is about to be given (`pos`, or the listener view origin),
+        // because the provider may legally return true WITHOUT writing it — and
+        // legacy then plays the sound at exactly that pre-existing origin
+        // instead of silencing it. See providers.hpp for the full contract.
+        cmd.entity_origin = cmd.origin;
+        cmd.entity_origin_valid =
+            impl.spatial_ != nullptr && impl.spatial_->resolve_origin( ent, cmd.entity_origin );
     }
 
-    MixChannel &target = impl.mixer_.channels()[static_cast<std::size_t>( target_index )];
-
-    target = MixChannel{}; // memset(target_chan,0,sizeof(*target_chan)) (s_main.c:670)
-
-    target.origin = use_pos;
-    if( ent == 0 )
-        target.flags |= ::xash::abi::k_fl_chan_static_sound; // s_main.c:674-675
-    if( ( flags & k_snd_stop_looping ) == 0 )
-        target.flags |= ::xash::abi::k_fl_chan_use_loop; // s_main.c:677-678
-    if( ( flags & k_snd_localsound ) != 0 )
-        target.flags |= ::xash::abi::k_fl_chan_local_sound; // s_main.c:680-681
-
-    target.dist_mult  = attn / k_sound_clip_distance; // s_main.c:683
-    target.master_vol = vol;
-    target.entnum     = ent;
-    target.entchannel = chan;
-    target.base_pitch = static_cast<double>( pitch );
-    target.sfx_handle = handle;
-
-    bool has_source = false;
-
-    if( test_sound_char( sfx->name, '!' ) ) // s_main.c:692
-    {
-        target.name = sfx->name; // Q_strncpy(target_chan->name, sfx->name, ...) (s_main.c:700)
-        std::optional<VoxSentence> sentence = impl.vox_.build_sentence( skip_sound_char( sfx->name ) );
-        if( sentence.has_value() )
-        {
-            impl.vox_.bind_channel( target, std::move( *sentence ), impl.registry_.get() ); // VOX_LoadSound (s_main.c:699)
-            has_source = target.source != nullptr;
-        }
-        // else: unknown sentence -> ch->words stays unbound (legacy leaves
-        // target_chan untouched too — s_vox.c:466-471's warning path).
-    }
-    else
-    {
-        target.source = impl.registry_->load_sfx( handle ); // S_LoadSound(sfx) (s_main.c:707)
-        target.name.clear();
-        has_source = target.source != nullptr;
-    }
-
-    if( !has_source )
-    {
-        free_channel( target, &impl.vox_ ); // s_main.c:713
-        return;
-    }
-
-    spatialize( target, impl.listener_.entnum, impl.listener_.origin, impl.listener_.right,
-               impl.listener_.bugcomp_attn_none, impl.spatial_ ); // SND_Spatialize (s_main.c:717)
-    if( target.is_sentence )
-        impl.vox_.apply_word_volume( target ); // VOX_SetChanVol (s_main.c:574,607 equivalent)
-
-    // First-audibility drop (s_main.c:719-734).
-    if( target.leftvol == 0 && target.rightvol == 0 )
-    {
-        const bool looped = has_flag( target.source->flags, AudioFlags::Looped );
-        if( !looped && chan != k_chan_stream )
-        {
-            free_channel( target, &impl.vox_ );
-            return;
-        }
-    }
+    impl.dispatch( cmd );
 
     // S_NotifyChannelUpdate (SoundAPI client-override notify) + SND_InitMouth
     // — NOT wired this slice (ABI plumbing deferred per the boundary's
@@ -572,20 +810,35 @@ void Sound::stop_sound( int entnum, int channel, std::string_view soundname ) no
 
     Impl &impl = *impl_;
 
-    // S_FindName (s_main.c:1456) — NOT register_sound (no '!' routing, no
-    // lazy-decode obligation: S_StopSound never plays anything).
-    const SfxHandle sfx = impl.registry_->find_name( soundname );
-    if( sfx == k_invalid_sound_handle )
-        return; // defensive: legacy dereferences sfx->name unconditionally here
-                // (UB for an unresolvable name) — not reachable by any real
-                // GAME_EXPORT caller; see the S9.6 uncertainty list.
+    AudioCommand cmd {};
+    cmd.type = AudioCommandType::AlterChannel;
 
-    const SfxSlot *slot = impl.registry_->get( sfx );
-    if( slot == nullptr )
-        return;
+    {
+        const std::lock_guard<std::mutex> lock( impl.registry_mutex_ );
 
-    (void)alter_channel( impl.mixer_.channels(), impl.total_channels_, entnum, channel, sfx, slot->name, 0, 0,
-                         k_snd_stop, &impl.vox_ ); // s_main.c:1457
+        // S_FindName (s_main.c:1456) — NOT register_sound (no '!' routing, no
+        // lazy-decode obligation: S_StopSound never plays anything).
+        const SfxHandle sfx = impl.registry_->find_name( soundname );
+        if( sfx == k_invalid_sound_handle )
+            return; // defensive: legacy dereferences sfx->name unconditionally here
+                    // (UB for an unresolvable name) — not reachable by any real
+                    // GAME_EXPORT caller; see the S9.6 uncertainty list.
+
+        const SfxSlot *slot = impl.registry_->get( sfx );
+        if( slot == nullptr )
+            return;
+
+        cmd.sfx_handle = sfx;
+        set_command_name( cmd, slot->name );
+    }
+
+    cmd.entnum     = entnum;
+    cmd.entchannel = channel;
+    cmd.vol        = 0;
+    cmd.pitch      = 0;
+    cmd.flags      = k_snd_stop; // s_main.c:1457
+
+    impl.dispatch( cmd ); // SND-OQ-3 reserved lane — a stop is never dropped
 }
 
 void Sound::stop_all_sounds( bool ambient ) noexcept
@@ -594,18 +847,16 @@ void Sound::stop_all_sounds( bool ambient ) noexcept
     if( !impl_->initialized_ )
         return;
 
-    impl_->free_all_channels(); // s_main.c:1470-1477
+    // s_main.c:1470-1480 (channel teardown + SX_ClearState) both live on the
+    // channel-owning side. `ambient` (the S_InitAmbientChannels restart,
+    // s_main.c:1486) is carried for signature parity and remains a no-op, as
+    // in S9.6.
+    AudioCommand cmd {};
+    cmd.type    = AudioCommandType::StopAllSounds;
+    cmd.ambient = ambient;
+    impl_->dispatch( cmd ); // SND-OQ-3 reserved lane
 
-    if( impl_->room_dsp_ )
-        impl_->room_dsp_->clear_state(); // SX_ClearState (s_main.c:1480)
-
-    // S_InitAmbientChannels restart (s_main.c:1486): NOT wired this slice —
-    // ambient-channel allocation/S_UpdateAmbientSounds is out of the S9.6
-    // task list (see the uncertainty list). `ambient` is accepted (matching
-    // the legacy signature exactly) but currently a no-op.
-    (void)ambient;
-
-    impl_->fade_state_ = FadeState{}; // memset(&soundfade,0,...) (s_main.c:1491)
+    impl_->fade_state_ = FadeState{}; // memset(&soundfade,0,...) (s_main.c:1491) — T_Main state
 }
 
 void Sound::update_frame( const ListenerSnapshot &snapshot ) noexcept
@@ -616,37 +867,21 @@ void Sound::update_frame( const ListenerSnapshot &snapshot ) noexcept
 
     impl_->listener_ = snapshot; // S_UpdateFrame's publish point (s_main.c:1590-1598)
 
-    if( impl_->room_dsp_ )
-        impl_->room_dsp_->set_waterlevel( snapshot.waterlevel );
+    // The waterlevel -> RoomDsp handoff and the §4.3 per-frame cvar poll both
+    // target decoder-owned state, so they ship as one FrameUpdate command. The
+    // cvars themselves are read HERE, on T_Main (SND-OQ-1).
+    AudioCommand cmd {};
+    cmd.type       = AudioCommandType::FrameUpdate;
+    cmd.listener   = snapshot;
+    cmd.mix_config = impl_->poll_mix_config();
+    impl_->dispatch( cmd );
 
-    // Per-frame cvar polling into the existing DSP setters + the mixer's
-    // lerping flag (boundary §4.3).
-    if( impl_->cmd_cvar_ != nullptr )
-    {
-        auto &ctx = *impl_->cmd_cvar_;
-        impl_->mixer_.set_lerping( ctx.cvar_variable_value( "s_lerping" ) != 0.0f );
-
-        if( impl_->room_dsp_ )
-        {
-            RoomDsp &dsp = *impl_->room_dsp_;
-            dsp.set_room_off( ctx.cvar_variable_value( "room_off" ) != 0.0f );
-            // dsp_coeff_table: pass the RAW cvar float through unmodified —
-            // RoomDsp::set_dsp_coeff_table's own dual-coercion note (dsp.hpp).
-            dsp.set_dsp_coeff_table( ctx.cvar_variable_value( "dsp_coeff_table" ) );
-            dsp.set_room_type( ctx.cvar_variable_value( "room_type" ) );
-            dsp.set_waterroom_type( ctx.cvar_variable_value( "waterroom_type" ) );
-            dsp.set_hisound( static_cast<int>( ctx.cvar_variable_value( "room_hires" ) ) );
-            dsp.set_room_mod( ctx.cvar_variable_value( "room_mod" ) );
-            dsp.set_room_lp( ctx.cvar_variable_value( "room_lp" ) );
-            dsp.set_room_rvblp( ctx.cvar_variable_value( "room_rvblp" ) );
-            dsp.set_room_refl( ctx.cvar_variable_value( "room_refl" ) );
-            dsp.set_room_dlylp( ctx.cvar_variable_value( "room_dlylp" ) );
-            dsp.set_room_feedback( ctx.cvar_variable_value( "room_feedback" ) );
-            dsp.set_room_size( ctx.cvar_variable_value( "room_size" ) );
-            dsp.set_room_delay( ctx.cvar_variable_value( "room_delay" ) );
-            dsp.set_room_left( ctx.cvar_variable_value( "room_left" ) );
-        }
-    }
+    // SND-OQ-1 reverse channel: drain the relaxed-atomic mouth slots the
+    // decoder publishes into, on T_Main, once per frame. (No producer exists
+    // yet — the mixer's mouth write-back is still deferred — so this is live
+    // plumbing with a dormant source, not dead code by intent.)
+    if( impl_->topology_ )
+        impl_->topology_->mouth_slots().drain( impl_->mouth_ );
 }
 
 std::vector<ChannelInfo> Sound::channels_snapshot() const
@@ -657,9 +892,49 @@ std::vector<ChannelInfo> Sound::channels_snapshot() const
     if( !impl_->initialized_ )
         return result;
 
-    auto     &channels    = impl_->mixer_.channels();
     const int dynamic_hi = static_cast<int>( ::xash::limits::sound_num_ambient_channels +
                                              ::xash::limits::sound_num_dynamic_channels );
+
+    // Resolve a registry name on T_Main (the registry never leaves this
+    // thread), matching S_GetCurrentStaticSounds/S_GetCurrentDynamicSounds'
+    // rule (s_main.c:989-992,1039-1042): a bound sentence uses ch->name; else
+    // the registered sfx's own name.
+    const auto resolve_name = [this]( bool is_sentence, const std::string &sentence_name,
+                                      ::xash::abi::sound_t handle ) -> std::string {
+        if( is_sentence && !sentence_name.empty() )
+            return sentence_name;
+        if( !impl_->registry_ || handle == k_invalid_sound_handle )
+            return {};
+        const std::lock_guard<std::mutex> lock( impl_->registry_mutex_ );
+        const SfxSlot                    *slot = impl_->registry_->get( handle );
+        return slot != nullptr ? slot->name : std::string{};
+    };
+
+    // Threaded mode: T_Main must NOT read Mixer::channels() — the decoder owns
+    // it. Ask the decoder for a snapshot instead (P-4 surface, cold path).
+    if( impl_->topology_ && impl_->topology_->running() )
+    {
+        std::vector<PublishedChannel> published;
+        if( impl_->topology_->channel_snapshot( published ) )
+        {
+            for( const PublishedChannel &p : published )
+            {
+                ChannelInfo info;
+                info.entnum           = p.entnum;
+                info.origin           = p.origin;
+                info.left_vol         = p.leftvol;
+                info.right_vol        = p.rightvol;
+                info.position_samples = p.sample;
+                info.channel_class =
+                    ( static_cast<int>( p.index ) < dynamic_hi ) ? ChannelClass::Dynamic : ChannelClass::Static;
+                info.sfx_name = resolve_name( p.is_sentence, p.sentence_name, p.sfx_handle );
+                result.push_back( std::move( info ) );
+            }
+            return result;
+        }
+    }
+
+    auto &channels = impl_->mixer_.channels();
 
     for( std::size_t i = 0; i < channels.size(); ++i )
     {
@@ -675,17 +950,7 @@ std::vector<ChannelInfo> Sound::channels_snapshot() const
         info.position_samples   = ch.sample;
         info.channel_class = ( static_cast<int>( i ) < dynamic_hi ) ? ChannelClass::Dynamic : ChannelClass::Static;
 
-        // Name resolution matches S_GetCurrentStaticSounds/S_GetCurrentDynamicSounds
-        // (s_main.c:989-992,1039-1042): a bound sentence uses ch->name; else the
-        // registered sfx's own name.
-        if( ch.is_sentence && !ch.name.empty() )
-            info.sfx_name = ch.name;
-        else if( impl_->registry_ && ch.sfx_handle != k_invalid_sound_handle )
-        {
-            const SfxSlot *slot = impl_->registry_->get( ch.sfx_handle );
-            if( slot != nullptr )
-                info.sfx_name = slot->name;
-        }
+        info.sfx_name = resolve_name( ch.is_sentence, ch.name, ch.sfx_handle );
 
         result.push_back( std::move( info ) );
     }
@@ -764,16 +1029,29 @@ void Sound::cmd_soundlist_f( void *user ) noexcept
     auto *sound = static_cast<Sound *>( user );
     if( !sound->impl_->registry_ )
         return;
+    // Every SfxRegistry read takes registry_mutex_ — including this cosmetic
+    // one. T_AudioDecoder can be inside SfxRegistry::resolve -> find_name,
+    // which inserts into slots_/by_name_; an unlocked count() races that
+    // insertion (an unordered_map rehash is not a benign read).
+    std::size_t count = 0;
+    {
+        const std::lock_guard<std::mutex> lock( sound->impl_->registry_mutex_ );
+        count = sound->impl_->registry_->count();
+    }
     ::xash::core::logf( ::xash::core::LogLevel::Info, k_log_tag, "%zu registered sound(s)",
-                        sound->impl_->registry_->count() ); // S_SoundList_f (s_load.c:40-73), summary only
+                        count ); // S_SoundList_f (s_load.c:40-73), summary only
 }
 
 void Sound::cmd_s_info_f( void *user ) noexcept
 {
-    auto *sound = static_cast<Sound *>( user );
+    auto     *sound = static_cast<Sound *>( user );
+    // total_channels lives on whichever side owns the channel array; while the
+    // topology runs the decoder publishes it to a relaxed atomic (cosmetic
+    // read, never a correctness input).
+    const int total = sound->impl_->threaded() ? sound->impl_->topology_->total_channels()
+                                               : sound->impl_->apply_ctx_.total_channels;
     ::xash::core::logf( ::xash::core::LogLevel::Info, k_log_tag, "%d samples | %d total_channels",
-                        sound->impl_->dma_.samples,
-                        sound->impl_->total_channels_ ); // S_SoundInfo_f (s_main.c:1896-1906), summary only
+                        sound->impl_->dma_.samples, total ); // S_SoundInfo_f (s_main.c:1896-1906), summary only
 }
 
 void Sound::cmd_dsp_profile_f( void *user ) noexcept
@@ -781,6 +1059,23 @@ void Sound::cmd_dsp_profile_f( void *user ) noexcept
     auto *sound = static_cast<Sound *>( user );
     if( sound->impl_->cmd_cvar_ == nullptr || sound->impl_->room_dsp_ == nullptr )
         return;
+
+    // DELIBERATE RESTRICTION (parity F-3 / concurrency CONC-2, confirmed):
+    // RoomDsp is DECODER-OWNED once the topology runs, and profile() mutates
+    // every delay line in place — running it from this T_Main console handler
+    // would race the decoder painting through the same object.
+    //
+    // Refusing is the right answer rather than routing it through the command
+    // stream: dsp_profile is a debug STRESS tool (10,000 DSP iterations over a
+    // 512-sample buffer), and making the decoder run it would stall the paint —
+    // and therefore the ring — for the whole duration. The measurement is also
+    // only meaningful on an otherwise-idle DSP, which a live topology is not.
+    if( sound->topology_running() )
+    {
+        ::xash::core::log( ::xash::core::LogLevel::Info, k_log_tag,
+                           "dsp_profile is unavailable while the audio topology is running" );
+        return;
+    }
 
     // SX_Profiling_f (s_dsp.c:879-916): optional first argument overrides
     // room_type for the run (restored inside profile()).

@@ -16,11 +16,12 @@
 // @thread-safety: the Mixer is confined to the T_AudioDecoder mix worker
 // (amended §3.4 — mixer = T_AudioDecoder-owned). It owns worker-local scratch
 // (paintbuffer_/roombuffer_) + the mix-clock reconstruction state + the mix-side
-// channel arrays. The role is NOT asserted at runtime in this slice: the decoder
-// thread is not spawned until S9.7b, and the paint is driven synchronously on
-// T_Main by every test / the S9.7 fallback path — asserting AudioDecoder now
-// would fire on T_Main. See mixer.cpp for the compliance-allow(thread-assert)
-// rationale (networking-boundary precedent, context.cpp:81).
+// channel arrays. As of S9.7b the role is ENFORCED: paint_channels() asserts
+// ThreadRole::AudioDecoder (the S9.3 compliance-allow(thread-assert) exemption is
+// retired now that a real decoder thread exists). Any driver of the paint —
+// including a synchronous/main-pumped one — must therefore run on a thread that
+// registered that role. The free-function primitives and mix kernels below stay
+// assert-free (hot path; the role is established once at the paint entry).
 
 #include <xash3dpp/abi/sound_api.hpp>              // sound_t (S9.6 MixChannel::sfx_handle)
 #include <xash3dpp/private/sound/mix_kernels.hpp> // Interp, mix_audio, portable_samplepair_t
@@ -295,9 +296,12 @@ public:
     // --- S_PaintChannels (s_mix.c:542) ---------------------------------------
     // Paint [painted_time(), endtime) in <=PAINTBUFFER_SIZE blocks and return the
     // interleaved-stereo int16 output for the whole range (CLIP16-narrowed).
-    // `master_volume` is S_GetMasterVolume() (focus-mute + soundfade, computed on
-    // T_Main); gain = master_volume * 256. `pitch_mult` is the FWGS chipmunk
-    // multiplier (sys_timescale). Gates come ONLY from `gate`.
+    // `master_volume` is S_GetMasterVolume()'s result, computed on T_Main by
+    // master_volume_from() (audio_command.hpp) — the `volume` cvar and the
+    // focus mute; the SOUNDFADE term of that function is still a documented
+    // XASH3DPP-STUB(chunk12). gain = master_volume * 256. `pitch_mult` is the
+    // FWGS chipmunk multiplier (sys_timescale), not wired yet. Gates come ONLY
+    // from `gate`, which likewise has no producer yet.
     [[nodiscard]] std::span<const std::int16_t> paint_channels( int endtime, const MixGateSnapshot &gate,
                                                                 float master_volume, double pitch_mult );
 

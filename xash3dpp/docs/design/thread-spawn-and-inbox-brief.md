@@ -35,9 +35,12 @@ rides the same two primitives designed here.
 - Multi-producer safe (CAS ticket or equivalent), single consumer.
 - Full-queue behaviour is POLICY-PARAMETERIZED by the consumer subsystem:
   sound's policy is SND-OQ-3 (reserved STOP/CHANGE fast lane; START
-  overflow briefly blocks the producer, never drops). The primitive
-  exposes `try_push` + `push_reserved_class` so policies compose without
-  forking the queue.
+  overflow blocks the producer for a bounded spin and then drops, counted
+  — amended 2026-07-20 at S9.7b; see the SND-OQ-3 register row for why the
+  original "never drops"/"asserted in debug" wording was withdrawn). The
+  primitive itself never blocks and never drops: it returns false and the
+  consuming subsystem owns the policy. `try_push` +
+  `push_reserved_class` let policies compose without forking the queue.
 - Genericity pin: core's own test suite instantiates a NON-audio message
   type; no audio type may appear in `core`.
 

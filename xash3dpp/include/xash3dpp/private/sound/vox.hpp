@@ -33,17 +33,33 @@
 //     S_RegisterSound-equivalent will read/write around the SENTENCE_INDEX
 //     sentinel handle.
 //
-// @thread-safety: mirrors the Mixer's own posture (mixer.hpp) — VoxSystem is
-// designed to be confined to T_AudioDecoder (the mix worker), since
-// next_word()/bind_channel()/unbind_channel() mutate the SAME per-channel
-// state the mix loop reads every block. The role is NOT asserted at runtime
-// this slice (compliance-allow(thread-assert): no decoder thread exists
-// until S9.7b; every test and the S9.7 main-pumped fallback drive this
-// synchronously on T_Main — same rationale as mixer.cpp). load_sentence_file()
-// and ImmediateSentenceSlot::set() are T_Main registration-time entry points
-// in the legacy model (VOX_Init, S_RegisterSound); S9.6's real wiring must
-// marshal them to the mix thread the same way ListenerSnapshot/
-// MixGateSnapshot cross today (SND-OQ-1) — not enforced here.
+// @thread-safety: VoxSystem is confined to whichever thread OWNS THE CHANNEL
+// ARRAY, because next_word()/bind_channel()/unbind_channel() mutate the same
+// per-channel state the mix loop reads every block. That owner is
+// T_AudioDecoder while the S9.7b topology runs and T_Main when it does not
+// (audio_command.hpp §The split) — a CONDITIONAL role, not a fixed one.
+//
+// compliance-allow(thread-assert): the confinement is real but its role is
+// conditional, so no single per-call assert can express it — asserting
+// AudioDecoder here would fire on every legitimate topology-off call, and
+// asserting Main would fire on every threaded one. It is enforced at the two
+// entry points that DO know the mode instead: Sound::* asserts
+// ThreadRole::Main (sound.cpp) and AudioTopology::decoder_step() asserts
+// ThreadRole::AudioDecoder (topology.cpp), and every VoxSystem call in the tree
+// is reached through exactly one of them — build_sentence/bind_channel/
+// apply_word_volume/time_left via apply_command() -> apply_start()
+// (audio_command.cpp) or free_all_channels(), and next_word() via
+// Mixer::paint_channels(), which itself asserts AudioDecoder (mixer.cpp). A
+// redundant per-call assert underneath those gates would buy nothing and would
+// have to encode the mode to be correct at all.
+// (The S9.3/S9.4 rationale — "no decoder thread exists until S9.7b" — EXPIRED
+// with this slice and has been replaced by the above.)
+//
+// load_sentence_file() and ImmediateSentenceSlot::set() are T_Main
+// registration-time entry points in the legacy model (VOX_Init,
+// S_RegisterSound); with the topology running they must be marshalled to the
+// channel-owning thread the same way ListenerSnapshot/MixGateSnapshot cross
+// today (SND-OQ-1) — not enforced here. Neither has a caller in the tree yet.
 
 #include <xash3dpp/abi/sound_api.hpp>
 #include <xash3dpp/private/sound/mixer.hpp> // MixChannel, IVoxWordAdvance

@@ -271,7 +271,7 @@ ______________________________________________________________________
 | WORKER → MAIN | results | `JobToken::status` atomic + `unique_ptr` move | Polled by main once per frame |
 | MAIN → AudioDecoder | play/stop events | MPSC command queue (lock-free) | Commands are POD; no allocation in enqueue |
 | AudioDecoder → AudioCallback | PCM data | Lock-free SPSC ring buffer | Fixed-size; decoder stalls if full (graceful) |
-| AudioDecoder → MAIN | drain/flush acknowledgment | epoch/generation atomic (see sound-boundary SND-OQ-2) | Main frees sfx/wavdata only after the decoder's epoch ack — added 2026-07-19 (campaign B6); legacy had no reverse channel (single-threaded) |
+| AudioDecoder → MAIN | drain/flush acknowledgment | epoch/generation atomic (see sound-boundary SND-OQ-2) | **As built (S9.7b, 2026-07-20)**: `AudioTopology::flush()` submits a reserved-lane `FlushEpoch`; the decoder release-stores `acked_epoch_` when it pops it, and MPSC FIFO order makes that ack proof every earlier command was applied. `flush()` is `[[nodiscard]] bool` — a `false` return (submit refused / spin bound exhausted) means NOT quiesced. Note the S9.7b gate outcome: decoded audio is no longer freed per-word at all (retained for the registry lifetime), so the fence covers command ordering rather than buffer reclamation, and teardown rests on join. Added 2026-07-19 (campaign B6); legacy had no reverse channel (single-threaded) |
 | MAIN → Render | scene description | Double-buffered `RenderFrame` | See §6.2 |
 | Render → MAIN | completion signal | `std::atomic<uint64_t>` frame counter | Main reads to detect stall |
 | MAIN ↔ NetIO | packets | MPSC inbound + MPSC outbound queues | Loopback bypasses both; see §7.2 |
@@ -577,9 +577,9 @@ ______________________________________________________________________
 | PVS per client (optional) | `T_Worker` | Planned (Chunk 6+) | Entity state snapshot taken on main first |
 | packet delta encoding | `T_Worker` | Planned (Chunk 6+) | Per-client, independent |
 | HTTP I/O | `T_Worker` → `T_NetIO` | Planned | Worker now; migrate to NetIO thread later |
-| sound command queue write | `T_Main` | Planned (Chunk 9) | MPSC enqueue |
-| sound decoding | `T_AudioDecoder` | Planned (Chunk 9) | |
-| sound playback | `T_AudioCallback` | Planned (Chunk 9) | OS real-time callback |
+| sound command queue write | `T_Main` | **Today** (Chunk 9, S9.7b) | MPSC enqueue (`core::MpscQueue<AudioCommand,128,128>`); reserved lane per SND-OQ-3 |
+| sound decoding | `T_AudioDecoder` | **Today** (Chunk 9, S9.7b) | Thread `xash-audio-decoder`; drains the command queue, paints, writes the PCM ring. `Mixer::paint_channels()` asserts this role |
+| sound playback | `T_AudioCallback` | **Today** (Chunk 9, S9.7b) | Reads `core::SpscRing<int16_t>` in `RingFillSource::fill()`; wait-free, empty ring ⇒ silence + always-on underrun counter. Driven by an internal pump thread today; a real OS callback thread substitutes at the device chunk |
 | GPU submission | `T_Render` (if enabled) | Planned (Chunk 13) | Renderer plugin called from render thread |
 | GPU upload | `T_Render` | Planned (Chunk 13) | Via `RenderFrame` texture upload commands |
 | save / demo / UI | `T_Main` | Planned | No parallelism benefit; state is sequential |

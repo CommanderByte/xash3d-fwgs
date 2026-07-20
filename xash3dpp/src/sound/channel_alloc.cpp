@@ -259,6 +259,31 @@ SpatializePan spatialize_pan( int master_vol, float dot, float dist ) noexcept
 void spatialize( MixChannel &ch, int listener_entnum, const Vec3 &listener_origin, const Vec3 &listener_right,
                  bool bugcomp_attn_none, IEntitySpatialProvider *provider ) noexcept
 {
+    // S9.7b: the provider call is the ONLY part of SND_Spatialize that SND-OQ-1
+    // pins to T_Main, so it is hoisted here and the pure math lives in
+    // spatialize_with_origin() below.  This wrapper makes exactly the same
+    // provider call, in the same place, as the S9.6 body did — single-threaded
+    // callers are unchanged.
+    bool entity_origin_valid = false;
+    // IN/OUT (F-8): CL_GetEntitySpatialization works on ch->origin in place and
+    // may return true WITHOUT writing it (absent/unparsed entity, cl_frame.c:
+    // 1387-1392).  Pre-fill with the channel's current origin so "leave it
+    // alone" means "keep the server-supplied position", exactly as in legacy.
+    Vec3 entity_origin = ch.origin;
+    if( spatialize_needs_provider( ch.entnum, listener_entnum, ch.flags ) )
+    {
+        entity_origin_valid =
+            provider != nullptr && provider->resolve_origin( ch.entnum, entity_origin );
+    }
+
+    spatialize_with_origin( ch, listener_entnum, listener_origin, listener_right, bugcomp_attn_none,
+                            entity_origin_valid, entity_origin );
+}
+
+void spatialize_with_origin( MixChannel &ch, int listener_entnum, const Vec3 &listener_origin,
+                             const Vec3 &listener_right, bool bugcomp_attn_none, bool entity_origin_valid,
+                             const Vec3 &entity_origin ) noexcept
+{
     // "anything coming from the view entity will always be full volume" (s_main.c:568-576)
     if( ch.entnum == listener_entnum )
     {
@@ -269,14 +294,13 @@ void spatialize( MixChannel &ch, int listener_entnum, const Vec3 &listener_origi
 
     if( ( ch.flags & ::xash::abi::k_fl_chan_static_sound ) == 0 )
     {
-        Vec3 origin{};
-        if( provider == nullptr || !provider->resolve_origin( ch.entnum, origin ) )
+        if( !entity_origin_valid )
         {
             // "origin is null and entity not exist on client" (s_main.c:582-585)
             ch.leftvol = ch.rightvol = 0;
             return;
         }
-        ch.origin = origin;
+        ch.origin = entity_origin;
     }
 
     // source_vec = vector from listener to sound source (s_main.c:588-591).

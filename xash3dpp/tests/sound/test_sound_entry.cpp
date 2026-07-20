@@ -331,6 +331,60 @@ static void test_spatialize_full_pan_golden()
     CHECK( ch.origin.x == 5.0f && ch.origin.y == 0.0f && ch.origin.z == 0.0f ); // provider's origin was written back
 }
 
+// ---------------------------------------------------------------------------
+// F-8: IEntitySpatialProvider::resolve_origin is IN/OUT. A provider mirroring
+// CL_GetEntitySpatialization's absent/unparsed-entity branch verbatim
+// (cl_frame.c:1387-1392) NEVER writes `origin` and returns "is the caller's
+// existing origin non-zero?".
+// ---------------------------------------------------------------------------
+namespace {
+class AbsentEntityProvider final : public IEntitySpatialProvider
+{
+public:
+    int calls = 0;
+    bool resolve_origin( int, Vec3 &origin ) noexcept override
+    {
+        ++calls;
+        // valid_origin = VectorIsNull( ch->origin ) ? false : true;  (:1387)
+        // ...then `return valid_origin;` WITHOUT touching ch->origin (:1392).
+        return !( origin.x == 0.0f && origin.y == 0.0f && origin.z == 0.0f );
+    }
+};
+} // namespace
+
+static void test_spatialize_unresolvable_entity_keeps_server_origin()
+{
+    AbsentEntityProvider provider;
+
+    // A sound started with a valid server-supplied `pos` for an entity the
+    // client has not parsed yet. Legacy plays it AT `pos`; before the F-8 fix
+    // the seam handed the provider a zero-initialised origin, so it reported
+    // "invalid" and the sound was silently inaudible.
+    MixChannel ch{};
+    ch.entnum     = 5; // != listener(1) and not FL_CHAN_STATIC_SOUND -> provider IS consulted
+    ch.master_vol = 100;
+    ch.dist_mult  = 0.1f;
+    ch.origin     = Vec3{ 5.0f, 0.0f, 0.0f }; // the server-supplied pos
+
+    spatialize( ch, /*listener_entnum*/ 1, Vec3{}, Vec3{ 1.0f, 0.0f, 0.0f }, false, &provider );
+    CHECK_EQ( provider.calls, 1 );
+    // Audible, and at the ORIGINAL position — same golden as
+    // test_spatialize_full_pan_golden (dot=1.0, dist=5*0.1=0.5).
+    CHECK_EQ( ch.rightvol, 100 );
+    CHECK_EQ( ch.leftvol, 0 );
+    CHECK( ch.origin.x == 5.0f && ch.origin.y == 0.0f && ch.origin.z == 0.0f );
+
+    // The other half of the same legacy line: a ZERO origin with no entity is
+    // genuinely invalid, and legacy zeroes the volumes (s_main.c:582-585).
+    MixChannel silent{};
+    silent.entnum     = 5;
+    silent.master_vol = 100;
+    silent.dist_mult  = 0.1f;
+    spatialize( silent, 1, Vec3{}, Vec3{ 1.0f, 0.0f, 0.0f }, false, &provider );
+    CHECK_EQ( silent.leftvol, 0 );
+    CHECK_EQ( silent.rightvol, 0 );
+}
+
 static void test_spatialize_view_entity_full_volume()
 {
     MixChannel ch{};
@@ -438,6 +492,112 @@ static void test_registry_register_does_not_resolve_play_does()
     const AudioData *audio2 = reg.load_sfx( h );
     CHECK_EQ( audio2, audio );
     CHECK_EQ( loader.load_calls, 1 );
+}
+
+// ---------------------------------------------------------------------------
+// SfxRegistry retains decoded audio for its whole lifetime (gate findings
+// parity F-1/F-2, concurrency CONC-1). Two channels share ONE sfx; one retires
+// its VOX word (VOX_FreeWord -> IVoxAudioResolver::release, which legacy
+// implements as FS_FreeSound(word->sfx->cache)); the survivor's borrowed
+// pointer must remain valid, with unchanged samples.
+//
+// This is the invariant that makes it safe to put a borrowed const AudioData*
+// in a queued AudioCommand and in MixChannel::source while T_AudioDecoder owns
+// the channel array — see SfxSlot::cache in registry.hpp.
+// ---------------------------------------------------------------------------
+static void test_registry_retains_shared_audio_when_one_borrower_releases()
+{
+    CountingLoader loader;
+    SfxRegistry    reg( &loader ); // the production IVoxAudioResolver
+
+    VoxSystem vox;
+
+    // Two channels, each with a one-word sentence naming the SAME sfx. The word
+    // is left unresolved (audio == nullptr, path set) so bind_channel()'s
+    // load_word() goes through the real resolve() path — exactly like a live
+    // VOX word advance.
+    const auto one_word_sentence = []() {
+        VoxSentence s;
+        VoxWord     w{};
+        w.path = "known.wav";
+        s.words.push_back( w );
+        return s;
+    };
+
+    MixChannel chan_a{};
+    MixChannel chan_b{};
+    vox.bind_channel( chan_a, one_word_sentence(), &reg );
+    vox.bind_channel( chan_b, one_word_sentence(), &reg );
+
+    REQUIRE( chan_a.source != nullptr );
+    CHECK_EQ( chan_b.source, chan_a.source ); // ONE decode, ONE shared address
+    CHECK_EQ( loader.load_calls, 1 );
+
+    const AudioData    *shared        = chan_a.source;
+    const std::uint32_t shared_samples = shared->samples;
+    const std::size_t   shared_bytes   = shared->buffer.size();
+    const std::byte     first_byte     = shared->buffer.front();
+
+    // chan_b's word resolved with in_cache == true (already decoded), so it
+    // never calls release(). chan_a's word is the OWNER by the legacy
+    // FL_VOXWORD_IN_CACHE rule, so retiring it is what would run
+    // FS_FreeSound in legacy.
+    vox.unbind_channel( chan_a );
+    CHECK( chan_a.source == nullptr ); // vox_free_word_fields' unconditional zeroing — PINNED, unchanged
+
+    // The survivor still points at LIVE, UNCHANGED audio. Before the fix this
+    // read was a use-after-free (and, with the decoder owning chan_b, a
+    // cross-thread one).
+    REQUIRE( chan_b.source != nullptr );
+    CHECK_EQ( chan_b.source, shared );
+    CHECK_EQ( chan_b.source->samples, shared_samples );
+    CHECK_EQ( chan_b.source->buffer.size(), shared_bytes );
+    CHECK_EQ( chan_b.source->buffer.front(), first_byte );
+
+    // ...and the registry still hands out that SAME address, with no silent
+    // re-decode (which would also have moved it).
+    const SfxHandle h = reg.find_name( "known.wav" );
+    CHECK_EQ( reg.load_sfx( h ), shared );
+    CHECK_EQ( reg.cached( h ), shared );
+    CHECK_EQ( loader.load_calls, 1 );
+
+    vox.unbind_channel( chan_b );
+    CHECK_EQ( reg.cached( h ), shared ); // still retained after the LAST borrower left
+}
+
+// The CONC-9 lock/unlock/lock split: install() is double-checked, so a caller
+// that decoded with the mutex released and lost the race discards its own
+// decode and gets the incumbent's (address-stable) pointer.
+static void test_registry_double_checked_install_keeps_the_incumbent()
+{
+    SfxRegistry     reg( nullptr );
+    const SfxHandle h = reg.find_name( "shared.wav" );
+    REQUIRE( h != k_invalid_sound_handle );
+
+    CHECK( reg.cached( h ) == nullptr ); // phase 1: nothing decoded yet
+
+    // Winner installs first.
+    const AudioData *winner = reg.install( h, make_audio( 11 ) );
+    REQUIRE( winner != nullptr );
+    CHECK_EQ( winner->samples, 11u );
+    CHECK_EQ( reg.cached( h ), winner );
+
+    // Loser's decode is discarded; it gets the incumbent back, unchanged.
+    const AudioData *loser = reg.install( h, make_audio( 22 ) );
+    CHECK_EQ( loser, winner );      // same address (never relocated)
+    CHECK_EQ( loser->samples, 11u ); // ...and the winner's content survives
+
+    // The nullopt path is the S_CreateDefaultSound fallback, and it too is
+    // subject to the double check.
+    const SfxHandle h2 = reg.find_name( "other.wav" );
+    const AudioData *def = reg.install( h2, std::nullopt );
+    REQUIRE( def != nullptr );
+    CHECK_EQ( def->samples, static_cast<std::uint32_t>( ::xash::limits::sound_dma_speed ) );
+    CHECK_EQ( reg.install( h2, make_audio( 5 ) ), def );
+
+    // Sentence/invalid handles have no slot at all.
+    CHECK( reg.install( k_sentence_handle, make_audio( 1 ) ) == nullptr );
+    CHECK( reg.cached( k_invalid_sound_handle ) == nullptr );
 }
 
 static void test_registry_default_sound_fallback()
@@ -706,6 +866,49 @@ static void test_sound_register_is_lazy_end_to_end()
     snd.shutdown();
 }
 
+// The same F-8 scenario end-to-end through the real entry surface, which is
+// where the T_Main-side pre-fill lives (Sound::start_sound packs
+// AudioCommand::entity_origin). Before the fix the channel was allocated,
+// spatialized to silence and then dropped by the first-audibility check
+// (s_main.c:719-734) — so the snapshot came back EMPTY.
+static void test_sound_start_with_pos_survives_unresolvable_entity()
+{
+    AbsentEntityProvider provider;
+
+    SinkDevice      sink;
+    SoundInitParams params;
+    params.device  = &sink;
+    params.spatial = &provider;
+
+    Sound snd;
+    REQUIRE( snd.init( params ).has_value() );
+
+    ListenerSnapshot listener {};
+    listener.entnum = 1; // the sound's entnum (5) is NOT the listener
+    snd.update_frame( listener );
+
+    const ::xash::abi::sound_t h = snd.register_sound( "unparsed_entity.wav" );
+    REQUIRE( h != k_invalid_sound_handle );
+
+    snd.start_sound( Vec3{ 5.0f, 0.0f, 0.0f }, /*ent*/ 5, k_chan_auto, h, 1.0f, k_attn_none, k_pitch_norm_flag,
+                     0 );
+    CHECK_EQ( provider.calls, 1 );
+
+    const std::vector<ChannelInfo> snap = snd.channels_snapshot();
+    REQUIRE( snap.size() == std::size_t{ 1 } ); // audible, not silenced
+    CHECK( snap[0].left_vol != 0 || snap[0].right_vol != 0 );
+    CHECK( snap[0].origin.x == 5.0f );
+
+    // A sound with NO usable position for the same unparsed entity is still
+    // dropped, exactly as legacy drops it.
+    snd.stop_all_sounds( true );
+    snd.start_sound( Vec3{ 0.0f, 0.0f, 0.0f }, /*ent*/ 5, k_chan_auto, h, 1.0f, k_attn_none, k_pitch_norm_flag,
+                     0 );
+    CHECK( snd.channels_snapshot().empty() );
+
+    snd.shutdown();
+}
+
 int main()
 {
     xash::core::register_thread_role( xash::core::ThreadRole::Main );
@@ -733,11 +936,14 @@ int main()
     RUN_TEST( test_spatialize_full_pan_golden );
     RUN_TEST( test_spatialize_view_entity_full_volume );
     RUN_TEST( test_spatialize_provider_failure_zeroes_volume );
+    RUN_TEST( test_spatialize_unresolvable_entity_keeps_server_origin );
     RUN_TEST( test_spatialize_static_channel_ignores_provider );
     RUN_TEST( test_spatialize_bugcomp_attn_none_toggle );
 
     // 5. SfxRegistry lazy resolution.
     RUN_TEST( test_registry_register_does_not_resolve_play_does );
+    RUN_TEST( test_registry_retains_shared_audio_when_one_borrower_releases );
+    RUN_TEST( test_registry_double_checked_install_keeps_the_incumbent );
     RUN_TEST( test_registry_default_sound_fallback );
     RUN_TEST( test_registry_find_name_dedup );
     RUN_TEST( test_registry_sentence_routing_and_overwrite_quirk );
@@ -751,6 +957,7 @@ int main()
     RUN_TEST( test_sound_start_local_and_snapshot );
     RUN_TEST( test_sound_command_dispatch_user_data_plumbing );
     RUN_TEST( test_sound_register_is_lazy_end_to_end );
+    RUN_TEST( test_sound_start_with_pos_survives_unresolvable_entity );
 
     std::printf( "sound_entry: %d passed, %d failed\n", g_pass, g_fail );
     return g_fail == 0 ? 0 : 1;

@@ -101,9 +101,47 @@ public:
     IEntitySpatialProvider( const IEntitySpatialProvider & )                 = delete;
     IEntitySpatialProvider &operator=( const IEntitySpatialProvider & )      = delete;
 
-    // Resolve entity `entnum`'s spatial origin (legacy CL_GetEntitySpatialization
-    // fills ch->origin).  Returns false if the entity is not spatializable
-    // (legacy false -> the caller drops the channel); on true, `origin` is set.
+    // Resolve entity `entnum`'s spatial origin.
+    //
+    // `origin` is IN/OUT — this is the whole contract, and it is NOT optional
+    // (parity finding F-8).  Legacy CL_GetEntitySpatialization takes the
+    // channel and works directly on `ch->origin` (cl_frame.c:1381-1392):
+    //
+    //   valid_origin = VectorIsNull( ch->origin ) ? false : true;   // :1387
+    //   ent = CL_GetEntityByIndex( ch->entnum );
+    //   // entity is not present on the client but has valid origin
+    //   if( !ent || !ent->model || ent->curstate.messagenum != cl.parsecount )
+    //       return valid_origin;                                    // :1391-1392
+    //
+    // i.e. when the entity is absent or not yet parsed this frame, the function
+    // returns "true" purely because the CALLER'S EXISTING origin is non-zero,
+    // and it LEAVES that origin untouched.  A sound started with a valid
+    // server-supplied `pos` for a not-yet-parsed entity therefore plays AT
+    // `pos` in legacy.
+    //
+    // Two more legacy branches an implementation must mirror:
+    //   • `ch->entnum == 0` -> static sound: sets FL_CHAN_STATIC_SOUND and
+    //     returns true (cl_frame.c:1376-1380).  This port never calls the
+    //     provider in that case at all (spatialize_needs_provider(),
+    //     channel_alloc.hpp), so it needs no implementation here.
+    //   • `( ch->entnum - 1 ) == cl.playernum` -> copy refState.vieworg into
+    //     the origin and return true (cl_frame.c:1382-1386).  NOTE this is a
+    //     DIFFERENT test from S_IsClient( entnum )'s `entnum == s_listener.entnum`
+    //     (s_main.c:157) — the two must not be conflated; the listener-entnum
+    //     early-out happens further up in SND_Spatialize, this one is the
+    //     provider's own local-player branch.
+    //
+    // CONTRACT FOR IMPLEMENTATIONS:
+    //   - `origin` arrives PRE-FILLED by the caller with the channel's current
+    //     origin (the server-supplied `pos` when there was one, otherwise the
+    //     listener view origin).
+    //   - Returning true WITHOUT writing `origin` is legal and meaningful: it
+    //     means "keep what you had".  The caller must therefore treat true as
+    //     "the value now in `origin` is usable", never as "I wrote something".
+    //   - Returning false means the channel is not spatializable at all
+    //     (legacy `!CL_GetEntitySpatialization( ch )` -> both volumes zeroed,
+    //     s_main.c:580-585).  `origin` may be left in any state.
+    //
     // @thread-safety: caller guarantees T_Main.
     [[nodiscard]] virtual bool resolve_origin( int entnum, Vec3 &origin ) noexcept = 0;
 };

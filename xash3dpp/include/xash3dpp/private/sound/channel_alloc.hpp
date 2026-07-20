@@ -133,4 +133,37 @@ struct SpatializePan
 void spatialize( MixChannel &ch, int listener_entnum, const Vec3 &listener_origin, const Vec3 &listener_right,
                  bool bugcomp_attn_none, IEntitySpatialProvider *provider ) noexcept;
 
+// ---------------------------------------------------------------------------
+// spatialize_with_origin — the SND-OQ-1 thread split of spatialize() (S9.7b).
+// IDENTICAL math; the ONLY difference is that the provider call has already
+// happened and its result is passed in:
+//   `entity_origin_valid == false` reproduces `!CL_GetEntitySpatialization(ch)`
+//   (volumes zeroed, s_main.c:580-585); `true` supplies the origin the provider
+//   returned.  Both are ignored when the channel never consults the provider at
+//   all (view-entity channel, or FL_CHAN_STATIC_SOUND).
+//
+// spatialize() above is now a thin wrapper: it performs the provider call and
+// forwards here, so single-threaded callers are byte-for-byte unchanged.
+//
+// @thread-safety: pure math over the arguments — runs wherever the channel
+// array lives (T_AudioDecoder under the topology, T_Main without it).  The
+// provider itself is never touched here, which is precisely what lets the
+// decoder run the legacy call site while SND-OQ-1 keeps providers on T_Main.
+// ---------------------------------------------------------------------------
+void spatialize_with_origin( MixChannel &ch, int listener_entnum, const Vec3 &listener_origin,
+                             const Vec3 &listener_right, bool bugcomp_attn_none, bool entity_origin_valid,
+                             const Vec3 &entity_origin ) noexcept;
+
+// True iff spatialize() would consult IEntitySpatialProvider for a channel with
+// these identity fields — i.e. the channel is not the listener's own and is not
+// a FL_CHAN_STATIC_SOUND channel (s_main.c:568-586).  T_Main uses this to make
+// EXACTLY the provider calls legacy would, no more (S9.7b).
+[[nodiscard]] constexpr bool spatialize_needs_provider( int entnum, int listener_entnum,
+                                                        std::uint32_t chan_flags ) noexcept
+{
+    if( entnum == listener_entnum )
+        return false;
+    return ( chan_flags & ::xash::abi::k_fl_chan_static_sound ) == 0;
+}
+
 } // namespace xash::sound

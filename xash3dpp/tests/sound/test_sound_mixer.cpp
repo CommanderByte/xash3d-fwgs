@@ -21,6 +21,7 @@
 #include <xash3dpp/sound/audio_data.hpp>
 #include <xash3dpp/sound/providers.hpp>
 
+#include <xash3dpp/core/thread_role.hpp>
 #include <xash3dpp/limits.hpp>
 
 #include "../test_helpers.hpp"
@@ -737,6 +738,14 @@ static void test_channel_arrays_reserved()
 
 int main()
 {
+    // S9.7b: Mixer::paint_channels() now asserts ThreadRole::AudioDecoder (the
+    // S9.3 compliance-allow(thread-assert) exemption was retired once a real
+    // decoder thread existed).  This suite IS the mix worker for its own
+    // lifetime — it drives the paint pipeline directly and never calls a
+    // T_Main-asserting entry point — so registering the mix role here is the
+    // honest declaration, not an assert workaround.
+    ::xash::core::register_thread_role( ::xash::core::ThreadRole::AudioDecoder );
+
     // The 12 kernels.
     RUN_TEST( test_kernel_mono8_flat );
     RUN_TEST( test_kernel_mono16_flat );
