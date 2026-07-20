@@ -17,3 +17,7 @@ xash3dpp_add_test(test_sound_lifecycle LIBS xash3dpp_sound xash3dpp_core)
 
 # Device seam (NullDevice / SinkDevice) + SND-OQ-1 provider/sink shapes.
 xash3dpp_add_test(test_sound_device LIBS xash3dpp_sound xash3dpp_core)
+
+# IAudioCodec + WavCodec parity (slice S9.2): synthesized-in-test WAV images,
+# no committed fixture files (tests/README no-committed-binaries rule).
+xash3dpp_add_test(test_sound_codec LIBS xash3dpp_sound)
