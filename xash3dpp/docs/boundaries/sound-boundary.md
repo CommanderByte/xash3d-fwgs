@@ -504,7 +504,8 @@ multi-threaded subsystem in the tree. As built:
 | Decoder thread | `xash-audio-decoder`, `ThreadRole::AudioDecoder`, priority High, spawned via `platform::spawn_thread`. Drains the queue, applies commands, paints one block, writes the ring |
 | PCM ring | `core::SpscRing<int16_t, 16384>` — interleaved stereo device-format frames, no float stage anywhere between the mix kernels and the device (SND-OQ-5) |
 | Callback | `RingFillSource::fill()` on `ThreadRole::AudioCallback`. Wait-free: no lock, no allocation, no logging. Empty ring ⇒ zero-fill + the always-on underrun counter (§5.2 exception) |
-| Pump | An internal pump thread owns the callback role today; a real OS callback thread substitutes at the device chunk (`TopologyParams::internal_pump`) |
+| Pump | `TopologyParams::internal_pump` is DERIVED from `IAudioDevice::drives_own_callback()` (S9.8, resolving gate finding CONC-6 — a self-driving device must not also get an internal pump, which would put a second reader on the single-consumer ring): `NullDevice` gets the internal pump thread, `SinkDevice` declares self-driving and is pumped explicitly by its owner; a real SDL backend will declare self-driving and pull from the OS callback thread |
+| Witness (S9.8) | `test_sound_witness` drives a 25-frame console-scripted sequence (`cbuf_add_text`/`cbuf_execute` — the deliberate G-5 stage-a rehearsal) through channel alloc, VOX, DSP, and the ring into `SinkDevice` with `SoundInitParams::external_decoder` (no decoder thread; the test calls `Sound::decoder_step()` from an AudioDecoder-registered worker) — byte-identical PCM pinned across runs AND arches (FNV `0xDF1088E7D0D531CF`, backed by full `memcmp`) |
 
 Every hazard row in the table above whose "xash3dpp thread" column names
 T_AudioDecoder is now **realised and enforced**, not planned: the

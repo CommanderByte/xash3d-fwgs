@@ -63,3 +63,12 @@ xash3dpp_add_test(test_sound_entry LIBS xash3dpp_sound xash3dpp_cmd_cvar xash3dp
 # explicitly per the tests/core/CMakeLists.txt precedent.
 find_package(Threads REQUIRED)
 xash3dpp_add_test(test_sound_topology LIBS xash3dpp_sound xash3dpp_core Threads::Threads)
+
+# Sink-device integration WITNESS (slice S9.8): a scripted console-command
+# sequence (G-5 stage-(a) shape) driven through a real CmdCvarContext into the
+# as-built S9.7b topology and out through SinkDevice, producing PCM that is
+# byte-identical across repeated runs and pinned against a committed hash so an
+# x64-vs-x86 divergence FAILS. Externally driven on both ends (no decoder
+# thread, no pump thread, no wall clock); synthetic integer-generated source
+# audio via the injected IAudioLoader — no filesystem, no retail assets.
+xash3dpp_add_test(test_sound_witness LIBS xash3dpp_sound xash3dpp_cmd_cvar xash3dpp_core Threads::Threads)

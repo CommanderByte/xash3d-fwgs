@@ -31,11 +31,11 @@ ______________________________________________________________________
 | client | 0 | ✓ | ✗ | **Skeleton** (include stub exists) |
 | content | 13 | ✓ | ✓ | **Complete** (model cache + 3 loaders + 7 image codecs + studio **bone solver** [OQ-5 ✅ bit-exact vs Q-18 goldens] + pose pfns + layout tripwire; the `SV_ClipMoveToEntity` studio hitbox trace-loop remains gated on the hl.dll smoke — see Chunk 7. HB-10 reconciliation 2026-07-19) |
 | demo | 0 | ✗ | ✗ | **Skeleton** |
-| input | 0 | ✗ | ✗ | **Skeleton** |
+| input | 9 | ✓ | ✓ | **Complete** (Chunk 10, mock-source stop-line) |
 | physics | 0 | ✗ | ✗ | **Skeleton** |
 | renderer | 0 | ✗ | ✗ | **Skeleton** |
 | save | 13 | ✓ | ✓ | **Complete** (Chunk 8 — save/restore ACHIEVED 2026-07-20: `.sav`/`.HL1-3` codec + save-directory + `SV_GetSaveComment` + landmark-transition machinery, wired behind `ILevelChangeExecutor`; real-`hl.dll` save→load round trip on `c0a0` witnessed; SAV-OQ-1/2/3 landed) |
-| sound | 0 | ✗ | ✗ | **Skeleton** |
+| sound | 10 | ✓ | ✓ | **Complete** (Chunk 9, null/sink device stop-line) |
 | ui | 0 | ✗ | ✗ | **Skeleton** |
 | world | 0 | ✗ | ✗ | **Skeleton** |
 
@@ -224,28 +224,29 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-### Chunk 9 — sound *(isolatable, slot anywhere after foundation)*
+### Chunk 9 — sound ✅ DONE *(full ladder S9.0-S9.8, 2026-07-19..20; byte-identical cross-arch PCM witness)*
 
-**Subsystems**: `sound`\
-**Depends on**: filesystem, memory, platform *(all done — can run alongside other chunks)*\
-**Recon/Boundary**: none yet — run `/analyse-subsystem sound` before scaffold\
-**Legacy reference**: `engine/client/sound/s_main.c`, `s_load.c`, `s_mix.c`, `s_dsp.c`\
-**Complexity note**: Needs a null-output device backend for CI so the mixer can be tested without hardware.\
-**ABI surfaces touched**: none\
-**Deliverable**: `xash3dpp_sound` builds; wav decode + mix test passes with null output device
+**Subsystems**: `sound` (+ `core` queue family, + `platform` thread primitives)\
+**Depends on**: filesystem, memory, platform *(all done)*\
+**Recon/Boundary**: `boundaries/sound-boundary.md` (as-built 2026-07-20: topology, assert map, adjudicated deviations) + `legacy-survey/deep-dive-sound.md`; thread design in `design/thread-spawn-and-inbox-brief.md` (HB-4 discharged, Q-24).\
+**Legacy reference**: `engine/client/sound/s_main.c`, `s_load.c`, `s_mix.c`, `s_dsp.c`, `s_vox.c`, `soundlib/`\
+**ABI surfaces touched**: `sound_api.h` vendored layout-pinned (`abi/sound_api.hpp`); no frozen surface modified.\
+**Deliverable**: **achieved and exceeded** — `xash3dpp_sound` builds both arches; the S9.8 witness drives a console-scripted sequence through channel alloc, VOX, DSP, the S9.7b thread topology, and `SinkDevice` with byte-identical PCM across runs AND arches.\
+**What shipped**: S9.0 `platform::spawn_thread`/`JoinHandle` (first thread primitives in the tree); S9.1 seams + `Sound` Q-22 class + pull-shaped `IAudioDevice` (`NullDevice`/`SinkDevice`) + SND-OQ-1 providers; S9.2 `IAudioCodec` + wav (cue loops); S9.3 the 12-instantiation mix-kernel template + bit-exact vectors + `compute_channel_pitch` float-chain; S9.4 VOX (legacy tests ported verbatim, lazy word resolution); S9.5 room DSP (both preset tables, SND-OQ-6 sentinel row, the dual-coercion `dsp_coeff_table` float); S9.6 entry surface (registry, channel alloc/steal rules, spatialize, stop paths, 25 cvars + 14 commands via the B5 context overload, `channels_snapshot()` P-4); S9.7a `core::MpscQueue`/`SpscRing` (adversarially reviewed, 64-bit counters); S9.7b the thread topology (MPSC command stream → `xash-audio-decoder` → int16 SPSC ring → `AudioCallback`; SND-OQ-2 resolved, SND-OQ-3 amended; four-dimension gate, ledger #40); S9.8 the determinism witness (CONC-6 resolved: `internal_pump` derived from `IAudioDevice::drives_own_callback()`). Gate record: ledger #35-#41 in `docs/audits/2026-07-chunk8-10-campaign.md`.\
+**Deferred (recorded, tagged)**: music streaming / `IAudioStream` vend (SND-OQ-4, fenced); soundfade curve + `MixGateSnapshot` producer + `pitch_mult` (chunk12); ambient channels + `S_ClearBuffer` (chunk12); sfx handle-0 `*default` reservation (Chunk 12 precache wiring); mp3/ogg decoders; SDL audio device (Chunk 12/13 per Q-23); voice chat (fenced).
 
 ______________________________________________________________________
 
-### Chunk 10 — input *(isolatable, slot anywhere after foundation)*
+### Chunk 10 — input ✅ DONE *(implementation landed 2026-07-19 `8720af2b`; doc closure 2026-07-20)*
 
 **Subsystems**: `input`\
-**Depends on**: platform *(done — can run alongside other chunks)*\
-**Recon/Boundary**: none yet — run `/analyse-subsystem input` before scaffold\
-**Legacy reference**: `engine/client/input/input.c`, `in_keys.c`, `in_joy.c`\
-**Complexity note**: Abstract the SDL/Win32/touch event sources behind an interface so the subsystem is testable without a window.\
-**ABI surfaces touched**: none\
-**Deliverable**: `xash3dpp_input` builds; key/button event tests pass with mock event source
-
+**Depends on**: platform *(done)*\
+**Recon/Boundary**: `boundaries/input-boundary.md` + `legacy-survey/deep-dive-input.md`.\
+**Legacy reference**: `engine/client/input/input.c`, `in_keys.c`, `in_joy.c`, `in_touch.c`\
+**ABI surfaces touched**: key codes pinned to `keydefs.h` values by static_assert (config-format + ABI load-bearing); no frozen surface modified.\
+**Deliverable**: **achieved** — `xash3dpp_input` builds both arches behind the ratified mock-source stop-line (Q-23: `IEventSource` + `IWindowControls` null-backed, no window); scripted event sequences drive key state, bindings, key_dest routing, joy/gyro processing, and move assembly to usercmd goldens.\
+**What shipped** (worktree lane S10.1-S10.6, merged + double-gated): `InputEvent` trivially-copyable variant + `Key` strong typedef with `keydefs.h` static_assert pins; `IEventSource` (+ polled `pointer_delta`) split from `IWindowControls` (full legacy null-seam surface incl. Joy*/Vibrate/PreCreateMove); `MockEventSource`; keys[265] + Key_Event + key_dest; bindings + commands via the B5 context overload (`FCMD_PRIVILEGED` parity, `bindings_snapshot()`); joy deadzone/trigger/gyro (`joy_tunables` split); `IN_EngineAppendMove` assembly; touch/OSK event model (drawing stays Chunk 12/13); 6 test executables. Post-merge parity gate fixed 6 divergences pre-commit (ledger #34).\
+**Deferred (recorded, tagged `chunk12`)**: SDL event pump + window binding (grab/warp/cursor/text-input reach a real window at the window chunk per Q-23); touch/OSK rendering; `makehelp` body.
 ______________________________________________________________________
 
 ### Chunk 11 — physics (pm_shared)

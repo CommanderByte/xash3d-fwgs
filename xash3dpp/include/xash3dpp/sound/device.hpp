@@ -107,6 +107,22 @@ public:
     virtual void set_active( bool active ) noexcept = 0;
     // Register the pull target the callback fills from (nullptr detaches -> silence).
     virtual void set_fill_source( IAudioFillSource *source ) noexcept = 0;
+
+    // Does this backend drive its OWN audio callback?  This is the device's
+    // half of the Q-23 pull inversion, and it is a CORRECTNESS input, not a
+    // hint (S9.7b gate finding CONC-6):
+    //   false (default) — the device never invokes fill() by itself, so the
+    //     topology must spawn an internal pump thread to consume the PCM ring
+    //     (NullDevice; anything that would otherwise let the ring fill up).
+    //   true            — the device calls fill() itself: a real SDL/OS backend
+    //     from its callback thread, or SinkDevice synchronously from pump().
+    //     The topology must NOT spawn its own pump, because that would give the
+    //     single-consumer SPSC ring a SECOND reader — which trips SpscRing's
+    //     own single-consumer assert in a debug build and is a silent data race
+    //     in a release one.
+    // `AudioTopology`'s `TopologyParams::internal_pump` is derived from this
+    // (sound.cpp) instead of being hardcoded per call site.
+    [[nodiscard]] virtual bool drives_own_callback() const noexcept { return false; }
 };
 
 // ---------------------------------------------------------------------------
@@ -156,6 +172,12 @@ public:
     void close() noexcept override;
     void set_active( bool active ) noexcept override;
     void set_fill_source( IAudioFillSource *source ) noexcept override;
+
+    // pump() IS this device's audio callback — it invokes fill() directly on
+    // whatever thread called it (which must therefore have registered
+    // ThreadRole::AudioCallback).  So the topology must not also run an
+    // internal pump: see IAudioDevice::drives_own_callback (CONC-6).
+    [[nodiscard]] bool drives_own_callback() const noexcept override { return true; }
 
     // Pull exactly `n_frames` stereo frames through the fill source into the
     // internal buffer (cleared first).  Returns a view of the pulled samples

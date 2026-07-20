@@ -40,6 +40,11 @@ namespace xash::cmd_cvar { class CmdCvarContext; }
 
 namespace xash::sound {
 
+// The S_LoadSound decode seam (private/sound/registry.hpp).  Only ever held as
+// a borrowed pointer here, so an incomplete declaration is enough and the
+// private header stays private.
+class IAudioLoader;
+
 // ---------------------------------------------------------------------------
 // SoundStats (P-2) — mix-block counters published as whole-struct relaxed
 // atomics; any-thread readers (future debug thread, G-3) snapshot-read without
@@ -110,6 +115,15 @@ struct SoundInitParams
     // fallback) — a headless/test load still runs the full entry surface.
     ::xash::filesystem::Filesystem *filesystem = nullptr; // @lifetime: caller (outlives Sound)
 
+    // Q-4 injection of the decode seam itself.  When non-null this loader is
+    // used VERBATIM and `filesystem` is ignored (no FilesystemAudioLoader is
+    // constructed) — the sfx registry resolves every name through it.  The
+    // motivating consumer is the S9.8 determinism witness, which must produce
+    // real, non-silent PCM without touching the filesystem or any retail
+    // asset; a future soundlib/satellite decoder is the production one.
+    // nullptr keeps the existing behaviour exactly: `filesystem` decides.
+    IAudioLoader *audio_loader = nullptr;                 // @lifetime: caller (outlives Sound)
+
     // cmd_cvar context (S9.6): the 11 cvars / 13 commands S_Init registers
     // (sound-boundary.md §Cvar/command census).  nullptr -> no cvar/command
     // registration (a headless/test load can still call start_sound() etc.
@@ -122,6 +136,18 @@ struct SoundInitParams
     // test rely on.  true spawns T_AudioDecoder + T_AudioCallback at init();
     // start_topology()/stop_topology() do the same thing later.
     bool threaded = false;
+
+    // S9.8 (gate finding CONC-6 half two).  false (default, production) spawns
+    // T_AudioDecoder with the topology.  true leaves the decoder UNSPAWNED and
+    // hands the caller the wheel: it must drive Sound::decoder_step() itself
+    // from a thread it registered as ThreadRole::AudioDecoder.  That is the
+    // only shape in which the pipeline has NO wall clock in it at all — the
+    // decoder's own loop is a spin-then-sleep pacer — and it is what the
+    // deterministic witness (tests/sound/test_sound_witness.cpp) requires.
+    //
+    // The device half of the same question is NOT a flag here: it is answered
+    // by the device itself, via IAudioDevice::drives_own_callback().
+    bool external_decoder = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -276,6 +302,19 @@ public:
     //           must NOT be treated as quiesced; a borrowed AudioData may still
     //           be reachable from a live channel or an in-flight command.
     [[nodiscard]] bool flush() noexcept;
+
+    // One iteration of the decoder loop (drain the command stream, paint one
+    // block into the PCM ring), for an owner that asked for
+    // SoundInitParams::external_decoder.  Returns true if it did any work.
+    //
+    // THIS IS THE ONE Sound ENTRY THAT IS NOT T_Main: it forwards to
+    // AudioTopology::decoder_step(), which asserts ThreadRole::AudioDecoder —
+    // and so, transitively, does Mixer::paint_channels(). The caller must
+    // therefore invoke it from a thread that registered that role (the role is
+    // a declaration of what the thread is DOING, not a requirement that it be
+    // the spawned decoder — sound-boundary.md §Assert/annotation duty). Returns
+    // false immediately when the topology is not running.
+    [[nodiscard]] bool decoder_step() noexcept;
 
 private:
     // Console command handlers (cmd_add's CommandCtxFn — campaign B5). `user`

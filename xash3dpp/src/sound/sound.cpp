@@ -64,7 +64,11 @@ constexpr std::string_view k_log_tag = "sound";
 // lock, no block — a plain memset-shaped zero-fill (threading-model §Forbidden).
 // The role is NOT asserted here (unlike RingFillSource): with the topology off
 // this object is also what a synchronous SinkDevice::pump() call on T_Main
-// reaches, which is the S9.8 deterministic-witness shape.
+// reaches, and "the pipeline is not running, so the device gets silence" is a
+// statement about the pipeline, not about which thread asked.  (Once the
+// topology IS running the device reaches RingFillSource instead, which DOES
+// assert AudioCallback — so the S9.8 witness pumps from a thread registered
+// with that role.)
 class SilenceFillSource final : public IAudioFillSource
 {
 public:
@@ -207,7 +211,12 @@ struct Sound::Impl
 
     // Constructed at init() time (RoomDsp needs the pool; the audio loader
     // needs SoundInitParams::filesystem; the registry needs the loader).
-    std::unique_ptr<IAudioLoader> audio_loader_;
+    // owned_loader_ holds the FilesystemAudioLoader we build ourselves; it is
+    // EMPTY when SoundInitParams::audio_loader injected one instead. loader_ is
+    // the borrowed pointer the registry actually uses, so exactly one code path
+    // reads it either way.
+    std::unique_ptr<IAudioLoader> owned_loader_;
+    IAudioLoader                 *loader_ = nullptr; // @lifetime: owned_loader_ or the caller's injected loader
     std::unique_ptr<SfxRegistry>  registry_;
     std::unique_ptr<RoomDsp>      room_dsp_;
 
@@ -414,9 +423,19 @@ Result<void> Sound::init( const SoundInitParams &params )
     impl_->room_dsp_ = std::make_unique<RoomDsp>( impl_->pool_ );
     impl_->mixer_.set_room_dsp( impl_->room_dsp_.get() );
 
-    if( params.filesystem != nullptr )
-        impl_->audio_loader_ = std::make_unique<FilesystemAudioLoader>( *params.filesystem );
-    impl_->registry_     = std::make_unique<SfxRegistry>( impl_->audio_loader_.get() );
+    // An injected loader (Q-4) wins outright: it is a complete replacement for
+    // the decode seam, not an addition to it, so no FilesystemAudioLoader is
+    // built and `filesystem` is left unread.
+    if( params.audio_loader != nullptr )
+    {
+        impl_->loader_ = params.audio_loader;
+    }
+    else if( params.filesystem != nullptr )
+    {
+        impl_->owned_loader_ = std::make_unique<FilesystemAudioLoader>( *params.filesystem );
+        impl_->loader_       = impl_->owned_loader_.get();
+    }
+    impl_->registry_     = std::make_unique<SfxRegistry>( impl_->loader_ );
     impl_->registry_raw_ = impl_->registry_.get(); // what LockedSfxResolver reads
 
     // S9.7b: the single channel-mutation context both modes drive.
@@ -510,7 +529,13 @@ Result<void> Sound::init( const SoundInitParams &params )
     tp.ctx           = &impl_->apply_ctx_;
     tp.stats         = &impl_->stats_;
     tp.device        = impl_->device_;
-    tp.internal_pump = true; // no device in the tree drives its own callback yet
+    // CONC-6: ASK THE DEVICE instead of hardcoding true.  A device that drives
+    // its own callback (SinkDevice::pump(), a real SDL backend) must not also
+    // get an internal pump thread — that would be a second reader on the
+    // single-consumer PCM ring, and it would put a wall clock back into the
+    // path of the ratified determinism witness.
+    tp.internal_pump    = !impl_->device_->drives_own_callback();
+    tp.internal_decoder = !params.external_decoder;
     // compliance-allow(make-unique-outside-pimpl, unique-ptr-nonpimpl):
     // AudioTopology is built with
     // std::make_unique outside a pimpl Impl, against Q-22 rule 4 (conformance
@@ -588,6 +613,18 @@ bool Sound::flush() noexcept
     return impl_->topology_ == nullptr || impl_->topology_->flush();
 }
 
+bool Sound::decoder_step() noexcept
+{
+    // NO assert_thread_role(Main) here, deliberately: this is the decoder side.
+    // AudioTopology::decoder_step() asserts ThreadRole::AudioDecoder and
+    // Mixer::paint_channels() asserts it again underneath, so an owner that
+    // drives this from the wrong thread aborts at the same site the spawned
+    // decoder thread would have.
+    if( impl_->topology_ == nullptr || !impl_->topology_->running() )
+        return false;
+    return impl_->topology_->decoder_step();
+}
+
 void Sound::shutdown()
 {
     xash::core::assert_thread_role( xash::core::ThreadRole::Main );
@@ -632,7 +669,8 @@ void Sound::shutdown()
     impl_->room_dsp_.reset();   // frees pool-backed PoolIntBuffer members — MUST run before destroy_pool
     impl_->registry_raw_ = nullptr;
     impl_->registry_.reset();   // heap-owned AudioData caches; no pool dependency
-    impl_->audio_loader_.reset();
+    impl_->loader_ = nullptr;   // borrowed (injected or owned_loader_'s) — drop before the owner
+    impl_->owned_loader_.reset();
 
     if( impl_->device_ != nullptr )
     {
