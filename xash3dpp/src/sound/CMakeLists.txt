@@ -10,6 +10,7 @@ add_library(xash3dpp_sound STATIC
     sound.cpp
     device.cpp
     codec_wav.cpp
+    mixer.cpp
 )
 
 target_include_directories(xash3dpp_sound

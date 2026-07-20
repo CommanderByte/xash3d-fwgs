@@ -21,3 +21,8 @@ xash3dpp_add_test(test_sound_device LIBS xash3dpp_sound xash3dpp_core)
 # IAudioCodec + WavCodec parity (slice S9.2): synthesized-in-test WAV images,
 # no committed fixture files (tests/README no-committed-binaries rule).
 xash3dpp_add_test(test_sound_codec LIBS xash3dpp_sound)
+
+# Mixer kernels + paint pipeline (slice S9.3): per-kernel bit-exact vectors for
+# all 12 variants, dispatch-table selection matrix, CLIP16 guard band, loop-wrap
+# out_count edge math, mini paint-pipeline + gate matrix, the 0x40000000 reset.
+xash3dpp_add_test(test_sound_mixer LIBS xash3dpp_sound)

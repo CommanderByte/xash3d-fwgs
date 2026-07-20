@@ -55,6 +55,8 @@ struct MixGateSnapshot
     bool  paused        = false; // cl.paused
     bool  background    = false; // cl.background (demo / background map)
     bool  in_menu       = false; // cls.key_dest == key_menu
+    bool  in_console    = false; // cls.key_dest == key_console (s_mix.c:323,335)
+    bool  in_game       = false; // CL_IsInGame() (s_mix.c:311,344 — ambient-only gate)
     bool  single_player = false; // Host_IsSinglePlayerGame()
     bool  lost_focus    = false; // snd_mute_losefocus focus-mute gate
 
