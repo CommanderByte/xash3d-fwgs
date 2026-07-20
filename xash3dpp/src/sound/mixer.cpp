@@ -367,9 +367,12 @@ int Mixer::mix_normal_channels_to_roombuffer( int end, const MixGateSnapshot &ga
 
         // (S9.4) mouth for CHAN_VOICE/STREAM (SND_MoveMouth -> IMouthSink) omitted.
 
-        // pitch = VOX_ModifyPitch(ch, basePitch*0.01) * pitch_mult; VOX_ModifyPitch
-        // is identity for non-sentence channels (the VOX pitch bend is S9.4).
-        const double pitch = compute_channel_pitch( ch.base_pitch, pitch_mult );
+        // pitch = VOX_ModifyPitch(ch, basePitch*0.01) * pitch_mult (s_mix.c:391).
+        // ch.vox_pitch (S9.4) is the current sentence word's pitch percent,
+        // cached by IVoxWordAdvance's implementation exactly like timecompress
+        // already is; it defaults to k_pitch_norm (100) so non-sentence
+        // channels get VOX_ModifyPitch's identity with no special-casing here.
+        const double pitch = compute_channel_pitch( ch.base_pitch, pitch_mult, ch.vox_pitch );
 
         num_mixed_channels++;
 

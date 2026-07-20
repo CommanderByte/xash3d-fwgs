@@ -26,3 +26,10 @@ xash3dpp_add_test(test_sound_codec LIBS xash3dpp_sound)
 # all 12 variants, dispatch-table selection matrix, CLIP16 guard band, loop-wrap
 # out_count edge math, mini paint-pipeline + gate matrix, the 0x40000000 reset.
 xash3dpp_add_test(test_sound_mixer LIBS xash3dpp_sound)
+
+# VOX sentence word-sequencer (slice S9.4): every embedded XASH_ENGINE_TESTS
+# case from s_vox.c ported, plus grammar edge cases, the FreeWord zeroing pin,
+# TrimStart/End vectors, the ModifyPitch float-chain pin, the single-slot
+# overwrite quirk, sentence-terminates-on-bad-word, and a full 3-word sentence
+# mix through vox_mix_channel_to_buffer (byte-pinned).
+xash3dpp_add_test(test_sound_vox LIBS xash3dpp_sound)

@@ -571,6 +571,38 @@ inline constexpr std::uint32_t sound_dma_speed = 44100;
 inline constexpr std::uint32_t sound_dma_speed = XASH_LIMIT_SOUND_DMA_SPEED;
 #endif
 
+// VOX (sentence word-sequencer, Chunk 9 slice S9.4). Legacy reference:
+// engine/client/sound/s_vox.c + engine/client/sound.h.
+#ifndef XASH_LIMIT_SOUND_VOX_SENTENCE_TABLE_MAX
+inline constexpr std::size_t sound_vox_sentence_table_max = 4096; // CVOXFILESENTENCEMAX (s_vox.c:25)
+#else
+inline constexpr std::size_t sound_vox_sentence_table_max = XASH_LIMIT_SOUND_VOX_SENTENCE_TABLE_MAX;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_VOX_WORD_MAX
+inline constexpr std::size_t sound_vox_word_max = 64; // CVOXWORDMAX (engine/client/sound.h:38)
+#else
+inline constexpr std::size_t sound_vox_word_max = XASH_LIMIT_SOUND_VOX_WORD_MAX;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_VOX_DIR_MAX
+inline constexpr std::size_t sound_vox_dir_max = 32; // VOX_LoadSound's szpath[32] (s_vox.c:446)
+#else
+inline constexpr std::size_t sound_vox_dir_max = XASH_LIMIT_SOUND_VOX_DIR_MAX;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_VOX_SENTENCE_TEXT_MAX
+inline constexpr std::size_t sound_vox_sentence_text_max = 512; // VOX_LoadSound's buffer[512] (s_vox.c:446)
+#else
+inline constexpr std::size_t sound_vox_sentence_text_max = XASH_LIMIT_SOUND_VOX_SENTENCE_TEXT_MAX;
+#endif
+
+#ifndef XASH_LIMIT_SOUND_VOX_IMMEDIATE_NAME_MAX
+inline constexpr std::size_t sound_vox_immediate_name_max = 256; // s_sentenceImmediateName's `string` (MAX_STRING, common/xash3d_types.h:12)
+#else
+inline constexpr std::size_t sound_vox_immediate_name_max = XASH_LIMIT_SOUND_VOX_IMMEDIATE_NAME_MAX;
+#endif
+
 // input subsystem
 // Legacy reference: engine/client/input/in_keys.c:37-43 (keys[265] — ~255
 // real keys + 9 international slots) and in_touch.c's touch_button_t fixed

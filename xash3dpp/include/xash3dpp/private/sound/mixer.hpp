@@ -51,6 +51,10 @@ inline constexpr int k_soundtime_wrap_reset = 0x40000000;
 // Channel audibility floor (s_mix.c:361): leftvol<8 && rightvol<8 ⇒ inaudible.
 inline constexpr int k_channel_inaudible_vol = 8;
 
+// PITCH_NORM (common/const.h:627) — the "no pitch shift" percent value, both
+// for MixChannel::base_pitch/vox_pitch and VOX_ModifyPitch's no-op gate.
+inline constexpr std::uint16_t k_pitch_norm = 100;
+
 // ---------------------------------------------------------------------------
 // MixChannel — the mix-side per-channel state the kernels need (boundary
 // deliverable 3: "pos/frac/end/volumes/sfx data pointer/looping fields per
@@ -73,6 +77,15 @@ struct MixChannel
     int    entnum       = 0;           // entity soundsource — mouth sink (S9.4)
     int    timecompress = 0;           // per-word timecompress percent (VOX); 0 for plain channels
     bool   is_sentence  = false;       // has a VOX word list (routes through vox_mix_channel_to_buffer)
+
+    // S9.4: the CURRENT sentence word's pitch percent (voxword_t::pitch),
+    // cached here by the IVoxWordAdvance implementation exactly the way
+    // `timecompress` above already is — set on bind + on every next_word().
+    // k_pitch_norm (100, the default) is VOX_ModifyPitch's no-op value, so a
+    // plain (non-sentence) channel leaving this at its default reproduces
+    // legacy's `!ch->words` early return with no special-casing at the mix
+    // site (see compute_channel_pitch's word_pitch parameter below).
+    std::uint16_t vox_pitch = k_pitch_norm;
 };
 
 // ---------------------------------------------------------------------------
@@ -141,6 +154,20 @@ public:
 // Free-function primitives (exposed for direct bit-exact unit pinning).
 // ===========================================================================
 
+// VOX_ModifyPitch (s_vox.c:206-221; S9.4) — FLOAT in/out, matching legacy's
+// `float VOX_ModifyPitch( channel_t *ch, float pitch )` exactly (see
+// compute_channel_pitch below for why the float-ness matters). `word_pitch`
+// == k_pitch_norm (100, MixChannel::vox_pitch's default) is the no-op case —
+// legacy's own `!ch->words || FL_CHAN_SENTENCE_FINISHED` early return
+// collapses to this same identity once a non-sentence channel simply never
+// sets vox_pitch away from its default.
+[[nodiscard]] constexpr float modify_pitch( float pitch, std::uint16_t word_pitch ) noexcept
+{
+    if( word_pitch == k_pitch_norm )
+        return pitch;
+    return pitch + ( static_cast<float>( word_pitch ) - static_cast<float>( k_pitch_norm ) ) * 0.01f;
+}
+
 // Per-channel pitch — reproduces the legacy FLOAT rounding chain exactly
 // (S9.3 parity-audit fix 2026-07-20): `VOX_ModifyPitch(ch, basePitch*0.01)`
 // takes and returns FLOAT (s_vox.c:206), and `pitch_mult` is float
@@ -148,15 +175,25 @@ public:
 // float*float, and only then widens to double for the rate math. Evaluating
 // in double throughout diverges by ~1e-8 and de-syncs the resample
 // accumulator for every pitched sound (basePitch != 100 or timescale != 1).
-[[nodiscard]] constexpr double compute_channel_pitch( double base_pitch,
-                                                      double pitch_mult ) noexcept
+//
+// `word_pitch` (S9.4, default k_pitch_norm) folds in the VOX sentence pitch
+// bend: `pitch = VOX_ModifyPitch(ch, basePitch*0.01) * pitch_mult` (s_mix.c:
+// 391) — the bend happens BETWEEN the float-rounded basePitch*0.01 and the
+// final pitch_mult multiply, all still in float, per modify_pitch above.
+// Every existing call site that omits this argument (non-VOX channels) gets
+// the identity and is bit-for-bit unchanged from before this parameter
+// existed.
+[[nodiscard]] constexpr double compute_channel_pitch( double base_pitch, double pitch_mult,
+                                                      std::uint16_t word_pitch = k_pitch_norm ) noexcept
 {
     // basePitch (short) promotes to DOUBLE against the 0.01 double literal;
     // the float rounding happens at VOX_ModifyPitch's float PARAMETER, not
-    // inside the multiply — so: double multiply, round to float, then the
-    // float*float product against the float pitch_mult, widened to double.
+    // inside the multiply — so: double multiply, round to float, then
+    // VOX_ModifyPitch's bend (float), then the float*float product against
+    // the float pitch_mult, widened to double.
     const float base_f = static_cast<float>( base_pitch * 0.01 );
-    return static_cast<double>( base_f * static_cast<float>( pitch_mult ) );
+    const float bent_f = modify_pitch( base_f, word_pitch );
+    return static_cast<double>( bent_f * static_cast<float>( pitch_mult ) );
 }
 
 // CLIP16 (sound.h:40) — bound(SHRT_MIN+8, x, SHRT_MAX-8). The bound() macro uses

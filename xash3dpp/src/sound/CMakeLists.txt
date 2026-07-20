@@ -1,8 +1,11 @@
 # xash3dpp_sound — audio engine core (Chunk 9). Slice S9.1: seams + types.
-# Slice S9.2: IAudioCodec + WavCodec (soundlib decode layer, WAV only). The
-# channel mixer, VOX/mouth/DSP, and the MPSC/SPSC thread topology land in
-# S9.3+ (sound-boundary.md).  ogg/opus/mp3 are separate satellite targets per
-# the boundary Q-11 table — not linked here yet (codec.hpp reserves their rows).
+# Slice S9.2: IAudioCodec + WavCodec (soundlib decode layer, WAV only). Slice
+# S9.3: the 12 mix kernels + paint pipeline core.  Slice S9.4: VOX sentence
+# word-sequencer (sentences.txt parse/lookup/word-grammar, amplitude trim,
+# the sentence pitch bend, the IVoxWordAdvance implementation).  DSP and the
+# MPSC/SPSC thread topology land in later slices (sound-boundary.md).
+# ogg/opus/mp3 are separate satellite targets per the boundary Q-11 table —
+# not linked here yet (codec.hpp reserves their rows).
 # Legacy reference: engine/client/sound/, engine/platform/ (the SNDDMA seam),
 # engine/{client,common}/soundlib/ (the decode layer).
 
@@ -11,6 +14,7 @@ add_library(xash3dpp_sound STATIC
     device.cpp
     codec_wav.cpp
     mixer.cpp
+    vox.cpp
 )
 
 target_include_directories(xash3dpp_sound

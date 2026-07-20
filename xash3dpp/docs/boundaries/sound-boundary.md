@@ -363,6 +363,21 @@ P-1..P-8 — unchanged from the A0 fact base and every A1 fragment's read).
 
 ______________________________________________________________________
 
+### Adjudicated VOX deviations (S9.4 parity audit, 2026-07-20)
+
+- **Degenerate trailing-whitespace sentence entry NOT reproduced**: legacy
+  `VOX_ReadSentenceFile_` appends one empty `""/""` table entry when
+  sentences.txt ends in trailing whitespace or a blank final line (it
+  dereferences the FS trailing NUL past the content, s_vox.c:537-566). The
+  rewrite's bounds guard stops cleanly — one fewer entry on such files. The
+  entry is reachable only via an empty-name lookup or its exact numeric
+  index and never shifts real indices; adjudicated document-not-reproduce
+  (reject-gracefully family).
+- **Negative-overflow numeric sentence handle**: an all-digit handle
+  overflowing int32 negative makes legacy read `rgpszrawsentence[negative]`
+  (UB, s_vox.c:272-275); the rewrite falls through to the name scan →
+  no-sentence. UB-only input, hardening.
+
 ## Threading
 
 ### Ratified topology (§3.4) and SND-OQ-1 resolved shape
