@@ -508,6 +508,28 @@ _MUTATOR_DEF_RX = re.compile(
     r"(?:[\w:<>*&\[\],]+\s+)+"
     r"((?:\w[\w:]*::)?(?:%s))\s*\(" % MUTATOR_NAMES)
 
+# A trailing `;` means the line is a declaration or a statement, never a
+# definition: `virtual void set_current_map(...) = 0;`, a forward decl, a
+# ternary continuation `: clear_trace();`, or a variable declaration whose
+# TYPE ends in a mutator verb (`LevelStateLoader loader( *buf_, *table_ );`).
+_MUTATOR_NOT_DEF_RX = re.compile(r";\s*$")
+# A const-qualified member function cannot mutate, so it is not a mutator no
+# matter how its name reads (`Netchan::connect_time() const noexcept`).  The
+# `\)` anchor keeps `const` parameters (`void f( const T &x )`) out of scope.
+_MUTATOR_CONST_RX = re.compile(r"\)\s*const\b")
+
+
+def _is_mutator_def(code: str) -> bool:
+    """A mutator DEFINITION line, with the two structural non-definitions
+    filtered out.  Added by the 2026-07-20 audit follow-up alongside the
+    MUTATOR_NAMES suffix fix: broadening the verb set surfaced real mutators
+    but also these two artifact classes, and annotating source with
+    `compliance-allow` to silence a scanner artifact is the wrong fix."""
+    if not _MUTATOR_DEF_RX.match(code):
+        return False
+    return not (_MUTATOR_NOT_DEF_RX.search(code)
+                or _MUTATOR_CONST_RX.search(code))
+
 
 def _scan_thread_assert(sub: str) -> list[dict]:
     """Mutator definitions whose first statements lack assert_thread_role.
@@ -520,7 +542,7 @@ def _scan_thread_assert(sub: str) -> list[dict]:
     for path in sorted(src_dir.rglob("*.cpp")):
         lines = list(code_lines(path))
         for i, (lineno, code, raw) in enumerate(lines):
-            if _MUTATOR_DEF_RX.match(code):
+            if _is_mutator_def(code):
                 lookahead = " ".join(c for _, c, _ in lines[i:i + 6])
                 if "assert_thread_role" not in lookahead \
                         and "assert_main_thread" not in lookahead:
@@ -645,7 +667,7 @@ def annotation_coverage(subsystem: str | None) -> dict:
                     if cast_rx.search(code):
                         _mark(cnt["safety"], "SAFETY:", idx,
                               _stmt_start_idx(lines, idx))
-                    if _MUTATOR_DEF_RX.match(code):
+                    if _is_mutator_def(code):
                         slot = cnt["thread_assert"]
                         slot["required"] += 1
                         lookahead = " ".join(c for _, c, _ in lines[idx:idx + 6])

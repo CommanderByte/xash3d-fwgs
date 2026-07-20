@@ -501,6 +501,34 @@ class MutatorDefRx(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertTrue(self._m(line))
 
+    def _d(self, line: str) -> bool:
+        from xtools.checks import _is_mutator_def
+        return _is_mutator_def(line)
+
+    def test_declarations_and_statements_are_not_definitions(self):
+        """Broadening the verb set surfaced two artifact classes that are not
+        function definitions at all.  Silencing them with compliance-allow in
+        source would be annotating around a scanner bug."""
+        for line in (
+                "    virtual void set_current_map( std::string_view n ) noexcept = 0;",
+                "        : clear_trace();",
+                "    LevelStateLoader loader( *buf_, *table_ );",
+                "    sv_save::LevelStateLoader loader( *lbuf, table );",
+                "void register_late( ServerRuntime &rt ) noexcept;",
+        ):
+            with self.subTest(line=line):
+                self.assertFalse(self._d(line))
+
+    def test_const_member_function_is_not_a_mutator(self):
+        """A const-qualified member cannot mutate however its name reads."""
+        self.assertFalse(self._d(
+            "double Netchan::connect_time() const noexcept { return t_; }"))
+
+    def test_const_parameter_does_not_exempt_a_definition(self):
+        """The `\\)` anchor keeps const PARAMETERS in scope."""
+        self.assertTrue(self._d(
+            "void Filesystem::add_game_directory( const char *dir ) {"))
+
     def test_reset_wildcard_matches_legacy_quirk_name(self):
         """`reset` is the one verb promoted to `reset\\w*` rather than
         `reset(?:_\\w+)?`: both of its wildcard-form matches in the tree are
