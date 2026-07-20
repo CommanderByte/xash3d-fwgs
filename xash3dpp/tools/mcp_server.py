@@ -24,6 +24,8 @@ from mcp.server.fastmcp import FastMCP  # noqa: E402
 import xtools  # noqa: E402
 from xtools import buildtools, checks, mdlint, proc, report, rules, scan, state  # noqa: E402
 from xtools import crosswalk as crosswalk_mod  # noqa: E402
+from xtools import docs as docs_mod  # noqa: E402
+from xtools import md as md_mod  # noqa: E402
 from xtools import q21  # noqa: E402
 from xtools import sync as xsync  # noqa: E402
 from xtools import vsenv  # noqa: E402
@@ -39,8 +41,9 @@ mcp = FastMCP("xash-tools")
 # ---------------------------------------------------------------------------
 
 _XTOOLS_DIR = Path(__file__).resolve().parent / "xtools"
-_RELOAD_ORDER = [xtools, proc, report, vsenv, rules, scan,
-                 buildtools, checks, mdlint, q21, crosswalk_mod, state, xsync]
+_RELOAD_ORDER = [xtools, proc, report, vsenv, rules, scan, md_mod,
+                 buildtools, checks, mdlint, q21, crosswalk_mod, docs_mod,
+                 state, xsync]
 
 
 def _xtools_mtimes() -> dict[str, float]:
@@ -242,6 +245,20 @@ def slice_diff(base: str = "", include_patch: bool = False,
     _maybe_reload()
     return state.slice_diff(base=base, include_patch=include_patch,
                             max_patch_lines=max_patch_lines)
+
+
+@mcp.tool()
+def docs_check(checks: str = "all", bless: bool = False,
+               repair: bool = False) -> dict:
+    """Documentation-drift scan. `anchors`: every backticked `file.cpp:123`
+    citation must resolve and still point at the text recorded in
+    docs/.doc-anchors.json (bless=True records it; repair=True rewrites line
+    numbers whose recorded text merely MOVED). `claims`: `<!-- verify: ... -->`
+    predicates -- grep-count / symbol-exists / compliance-rule-exists / census.
+    Catches the class the 2026-07 audit found by hand: docs asserting things
+    about the code that are not true. (CLI twin: tools/docs_check.py.)"""
+    _maybe_reload()
+    return docs_mod.scan(checks=checks, bless=bless, repair=repair)
 
 
 @mcp.tool()

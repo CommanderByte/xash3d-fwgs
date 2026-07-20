@@ -73,6 +73,14 @@ Paths, env overrides (`XASH_*`), and the full tool table:
 ("xash-ng") — it is NOT related to the Codex CLI agent, its plans are
 aspirational, and file paths cited there may not exist. Do not treat it as
 current. Boundary specs and the decision register are current and binding.
+
+**A doc claim about code carries an anchor or a predicate; unanchored prose
+is non-binding by definition.** Cite code as a backticked `` `file.cpp:123` ``
+(`docs_check --repair` then keeps the line number honest for free as code
+moves), and put a `<!-- verify: <predicate> -->` beside any assertion a
+boundary spec, register entry or entry gate actually rests on. Do NOT try to
+keep every doc current by hand — that tax goes unpaid and produced the ~17
+false claims the 2026-07-20 audit found. Run `docs_check` after doc edits.
 <!-- SYNC-CORE:END doc-trust -->
 
 ## Commit style

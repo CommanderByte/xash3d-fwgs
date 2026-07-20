@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 
 from . import DOCS, REPO
+from . import md
 
 GOALS_DOC = DOCS / "design" / "extension-goals.md"
 BOUNDARIES_DIR = DOCS / "boundaries"
@@ -64,16 +65,10 @@ def parse_boundary_axes(text: str) -> tuple[set[str], bool]:
     if not m:
         return set(), False
     covered: set[str] = set()
-    for line in m.group(1).splitlines():
-        s = line.strip()
-        if not s.startswith("|"):
+    for row in md.table_rows(m.group(1)):
+        cell1 = row[0]
+        if not cell1:
             continue
-        cells = s.split("|")
-        if len(cells) < 3:
-            continue
-        cell1 = cells[1].strip()
-        if not cell1 or set(cell1) <= {"-", ":", " "}:
-            continue  # separator row
         if cell1.lower().startswith("goal / primitive"):
             continue  # header row
         covered.update(_row_axes(cell1))

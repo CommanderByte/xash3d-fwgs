@@ -399,7 +399,7 @@ def workflow_sync(stage: int = 2) -> dict:
     mcp_scripts = ("build", "test", "refresh_compile_db", "compliance_scan",
                    "status_table", "finish_check", "stub_scan", "limits_scan",
                    "workflow_sync", "whereami", "checkpoint",
-                   "markdown_lint", "q21_scan", "census")  # dep_scan: CLI-only
+                   "markdown_lint", "q21_scan", "census", "docs_check")  # dep_scan: CLI-only
     script_rx = re.compile(r"tools[\\/](%s)\.py" % "|".join(mcp_scripts))
     for p in prompts:
         body = p.read_text(encoding="utf-8", errors="replace")

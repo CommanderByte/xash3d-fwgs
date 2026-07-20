@@ -56,6 +56,27 @@ Classify the findings:
   hint. A confirmed missing `assert_thread_role` on a public mutator →
   **WARNING**.
 
+## Phase 2b — Documentation drift
+
+```powershell
+& .venv\Scripts\python.exe xash3dpp	ools\docs_check.py --json
+```
+*(MCP: xash-tools tool `docs_check` — same data.)*
+
+Only run when the change touches `xash3dpp/docs/**` or moves code that docs
+cite. Findings:
+
+- `anchor-moved` → the cited text merely moved; rerun with `--repair` and
+  commit the rewritten line numbers. Not a judgment call.
+- `anchor-drift` / `unresolved-anchor` → the cited code changed or is gone.
+  Fix the doc claim, or delete it — do NOT re-`--bless` to silence it.
+- `false-claim` → a `<!-- verify: … -->` predicate no longer holds. Either
+  the code regressed or the doc was always wrong; say which in the commit.
+- `ambiguous-basename` notes never gate.
+
+A doc claim about code carries an anchor or a predicate; unanchored prose is
+non-binding by definition (CLAUDE.md / AGENTS.md doc-trust).
+
 ## Phase 3 — Reviewer sweep
 
 Read the subsystem's public headers and the first 100 lines of each `.cpp` in

@@ -240,6 +240,7 @@ CLI-only by design). Full table + envelope spec: `xash3dpp/tools/README.md`.
 |--------|---------|-------------|
 | `whereami.py` | session ground-truth brief + `--doctor` env checks | session start, dormancy recovery |
 | `checkpoint.py` | record advisory intent | every commit / handoff / interruption |
+| `docs_check.py` | doc-drift: `file:line` citations still resolve + still point at the recorded text (`--repair` fixes pure line drift); `<!-- verify: … -->` claim predicates | pre-pr; finish-subsystem; doc / boundary-spec edits |
 | `build.py` / `test.py` / `refresh_compile_db.py` | build, ctest, clangd DB | sweep-module, implement-audit, retriever, bisect, pre-pr |
 | `compliance_scan.py` | reviewer [M] checks as JSON | pre-pr, sweep-module, detail-audit, reviewer pre-pass |
 | `limits_scan.py` / `stub_scan.py` / `status_table.py` / `dep_scan.py` | limits, TODO/stubs (`by_tag` + `--delta`), status table, dependency edges | limits-audit, plan-implementation, status-and-next, dependency-graph |

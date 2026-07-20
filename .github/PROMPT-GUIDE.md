@@ -132,8 +132,8 @@ the JSON instead of embedding recipes:
   the fallback and returns identical JSON `data`. Exposed tools: build,
   test, refresh_compile_db, compliance_scan, status (= status_table),
   finish_check, stub_scan, crosswalk, limits_scan, slice_diff,
-  markdown_lint, workflow_sync, whereami, checkpoint. Exception: `dep_scan`
-  is CLI-only by design.
+  markdown_lint, workflow_sync, whereami, checkpoint, q21_scan, census,
+  docs_check. Exception: `dep_scan` is CLI-only by design.
 - A prompt that invokes a tool needs `execute` in its `tools:` list.
 - Keep a short `### Manual fallback (no Python available)` appendix with the
   condensed recipe whenever the tool replaces one.
