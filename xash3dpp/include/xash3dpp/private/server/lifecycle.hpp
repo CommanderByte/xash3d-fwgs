@@ -180,10 +180,10 @@ struct ServerRuntime
     // MapLoader (Q-6); these hold borrowed pointers into it + the areanode
     // tree the clip/link walks traverse.
     ModelResolver  models;
-    WorldLinks     links;
+    ::xash::world::WorldLinks links;
     GameWorldHooks hooks;
-    MoveEnv        move_env;
-    LinkEnv        link_env;
+    ::xash::world::MoveEnv move_env;
+    ::xash::world::LinkEnv link_env;
 
     LevelState      level;
     PersistentState persistent;

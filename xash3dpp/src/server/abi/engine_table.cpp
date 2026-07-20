@@ -45,6 +45,8 @@
 
 namespace xash::server {
 
+using namespace ::xash::world; // consume the world trace/link kernel (Wave 1)
+
 namespace abi = ::xash::abi;
 namespace ml  = ::xash::map_loader;
 namespace ut  = ::xash::utilities;

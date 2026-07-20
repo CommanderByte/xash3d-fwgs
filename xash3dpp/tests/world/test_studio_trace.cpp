@@ -27,6 +27,7 @@
 #include <vector>
 
 namespace sv  = xash::server;
+namespace wr  = ::xash::world;
 namespace abi = xash::abi;
 namespace ml  = xash::map_loader;
 namespace ct  = xash::content;
@@ -80,16 +81,16 @@ make_seq_bytes( float blend_start, float blend_end )
 // --- fixture resolvers -----------------------------------------------------
 
 // Serves hand-made hulls (the merge-loop oracle) — bytes not involved.
-struct HullResolver final : sv::IModelResolver
+struct HullResolver final : wr::IModelResolver
 {
     std::vector<ct::StudioHitboxHull> hulls;
 
-    std::optional<sv::BrushModel> brush_model( int ) noexcept override
+    std::optional<wr::BrushModel> brush_model( int ) noexcept override
     {
         return std::nullopt;
     }
     bool is_studio( int ) noexcept override { return true; }
-    int studio_hulls( int, const sv::StudioHullPose &,
+    int studio_hulls( int, const wr::StudioHullPose &,
                       std::span<ct::StudioHitboxHull> out ) noexcept override
     {
         const std::size_t n = hulls.size() < out.size() ? hulls.size() : out.size();
@@ -100,11 +101,11 @@ struct HullResolver final : sv::IModelResolver
 };
 
 // Serves a synthetic studio byte image (the gating/blend tests).
-struct BytesResolver final : sv::IModelResolver
+struct BytesResolver final : wr::IModelResolver
 {
     std::vector<std::byte> bytes;
 
-    std::optional<sv::BrushModel> brush_model( int ) noexcept override
+    std::optional<wr::BrushModel> brush_model( int ) noexcept override
     {
         return std::nullopt;
     }
@@ -172,19 +173,19 @@ void test_player_blend()
 
     // below the window: pitch*3 = 15 < 30 → blend 0, pitch -= start/3
     int blend = -1; float pitch = 5.0f;
-    sv::studio_player_blend( seq, &blend, &pitch );
+    wr::studio_player_blend( seq, &blend, &pitch );
     CHECK( blend == 0 );
     CHECK( pitch == 5.0f - 30.0f / 3.0f );
 
     // above the window: 90 > 60 → blend 255, pitch -= end/3
     blend = -1; pitch = 30.0f;
-    sv::studio_player_blend( seq, &blend, &pitch );
+    wr::studio_player_blend( seq, &blend, &pitch );
     CHECK( blend == 255 );
     CHECK( pitch == 30.0f - 60.0f / 3.0f );
 
     // inside: pitch 15 → 45; 255*(45-30)/(60-30) = 127 (int trunc), pitch 0
     blend = -1; pitch = 15.0f;
-    sv::studio_player_blend( seq, &blend, &pitch );
+    wr::studio_player_blend( seq, &blend, &pitch );
     CHECK( blend == static_cast<int>( 255.0f * 15.0f / 30.0f ));
     CHECK( pitch == 0.0f );
 
@@ -192,7 +193,7 @@ void test_player_blend()
     const auto degen = make_seq_bytes( 0.0f, 0.0f );
     const ct::StudioView dh( degen );
     blend = -1; pitch = 0.0f;
-    sv::studio_player_blend( dh.seqdesc( 0 ), &blend, &pitch );
+    wr::studio_player_blend( dh.seqdesc( 0 ), &blend, &pitch );
     CHECK( blend == 127 );
 }
 
@@ -250,7 +251,7 @@ void test_pose_gating()
     resolver.bytes = make_seq_bytes( 0.0f, 0.0f ); // degenerate window → 127
 
     int trace_flags = 0;
-    sv::MoveEnv env;
+    wr::MoveEnv env;
     env.models      = &resolver;
     env.cvars       = &ctx;
     env.trace_flags = &trace_flags;
@@ -258,21 +259,21 @@ void test_pose_gating()
     abi::edict_t ed = make_studio_edict();
 
     // (a) zero-size box, no simplebox → complex upgrade, scale 0.5
-    auto pose = sv::studio_pose_for_entity( env, &ed, {}, {} );
+    auto pose = wr::studio_pose_for_entity( env, &ed, {}, {} );
     REQUIRE( pose.has_value() );
     CHECK( pose->force_complex );
     CHECK( !pose->skip_shield );
     CHECK( pose->use_cache ); // r_studiocache absent → default-on
 
     // (b) FTRACE_SIMPLEBOX suppresses the upgrade
-    trace_flags = sv::k_ftrace_simplebox;
-    pose = sv::studio_pose_for_entity( env, &ed, {}, {} );
+    trace_flags = wr::k_ftrace_simplebox;
+    pose = wr::studio_pose_for_entity( env, &ed, {}, {} );
     REQUIRE( pose.has_value() );
     CHECK( !pose->force_complex );
     trace_flags = 0;
 
     // (c) sized box → no upgrade, size scaled by 0.5
-    pose = sv::studio_pose_for_entity( env, &ed, { -8, -8, -8 }, { 8, 8, 8 } );
+    pose = wr::studio_pose_for_entity( env, &ed, { -8, -8, -8 }, { 8, 8, 8 } );
     REQUIRE( pose.has_value() );
     CHECK( !pose->force_complex );
     CHECK( pose->size.x == 8.0f && pose->size.y == 8.0f && pose->size.z == 8.0f );
@@ -280,13 +281,13 @@ void test_pose_gating()
     // (d) client + sv_clienttrace 0 → hitbox trace disabled
     (void)ctx.cvar_get_or_create( "sv_clienttrace", "0", 0 );
     ed.v.flags = abi::k_fl_client;
-    pose = sv::studio_pose_for_entity( env, &ed, {}, {} );
+    pose = wr::studio_pose_for_entity( env, &ed, {}, {} );
     REQUIRE( pose.has_value() );
     CHECK( !pose->force_complex );
 
     // (e) client + sv_clienttrace 0.8 → size (0.4,0.4,0.4), pose override
     ctx.cvar_set( "sv_clienttrace", "0.8" );
-    pose = sv::studio_pose_for_entity( env, &ed, {}, {} );
+    pose = wr::studio_pose_for_entity( env, &ed, {}, {} );
     REQUIRE( pose.has_value() );
     CHECK( pose->force_complex );
     CHECK( pose->size.x == 0.8f * 0.5f );
@@ -296,7 +297,7 @@ void test_pose_gating()
 
     // (f) CS shield: gamestate 1 → skip flag
     ed.v.gamestate = 1;
-    pose = sv::studio_pose_for_entity( env, &ed, {}, {} );
+    pose = wr::studio_pose_for_entity( env, &ed, {}, {} );
     REQUIRE( pose.has_value() );
     CHECK( pose->skip_shield );
 
@@ -309,7 +310,7 @@ void test_clip_merge_oracle()
     resolver.hulls.push_back( make_box( { 64, 0, 0 }, 16.0f, 3 ));  // A
     resolver.hulls.push_back( make_box( { 128, 0, 0 }, 16.0f, 5 )); // B
 
-    sv::MoveEnv env;
+    wr::MoveEnv env;
     env.models = &resolver;
 
     abi::edict_t ed = make_studio_edict();
@@ -317,8 +318,8 @@ void test_clip_merge_oracle()
     // Ray from +x toward the origin: B (nearer the start) must win with the
     // smaller fraction and stamp ITS hitgroup.
     const Vec3 start{ 200, 0, 0 }, end{ 0, 0, 0 };
-    const sv::SvTrace tr =
-        sv::clip_move_to_entity( env, &ed, start, {}, {}, end );
+    const wr::SvTrace tr =
+        wr::clip_move_to_entity( env, &ed, start, {}, {}, end );
 
     const ml::TraceResult ta = manual_trace( resolver.hulls[0], start, end );
     const ml::TraceResult tb = manual_trace( resolver.hulls[1], start, end );
@@ -331,8 +332,8 @@ void test_clip_merge_oracle()
               bits( xash::utilities::dot( tr.t.endpos, tr.t.plane.normal )));
 
     // start inside A: startsolid must survive the merge (sticky) + ent set
-    const sv::SvTrace ts =
-        sv::clip_move_to_entity( env, &ed, { 64, 0, 0 }, {}, {}, { 300, 0, 0 } );
+    const wr::SvTrace ts =
+        wr::clip_move_to_entity( env, &ed, { 64, 0, 0 }, {}, {}, { 300, 0, 0 } );
     CHECK( ts.t.startsolid );
     CHECK( ts.ent == &ed );
 
@@ -340,8 +341,8 @@ void test_clip_merge_oracle()
     // `trace->hitgroup = Mod_HitgroupForStudioHull(last_hitgroup)`
     // UNCONDITIONALLY after the loop, so a full miss leaks hull 0's
     // hitgroup (3 here) — faithfully reproduced.
-    const sv::SvTrace tm =
-        sv::clip_move_to_entity( env, &ed, { 200, 100, 0 }, {}, {}, { 0, 100, 0 } );
+    const wr::SvTrace tm =
+        wr::clip_move_to_entity( env, &ed, { 200, 100, 0 }, {}, {}, { 0, 100, 0 } );
     CHECK( tm.t.fraction == 1.0f );
     CHECK( tm.ent == nullptr );
     CHECK( tm.hitgroup == 3 );

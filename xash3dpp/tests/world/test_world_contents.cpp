@@ -24,6 +24,7 @@
 #include <optional>
 
 namespace sv  = xash::server;
+namespace wr  = ::xash::world;
 namespace abi = xash::abi;
 namespace ml  = xash::map_loader;
 using xash::utilities::Vec3;
@@ -32,18 +33,18 @@ static int g_pass = 0, g_fail = 0;
 
 namespace {
 
-struct FixtureResolver final : sv::IModelResolver
+struct FixtureResolver final : wr::IModelResolver
 {
-    std::optional<sv::BrushModel> brush_model( int modelindex ) noexcept override
+    std::optional<wr::BrushModel> brush_model( int modelindex ) noexcept override
     {
         if ( modelindex == 1 )
-            return sv::BrushModel{ 0 };
+            return wr::BrushModel{ 0 };
         return std::nullopt;
     }
     bool is_studio( int ) noexcept override { return false; }
 };
 
-struct LinkHooks final : sv::IWorldLinkHooks
+struct LinkHooks final : wr::IWorldLinkHooks
 {
     void set_abs_box( abi::edict_t *ent ) noexcept override
     {
@@ -59,12 +60,12 @@ struct ContentsFixture
 {
     xash::memory::PoolHandle     pool;
     sv::EdictArena               arena;
-    sv::WorldLinks               links;
+    wr::WorldLinks               links;
     LinkHooks                    hooks;
     FixtureResolver              resolver;
     std::optional<ml::WorldData> world;
-    sv::LinkEnv                  lenv;
-    sv::MoveEnv                  env;
+    wr::LinkEnv                  lenv;
+    wr::MoveEnv                  env;
 
     ContentsFixture()
     {
@@ -126,20 +127,20 @@ struct ContentsFixture
 
 static void test_rank_goldens()
 {
-    CHECK_EQ( sv::rank_for_contents( ml::k_contents_empty ), 0 );
-    CHECK_EQ( sv::rank_for_contents( ml::k_contents_water ), 1 );
-    CHECK_EQ( sv::rank_for_contents( ml::k_contents_slime ), 9 );
-    CHECK_EQ( sv::rank_for_contents( ml::k_contents_solid ), 12 );
-    CHECK_EQ( sv::rank_for_contents( 42 ), 13 ); // user contents win
+    CHECK_EQ( wr::rank_for_contents( ml::k_contents_empty ), 0 );
+    CHECK_EQ( wr::rank_for_contents( ml::k_contents_water ), 1 );
+    CHECK_EQ( wr::rank_for_contents( ml::k_contents_slime ), 9 );
+    CHECK_EQ( wr::rank_for_contents( ml::k_contents_solid ), 12 );
+    CHECK_EQ( wr::rank_for_contents( 42 ), 13 ); // user contents win
 }
 
 static void test_world_point_contents()
 {
     ContentsFixture f;
 
-    CHECK_EQ( sv::true_point_contents( f.env, { 200, 0, 0 } ),
+    CHECK_EQ( wr::true_point_contents( f.env, { 200, 0, 0 } ),
               ml::k_contents_empty );
-    CHECK_EQ( sv::true_point_contents( f.env, { 100, 0, 0 } ),
+    CHECK_EQ( wr::true_point_contents( f.env, { 100, 0, 0 } ),
               ml::k_contents_water );
 }
 
@@ -152,11 +153,11 @@ static void test_water_entity_merge()
     f.spawn_water( { 300, 0, 0 }, ml::k_contents_slime );
 
     // Inside the ent's non-empty hull region: slime outranks empty.
-    CHECK_EQ( sv::true_point_contents( f.env, { 310, 0, 0 } ),
+    CHECK_EQ( wr::true_point_contents( f.env, { 310, 0, 0 } ),
               ml::k_contents_slime );
 
     // Beyond the ent's water zone: plain world empty.
-    CHECK_EQ( sv::true_point_contents( f.env, { 440, 200, 0 } ),
+    CHECK_EQ( wr::true_point_contents( f.env, { 440, 200, 0 } ),
               ml::k_contents_empty );
 }
 
@@ -170,16 +171,16 @@ static void test_group_mask_gate_and_current_fold()
 
     // AND policy with a non-overlapping mask skips the volume entirely.
     f.env.group_mask = 0x1;
-    CHECK_EQ( sv::point_contents( f.env, { 310, 0, 0 } ),
+    CHECK_EQ( wr::point_contents( f.env, { 310, 0, 0 } ),
               ml::k_contents_empty );
 
     // Overlapping mask: CURRENT_90 folds to WATER in point_contents...
     f.env.group_mask = 0x4;
-    CHECK_EQ( sv::point_contents( f.env, { 310, 0, 0 } ),
+    CHECK_EQ( wr::point_contents( f.env, { 310, 0, 0 } ),
               ml::k_contents_water );
 
     // ...but true_point_contents reports the raw current.
-    CHECK_EQ( sv::true_point_contents( f.env, { 310, 0, 0 } ),
+    CHECK_EQ( wr::true_point_contents( f.env, { 310, 0, 0 } ),
               ml::k_contents_current_90 );
 }
 
@@ -204,15 +205,15 @@ static void test_brush_trigger_exact_test()
 
     // Toucher origin inside the trigger's solid hull → touch confirmed.
     sv::store_vec3( toucher->v.origin, { 310, 0, 46 } );
-    CHECK( sv::brush_trigger_intersects( f.env, trig, toucher ));
+    CHECK( wr::brush_trigger_intersects( f.env, trig, toucher ));
 
     // Outside (local x > 128) → AABB hit rejected.
     sv::store_vec3( toucher->v.origin, { 450, 0, 46 } );
-    CHECK( !sv::brush_trigger_intersects( f.env, trig, toucher ));
+    CHECK( !wr::brush_trigger_intersects( f.env, trig, toucher ));
 
     // Non-brush trigger model → AABB verdict stands.
     trig->v.modelindex = 99;
-    CHECK( sv::brush_trigger_intersects( f.env, trig, toucher ));
+    CHECK( wr::brush_trigger_intersects( f.env, trig, toucher ));
 }
 
 // ---------------------------------------------------------------------------

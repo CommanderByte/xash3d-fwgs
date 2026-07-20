@@ -13,6 +13,8 @@
 
 namespace xash::server {
 
+using namespace ::xash::world; // consume the world trace/link kernel (Wave 1)
+
 std::optional<BrushModel> ModelResolver::brush_model( int modelindex ) noexcept
 {
     if ( world_ == nullptr || modelindex <= 0 )

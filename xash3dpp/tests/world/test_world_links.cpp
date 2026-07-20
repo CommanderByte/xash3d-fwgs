@@ -22,6 +22,7 @@
 #include <vector>
 
 namespace sv  = xash::server;
+namespace wr  = ::xash::world;
 namespace abi = xash::abi;
 namespace ml  = xash::map_loader;
 using xash::utilities::Vec3;
@@ -36,7 +37,7 @@ namespace {
 
 // Test hooks: SetAbsBox = origin + mins/maxs (no HLSDK expansion); records
 // touch dispatches.
-struct TestHooks : sv::IWorldLinkHooks
+struct TestHooks : wr::IWorldLinkHooks
 {
     int  abs_box_calls = 0;
     bool reject_brush  = false;
@@ -69,10 +70,10 @@ struct WorldFixture
 {
     xash::memory::PoolHandle       pool;
     sv::EdictArena                 arena;
-    sv::WorldLinks                 links;
+    wr::WorldLinks                 links;
     TestHooks                      hooks;
     std::optional<ml::WorldData>   world;
-    sv::LinkEnv                    env;
+    wr::LinkEnv                    env;
 
     WorldFixture()
     {
@@ -121,7 +122,7 @@ struct WorldFixture
     return n;
 }
 
-[[nodiscard]] std::size_t count_lists( const sv::AreaNode *node, int which )
+[[nodiscard]] std::size_t count_lists( const wr::AreaNode *node, int which )
 {
     if ( node == nullptr )
         return 0;
@@ -180,12 +181,12 @@ static void test_link_membership_by_solid()
     f.links.link_edict( solid, false, f.env );
     CHECK_EQ( count_lists( f.links.root(), 1 ), 1u );
 
-    sv::WorldLinks::unlink_edict( solid );
+    wr::WorldLinks::unlink_edict( solid );
     CHECK( !f.links.linked( solid ));
     CHECK_EQ( count_lists( f.links.root(), 1 ), 0u );
 
     // Unlink when not linked is a no-op.
-    sv::WorldLinks::unlink_edict( solid );
+    wr::WorldLinks::unlink_edict( solid );
     CHECK( !f.links.linked( solid ));
 }
 
@@ -332,7 +333,7 @@ static void test_touch_group_policy()
     mover->v.groupinfo = 0x1;
 
     // AND policy with disjoint groups → skipped.
-    f.links.set_group_op( sv::GroupOp::And );
+    f.links.set_group_op( wr::GroupOp::And );
     f.links.link_edict( mover, true, f.env );
     CHECK_EQ( f.hooks.touches.size(), 0u );
 
@@ -342,7 +343,7 @@ static void test_touch_group_policy()
     CHECK_EQ( f.hooks.touches.size(), 1u );
 
     // NAND policy inverts: overlap → skipped.
-    f.links.set_group_op( sv::GroupOp::Nand );
+    f.links.set_group_op( wr::GroupOp::Nand );
     f.links.link_edict( mover, true, f.env );
     CHECK_EQ( f.hooks.touches.size(), 1u );
 }
@@ -353,8 +354,8 @@ namespace {
 // iTouchLinkSemaphore recursion guard.
 struct RecursiveHooks final : TestHooks
 {
-    sv::WorldLinks *links = nullptr;
-    sv::LinkEnv    *env   = nullptr;
+    wr::WorldLinks *links = nullptr;
+    wr::LinkEnv    *env   = nullptr;
     int             depth = 0;
 
     void dispatch_touch( abi::edict_t *trigger,

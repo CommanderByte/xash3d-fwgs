@@ -42,6 +42,8 @@
 
 namespace xash::server {
 
+using namespace ::xash::world; // consume the world trace/link kernel (Wave 1)
+
 namespace {
 
 namespace ut = ::xash::utilities;

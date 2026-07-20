@@ -54,9 +54,9 @@ struct EngineBridge
     GameDll    *game    = nullptr;                  // @lifetime: engine
 
     // S5 world interaction (null until lifecycle loads a map)
-    MoveEnv     *move_env    = nullptr;             // @lifetime: engine
-    WorldLinks  *links       = nullptr;             // @lifetime: engine
-    LinkEnv     *link_env    = nullptr;             // @lifetime: engine
+    ::xash::world::MoveEnv    *move_env = nullptr;  // @lifetime: engine
+    ::xash::world::WorldLinks *links    = nullptr;  // @lifetime: engine
+    ::xash::world::LinkEnv    *link_env = nullptr;  // @lifetime: engine
     LightStyles *lightstyles = nullptr;             // @lifetime: engine
     const ::xash::map_loader::PhsTable *phs = nullptr; // @lifetime: engine
 

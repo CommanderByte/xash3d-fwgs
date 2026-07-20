@@ -18,12 +18,12 @@
 
 namespace xash::server {
 
-class GameWorldHooks final : public IWorldLinkHooks
+class GameWorldHooks final : public ::xash::world::IWorldLinkHooks
 {
 public:
     // Bound at SV_LoadProgs (game) and each SV_SpawnServer (env); env is
     // cleared on deactivate so a stale world is never refined against.
-    void bind( const GameDll *game, const MoveEnv *env ) noexcept
+    void bind( const GameDll *game, const ::xash::world::MoveEnv *env ) noexcept
     {
         game_ = game;
         env_  = env;
@@ -45,7 +45,7 @@ public:
 
 private:
     const GameDll *game_ = nullptr; // @lifetime: engine
-    const MoveEnv *env_  = nullptr; // @lifetime: engine
+    const ::xash::world::MoveEnv *env_ = nullptr; // @lifetime: engine
 };
 
 } // namespace xash::server

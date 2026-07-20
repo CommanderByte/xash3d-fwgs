@@ -26,6 +26,8 @@
 
 namespace xash::server {
 
+using namespace ::xash::world; // consume the world trace/link kernel (Wave 1)
+
 namespace {
 
 void host_error( ServerRuntime &rt, const char *msg )

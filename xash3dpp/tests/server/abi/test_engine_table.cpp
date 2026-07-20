@@ -31,6 +31,7 @@
 #include <vector>
 
 namespace sv  = xash::server;
+namespace wr  = ::xash::world;
 namespace abi = xash::abi;
 namespace ml  = xash::map_loader;
 using xash::utilities::Vec3;
@@ -46,12 +47,12 @@ void count_host_error( void *, const char * )
     ++g_host_errors;
 }
 
-struct FixtureResolver final : sv::IModelResolver
+struct FixtureResolver final : wr::IModelResolver
 {
-    std::optional<sv::BrushModel> brush_model( int modelindex ) noexcept override
+    std::optional<wr::BrushModel> brush_model( int modelindex ) noexcept override
     {
         if ( modelindex == 1 )
-            return sv::BrushModel{ 0 };
+            return wr::BrushModel{ 0 };
         return std::nullopt;
     }
     bool is_studio( int ) noexcept override { return false; }
@@ -66,7 +67,7 @@ struct FixtureResolver final : sv::IModelResolver
     }
 };
 
-struct LinkHooks final : sv::IWorldLinkHooks
+struct LinkHooks final : wr::IWorldLinkHooks
 {
     void set_abs_box( abi::edict_t *ent ) noexcept override
     {
@@ -83,12 +84,12 @@ struct BridgeFixture
     xash::memory::PoolHandle     pool;
     sv::EdictArena               arena;
     sv::StringPool               strings;
-    sv::WorldLinks               links;
+    wr::WorldLinks               links;
     LinkHooks                    hooks;
     FixtureResolver              resolver;
     std::optional<ml::WorldData> world;
-    sv::LinkEnv                  lenv;
-    sv::MoveEnv                  env;
+    wr::LinkEnv                  lenv;
+    wr::MoveEnv                  env;
     sv::LightStyles              styles;
     abi::globalvars_t            globals{};
     sv::EngineBridge             bridge;
@@ -436,7 +437,7 @@ static void test_set_size_and_origin_slots()
     f.table.pfnSetSize( ent, bad, mins );
     CHECK_EQ( ent->v.maxs[0], 8.0f );
 
-    sv::WorldLinks::unlink_edict( ent );
+    wr::WorldLinks::unlink_edict( ent );
     const float org[3] = { 200, 200, 100 };
     f.table.pfnSetOrigin( ent, org );
     CHECK_EQ( ent->v.origin[0], 200.0f );
@@ -471,10 +472,10 @@ static void test_group_mask_slot()
     f.table.pfnSetGroupMask( 0x4, 1 );
     CHECK_EQ( f.bridge.group_mask, 0x4 );
     CHECK_EQ( f.env.group_mask, 0x4 );
-    CHECK( f.env.group_op == sv::GroupOp::Nand );
+    CHECK( f.env.group_op == wr::GroupOp::Nand );
 
     f.table.pfnSetGroupMask( 0, 0 );
-    CHECK( f.env.group_op == sv::GroupOp::And );
+    CHECK( f.env.group_op == wr::GroupOp::And );
 }
 
 static void test_visibility_slots()

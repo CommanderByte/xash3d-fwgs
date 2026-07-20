@@ -36,9 +36,10 @@ namespace xash::map_loader {
 struct WorldData;
 }
 
+namespace xash::world { struct IModelResolver; } // world/trace.hpp
+
 namespace xash::server {
 
-struct IModelResolver; // world_trace.hpp
 class EdictArena;      // edict_arena.hpp
 
 // Filter callback the DLL may pass (pm_defs.h pfnIgnore): non-null overrides
@@ -52,7 +53,7 @@ using PmIgnore = int ( * )( ::xash::abi::physent_t *pe );
 struct PmTraceEnv
 {
     const ::xash::map_loader::WorldData *world  = nullptr; // @lifetime: engine
-    IModelResolver                      *models = nullptr; // @lifetime: engine
+    ::xash::world::IModelResolver       *models = nullptr; // @lifetime: engine
     EdictArena                          *arena  = nullptr; // @lifetime: engine
     const ::xash::map_loader::HullBoundsTable *player_bounds = nullptr; // @lifetime: engine
     bool pusher_ext = false; // ENGINE_PHYSICS_PUSHER_EXT (transform_bbox path)

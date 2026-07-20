@@ -148,7 +148,7 @@ private:
     unsigned    current_   = 0;
 };
 
-class ModelResolver final : public IModelResolver
+class ModelResolver final : public ::xash::world::IModelResolver
 {
 public:
     // Bound each SV_SpawnServer to the freshly loaded world + its precache
@@ -176,7 +176,7 @@ public:
         hull_cache_.clear();
     }
 
-    [[nodiscard]] std::optional<BrushModel>
+    [[nodiscard]] std::optional<::xash::world::BrushModel>
     brush_model( int modelindex ) noexcept override;
 
     [[nodiscard]] bool is_studio( int modelindex ) noexcept override;
@@ -191,7 +191,7 @@ public:
     // CS shield skip, and the 16-entry pose cache. See world_trace.hpp for
     // the caller-side gating contract.
     [[nodiscard]] int
-    studio_hulls( int modelindex, const StudioHullPose &pose,
+    studio_hulls( int modelindex, const ::xash::world::StudioHullPose &pose,
                   std::span<::xash::content::StudioHitboxHull> out ) noexcept override;
 
 private:

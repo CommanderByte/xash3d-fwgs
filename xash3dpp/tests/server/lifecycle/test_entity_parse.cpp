@@ -34,6 +34,7 @@
 #include <string>
 
 namespace sv  = xash::server;
+namespace wr  = ::xash::world;
 namespace abi = xash::abi;
 namespace cc  = xash::cmd_cvar;
 namespace ml  = xash::map_loader;
@@ -121,10 +122,10 @@ struct ParseFixture
 
     std::optional<ml::WorldData> world;
     sv::ModelResolver            resolver;
-    sv::WorldLinks               links;
+    wr::WorldLinks               links;
     sv::GameWorldHooks           hooks;
-    sv::MoveEnv                  env;
-    sv::LinkEnv                  lenv;
+    wr::MoveEnv                  env;
+    wr::LinkEnv                  lenv;
 
     fake_dll::State *st = nullptr;
 

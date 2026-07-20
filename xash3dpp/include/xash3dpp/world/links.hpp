@@ -165,7 +165,3 @@ private:
 };
 
 } // namespace xash::world
-
-// Transitional — see trace.hpp: keep pre-rename xash::server callers compiling
-// until they migrate to xash::world / wr::.
-namespace xash::server { using namespace ::xash::world; }

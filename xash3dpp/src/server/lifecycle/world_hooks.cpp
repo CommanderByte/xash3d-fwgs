@@ -7,6 +7,8 @@
 
 namespace xash::server {
 
+using namespace ::xash::world; // consume the world trace/link kernel (Wave 1)
+
 void GameWorldHooks::set_abs_box( ::xash::abi::edict_t *ent ) noexcept
 {
     // pfnSetAbsBox (SetObjectCollisionBox) — engine has no fallback.  Runs on

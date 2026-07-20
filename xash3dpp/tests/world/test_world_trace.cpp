@@ -27,6 +27,7 @@
 #include <optional>
 
 namespace sv  = xash::server;
+namespace wr  = ::xash::world;
 namespace abi = xash::abi;
 namespace ml  = xash::map_loader;
 namespace ut  = xash::utilities;
@@ -36,18 +37,18 @@ static int g_pass = 0, g_fail = 0;
 
 namespace {
 
-struct FixtureResolver final : sv::IModelResolver
+struct FixtureResolver final : wr::IModelResolver
 {
-    std::optional<sv::BrushModel> brush_model( int modelindex ) noexcept override
+    std::optional<wr::BrushModel> brush_model( int modelindex ) noexcept override
     {
         if ( modelindex == 1 )
-            return sv::BrushModel{ 0 }; // the world model
+            return wr::BrushModel{ 0 }; // the world model
         return std::nullopt;
     }
     bool is_studio( int ) noexcept override { return false; }
 };
 
-struct LinkHooks final : sv::IWorldLinkHooks
+struct LinkHooks final : wr::IWorldLinkHooks
 {
     void set_abs_box( abi::edict_t *ent ) noexcept override
     {
@@ -63,12 +64,12 @@ struct TraceFixture
 {
     xash::memory::PoolHandle     pool;
     sv::EdictArena               arena;
-    sv::WorldLinks               links;
+    wr::WorldLinks               links;
     LinkHooks                    link_hooks;
     FixtureResolver              resolver;
     std::optional<ml::WorldData> world;
-    sv::LinkEnv                  lenv;
-    sv::MoveEnv                  env;
+    wr::LinkEnv                  lenv;
+    wr::MoveEnv                  env;
 
     TraceFixture()
     {
@@ -136,14 +137,14 @@ static void test_hull_for_bsp_selection()
     TraceFixture f;
 
     // Point probe → hull 0, offset = clip_mins VERBATIM + origin.
-    auto h0 = sv::hull_for_bsp_entity( f.env, f.env.worldspawn, {}, {} );
+    auto h0 = wr::hull_for_bsp_entity( f.env, f.env.worldspawn, {}, {} );
     REQUIRE( h0.has_value() );
     CHECK_EQ( h0->offset.x, h0->hull.clip_mins.x );
     CHECK_EQ( h0->offset.z, h0->hull.clip_mins.z );
 
     // Human-size probe → hull 1 (standard HL clip bounds), offset =
     // clip_mins - mins.
-    auto h1 = sv::hull_for_bsp_entity( f.env, f.env.worldspawn,
+    auto h1 = wr::hull_for_bsp_entity( f.env, f.env.worldspawn,
                                        k_h1_mins, k_h1_maxs );
     REQUIRE( h1.has_value() );
     REQUIRE( !h1->hull.clipnodes.empty() );
@@ -156,7 +157,7 @@ static void test_hull_for_bsp_selection()
     bogus->v.modelindex = 99;
     bogus->v.solid      = abi::k_solid_bsp;
     bogus->v.movetype   = abi::k_movetype_push;
-    CHECK( !sv::hull_for_bsp_entity( f.env, bogus, {}, {} ).has_value() );
+    CHECK( !wr::hull_for_bsp_entity( f.env, bogus, {}, {} ).has_value() );
 }
 
 static void test_hull_for_entity()
@@ -169,13 +170,13 @@ static void test_hull_for_entity()
     bad->v.solid      = abi::k_solid_bsp;
     bad->v.movetype   = 0;
     ml::BoxHull storage;
-    CHECK( !sv::hull_for_entity( f.env, bad, {}, {}, storage ).has_value() );
+    CHECK( !wr::hull_for_entity( f.env, bad, {}, {}, storage ).has_value() );
 
     // Box solid → Minkowski expansion, offset = origin.
     abi::edict_t *box = f.spawn_box( { 200, 100, 50 }, 8.0f,
                                      abi::k_solid_bbox );
     const Vec3 probe_mins = { -4, -4, -4 }, probe_maxs = { 4, 4, 4 };
-    auto h = sv::hull_for_entity( f.env, box, probe_mins, probe_maxs,
+    auto h = wr::hull_for_entity( f.env, box, probe_mins, probe_maxs,
                                   storage );
     REQUIRE( h.has_value() );
     CHECK_EQ( h->offset.x, 200.0f );
@@ -198,7 +199,7 @@ static void test_world_clip_hit()
     TraceFixture f;
 
     // Open-region trace (x > 128 stays empty in hull 1): clean miss.
-    auto clear = sv::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
+    auto clear = wr::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
                            { 200, 100, 50 }, abi::k_move_normal, nullptr,
                            false );
     CHECK_EQ( clear.t.fraction, 1.0f );
@@ -206,7 +207,7 @@ static void test_world_clip_hit()
     CHECK_EQ( clear.t.endpos.y, 100.0f );
 
     // Into the x<128 solid: hit near the plane, +X normal, world stamped.
-    auto hit = sv::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
+    auto hit = wr::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
                          { 0, 0, 50 }, abi::k_move_normal, nullptr, false );
     CHECK( hit.t.fraction > 0.2f && hit.t.fraction < 0.5f );
     CHECK( hit.ent == f.env.worldspawn );
@@ -225,16 +226,16 @@ static void test_entity_box_clip_and_rescale()
 
     // The returned fraction is entity-fraction × world-fraction (the
     // re-compose quirk) — equal to the direct distance ratio.
-    auto tr = sv::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
+    auto tr = wr::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
                         { 0, 0, 50 }, abi::k_move_normal, nullptr, false );
     CHECK( tr.ent == box );
     CHECK( std::fabs( tr.t.fraction - ( 200.0f - 174.0f ) / 200.0f ) < 0.01f );
 
     // Box BEHIND the world wall is never reached; the world hit stands.
-    sv::WorldLinks::unlink_edict( box );
+    wr::WorldLinks::unlink_edict( box );
     abi::edict_t *hidden = f.spawn_box( { 60, 0, 50 }, 8.0f,
                                         abi::k_solid_bbox );
-    auto tr2 = sv::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
+    auto tr2 = wr::move( f.env, { 200, 0, 50 }, k_h1_mins, k_h1_maxs,
                          { 0, 0, 50 }, abi::k_move_normal, nullptr, false );
     CHECK( tr2.ent == f.env.worldspawn );
     CHECK( hidden->v.solid == abi::k_solid_bbox ); // untouched
@@ -248,7 +249,7 @@ static void test_clip_filters()
                                      abi::k_solid_bbox );
 
     // passedict skips itself.
-    auto self = sv::move( f.env, { 250, 0, 50 }, {}, {}, { 200, 0, 50 },
+    auto self = wr::move( f.env, { 250, 0, 50 }, {}, {}, { 200, 0, 50 },
                           abi::k_move_normal, box, false );
     CHECK( self.ent == nullptr );
 
@@ -256,26 +257,26 @@ static void test_clip_filters()
     abi::edict_t *missile = f.spawn_box( { 250, 0, 50 }, 1.0f,
                                          abi::k_solid_bbox );
     missile->v.owner = box;
-    auto own = sv::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
+    auto own = wr::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
                          abi::k_move_normal, missile, false );
     CHECK( own.ent == nullptr );
-    sv::WorldLinks::unlink_edict( missile ); // out of later traces' way
+    wr::WorldLinks::unlink_edict( missile ); // out of later traces' way
 
     // MOVE_NOMONSTERS skips ordinary solids...
-    auto nomon = sv::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
+    auto nomon = wr::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
                            abi::k_move_nomonsters, nullptr, false );
     CHECK( nomon.ent == nullptr );
 
     // ...but MOVETYPE_PUSHSTEP pushables still clip.
     box->v.movetype = abi::k_movetype_pushstep;
-    auto push = sv::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
+    auto push = wr::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
                           abi::k_move_nomonsters, nullptr, false );
     CHECK( push.ent == box );
 
     // SOLID_NOT never clips.
     box->v.movetype = 0;
     box->v.solid    = abi::k_solid_not;
-    auto ghost = sv::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
+    auto ghost = wr::move( f.env, { 250, 0, 50 }, {}, {}, { 140, 0, 50 },
                            abi::k_move_normal, nullptr, false );
     CHECK( ghost.ent == nullptr );
 }
@@ -292,12 +293,12 @@ static void test_rotated_identity_equivalence()
     // rotation — the result must match the unrotated trace.
     abi::edict_t *ws = f.env.worldspawn;
 
-    auto straight = sv::clip_move_to_entity( f.env, ws, { 200, 0, 50 },
+    auto straight = wr::clip_move_to_entity( f.env, ws, { 200, 0, 50 },
                                              k_h1_mins, k_h1_maxs,
                                              { 0, 0, 50 } );
 
     ws->v.angles[1] = 360.0f;
-    auto rotated = sv::clip_move_to_entity( f.env, ws, { 200, 0, 50 },
+    auto rotated = wr::clip_move_to_entity( f.env, ws, { 200, 0, 50 },
                                             k_h1_mins, k_h1_maxs,
                                             { 0, 0, 50 } );
     ws->v.angles[1] = 0.0f;
@@ -318,7 +319,7 @@ static void test_transform_positive_plane_invariant()
 
     const ml::TracePlane in = { { 1.0f, 0.0f, 0.0f }, 5.0f };
     ml::TracePlane out;
-    sv::transform_positive_plane( m, in, out );
+    wr::transform_positive_plane( m, in, out );
 
     const Vec3 p_world = ut::transform_point( m, { 5.0f, 0.0f, 0.0f } );
     CHECK( std::fabs( ut::dot( out.normal, p_world ) - out.dist ) < 1e-3f );
