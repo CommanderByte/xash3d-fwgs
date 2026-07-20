@@ -15,6 +15,7 @@
 #include <xash3dpp/map_loader/map_loader.hpp>
 #include <xash3dpp/map_loader/world.hpp>
 #include <xash3dpp/networking/message_buf.hpp>
+#include <xash3dpp/private/memory/pool_registry.hpp>
 #include <xash3dpp/private/server/lifecycle.hpp>
 #include <xash3dpp/server/server.hpp>
 
@@ -304,6 +305,65 @@ static void test_baselines_created()
     xash::networking::MessageBuf signon_reader;
     signon_reader.rebind_read( fx.rt.signon.data() );
     CHECK_EQ( static_cast<int>( signon_reader.read_byte() ), 22 ); // svc_spawnbaseline
+}
+
+// ---------------------------------------------------------------------------
+// snapshot_alloc_ring OOM coherence (2026-07-20 audit).  num_client_entities
+// is the element count of packet_entities, so the two must be published
+// together.  The old code stamped the count BEFORE the two mem_calloc calls
+// and returned false without unwinding, leaving
+// `packet_entities == nullptr && num_client_entities > 0` -- and
+// find_best_baseline takes `% num_client_entities` and then indexes
+// packet_entities, i.e. dereferences null.  setup_clients discarded the
+// result with a (void) cast that defeated [[nodiscard]], so spawn continued.
+// ---------------------------------------------------------------------------
+
+static int  g_fail_after   = 0;   // let N allocations through, then fail
+static bool fail_hook( std::size_t, std::uint32_t ) noexcept
+{
+    return g_fail_after-- <= 0;
+}
+
+static void test_snapshot_ring_oom_leaves_state_coherent()
+{
+    SpawnFixture fx( /*dedicated=*/false, /*maxclients=*/1 );
+    REQUIRE( sv::spawn_server( fx.rt, "parsetest", nullptr, false ));
+    fx.refresh_state();
+
+    // The call is idempotent on an unchanged size key, so move the key
+    // (maxclients 1 -> 2 also flips SV_UPDATE_BACKUP 16 -> 64) to reach the
+    // realloc path, and make the first allocation of the new ring fail.
+    fx.rt.clients.maxclients = 2;
+    g_fail_after = 0;
+    auto *prev = xash::memory::internal::set_alloc_failure_hook( fail_hook );
+    const bool ok = sv::snapshot_alloc_ring( fx.rt );
+    ( void )xash::memory::internal::set_alloc_failure_hook( prev );
+
+    CHECK( !ok );
+    // The invariant: a null buffer must carry a zero count.  Both of these
+    // fail without the fix -- the count was left at 1 * 16 * 256.
+    CHECK( fx.rt.snapshot.packet_entities == nullptr );
+    CHECK_EQ( fx.rt.snapshot.num_client_entities, 0 );
+    CHECK( fx.rt.snapshot.gather_ents == nullptr );
+    CHECK_EQ( fx.rt.snapshot.ring_maxclients, 0 );
+
+    // And a partial failure must not leak the allocations that did succeed:
+    // let the two ring buffers through, fail the first per-client frames ring.
+    g_fail_after = 2;
+    prev = xash::memory::internal::set_alloc_failure_hook( fail_hook );
+    const bool ok2 = sv::snapshot_alloc_ring( fx.rt );
+    ( void )xash::memory::internal::set_alloc_failure_hook( prev );
+
+    CHECK( !ok2 );
+    CHECK( fx.rt.snapshot.packet_entities == nullptr );
+    CHECK_EQ( fx.rt.snapshot.num_client_entities, 0 );
+    CHECK( fx.rt.clients.clients[0].frames == nullptr );
+
+    // A clean retry after the pressure lifts still succeeds.
+    REQUIRE( sv::snapshot_alloc_ring( fx.rt ));
+    CHECK( fx.rt.snapshot.packet_entities != nullptr );
+    CHECK_EQ( fx.rt.snapshot.num_client_entities, 2 * 64 * 256 );
+    CHECK_EQ( fx.rt.snapshot.ring_maxclients, 2 );
 }
 
 // ---------------------------------------------------------------------------
@@ -684,6 +744,7 @@ int main()
     RUN_TEST( test_spawn_activate_deactivate );
     RUN_TEST( test_activate_no_physics );
     RUN_TEST( test_baselines_created );
+    RUN_TEST( test_snapshot_ring_oom_leaves_state_coherent );
     RUN_TEST( test_write_entities_to_client );
     RUN_TEST( test_send_client_datagram );
     RUN_TEST( test_emit_events );

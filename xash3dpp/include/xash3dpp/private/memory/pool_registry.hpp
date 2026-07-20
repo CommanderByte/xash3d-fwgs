@@ -57,4 +57,25 @@ struct PoolBucket
 
 inline constexpr std::uint32_t kMaxPools = static_cast<std::uint32_t>(xash::limits::memory_pool_max);
 
+// Allocation-failure injection — a TEST SEAM, null in production.
+//
+// When installed, mem_alloc / mem_calloc / mem_realloc consult it before
+// allocating and return nullptr (through the normal OOM path, so the
+// oom_handler still fires) whenever it answers true.  It lives here rather
+// than in the public memory.hpp for the same reason PoolBucket does: it is an
+// internal affordance for the test suite, not part of the subsystem contract.
+//
+// It exists because the engine's out-of-memory paths were otherwise
+// unreachable from a test — every pool falls back to malloc, which does not
+// fail on demand.  That gap is why the 2026-07-20 modernization audit found a
+// live invariant break on one of them (snapshot_alloc_ring published a buffer
+// element count before the buffer existed, leaving a null pointer with a
+// non-zero count for find_best_baseline to index).  Cost in production is one
+// relaxed atomic load per allocation on a perfectly-predicted branch.
+using AllocFailureHook = bool (*)(std::size_t size, std::uint32_t pool_index) noexcept;
+
+// Install (or clear, with nullptr) the hook.  Returns the previous one so a
+// test can restore it — always restore, the hook is process-global.
+AllocFailureHook set_alloc_failure_hook(AllocFailureHook hook) noexcept;
+
 } // namespace xash::memory::internal

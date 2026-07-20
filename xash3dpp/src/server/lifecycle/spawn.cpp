@@ -145,7 +145,7 @@ void free_old_entities( ServerRuntime &rt ) noexcept
 
 } // namespace
 
-void setup_clients( ServerRuntime &rt ) noexcept
+bool setup_clients( ServerRuntime &rt ) noexcept
 {
     ::xash::core::assert_thread_role( ::xash::core::ThreadRole::Main );
 
@@ -153,13 +153,13 @@ void setup_clients( ServerRuntime &rt ) noexcept
     // (maxclients 0 → world-only), exactly like a game DLL loaded at engine
     // start before any spawn.
     if ( rt.cvars == nullptr )
-        return;
+        return true;
 
     const int desired =
         static_cast<int>( rt.cvars->cvar_variable_value( "sv_maxclients" ));
 
     if ( rt.persistent.maxclients == desired )
-        return; // nothing to change
+        return true; // nothing to change
 
     // Legacy runs a full SV_Shutdown when maxclients changes on a live
     // server.  XASH3DPP-STUB(chunk6-S9): the Server-level teardown (client
@@ -200,7 +200,7 @@ void setup_clients( ServerRuntime &rt ) noexcept
     // (sv_init.c:821-827).  Sized from maxclients; freed in snapshot_shutdown.
     // XASH3DPP-STUB(chunk6-S9): svs.clients realloc + NET_Config land with the
     // full client array / netchan send path.
-    ( void )snapshot_alloc_ring( rt );
+    return snapshot_alloc_ring( rt );
 }
 
 bool spawn_server( ServerRuntime &rt, const char *mapname,
@@ -219,7 +219,14 @@ bool spawn_server( ServerRuntime &rt, const char *mapname,
         return false;
     }
 
-    setup_clients( rt );
+    if ( !setup_clients( rt ))
+    {
+        // OOM sizing the snapshot ring.  Proceeding would leave
+        // packet_entities null with a live client array, and the first frame
+        // to reach find_best_baseline would dereference it.
+        host_error( rt, "SV_SpawnServer: failed to allocate client snapshot ring" );
+        return false;
+    }
 
     // SV_InitGame → SV_LoadProgs (idempotent; the DLL persists across maps).
     if ( !rt.game_loaded && !load_progs( rt, rt.cfg.game_dll ))

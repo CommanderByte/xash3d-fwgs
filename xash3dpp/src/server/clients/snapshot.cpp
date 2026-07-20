@@ -428,38 +428,56 @@ bool snapshot_alloc_ring( ServerRuntime &rt ) noexcept
     // maxclients changed → drop the old ring/scratch/frames, realloc fresh.
     free_rings( rt );
 
-    rt.snapshot.update_backup    = backup;
-    rt.snapshot.update_mask      = backup - 1;
-    rt.snapshot.ring_maxclients  = mc;
-
     const std::size_t count = static_cast<std::size_t>( mc ) *
                               static_cast<std::size_t>( backup ) *
                               static_cast<std::size_t>( k_num_packet_entities );
-    rt.snapshot.num_client_entities  = static_cast<int>( count );
-    rt.snapshot.next_client_entities = 0;
 
-    rt.snapshot.packet_entities = static_cast<::xash::abi::entity_state_t *>(
+    // INVARIANT: num_client_entities is the element count of packet_entities
+    // (snapshot.hpp), so the two must be published together.  Allocate into
+    // locals and publish nothing until every allocation has succeeded —
+    // stamping the count first left the struct as
+    // `packet_entities == nullptr && num_client_entities > 0` on OOM, and
+    // find_best_baseline takes `% num_client_entities` and then indexes
+    // packet_entities, i.e. dereferences null.
+    auto *packet_entities = static_cast<::xash::abi::entity_state_t *>(
         ::xash::memory::mem_calloc(
             rt.game_pool, sizeof( ::xash::abi::entity_state_t ) * count ));
-    rt.snapshot.gather_ents = static_cast<::xash::abi::entity_state_t *>(
+    auto *gather_ents = static_cast<::xash::abi::entity_state_t *>(
         ::xash::memory::mem_calloc(
             rt.game_pool, sizeof( ::xash::abi::entity_state_t ) *
                               static_cast<std::size_t>( k_max_visible_packet )));
 
-    bool ok = rt.snapshot.packet_entities != nullptr &&
-              rt.snapshot.gather_ents != nullptr;
+    bool ok = packet_entities != nullptr && gather_ents != nullptr;
 
     // Per-client frames rings (legacy allocs at connect; the fixed slot array
     // lets us size them all here with SV_UPDATE_BACKUP, freed in one sweep).
-    for ( int i = 0; i < mc; ++i )
+    for ( int i = 0; ok && i < mc; ++i )
     {
         void *f = ::xash::memory::mem_calloc(
             rt.game_pool, sizeof( ClientFrame ) * static_cast<std::size_t>( backup ));
         rt.clients.clients[i].frames = static_cast<ClientFrame *>( f );
-        ok = ok && f != nullptr;
+        ok = f != nullptr;
     }
 
-    return ok;
+    if ( !ok )
+    {
+        // free_rings sweeps the per-client frames that did get allocated and
+        // re-zeroes the ring counters; the two buffers above are not published
+        // yet, so they are freed here.
+        ::xash::memory::mem_free( packet_entities );
+        ::xash::memory::mem_free( gather_ents );
+        free_rings( rt );
+        return false;
+    }
+
+    rt.snapshot.packet_entities      = packet_entities;
+    rt.snapshot.gather_ents          = gather_ents;
+    rt.snapshot.update_backup        = backup;
+    rt.snapshot.update_mask          = backup - 1;
+    rt.snapshot.ring_maxclients      = mc;
+    rt.snapshot.num_client_entities  = static_cast<int>( count );
+    rt.snapshot.next_client_entities = 0;
+    return true;
 }
 
 bool snapshot_alloc_signon( ServerRuntime &rt ) noexcept

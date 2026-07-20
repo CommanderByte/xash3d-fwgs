@@ -41,6 +41,8 @@ static PoolBucket g_pools[kMaxPools];
 // Stored atomically so set_oom_handler() is safe to call from any thread.
 using OomHandler = void (*)(std::size_t, PoolHandle) noexcept;
 static std::atomic<OomHandler> g_oom_handler { nullptr };
+// Allocation-failure injection for tests — see pool_registry.hpp.
+static std::atomic<AllocFailureHook> g_alloc_fail_hook { nullptr };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -160,6 +162,16 @@ void* mem_alloc(PoolHandle pool, std::size_t size) noexcept
     // header cannot represent (silent truncation would corrupt the free /
     // realloc accounting).  Unreachable on 32-bit targets (size_t is 32-bit).
     if (size > static_cast<std::size_t>(UINT32_MAX))
+    {
+        if (auto h = g_oom_handler.load(std::memory_order_acquire)) h(size, pool);
+        return nullptr;
+    }
+
+    // Test seam (pool_registry.hpp): null in production, so this is one
+    // relaxed load on a predicted branch.  mem_calloc routes through here, and
+    // mem_realloc's grow path re-enters via mem_alloc.
+    if (auto fh = g_alloc_fail_hook.load(std::memory_order_relaxed);
+        fh && fh(size, pool.index))
     {
         if (auto h = g_oom_handler.load(std::memory_order_acquire)) h(size, pool);
         return nullptr;
@@ -354,5 +366,14 @@ void set_oom_handler(void (*handler)(std::size_t, PoolHandle) noexcept) noexcept
 {
     g_oom_handler.store(handler, std::memory_order_release);
 }
+
+namespace internal {
+
+AllocFailureHook set_alloc_failure_hook( AllocFailureHook hook ) noexcept // compliance-allow(thread-assert): atomic exchange — test seam, callable from any thread; memory sits below platform (no ThreadRole dependency)
+{
+    return g_alloc_fail_hook.exchange( hook, std::memory_order_acq_rel );
+}
+
+} // namespace internal
 
 } // namespace xash::memory

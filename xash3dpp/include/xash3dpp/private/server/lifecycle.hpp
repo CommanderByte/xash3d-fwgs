@@ -274,7 +274,9 @@ void spawn_entities( ServerRuntime &rt,
 // bound(4,·,MAX_CLIENTS) / listen bound(1,·,MAX_CLIENTS)), deathmatch/coop
 // consistency, the maxplayers FCVAR_LATCH feedback, and the arena reserved/
 // num_entities floor (maxclients + 1).
-void setup_clients( ServerRuntime &rt ) noexcept;
+// Returns false only when the snapshot ring allocation fails: the caller must
+// abort the spawn rather than run a server whose packet_entities ring is null.
+[[nodiscard]] bool setup_clients( ServerRuntime &rt ) noexcept;
 
 // SV_SpawnServer (sv_init.c:935-1078): setup_clients → ensure progs loaded →
 // reset the per-level state → ss_loading → world load through MapLoader +
