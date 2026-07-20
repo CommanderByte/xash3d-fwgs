@@ -11,6 +11,7 @@ xash3dpp_add_test(test_os_io LIBS xash3dpp_platform)
 xash3dpp_add_test(test_console LIBS xash3dpp_platform)
 xash3dpp_add_test(test_crash LIBS xash3dpp_platform)
 xash3dpp_add_test(test_os_socket LIBS xash3dpp_platform)
+xash3dpp_add_test(test_thread LIBS xash3dpp_platform)
 
 # ---------------------------------------------------------------------------
 # dynlib reverse lookup (SAV-OQ-3) — needs a REAL loaded module to exercise

@@ -4,10 +4,12 @@
 > `src/platform/{win32,posix,android}/**` and the public headers under
 > `include/xash3dpp/platform/**`. `status_table.py` reports platform
 > **Complete** (14 TUs, tests ✔); `compliance_scan.py platform` is **clean**
-> (0 blocker/warning/note; **16** documented `compliance-allow` adjudications —
-> 12 thread-assert sites across the posix/win32 `os_io`/`os_socket` TUs, the
-> "6 × 2 = 12" of the Threading table, plus 4 mutable-global exception sites;
-> count corrected 2026-07-19); `stub_scan.py platform` shows **2** TODO
+> (0 blocker/warning/note; **18** documented `compliance-allow` adjudications
+> as of the S9.0 pass — 12 thread-assert sites across the posix/win32
+> `os_io`/`os_socket` TUs (the "6 × 2 = 12" of the Threading table), 2 more
+> thread-assert sites on `spawn_thread()` itself (win32/posix `thread.cpp`,
+> S9.0 — see Threading below), plus 4 mutable-global exception sites);
+> `stub_scan.py platform` shows **2** TODO
 > markers (both in `posix/sys.cpp`: `is_debugger_present` macOS/BSD, and a
 > `shell_execute` double-fork note). Drift found this pass: the OS **file I/O**
 > backend (`os_io.hpp` + per-OS `os_io.cpp`) is now owned here — it absorbed the
@@ -23,6 +25,17 @@
 > primitive (address → exported name) `save-boundary.md`'s SAV-OQ-3 recommended
 > shape asked platform to own, for Chunk 8's `FIELD_FUNCTION` codec. Reflected
 > in the Interface table, Quirks, and Threading below.
+>
+> **2026-07-20 addendum (S9.0, Q-24 OS-boilerplate half):** `spawn_thread()` /
+> `JoinHandle` / `ThreadPriority` landed in `win32/thread.cpp` +
+> `posix/thread.cpp` (new `include/xash3dpp/platform/thread.hpp`) — the
+> **headline P-1 door** this doc's Extension-axes table kept open ("threads
+> forbidden until P-1 lands"). Chunk 9's `T_AudioDecoder` is the first
+> scheduled consumer, per `design/thread-spawn-and-inbox-brief.md` §3.3 (HB-4
+> design brief). `stub_scan.py platform` now reports **3** TODO markers (the
+> existing 2, plus `posix/thread.cpp`'s macOS/BSD thread-naming gap — mirrors
+> the pre-existing `is_debugger_present` macOS/BSD TODO shape exactly).
+> Reflected in the Interface table, Threading, and Extension axes (P-1) below.
 
 ## Responsibility
 
@@ -108,6 +121,25 @@ a thin shim.
 | `crash::install_handler()` | function | Register signal/SEH crash handler; idempotent; must be called from the main thread before any other threads |
 | `crash::print_trace()` | function | Write best-effort stack trace to stderr/logcat; async-signal-safe; no heap allocation |
 
+### Thread spawn (`xash::platform`, `include/xash3dpp/platform/thread.hpp`) — landed S9.0
+
+| Symbol | Kind | Description |
+|--------|------|-------------|
+| `ThreadPriority` | enum class | `Normal` (default), `High` (best-effort raise), `Realtime` (`XASH3DPP-STUB(chunk12)` — logs + runs at `Normal` until the SDL audio device chunk) |
+| `ThreadFn` | type alias | `void (*)(void *user) noexcept` — the C-idiom entry point (matches `cmd_cvar::CommandCtxFn`); no templated `Fn&&` |
+| `JoinHandle` | class | Join-on-destruction RAII handle; movable, non-copyable; explicit `join()` and `joinable()` also exposed. Wraps `std::thread` (not `std::jthread` — no stop-token semantics needed) |
+| `spawn_thread(role, name, prio, fn, user)` | function | Spawns an OS thread running `fn(user)`. `register_thread_role(role)` fires as the FIRST action on the new thread, before naming/priority/`fn`. `name` is copied into a fixed buffer (`limits::platform_thread_name_max`) at call time — does not need to outlive the call. `user` is a borrowed pointer — @lifetime: caller, must outlive the spawned thread |
+
+Win32 names the thread via `SetThreadDescription`, resolved dynamically
+(`GetProcAddress` on `kernel32.dll`) since it is a Windows 10 1607+ API and
+the project pins no minimum `_WIN32_WINNT` — no-op on older Windows. POSIX
+names via `pthread_setname_np` on Linux/Android (glibc/bionic truncate to 16
+bytes including the null terminator); macOS/BSD naming is TODO (mirrors the
+existing `is_debugger_present` macOS/BSD gap). `ThreadPriority::High` maps to
+`SetThreadPriority(THREAD_PRIORITY_HIGHEST)` on Win32 and a best-effort
+`SCHED_RR` bump on POSIX (silently stays at `Normal` without `CAP_SYS_NICE`
+/ root — logged as a `Warning`, not a failure).
+
 ### Socket I/O (`xash::platform`, `include/xash3dpp/platform/os_socket.hpp` + `platform_sockets.hpp`)
 
 All functions are annotated `// @thread-safety: T_NetIO-ready` — callable from
@@ -163,7 +195,7 @@ introduced with this surface).
 | Subsystem | Why |
 |-----------|-----|
 | `xash3dpp_utilities` (PRIVATE) | `path::extract_dir`, `path::fix_slashes` for normalising paths returned by `get_executable_dir` |
-| OS libraries | `kernel32` (Win32, implicit); `Ws2_32` (Win32, sockets); `dl` (`-ldl`, POSIX) for dlopen/dlsym/dlclose; `android` + `log` (Android NDK) |
+| OS libraries | `kernel32` (Win32, implicit); `Ws2_32` (Win32, sockets); `dl` (`-ldl`, POSIX) for dlopen/dlsym/dlclose; `android` + `log` (Android NDK); `Threads::Threads` (CMake `find_package(Threads)`, PUBLIC on `xash3dpp_platform` since S9.0 — `spawn_thread` constructs a real `std::thread`; no-op on Win32, `-lpthread` on POSIX where the libc does not fold it into libc itself) |
 | `networking/errors.hpp`, `networking/address.hpp` | Header-only types — `NetError`, `Result<T>`, `NetAddress`, `IpFamily` — used by the socket API surface. No link-time dependency on `xash3dpp_networking`. |
 
 No dependency on `xash3dpp_memory` — all public functions return by value
@@ -225,6 +257,12 @@ called before any socket functions and `socket_shutdown()` called at teardown;
   platform.
 - `is_debugger_present` reads `/proc/self/status` on Linux; returns `false`
   on macOS, BSD, and all embedded targets (TODO: implement per-platform).
+- `spawn_thread`'s debugger-visible naming step is a no-op on macOS/BSD
+  (TODO: macOS's `pthread_setname_np(const char*)` takes no `pthread_t`
+  (self-only) and each BSD has its own differently-signed variant) — mirrors
+  the `is_debugger_present` gap immediately above rather than guessing at an
+  unverified API. Linux/Android use `pthread_setname_np(pthread_self(),
+  name)`, truncated to the glibc/bionic 16-byte (incl. null) hard limit.
 - `open_file` on Win32 converts the UTF-8 path to UTF-16 before calling
   `_wopen`. Raw `_open` on a `const char *` path is never used.
 - `console::read_line()` returns a `string_view` into a static buffer. Callers
@@ -289,7 +327,7 @@ open**, not about de-globalising a legacy core.
 
 | Goal / primitive | Applies? | Required seam or door (verdict) |
 |------------------|----------|--------------------------------|
-| **P-1** main-thread inbox + worker pool | Enabler (door) | Platform owns no inbox, but every off-main thread needs an OS **thread-spawn + `ThreadRole`-registration** primitive. `core/thread_role.cpp` is already hosted in this target; there is **no** `platform::spawn_thread` yet (threads forbidden until P-1 lands — OQ-9 posture). **Door-keep:** add a thin thread-spawn wrapper that registers a `ThreadRole` on entry when the first off-main consumer (Chunk 7 worker pool) is scheduled — do not build it early |
+| **P-1** main-thread inbox + worker pool | Enabler (door) — **landed S9.0** | Platform still owns no inbox (the Main-inbox drain slot stays designed-not-built per the HB-4 brief until a G-1/G-3 consumer), but the OS **thread-spawn + `ThreadRole`-registration** primitive is now built: `platform::spawn_thread(role, name, prio, fn, user) -> JoinHandle` (`win32/thread.cpp` + `posix/thread.cpp`), registering `role` via the already-hosted `core/thread_role.cpp` as the FIRST action on the new thread. Chunk 9's `T_AudioDecoder` is the first scheduled consumer (Q-24; `design/thread-spawn-and-inbox-brief.md` §3.3). The `MpscQueue`/`SpscRing` half of Q-24 lives in `core`, not here — see that register entry |
 | **P-2** published-snapshot reads | No | Platform holds no sim state; nothing to snapshot |
 | **P-3** context-first, no new file-scope state | **Yes** | Every entry point is already a free function over a caller-owned handle or a pure OS query. The **only** file-scope mutable state is the documented exception set (magic-static clock epoch, WSA refcount atom, crash-installed flag, Android JNI glue). **Door-keep:** no new statics; a v2 thread-spawn primitive must take a `ThreadRole` argument, not read a global |
 | **P-4** typed introspection | Minor | Stateless ⇒ little to introspect. A future `platform_stats` (open socket / open library counts) is the only P-4 tier; low priority. No `extern` poke risk today |
@@ -304,13 +342,13 @@ open**, not about de-globalising a legacy core.
 | **G-5** scripting runtime | Door-keep | `open_library` loads the isolated-island script satellite (extension-goals §G-5 names "platform dynlib" as an existing affordance). No exception/RTTI leak risk — platform is `/EHs-c- /GR-` like every engine target |
 | **NetIO / DNS** (threading-model §7) | **Yes — headline** | `resolve_blocking` is contractually **Worker/NetIO-only** (synchronous `getaddrinfo`, may block 100s of ms); the socket setters + send/recv are `T_NetIO-ready`. This is the clearest already-open off-main door in the subsystem |
 
-**Headline door:** the missing **OS thread-spawn + `ThreadRole`-registration
-primitive**. Every off-main thread the north star names (G-1/G-3/NetIO/Worker)
-needs it, and platform is its natural owner because it already hosts
-`thread_role.cpp`. Today the door is kept open passively (all socket/time/
-console primitives are thread-agnostic, `resolve_blocking` is Worker-only); the
-active step is to add the wrapper — not before Chunk 7 schedules the first
-consumer (no gold-plating, per extension-goals §3).
+**Headline door — landed S9.0:** the **OS thread-spawn + `ThreadRole`-
+registration primitive** (`platform::spawn_thread` / `JoinHandle`). Every
+off-main thread the north star names (G-1/G-3/NetIO/Worker) can now use it,
+and platform was its natural owner because it already hosted
+`thread_role.cpp`. The door was kept open passively until Chunk 9's
+`T_AudioDecoder` became the first scheduled consumer (per extension-goals §3
+"no gold-plating" — the primitive was not built early); it is now active.
 
 ______________________________________________________________________
 
@@ -332,6 +370,7 @@ handle are the owner's responsibility. Per QN, every public header carries a
 |-------|-----------------------------|---------|
 | **Main-thread-asserting** | `console::read_line` (win32 + posix), `crash::install_handler` (win32 + posix) | Opens with `::xash::core::detail::assert_main_thread(...)` — static line buffer / process-wide signal disposition |
 | **Main-thread-capturing** | `get_time()` (win32 + posix) | First call runs `capture_main_thread()` inside the magic-static clock init — establishes the Main identity the asserts check |
+| **Thread-spawning (role-registering)** | `spawn_thread()` (win32 + posix `thread.cpp`, landed S9.0) | The one platform entry point that CREATES a thread rather than running on an existing one. Its internal trampoline calls `register_thread_role(role)` as the FIRST action on the new thread — before naming, priority, or the caller's `fn` — so every subsequent subsystem `assert_thread_role()` call sees the correct role from the new thread's very first instruction |
 | **Adjudicated non-asserting mutators** | `flush(OsFd&)`, `set_non_blocking`, `set_broadcast`, `set_reuse_addr`, `set_recv_buffer`, `set_send_buffer` (win32 + posix — 6 × 2 = 12 sites) | `compliance-allow(thread-assert)` — stateless OS-handle wrappers; a Main assert would be false precision on a `T_NetIO`-ready surface |
 | **Worker/NetIO-only** | `resolve_blocking` (win32 + posix) | Synchronous `getaddrinfo`; **must not** run on `ThreadRole::Main` |
 | **`T_NetIO`-ready any-thread** | all other `os_socket` free functions (`open_udp_socket`, `sendto`, `recvfrom`, `send_stream`, `recv_stream`, `connect_stream`, …) | Header-annotated `@thread-safety: T_NetIO-ready`; callable from Main today, NetIO tomorrow, no code change |
@@ -365,6 +404,14 @@ enforcement platform already exercises.
   adjudicated `compliance-allow(mutable-global, di-global-ref)` at the
   definitions (no engine context exists at JNI-init time, so DI is
   structurally impossible there).
+- **`spawn_thread()` (S9.0)** owns no persistent state — each call's
+  `ThreadStartCtx` (role, name, priority, `fn`, `user`) is a stack-local
+  value, decay-copied once into `std::thread`'s own internal invoker storage
+  and read exactly once by the new thread's trampoline. The role-registration
+  ordering guarantee (role before `fn`) is the only cross-thread contract
+  this primitive adds; it relies on `std::thread`'s constructor establishing
+  a happens-before relationship with the new thread's first instruction
+  (standard-guaranteed), not on any additional synchronisation here.
 
 ## Constant classification (QO)
 

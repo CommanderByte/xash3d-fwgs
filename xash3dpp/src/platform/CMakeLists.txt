@@ -40,6 +40,7 @@ set(XASH_PLATFORM_SRC
     ${XASH_PLATFORM_SUBDIR}/sys.cpp
     ${XASH_PLATFORM_SUBDIR}/os_io.cpp
     ${XASH_PLATFORM_SUBDIR}/os_socket.cpp
+    ${XASH_PLATFORM_SUBDIR}/thread.cpp
     ${XASH_PLATFORM_IO_EXTRA}
     ${XASH_PLATFORM_CONSOLE_SRC}
     ${XASH_PLATFORM_CRASH_SRC}
@@ -74,6 +75,16 @@ target_compile_features(xash3dpp_platform PUBLIC cxx_std_23)
 # The diagnostics tier (log/assert/thread-role) is hosted IN this target, so
 # platform does not link core — the layer graph is one-way (core → platform).
 target_link_libraries(xash3dpp_platform PRIVATE xash3dpp_utilities)
+
+# thread.cpp (Q-24 spawn_thread) constructs a real std::thread — on POSIX
+# (glibc pre-2.34, most other libc implementations) that requires linking
+# pthread explicitly at the final executable. PUBLIC so every consumer of
+# xash3dpp_platform picks up the requirement transitively instead of each
+# downstream target re-discovering it (see tests/{host,memory,filesystem,
+# cmd_cvar}/CMakeLists.txt for the previous per-test workaround). No-op on
+# Win32 (FindThreads resolves to an empty INTERFACE target there).
+find_package(Threads REQUIRED)
+target_link_libraries(xash3dpp_platform PUBLIC Threads::Threads)
 
 # Win32: link Winsock2 for the sockets layer.
 if(WIN32)

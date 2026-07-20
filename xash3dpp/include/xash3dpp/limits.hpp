@@ -269,6 +269,12 @@ inline constexpr std::size_t platform_path_buf_wchars = 1024; // UTF-8→UTF-16 
 inline constexpr std::size_t platform_path_buf_wchars = XASH_LIMIT_PLATFORM_PATH_BUF_WCHARS;
 #endif
 
+#ifndef XASH_LIMIT_PLATFORM_THREAD_NAME_MAX
+inline constexpr std::size_t platform_thread_name_max = 32; // spawn_thread() debugger-visible name buffer (bytes, incl. null terminator); POSIX pthread_setname_np further truncates to 16 bytes on Linux/Android
+#else
+inline constexpr std::size_t platform_thread_name_max = XASH_LIMIT_PLATFORM_THREAD_NAME_MAX;
+#endif
+
 // networking subsystem
 // Legacy reference: engine/common/net_ws.h, netchan.h capacity macros.
 // These values are wire-frozen for GoldSrc/Xash protocol compatibility; do
