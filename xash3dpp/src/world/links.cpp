@@ -15,10 +15,16 @@
 
 #include <cstring>
 
-namespace xash::server {
+namespace xash::world {
 
 namespace ml  = ::xash::map_loader;
 namespace abi = ::xash::abi;
+namespace ut  = ::xash::utilities;
+
+// Shared symbols now live in their homes (Wave 1a); import those spelled bare.
+using ut::Vec3;
+using ut::vec_axis;
+using abi::EntityView;
 
 namespace {
 
@@ -284,4 +290,4 @@ void WorldLinks::link_edict( abi::edict_t *ent, bool touch_triggers,
     }
 }
 
-} // namespace xash::server
+} // namespace xash::world

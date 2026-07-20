@@ -16,11 +16,16 @@
 #include <xash3dpp/abi/entity_view.hpp>
 #include <xash3dpp/utilities/matrix.hpp>
 
-namespace xash::server {
+namespace xash::world {
 
 namespace ml  = ::xash::map_loader;
 namespace abi = ::xash::abi;
 namespace ut  = ::xash::utilities;
+
+// Shared symbols now live in their homes (Wave 1a); import those spelled bare.
+using ut::Vec3;
+using ut::vec_axis;
+using abi::EntityView;
 
 namespace {
 
@@ -606,4 +611,4 @@ SvTrace move_no_ents( const MoveEnv &env, const Vec3 &start,
                           /*monsterclip=*/false, /*no_ents=*/true );
 }
 
-} // namespace xash::server
+} // namespace xash::world

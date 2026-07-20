@@ -13,10 +13,15 @@
 #include <xash3dpp/core/log.hpp>
 #include <xash3dpp/abi/entity_view.hpp>
 
-namespace xash::server {
+namespace xash::world {
 
 namespace ml  = ::xash::map_loader;
 namespace abi = ::xash::abi;
+namespace ut  = ::xash::utilities;
+
+// Shared symbols now live in their homes (Wave 1a); import those spelled bare.
+using ut::Vec3;
+using abi::EntityView;
 
 std::optional<SvHull>
 hull_for_bsp_entity( const MoveEnv &env, abi::edict_t *ent,
@@ -260,4 +265,4 @@ studio_pose_for_entity( const MoveEnv &env, abi::edict_t *ent,
     return pose;
 }
 
-} // namespace xash::server
+} // namespace xash::world

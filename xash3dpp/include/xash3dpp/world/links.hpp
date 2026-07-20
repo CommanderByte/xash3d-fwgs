@@ -21,7 +21,7 @@
 
 #include <cstddef>
 
-namespace xash::server {
+namespace xash::world {
 
 // ---------------------------------------------------------------------------
 // Intrusive link helpers (legacy ClearLink/RemoveLink/InsertLinkBefore)
@@ -164,4 +164,8 @@ private:
     IWorldLinkHooks *hooks_      = nullptr; // @lifetime: engine
 };
 
-} // namespace xash::server
+} // namespace xash::world
+
+// Transitional — see trace.hpp: keep pre-rename xash::server callers compiling
+// until they migrate to xash::world / wr::.
+namespace xash::server { using namespace ::xash::world; }

@@ -32,7 +32,7 @@
 
 namespace xash::cmd_cvar { class CmdCvarContext; }
 
-namespace xash::server {
+namespace xash::world {
 
 // ---------------------------------------------------------------------------
 // Seams
@@ -302,4 +302,10 @@ move_no_ents( const MoveEnv &env, const ::xash::utilities::Vec3 &start,
                                              ::xash::abi::edict_t *trigger,
                                              ::xash::abi::edict_t *ent ) noexcept;
 
-} // namespace xash::server
+} // namespace xash::world
+
+// Transitional (removed once consumers migrate to xash::world / wr::): world
+// was promoted to its own target and namespace on the pre-Chunk-11 cleanup,
+// but server/test callers still spell world types unqualified inside
+// xash::server. This using-directive keeps them compiling until migrated.
+namespace xash::server { using namespace ::xash::world; }
